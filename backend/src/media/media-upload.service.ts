@@ -86,7 +86,7 @@ export class MediaUploadService {
     return publicUrl;
   }
 
-  /** Subida con MEDIA_BUCKET del entorno (adjuntos CRM). */
+  /** Subida con MEDIA_BUCKET del entorno (adjuntos CRM comercial). */
   async uploadToMediaProxy(
     buffer: Buffer,
     originalName: string,
@@ -106,6 +106,52 @@ export class MediaUploadService {
       mimeType,
       opts,
     );
+  }
+
+  /** Bucket de adjuntos Flota (prospectos, WhatsApp Flota). */
+  prospectosBucket(): string | undefined {
+    return this.config.get<string>('MEDIA_PROSPECTOS_BUCKET')?.trim() || undefined;
+  }
+
+  /** Subida con MEDIA_PROSPECTOS_BUCKET (adjuntos Flota). */
+  async uploadToProspectosProxy(
+    buffer: Buffer,
+    originalName: string,
+    mimeType: string,
+    opts?: { authorizationHeader?: string },
+  ): Promise<string> {
+    const bucket = this.prospectosBucket();
+    if (!bucket) {
+      throw new ServiceUnavailableException(
+        'MEDIA_PROSPECTOS_BUCKET no está definido.',
+      );
+    }
+    return this.uploadToBucket(
+      bucket,
+      buffer,
+      originalName,
+      mimeType,
+      opts,
+    );
+  }
+
+  /** Proxy según entityType: flota-prospecto → prospectos, resto → comercial. */
+  async uploadForEntity(
+    entityType: string,
+    buffer: Buffer,
+    originalName: string,
+    mimeType: string,
+    opts?: { authorizationHeader?: string },
+  ): Promise<string> {
+    if (entityType === 'flota-prospecto' && this.prospectosBucket()) {
+      return this.uploadToProspectosProxy(
+        buffer,
+        originalName,
+        mimeType,
+        opts,
+      );
+    }
+    return this.uploadToMediaProxy(buffer, originalName, mimeType, opts);
   }
 
   avatarBucket(): string {

@@ -366,17 +366,34 @@ export async function fetchContactConversations(contactId: number): Promise<Chat
   return res.data ?? [];
 }
 
+/** Últimos 9 dígitos (celular Perú), sin prefijo país. */
+export function phoneSuffix9(phone: string | null | undefined): string {
+  return (phone?.replace(/\D/g, '') ?? '').slice(-9);
+}
+
+/** Coincidencia estricta por los 9 dígitos del celular. */
+export function phonesMatchExact(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): boolean {
+  const sa = phoneSuffix9(a);
+  const sb = phoneSuffix9(b);
+  return sa.length === 9 && sb.length === 9 && sa === sb;
+}
+
+export function conversationPhoneMatches(
+  conversation: ChatwootConversation,
+  phone: string | null | undefined,
+): boolean {
+  return phonesMatchExact(conversation.meta?.sender?.phone_number, phone);
+}
+
 export function findConversationByPhone(
   conversations: ChatwootConversation[],
   phone: string | null | undefined,
 ): ChatwootConversation | undefined {
-  const digits = phone?.replace(/\D/g, '') ?? '';
-  if (!digits) return undefined;
-  const suffix = digits.slice(-9);
-  return conversations.find((c) => {
-    const cd = c.meta?.sender?.phone_number?.replace(/\D/g, '') ?? '';
-    return cd === digits || cd.endsWith(suffix) || suffix.endsWith(cd.slice(-9));
-  });
+  if (phoneSuffix9(phone).length < 9) return undefined;
+  return conversations.find((c) => conversationPhoneMatches(c, phone));
 }
 
 export function pickBestContactConversation(
@@ -389,57 +406,36 @@ export function pickBestContactConversation(
 }
 
 /**
- * Búsqueda ligera de conversación por teléfono (sin escaneo profundo de páginas).
- * Útil desde Prospectos u otros flujos que solo tienen el número.
+ * Resuelve conversación por teléfono con coincidencia estricta (9 dígitos).
+ * Usa el backend que filtra por sender.phone_number, no por texto en mensajes.
+ */
+export async function resolveConversationByPhone(
+  phone: string | null | undefined,
+  contactId?: number | null,
+): Promise<ChatwootConversation | null> {
+  const suffix = phoneSuffix9(phone);
+  if (suffix.length < 9) return null;
+
+  const qs = new URLSearchParams({ phone: phone!.trim() });
+  if (contactId) qs.set('contact_id', String(contactId));
+  const res = await api<{ data: ChatwootConversation | null }>(
+    `/api/chatwoot/resolve-conversation?${qs}`,
+    { cache: 'no-store' },
+  );
+  const conv = res.data ?? null;
+  if (!conv) return null;
+  if (!conversationPhoneMatches(conv, phone)) return null;
+  return conv;
+}
+
+/**
+ * Búsqueda de conversación por teléfono (coincidencia estricta, vía backend rápido).
  */
 export async function findConversationByPhoneNumber(
   phone: string | null | undefined,
+  contactId?: number | null,
 ): Promise<ChatwootConversation | null> {
-  const digits = phone?.replace(/\D/g, '') ?? '';
-  const suffix = digits.slice(-9);
-  if (suffix.length < 3) return null;
-
-  const phoneMatches = (c: ChatwootConversation) => {
-    const cd = c.meta?.sender?.phone_number?.replace(/\D/g, '') ?? '';
-    if (!cd) return false;
-    return cd === digits || cd.endsWith(suffix) || suffix.endsWith(cd.slice(-9));
-  };
-
-  const searchTerms = [digits, suffix, `+${digits}`].filter(
-    (q, i, arr) => q.length >= 3 && arr.indexOf(q) === i,
-  );
-  for (const q of searchTerms) {
-    const searchHits = await searchChatwootConversations(q);
-    if (searchHits.length === 0) continue;
-
-    // Preferir coincidencia explícita de teléfono cuando meta.sender lo trae
-    const withPhone = searchHits.filter(phoneMatches);
-    const fromPhone = pickBestContactConversation(withPhone);
-    if (fromPhone) return fromPhone;
-
-    // Chatwoot a veces no incluye phone en meta del listado; si buscamos por dígitos,
-    // aceptar el mejor hit (el backend ya filtra por inbox / prospecto vinculado).
-    const fromSearch = pickBestContactConversation(searchHits);
-    if (fromSearch) return fromSearch;
-  }
-
-  // Fallback: contacto Chatwoot → conversaciones del contacto
-  try {
-    const contacts = await searchContacts(suffix.length >= 9 ? suffix : digits);
-    const contact = contacts.find((c) => {
-      const cd = c.phone_number?.replace(/\D/g, '') ?? '';
-      return cd === digits || cd.endsWith(suffix) || suffix.endsWith(cd.slice(-9));
-    });
-    if (contact?.id) {
-      const convs = await fetchContactConversations(contact.id);
-      const fromContact = pickBestContactConversation(convs);
-      if (fromContact) return fromContact;
-    }
-  } catch {
-    /* ignorar */
-  }
-
-  return null;
+  return resolveConversationByPhone(phone, contactId);
 }
 
 /**

@@ -5,6 +5,7 @@ import { ChatwootEventService } from './chatwoot-event.service';
 import { ChatwootOperadorSyncService } from './chatwoot-operador-sync.service';
 import { FlotaProspectosGateway } from '../flota-prospectos/flota-prospectos.gateway';
 import { ChatwootService } from './chatwoot.service';
+import { ChatwootAttachmentStorageService } from './chatwoot-attachment-storage.service';
 import type { ChatwootWebhookPayload } from './chatwoot.types';
 
 @Injectable()
@@ -18,6 +19,7 @@ export class ChatwootWebhookService {
     private readonly operadorSync: ChatwootOperadorSyncService,
     private readonly chatwootService: ChatwootService,
     private readonly prospectosGateway: FlotaProspectosGateway,
+    private readonly attachmentStorage: ChatwootAttachmentStorageService,
   ) {}
 
   private emit(event: string, data: unknown) {
@@ -178,6 +180,19 @@ export class ChatwootWebhookService {
               payloadJson: payload as any,
               createdAt,
             },
+          });
+
+          await this.attachmentStorage.storeFromWebhookPayload({
+            payload,
+            prospecto: {
+              id: prospecto.id,
+              nombreCompleto: prospecto.nombreCompleto,
+            },
+            uploadedById: createdByUserId,
+          }).catch((e) => {
+            this.logger.warn(
+              `Adjuntos Chatwoot webhook no copiados prospecto ${prospecto.id}: ${e instanceof Error ? e.message : e}`,
+            );
           });
         }
       }

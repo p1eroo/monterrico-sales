@@ -83,6 +83,7 @@ export class FilesService {
       where.OR = [
         { entityType: 'flota-prospecto' },
         { relatedEntityType: 'whatsapp-message' },
+        { relatedEntityType: 'chatwoot-message' },
       ];
     }
 
@@ -130,8 +131,9 @@ export class FilesService {
 
     let storageKey: string;
 
-    if (this.mediaUpload.isConfigured()) {
-      storageKey = await this.mediaUpload.uploadToMediaProxy(
+    if (this.mediaUpload.isProxyUrlConfigured()) {
+      storageKey = await this.mediaUpload.uploadForEntity(
+        entityType,
         buffer,
         originalName,
         mimeType,
@@ -140,7 +142,20 @@ export class FilesService {
     } else {
       const safe = safeFilename(originalName);
       storageKey = `${entityType}/${entityId.trim()}/${randomUUID()}-${safe}`;
-      await this.s3.putObject(storageKey, buffer, mimeType);
+      const prospectosBucket =
+        entityType === 'flota-prospecto'
+          ? this.mediaUpload.prospectosBucket()
+          : undefined;
+      if (prospectosBucket) {
+        await this.s3.putObjectToBucket(
+          prospectosBucket,
+          storageKey,
+          buffer,
+          mimeType,
+        );
+      } else {
+        await this.s3.putObject(storageKey, buffer, mimeType);
+      }
     }
 
     try {

@@ -46,6 +46,8 @@ export function ProspectosByFuenteBarChart({
         fontFamily: 'inherit',
         animations: { enabled: true, speed: 450 },
         background: 'transparent',
+        parentHeightOffset: 0,
+        events: {},
       },
       colors: ['#13944C'],
       plotOptions: {
@@ -60,20 +62,18 @@ export function ProspectosByFuenteBarChart({
       grid: {
         borderColor: chartTheme.gridStroke,
         strokeDashArray: 4,
-        row: {
-          colors: chartTheme.isDark
-            ? ['transparent', 'rgba(148, 163, 184, 0.06)']
-            : ['#ffffff', '#f2f2f2'],
-        },
-        padding: { top: 0, right: 12, bottom: 0, left: 12 },
+        xaxis: { lines: { show: false } },
+        yaxis: { lines: { show: true } },
+        padding: { top: 4, right: 12, bottom: 4, left: 12 },
       },
       xaxis: {
         categories,
         labels: {
-          rotate: -45,
+          rotate: rows.length > 4 ? -45 : 0,
           rotateAlways: rows.length > 4,
           trim: true,
           hideOverlappingLabels: false,
+          offsetY: 0,
           style: {
             colors: chartTheme.axisColor,
             fontSize: '11px',
@@ -129,12 +129,14 @@ export function ProspectosByFuenteBarChart({
         'w-full leading-none [&_.apexcharts-svg]:overflow-visible',
         className,
       )}
+      style={{ height, minHeight: height, width: '100%' }}
     >
       <Chart
         options={options}
         series={series}
         type="bar"
         height={height}
+        width="100%"
       />
     </div>
   );

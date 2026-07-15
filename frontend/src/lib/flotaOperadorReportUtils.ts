@@ -447,10 +447,10 @@ export function buildOperadorAsignacionesPorDia(
 }
 
 export const OPERADOR_ACTIVITY_COLORS = [
+  '#065f46',
+  '#059669',
   '#13944C',
-  '#3b82f6',
-  '#8b5cf6',
-  '#f59e0b',
-  '#ec4899',
-  '#06b6d4',
+  '#22c55e',
+  '#4ade80',
+  '#86efac',
 ] as const;

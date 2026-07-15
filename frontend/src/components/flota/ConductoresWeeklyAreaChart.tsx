@@ -2,12 +2,21 @@ import { useMemo } from 'react';
 import Chart from 'react-apexcharts';
 import type { ApexOptions } from 'apexcharts';
 import { useChartTheme } from '@/hooks/useChartTheme';
-import { OPERADOR_ACTIVITY_COLORS } from '@/lib/flotaOperadorReportUtils';
-import type { ProspectosTimeSeriesData } from '@/lib/flotaProspectosReportUtils';
 import { cn } from '@/lib/utils';
 
-interface OperadorActivityStackedAreaChartProps {
-  data: ProspectosTimeSeriesData;
+const ACTIVOS_COLOR = '#13944C';
+const NUEVOS_COLOR = '#22c55e';
+
+export type ConductoresWeeklyRow = {
+  semana: string;
+  rango: string;
+  nuevos: number;
+  nuevosActivos: number;
+  weekStartTs: number;
+};
+
+interface ConductoresWeeklyAreaChartProps {
+  rows: ConductoresWeeklyRow[];
   className?: string;
   chartHeight?: number;
 }
@@ -20,10 +29,11 @@ function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;');
 }
 
-function buildActivityTooltipHtml(opts: {
+function buildConductoresTooltipHtml(opts: {
   title: string;
-  rows: { name: string; val: number }[];
-  total: number;
+  subtitle: string;
+  nuevos: number;
+  activos: number;
   isDark: boolean;
 }): string {
   const border = opts.isDark ? '#334155' : '#e1e7ee';
@@ -33,64 +43,60 @@ function buildActivityTooltipHtml(opts: {
   const text = opts.isDark ? '#f8fafc' : '#0f172a';
   const fmt = (n: number) => n.toLocaleString('es-PE');
 
-  const items = opts.rows
-    .map(
-      (row) =>
-        `<div style="display:flex;justify-content:space-between;gap:16px;padding:3px 0;font-size:12px;">` +
-        `<span style="color:${row.val > 0 ? muted : `${muted}99`};">${escapeHtml(row.name)}</span>` +
-        `<span style="font-weight:600;color:${row.val > 0 ? text : `${muted}99`};font-variant-numeric:tabular-nums;">${fmt(row.val)}</span>` +
-        `</div>`,
-    )
-    .join('');
-
   return (
     `<div style="border-radius:12px;overflow:hidden;border:1px solid ${border};box-shadow:0 12px 32px rgba(15,23,42,0.14);` +
-    `background:${bg};min-width:220px;max-width:280px;font-family:inherit;">` +
+    `background:${bg};min-width:220px;font-family:inherit;">` +
     `<div style="border-bottom:1px solid ${border};background:${headerBg};padding:10px 14px;text-align:center;">` +
     `<p style="margin:0;font-size:12px;font-weight:600;color:${text};">${escapeHtml(opts.title)}</p>` +
+    `<p style="margin:4px 0 0;font-size:11px;color:${muted};">${escapeHtml(opts.subtitle)}</p>` +
     `</div>` +
-    `<div style="padding:6px 14px;">${items}</div>` +
-    `<div style="display:flex;justify-content:space-between;gap:16px;border-top:1px solid ${border};` +
-    `background:${headerBg};padding:10px 14px;font-size:12px;font-weight:600;color:${text};">` +
-    `<span>Total actividad</span>` +
-    `<span style="font-variant-numeric:tabular-nums;">${fmt(opts.total)}</span>` +
+    `<div style="padding:8px 14px;">` +
+    `<div style="display:flex;justify-content:space-between;gap:16px;padding:3px 0;font-size:12px;">` +
+    `<span style="color:${muted};">Nuevos</span>` +
+    `<span style="font-weight:600;color:${text};font-variant-numeric:tabular-nums;">${fmt(opts.nuevos)}</span></div>` +
+    `<div style="display:flex;justify-content:space-between;gap:16px;padding:3px 0;font-size:12px;">` +
+    `<span style="color:${muted};">Activos</span>` +
+    `<span style="font-weight:600;color:${text};font-variant-numeric:tabular-nums;">${fmt(opts.activos)}</span></div>` +
     `</div></div>`
   );
 }
 
-function resolveChartHeight(bucketCount: number, explicit?: number): number {
-  if (explicit != null) return explicit;
-  const base = 300;
-  const extra = Math.max(0, bucketCount - 10) * 6;
-  return Math.min(440, base + extra);
-}
-
-export function OperadorActivityStackedAreaChart({
-  data,
+export function ConductoresWeeklyAreaChart({
+  rows,
   className,
-  chartHeight,
-}: OperadorActivityStackedAreaChartProps) {
+  chartHeight = 380,
+}: ConductoresWeeklyAreaChartProps) {
   const chartTheme = useChartTheme();
-  const height = resolveChartHeight(data.categories.length, chartHeight);
+
+  const categories = useMemo(() => rows.map((row) => row.semana), [rows]);
+
+  const series = useMemo(
+    () => [
+      { name: 'Activos', data: rows.map((row) => row.nuevosActivos) },
+      { name: 'Nuevos', data: rows.map((row) => row.nuevos) },
+    ],
+    [rows],
+  );
 
   const options = useMemo<ApexOptions>(
     () => ({
       chart: {
         type: 'area',
-        stacked: true,
+        stacked: false,
         toolbar: { show: false },
         fontFamily: 'inherit',
         animations: { enabled: true, speed: 450 },
         background: 'transparent',
+        events: {},
       },
-      colors: [...OPERADOR_ACTIVITY_COLORS],
-      stroke: { curve: 'smooth', width: 1.5 },
+      colors: [ACTIVOS_COLOR, NUEVOS_COLOR],
+      stroke: { curve: 'smooth', width: 2.5 },
       fill: {
         type: 'gradient',
         gradient: {
           shadeIntensity: 0.8,
-          opacityFrom: chartTheme.isDark ? 0.55 : 0.65,
-          opacityTo: chartTheme.isDark ? 0.08 : 0.12,
+          opacityFrom: chartTheme.isDark ? 0.5 : 0.62,
+          opacityTo: chartTheme.isDark ? 0.08 : 0.1,
           stops: [0, 90, 100],
         },
       },
@@ -100,10 +106,10 @@ export function OperadorActivityStackedAreaChart({
         strokeDashArray: 4,
         xaxis: { lines: { show: false } },
         yaxis: { lines: { show: true } },
-        padding: { top: 0, right: 12, bottom: 0, left: 12 },
+        padding: { top: 4, right: 12, bottom: 0, left: 8 },
       },
       xaxis: {
-        categories: data.categories,
+        categories,
         crosshairs: {
           show: true,
           width: 'tickWidth',
@@ -112,16 +118,13 @@ export function OperadorActivityStackedAreaChart({
             type: 'solid',
             color: chartTheme.isDark
               ? 'rgba(148, 163, 184, 0.14)'
-              : 'rgba(59, 130, 246, 0.08)',
+              : 'rgba(19, 148, 76, 0.08)',
           },
         },
         labels: {
-          rotate: data.categories.length > 7 ? -45 : 0,
-          rotateAlways: data.categories.length > 7,
-          hideOverlappingLabels: true,
           style: {
             colors: chartTheme.axisColor,
-            fontSize: '10px',
+            fontSize: '11px',
             fontWeight: 500,
           },
         },
@@ -146,50 +149,43 @@ export function OperadorActivityStackedAreaChart({
         show: true,
         position: 'top',
         horizontalAlign: 'center',
-        fontSize: '10px',
+        fontSize: '11px',
         fontWeight: 500,
         labels: { colors: chartTheme.axisColor },
-        markers: { size: 5, shape: 'circle' },
+        markers: { size: 6, shape: 'circle' },
+      },
+      markers: {
+        size: 3,
+        strokeWidth: 2,
+        strokeColors: chartTheme.isDark ? '#0f172a' : '#ffffff',
+        hover: { size: 5 },
       },
       states: {
         hover: { filter: { type: 'none' } },
-        active: {
-          allowMultipleDataPointsSelection: true,
-          filter: { type: 'none' },
-        },
       },
       tooltip: {
         enabled: true,
         shared: true,
         intersect: false,
         followCursor: false,
-        custom: ({ series, dataPointIndex, w }) => {
+        custom: ({ dataPointIndex }) => {
           if (dataPointIndex < 0) return '';
-          const names = w.globals.seriesNames as string[];
-          const rows = names.map((name, i) => ({
-            name,
-            val: Number(series[i]?.[dataPointIndex] ?? 0),
-          }));
-          const total = rows.reduce((sum, row) => sum + row.val, 0);
-          return buildActivityTooltipHtml({
-            title: data.categories[dataPointIndex] ?? '',
-            rows,
-            total,
+          const row = rows[dataPointIndex];
+          if (!row) return '';
+          return buildConductoresTooltipHtml({
+            title: row.semana,
+            subtitle: row.rango,
+            nuevos: row.nuevos,
+            activos: row.nuevosActivos,
             isDark: chartTheme.isDark,
           });
         },
       },
     }),
-    [
-      chartTheme.axisColor,
-      chartTheme.gridStroke,
-      chartTheme.isDark,
-      data.categories,
-      data.series,
-    ],
+    [categories, chartTheme.axisColor, chartTheme.gridStroke, chartTheme.isDark, rows],
   );
 
-  if (!data.hasData) return null;
+  if (rows.length === 0) return null;
 
   return (
     <div
@@ -199,13 +195,13 @@ export function OperadorActivityStackedAreaChart({
         '[&_.apexcharts-tooltip]:!p-0 [&_.apexcharts-tooltip]:!shadow-none',
         className,
       )}
-      style={{ height, minHeight: height, width: '100%' }}
+      style={{ height: chartHeight, minHeight: chartHeight, width: '100%' }}
     >
       <Chart
         options={options}
-        series={data.series}
+        series={series}
         type="area"
-        height={height}
+        height={chartHeight}
         width="100%"
       />
     </div>

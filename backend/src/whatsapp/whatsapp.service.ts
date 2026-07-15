@@ -1066,7 +1066,7 @@ export class WhatsappService {
       this.logger.log(`Adjunto WhatsApp ${messageId}: guardado OK (${bytes.length} bytes, tipo=${media.mimeType})`);
     } catch (e) {
       this.logger.warn(
-        `No se pudo almacenar adjunto WhatsApp ${messageId} en crm-adjuntos: ${String(e)}`,
+        `No se pudo almacenar adjunto WhatsApp ${messageId} en bucket Flota: ${String(e)}`,
       );
     }
   }
@@ -2254,7 +2254,7 @@ export class WhatsappService {
       }
     }
     const authHeader = this.config.get<string>('MEDIA_UPLOAD_AUTHORIZATION')?.trim();
-    const url = await this.mediaUpload.uploadToMediaProxy(
+    const url = await this.mediaUpload.uploadToProspectosProxy(
       audioBuffer,
       audioName,
       audioMime,
@@ -2293,7 +2293,7 @@ export class WhatsappService {
 
   async uploadFlotaDocument(buffer: Buffer, originalName: string, mimeType: string, _userId: string): Promise<string> {
     const authHeader = this.config.get<string>('MEDIA_UPLOAD_AUTHORIZATION')?.trim();
-    const url = await this.mediaUpload.uploadToMediaProxy(
+    const url = await this.mediaUpload.uploadToProspectosProxy(
       buffer,
       originalName,
       mimeType,

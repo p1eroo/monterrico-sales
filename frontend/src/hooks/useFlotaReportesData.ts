@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
+import type { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
-import type { DateRangeValue } from '@/components/shared/DateRangeCalendar';
 import { useFlotaReportesStore } from '@/store/flotaReportesStore';
 
 /**
@@ -30,7 +30,7 @@ export function useFlotaReportesData() {
   };
 }
 
-export function useFlotaReportesOperadorStats(dateRange: DateRangeValue | undefined) {
+export function useFlotaReportesOperadorStats(dateRange: DateRange | undefined) {
   const operadorStats = useFlotaReportesStore((s) => s.operadorStats);
   const operadorStatsDaily = useFlotaReportesStore((s) => s.operadorStatsDaily);
   const operadorNames = useFlotaReportesStore((s) => s.operadorNames);
@@ -60,7 +60,7 @@ export function useFlotaReportesOperadorStats(dateRange: DateRangeValue | undefi
   return { operadorStats, operadorStatsDaily, operadorNames, loadingOperadorStats };
 }
 
-export function useFlotaReportesSunat(sunatDateRange: DateRangeValue | undefined) {
+export function useFlotaReportesSunat(sunatDateRange: DateRange | undefined) {
   const sunatHistory = useFlotaReportesStore((s) => s.sunatHistory);
   const sunatRange = useFlotaReportesStore((s) => s.sunatRange);
   const sunatLoading = useFlotaReportesStore((s) => s.sunatLoading);

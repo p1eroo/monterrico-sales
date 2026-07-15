@@ -60,6 +60,11 @@ export function ProspectosByZonaBarChart({
     [rows],
   );
 
+  const maxCount = useMemo(
+    () => Math.max(1, ...rows.map((r) => r.count)),
+    [rows],
+  );
+
   const options = useMemo<ApexOptions>(
     () => ({
       chart: {
@@ -68,13 +73,16 @@ export function ProspectosByZonaBarChart({
         fontFamily: 'inherit',
         animations: { enabled: true, speed: 450 },
         background: 'transparent',
+        parentHeightOffset: 0,
+        offsetY: -6,
+        events: {},
       },
       colors,
       plotOptions: {
         bar: {
           horizontal: true,
           distributed: true,
-          barHeight: '68%',
+          barHeight: '78%',
           borderRadius: 4,
           borderRadiusApplication: 'end',
           dataLabels: {
@@ -105,9 +113,13 @@ export function ProspectosByZonaBarChart({
         strokeDashArray: 4,
         xaxis: { lines: { show: false } },
         yaxis: { lines: { show: true } },
-        padding: { top: 0, right: 12, bottom: 0, left: 12 },
+        padding: { top: 0, right: 12, bottom: 0, left: 8 },
       },
       xaxis: {
+        categories,
+        min: 0,
+        max: maxCount <= 4 ? maxCount + 1 : undefined,
+        tickAmount: maxCount <= 4 ? maxCount + 1 : undefined,
         labels: {
           style: {
             colors: chartTheme.axisColor,
@@ -120,7 +132,6 @@ export function ProspectosByZonaBarChart({
         axisTicks: { show: false },
       },
       yaxis: {
-        floating: true,
         labels: { show: false },
         axisBorder: { show: false },
         axisTicks: { show: false },
@@ -141,6 +152,7 @@ export function ProspectosByZonaBarChart({
       chartTheme.isDark,
       colors,
       labelColor,
+      maxCount,
       rows,
     ],
   );
@@ -153,12 +165,14 @@ export function ProspectosByZonaBarChart({
         'w-full leading-none [&_.apexcharts-svg]:overflow-visible',
         className,
       )}
+      style={{ height, minHeight: height, width: '100%' }}
     >
       <Chart
         options={options}
         series={series}
         type="bar"
         height={height}
+        width="100%"
       />
     </div>
   );

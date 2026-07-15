@@ -2,14 +2,19 @@ import { useMemo } from 'react';
 import Chart from 'react-apexcharts';
 import type { ApexOptions } from 'apexcharts';
 import { useChartTheme } from '@/hooks/useChartTheme';
-import type { DailyConversionData } from '@/lib/flotaProspectosReportUtils';
 import { cn } from '@/lib/utils';
 
-const NUEVOS_COLOR = '#13944C';
-const CONVERSIONES_COLOR = '#059669';
+const SERVICIOS_COLOR = '#13944C';
+const AUTORIZADOS_COLOR = '#059669';
 
-interface ConversionDailyMixedChartProps {
-  data: DailyConversionData;
+export type SunatDailyRow = {
+  name: string;
+  servicios: number;
+  autorizados: number;
+};
+
+interface SunatDailyMixedChartProps {
+  rows: SunatDailyRow[];
   className?: string;
   chartHeight?: number;
 }
@@ -22,10 +27,10 @@ function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;');
 }
 
-function buildConversionTooltipHtml(opts: {
+function buildSunatTooltipHtml(opts: {
   title: string;
-  nuevos: number;
-  conversiones: number;
+  servicios: number;
+  autorizados: number;
   isDark: boolean;
 }): string {
   const border = opts.isDark ? '#334155' : '#e1e7ee';
@@ -37,27 +42,29 @@ function buildConversionTooltipHtml(opts: {
 
   return (
     `<div style="border-radius:12px;overflow:hidden;border:1px solid ${border};box-shadow:0 12px 32px rgba(15,23,42,0.14);` +
-    `background:${bg};min-width:200px;font-family:inherit;">` +
+    `background:${bg};min-width:220px;font-family:inherit;">` +
     `<div style="border-bottom:1px solid ${border};background:${headerBg};padding:10px 14px;text-align:center;">` +
     `<p style="margin:0;font-size:12px;font-weight:600;color:${text};">${escapeHtml(opts.title)}</p>` +
     `</div>` +
     `<div style="padding:8px 14px;">` +
     `<div style="display:flex;justify-content:space-between;gap:16px;padding:3px 0;font-size:12px;">` +
-    `<span style="color:${muted};">Prospectos nuevos</span>` +
-    `<span style="font-weight:600;color:${text};font-variant-numeric:tabular-nums;">${fmt(opts.nuevos)}</span></div>` +
+    `<span style="color:${muted};">Servicios totales</span>` +
+    `<span style="font-weight:600;color:${text};font-variant-numeric:tabular-nums;">${fmt(opts.servicios)}</span></div>` +
     `<div style="display:flex;justify-content:space-between;gap:16px;padding:3px 0;font-size:12px;">` +
-    `<span style="color:${muted};">Conversiones</span>` +
-    `<span style="font-weight:600;color:${text};font-variant-numeric:tabular-nums;">${fmt(opts.conversiones)}</span></div>` +
+    `<span style="color:${muted};">Conductores autorizados</span>` +
+    `<span style="font-weight:600;color:${text};font-variant-numeric:tabular-nums;">${fmt(opts.autorizados)}</span></div>` +
     `</div></div>`
   );
 }
 
-export function ConversionDailyMixedChart({
-  data,
+export function SunatDailyMixedChart({
+  rows,
   className,
-  chartHeight = 320,
-}: ConversionDailyMixedChartProps) {
+  chartHeight = 340,
+}: SunatDailyMixedChartProps) {
   const chartTheme = useChartTheme();
+
+  const categories = useMemo(() => rows.map((row) => row.name), [rows]);
 
   const options = useMemo<ApexOptions>(
     () => ({
@@ -68,11 +75,12 @@ export function ConversionDailyMixedChart({
         fontFamily: 'inherit',
         animations: { enabled: true, speed: 450 },
         background: 'transparent',
+        events: {},
       },
-      colors: [NUEVOS_COLOR, CONVERSIONES_COLOR],
+      colors: [SERVICIOS_COLOR, AUTORIZADOS_COLOR],
       plotOptions: {
         bar: {
-          columnWidth: data.categories.length > 14 ? '72%' : '52%',
+          columnWidth: rows.length > 10 ? '72%' : '52%',
           borderRadius: 4,
           borderRadiusApplication: 'end',
         },
@@ -105,7 +113,7 @@ export function ConversionDailyMixedChart({
         padding: { top: 4, right: 12, bottom: 0, left: 8 },
       },
       xaxis: {
-        categories: data.categories,
+        categories,
         crosshairs: {
           show: true,
           width: 'tickWidth',
@@ -118,8 +126,8 @@ export function ConversionDailyMixedChart({
           },
         },
         labels: {
-          rotate: data.categories.length > 7 ? -45 : 0,
-          rotateAlways: data.categories.length > 7,
+          rotate: rows.length > 7 ? -45 : 0,
+          rotateAlways: rows.length > 7,
           hideOverlappingLabels: true,
           style: {
             colors: chartTheme.axisColor,
@@ -144,6 +152,19 @@ export function ConversionDailyMixedChart({
         axisBorder: { show: false },
         axisTicks: { show: false },
       },
+      fill: {
+        type: 'gradient',
+        gradient: {
+          shade: 'light',
+          type: 'vertical',
+          shadeIntensity: 0.35,
+          gradientToColors: ['#22c55e'],
+          inverseColors: false,
+          opacityFrom: 0.95,
+          opacityTo: 0.72,
+          stops: [0, 100],
+        },
+      },
       tooltip: {
         enabled: true,
         shared: true,
@@ -151,38 +172,37 @@ export function ConversionDailyMixedChart({
         followCursor: false,
         custom: ({ dataPointIndex }) => {
           if (dataPointIndex < 0) return '';
-          return buildConversionTooltipHtml({
-            title: data.categories[dataPointIndex] ?? '',
-            nuevos: data.nuevos[dataPointIndex] ?? 0,
-            conversiones: data.conversiones[dataPointIndex] ?? 0,
+          const row = rows[dataPointIndex];
+          if (!row) return '';
+          return buildSunatTooltipHtml({
+            title: row.name,
+            servicios: row.servicios,
+            autorizados: row.autorizados,
             isDark: chartTheme.isDark,
           });
         },
       },
     }),
-    [
-      chartTheme.axisColor,
-      chartTheme.gridStroke,
-      chartTheme.isDark,
-      data.categories,
-      data.conversiones,
-      data.nuevos,
-    ],
+    [categories, chartTheme.axisColor, chartTheme.gridStroke, chartTheme.isDark, rows],
   );
 
   const series = useMemo(
     () => [
-      { name: 'Prospectos nuevos', type: 'column' as const, data: data.nuevos },
       {
-        name: 'Conversiones',
+        name: 'Servicios Totales',
+        type: 'column' as const,
+        data: rows.map((row) => row.servicios),
+      },
+      {
+        name: 'Conductores Autorizados',
         type: 'line' as const,
-        data: data.conversiones,
+        data: rows.map((row) => row.autorizados),
       },
     ],
-    [data.conversiones, data.nuevos],
+    [rows],
   );
 
-  if (!data.hasData) return null;
+  if (rows.length === 0) return null;
 
   return (
     <div

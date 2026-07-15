@@ -244,8 +244,103 @@ export class ChatwootService {
     return [...pool].sort((a, b) => (b.last_activity_at ?? 0) - (a.last_activity_at ?? 0))[0];
   }
 
-  /** Busca la mejor conversación para un teléfono (open/pending primero, luego resolved). */
-  async findConversationForPhone(
+  /**
+   * Resolución rápida (estilo Chatwoot UI): vínculo en BD → contacto por teléfono → historial del contacto.
+   * Sin escaneo de páginas del inbox.
+   */
+  async findConversationForPhoneQuick(
+    phone: string,
+    contactId?: number | null,
+  ): Promise<ChatwootConversationListItem | null> {
+    const phoneSuffix = this.normalizePhoneSuffix(phone);
+    const digits = phone.replace(/\D/g, '');
+    if (phoneSuffix.length < 9 && digits.length < 9) return null;
+
+    const candidates: Array<ChatwootConversationListItem | ChatwootConversation> = [];
+    const seen = new Set<number>();
+
+    const addFromContact = (c: ChatwootConversationListItem | ChatwootConversation | null | undefined) => {
+      if (!c?.id || seen.has(c.id)) return;
+      seen.add(c.id);
+      candidates.push(c);
+    };
+
+    const addIfPhoneMatch = (c: ChatwootConversationListItem | ChatwootConversation | null | undefined) => {
+      if (!c?.id || seen.has(c.id)) return;
+      const senderPhone = c.meta?.sender?.phone_number;
+      if (!senderPhone || !phoneSuffix || !this.phonesMatch(senderPhone, phoneSuffix)) return;
+      seen.add(c.id);
+      candidates.push(c);
+    };
+
+    const suffix = phoneSuffix || digits.slice(-9);
+    let linkedContactId = contactId ?? null;
+
+    if (suffix.length >= 9) {
+      try {
+        const prospecto = await this.prisma.flotaProspecto.findFirst({
+          where: {
+            eliminadoAt: null,
+            OR: [
+              { celular: { endsWith: suffix } },
+              { movil: { endsWith: suffix } },
+            ],
+          },
+          select: { chatwootConversationId: true, chatwootContactId: true },
+        });
+        if (prospecto?.chatwootConversationId) {
+          try {
+            addIfPhoneMatch(await this.client.getConversation(prospecto.chatwootConversationId));
+          } catch { /* ignorar */ }
+        }
+        if (!linkedContactId && prospecto?.chatwootContactId) {
+          linkedContactId = prospecto.chatwootContactId;
+        }
+      } catch { /* ignorar */ }
+    }
+
+    if (linkedContactId) {
+      try {
+        const convs = await this.getContactConversations(linkedContactId);
+        const pool = phoneSuffix
+          ? convs.filter((c) =>
+              this.phonesMatch(c.meta?.sender?.phone_number, phoneSuffix),
+            )
+          : convs;
+        pool.forEach(addFromContact);
+      } catch { /* ignorar */ }
+    }
+
+    if (candidates.length === 0 && phoneSuffix.length >= 9) {
+      const contactQueries = [
+        phoneSuffix,
+        digits,
+        phone.startsWith('+') ? phone : `+${digits}`,
+      ].filter((q, i, arr) => q.length >= 9 && arr.indexOf(q) === i);
+
+      for (const q of contactQueries) {
+        try {
+          const contacts = await this.searchContacts(q);
+          const match = contacts.find((c) =>
+            this.phonesMatch(c.phone_number, phoneSuffix),
+          );
+          if (!match?.id) continue;
+          const convs = await this.getContactConversations(match.id);
+          const pool = convs.filter((c) =>
+            this.phonesMatch(c.meta?.sender?.phone_number, phoneSuffix),
+          );
+          pool.forEach(addFromContact);
+          if (candidates.length > 0) break;
+        } catch { /* ignorar */ }
+      }
+    }
+
+    const best = this.pickBestConversation(candidates);
+    return best as ChatwootConversationListItem | null;
+  }
+
+  /** Escaneo profundo del inbox (backfill / reconciliación; no usar en clics de UI). */
+  async findConversationForPhoneDeep(
     phone: string,
     contactId?: number | null,
   ): Promise<ChatwootConversationListItem | null> {
@@ -274,7 +369,12 @@ export class ChatwootService {
     if (contactId) {
       try {
         const convs = await this.client.listContactConversations(contactId);
-        convs.forEach(addFromContact);
+        const pool = phoneSuffix
+          ? convs.filter((c) =>
+              this.phonesMatch(c.meta?.sender?.phone_number, phoneSuffix),
+            )
+          : convs;
+        pool.forEach(addFromContact);
       } catch { /* ignorar */ }
     }
 
@@ -356,7 +456,12 @@ export class ChatwootService {
         if (prospecto?.chatwootContactId) {
           try {
             const convs = await this.client.listContactConversations(prospecto.chatwootContactId);
-            convs.forEach(addFromContact);
+            const pool = phoneSuffix
+              ? convs.filter((c) =>
+                  this.phonesMatch(c.meta?.sender?.phone_number, phoneSuffix),
+                )
+              : convs;
+            pool.forEach(addFromContact);
           } catch { /* ignorar */ }
         }
       } catch { /* ignorar */ }
@@ -369,13 +474,20 @@ export class ChatwootService {
   async resolveConversation(
     phone: string,
     contactId?: number,
+    options?: { deep?: boolean },
   ): Promise<ChatwootConversationListItem | null> {
-    if (contactId) {
-      const convs = await this.getContactConversations(contactId);
-      const best = this.pickBestConversation(convs);
-      if (best) return best as ChatwootConversationListItem;
+    if (options?.deep) {
+      return this.findConversationForPhoneDeep(phone, contactId);
     }
-    return this.findConversationForPhone(phone, contactId);
+    return this.findConversationForPhoneQuick(phone, contactId);
+  }
+
+  /** Alias: resolución rápida por defecto. */
+  async findConversationForPhone(
+    phone: string,
+    contactId?: number | null,
+  ): Promise<ChatwootConversationListItem | null> {
+    return this.findConversationForPhoneQuick(phone, contactId);
   }
 
   /** Historial de conversaciones de un contacto en el inbox de Flota. */
@@ -660,8 +772,12 @@ export class ChatwootService {
     let conversation: ChatwootConversation | null = null;
     let foundExisting = false;
     const existingConv = contactId
-      ? this.pickBestConversation(await this.getContactConversations(contactId))
-      : await this.findConversationForPhone(data.phone, null);
+      ? this.pickBestConversation(
+          (await this.getContactConversations(contactId)).filter((c) =>
+            this.phonesMatch(c.meta?.sender?.phone_number, cleanPhone.slice(-9)),
+          ),
+        )
+      : await this.findConversationForPhoneQuick(data.phone, null);
     if (existingConv) {
       conversation = existingConv as ChatwootConversation;
       foundExisting = true;

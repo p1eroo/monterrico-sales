@@ -290,7 +290,7 @@ export class WhatsappController {
     const webpBuffer = await sharp(file.buffer).webp({ quality: 85 }).toBuffer();
     const webpName = file.originalname.replace(/\.[^.]+$/, '') + '.webp';
     const authHeader = req.headers['authorization'];
-    const url = await this.mediaUpload.uploadToMediaProxy(
+    const url = await this.mediaUpload.uploadToProspectosProxy(
       webpBuffer,
       webpName,
       'image/webp',

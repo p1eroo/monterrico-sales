@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useId, useMemo, useRef } from 'react';
 import Chart from 'react-apexcharts';
 import type { ApexOptions } from 'apexcharts';
 import { useChartTheme } from '@/hooks/useChartTheme';
@@ -102,14 +102,25 @@ export function ProspectosStackedTimeBarChart({
   onDaySelect,
 }: ProspectosStackedTimeBarChartProps) {
   const chartTheme = useChartTheme();
+  const chartId = useId().replace(/:/g, '');
   const height = resolveChartHeight(data.categories.length, chartHeight);
   const onDaySelectRef = useRef(onDaySelect);
   onDaySelectRef.current = onDaySelect;
   const hoverIndexRef = useRef(-1);
 
+  const series = useMemo(
+    () =>
+      data.series.map((item) => ({
+        name: item.name,
+        data: [...item.data],
+      })),
+    [data.series],
+  );
+
   const options = useMemo<ApexOptions>(
     () => ({
       chart: {
+        id: chartId,
         type: 'bar',
         stacked: true,
         toolbar: { show: false },
@@ -143,14 +154,13 @@ export function ProspectosStackedTimeBarChart({
                 }
               },
             }
-          : undefined,
+          : {},
       },
       colors: [...STACK_COLORS],
       plotOptions: {
         bar: {
           borderRadius: 4,
           borderRadiusApplication: 'end',
-          borderRadiusWhenStacked: 'last',
           columnWidth: data.categories.length > 14 ? '78%' : '55%',
         },
       },
@@ -159,15 +169,12 @@ export function ProspectosStackedTimeBarChart({
       grid: {
         borderColor: chartTheme.gridStroke,
         strokeDashArray: 4,
-        row: {
-          colors: chartTheme.isDark
-            ? ['transparent', 'rgba(148, 163, 184, 0.06)']
-            : ['#ffffff', '#f2f2f2'],
-        },
+        xaxis: { lines: { show: false } },
+        yaxis: { lines: { show: true } },
         padding: { top: 0, right: 12, bottom: 0, left: 12 },
       },
       xaxis: {
-        categories: data.categories,
+        categories: [...data.categories],
         crosshairs: {
           show: true,
           width: 'tickWidth',
@@ -215,8 +222,9 @@ export function ProspectosStackedTimeBarChart({
                 },
               ],
             }
-          : undefined,
+          : {},
       yaxis: {
+        min: 0,
         labels: {
           style: {
             colors: chartTheme.axisColor,
@@ -233,13 +241,7 @@ export function ProspectosStackedTimeBarChart({
         opacity: 0.92,
       },
       states: {
-        hover: {
-          filter: { type: 'none' },
-        },
-        active: {
-          allowMultipleDataPointsSelection: true,
-          filter: { type: 'none' },
-        },
+        hover: { filter: { type: 'none' } },
       },
       legend: {
         show: true,
@@ -255,13 +257,13 @@ export function ProspectosStackedTimeBarChart({
         shared: true,
         intersect: false,
         followCursor: false,
-        custom: ({ series, dataPointIndex, w }) => {
+        custom: ({ series: tooltipSeries, dataPointIndex, w }) => {
           if (dataPointIndex < 0) return '';
           const category = data.categories[dataPointIndex] ?? '';
           const names = w.globals.seriesNames as string[];
           const rows = names.map((name, i) => ({
             name,
-            val: Number(series[i]?.[dataPointIndex] ?? 0),
+            val: Number(tooltipSeries[i]?.[dataPointIndex] ?? 0),
           }));
           const total = rows.reduce((sum, row) => sum + row.val, 0);
 
@@ -276,18 +278,18 @@ export function ProspectosStackedTimeBarChart({
       },
     }),
     [
+      chartId,
       chartTheme.axisColor,
       chartTheme.gridStroke,
       chartTheme.isDark,
       countLabel,
       data.categories,
-      data.series,
       onDaySelect,
       selectedDayIndex,
     ],
   );
 
-  if (!data.hasData) return null;
+  if (!data.hasData || series.length === 0) return null;
 
   return (
     <div
@@ -298,12 +300,15 @@ export function ProspectosStackedTimeBarChart({
         '[&_.apexcharts-tooltip]:!p-0 [&_.apexcharts-tooltip]:!shadow-none',
         className,
       )}
+      style={{ height, minHeight: height, width: '100%' }}
     >
       <Chart
+        key={chartId}
         options={options}
-        series={data.series}
+        series={series}
         type="bar"
         height={height}
+        width="100%"
       />
     </div>
   );

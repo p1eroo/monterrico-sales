@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
-import { initiateConversation, fetchChatwootTemplates, findConversationByPhoneNumber, fetchContactConversations, pickBestContactConversation } from "@/lib/chatwootApi";
+import { initiateConversation, fetchChatwootTemplates, resolveConversationByPhone, fetchConversation, conversationPhoneMatches } from "@/lib/chatwootApi";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAppStore } from "@/store";
 import { useImportJobsStore } from "@/store/importJobsStore";
@@ -425,21 +425,23 @@ export default function FlotaProspectos() {
                         setChatPanelOpen(true);
                       };
                       if (p.chatwootConversationId) {
-                        openExisting(p.chatwootConversationId);
-                        return;
+                        try {
+                          const detail = await fetchConversation(p.chatwootConversationId);
+                          if (conversationPhoneMatches(detail, fullPhone)) {
+                            openExisting(p.chatwootConversationId);
+                            return;
+                          }
+                        } catch {
+                          /* vinculación incorrecta: buscar por teléfono */
+                        }
                       }
-                      const existing = await findConversationByPhoneNumber(fullPhone);
+                      const existing = await resolveConversationByPhone(
+                        fullPhone,
+                        p.chatwootContactId ?? undefined,
+                      );
                       if (existing) {
                         openExisting(existing.id);
                         return;
-                      }
-                      if (p.chatwootContactId) {
-                        const convs = await fetchContactConversations(p.chatwootContactId);
-                        const best = pickBestContactConversation(convs);
-                        if (best) {
-                          openExisting(best.id);
-                          return;
-                        }
                       }
                       setNewChatData({
                         phone: fullPhone,

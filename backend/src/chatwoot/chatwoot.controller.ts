@@ -17,8 +17,9 @@ import { Public } from '../auth/decorators/public.decorator';
 import { ChatwootService } from './chatwoot.service';
 import { ChatwootClient } from './chatwoot.client';
 import { ChatwootEventService } from './chatwoot-event.service';
+import { ChatwootAttachmentStorageService } from './chatwoot-attachment-storage.service';
 
-type AuthedReq = { user: { userId: string; name: string } };
+type AuthedReq = { user: { userId: string; name: string }; headers: { authorization?: string } };
 
 @Controller('api/chatwoot')
 export class ChatwootController {
@@ -28,6 +29,7 @@ export class ChatwootController {
     private readonly service: ChatwootService,
     private readonly client: ChatwootClient,
     private readonly events: ChatwootEventService,
+    private readonly attachmentStorage: ChatwootAttachmentStorageService,
   ) {}
 
   @Get('conversations')
@@ -67,17 +69,19 @@ export class ChatwootController {
     return { data: items };
   }
 
-  /** Resuelve la mejor conversación para un teléfono (incluye resolved y búsqueda profunda). */
+  /** Resuelve conversación por teléfono (rápido: contacto + historial). `deep=1` escanea inbox completo. */
   @Get('resolve-conversation')
   async resolveConversation(
     @Query('phone') phone: string,
     @Res({ passthrough: true }) res: Response,
     @Query('contact_id') contactId?: string,
+    @Query('deep') deep?: string,
   ) {
     res.setHeader('Cache-Control', 'no-store');
     const conv = await this.service.resolveConversation(
       phone ?? '',
       contactId ? Number(contactId) : undefined,
+      { deep: deep === 'true' || deep === '1' },
     );
     return { data: conv };
   }
@@ -236,9 +240,33 @@ export class ChatwootController {
   async uploadAttachment(
     @Param('id', ParseIntPipe) id: number,
     @Body() body: { file: string; fileName: string; mimeType: string; caption?: string },
+    @Req() req: AuthedReq,
   ) {
     const buffer = Buffer.from(body.file, 'base64');
-    return this.client.uploadAttachment(id, buffer, body.fileName, body.mimeType, body.caption || '');
+    const msg = await this.client.uploadAttachment(
+      id,
+      buffer,
+      body.fileName,
+      body.mimeType,
+      body.caption || '',
+    );
+    await this.attachmentStorage.storeOutboundUpload({
+      conversationId: id,
+      uploadedById: req.user.userId,
+      buffer,
+      originalName: body.fileName,
+      mimeType: body.mimeType,
+      message: msg,
+      authorizationHeader:
+        typeof req.headers.authorization === 'string'
+          ? req.headers.authorization
+          : undefined,
+    }).catch((e) => {
+      this.logger.warn(
+        `Adjunto Chatwoot enviado pero no copiado a bucket Flota conv ${id}: ${e instanceof Error ? e.message : e}`,
+      );
+    });
+    return msg;
   }
 
   @Public()
