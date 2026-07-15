@@ -13,6 +13,7 @@ import { Pagination } from '@/components/shared/Pagination';
 import { GlassCard } from '@/components/shared/GlassCard';
 import { GhostTableSkeleton } from '@/components/shared/GhostTableSkeleton';
 import { MultiAdvisorFilter } from '@/components/shared/MultiAdvisorFilter';
+import { MultiCheckboxFilterActions } from '@/components/shared/MultiCheckboxFilterActions';
 import { CompanyLogoBox } from '@/components/shared/CompanyLogo';
 import { useMultiAdvisorFilter } from '@/hooks/useMultiAdvisorFilter';
 import { Button } from '@/components/ui/button';
@@ -640,6 +641,23 @@ export default function Clients() {
                     })}
                   </CommandGroup>
                 </CommandList>
+                <MultiCheckboxFilterActions
+                  allSelected={
+                    CLIENT_STATUS_OPTIONS.length > 0 &&
+                    CLIENT_STATUS_OPTIONS.every(({ key }) =>
+                      statusFilter.includes(key),
+                    )
+                  }
+                  noneSelected={statusFilter.length === 0}
+                  onSelectAll={() => {
+                    setStatusFilter(CLIENT_STATUS_OPTIONS.map(({ key }) => key));
+                    setPage(1);
+                  }}
+                  onClear={() => {
+                    setStatusFilter([]);
+                    setPage(1);
+                  }}
+                />
               </Command>
             </PopoverContent>
           </Popover>

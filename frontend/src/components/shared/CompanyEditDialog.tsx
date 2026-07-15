@@ -1,15 +1,5 @@
 import { useEffect, useState } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -17,6 +7,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  FormDialogActions,
+  FormDialogField,
+  FormDialogGrid,
+  FormDialogShell,
+  formDialogInputClass,
+  formDialogSelectTriggerClass,
+} from '@/components/ui/form-dialog';
 import { companyRubroLabels, companyTipoLabels } from '@/data/mock';
 import type { CompanyRubro, CompanyTipo, ContactSource } from '@/types';
 import { api } from '@/lib/api';
@@ -25,6 +23,7 @@ import { isLikelyCompanyCuid } from '@/lib/companyApi';
 import { useCompaniesStore } from '@/store/companiesStore';
 import { useAppStore } from '@/store';
 import { canReassignCommercialAdvisor } from '@/data/rbac';
+import { resolveAdvisorAssigneeId } from '@/lib/advisorAssigneeDefaults';
 import { useUsers } from '@/hooks/useUsers';
 import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
 import { useLeadSourceOptions } from '@/store/crmConfigStore';
@@ -68,6 +67,7 @@ export function CompanyEditDialog({
   );
   const { users, activeAdvisors } = useUsers();
   const currentUserRole = useAppStore((s) => s.currentUser.role ?? '');
+  const currentUser = useAppStore((s) => s.currentUser);
   const canEditAssignee = canReassignCommercialAdvisor(currentUserRole);
   const leadSourceOptions = useLeadSourceOptions();
 
@@ -146,7 +146,7 @@ export function CompanyEditDialog({
           tipo: (rec.tipo && (rec.tipo === 'A' || rec.tipo === 'B' || rec.tipo === 'C') ? rec.tipo : '') as CompanyTipo | '',
           ruc: rec.ruc ?? '',
           razonSocial: rec.razonSocial ?? '',
-          assignedTo: rec.assignedTo ?? activeAdvisors[0]?.id ?? '',
+          assignedTo: resolveAdvisorAssigneeId(rec.assignedTo ?? activeAdvisors[0]?.id, currentUser),
           fuente: (rec.fuente as ContactSource) || 'base',
         });
       })
@@ -192,144 +192,87 @@ export function CompanyEditDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Editar empresa</DialogTitle>
-          <DialogDescription>Modifica los datos de la empresa.</DialogDescription>
-        </DialogHeader>
-        {loadingApi ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">Cargando datos…</p>
-        ) : saving ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">Guardando…</p>
-        ) : (
-          <>
-            <div className="grid gap-4 py-2">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="company-edit-ruc">RUC</Label>
-                  <Input
-                    id="company-edit-ruc"
-                    placeholder="20XXXXXXXX"
-                    value={editForm.ruc}
-                    onChange={(e) => setEditForm((f) => ({ ...f, ruc: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="company-edit-razon-social">Razón Social</Label>
-                  <Input
-                    id="company-edit-razon-social"
-                    placeholder="Razón social"
-                    value={editForm.razonSocial}
-                    onChange={(e) => setEditForm((f) => ({ ...f, razonSocial: e.target.value }))}
-                  />
-                </div>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="company-edit-name">Nombre de la empresa *</Label>
-                  <Input
-                    id="company-edit-name"
-                    value={editForm.name}
-                    onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="company-edit-domain">Dominio web</Label>
-                  <Input
-                    id="company-edit-domain"
-                    placeholder="empresa.com"
-                    value={editForm.domain}
-                    onChange={(e) => setEditForm((f) => ({ ...f, domain: e.target.value }))}
-                  />
-                </div>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="company-edit-phone">Teléfono</Label>
-                  <Input
-                    id="company-edit-phone"
-                    placeholder="+51 999 999 999"
-                    value={editForm.telefono}
-                    onChange={(e) => setEditForm((f) => ({ ...f, telefono: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Rubro</Label>
-                  <Select
-                    value={editForm.rubro}
-                    onValueChange={(v) => setEditForm((f) => ({ ...f, rubro: v as CompanyRubro }))}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Seleccionar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(companyRubroLabels).map(([key, label]) => (
-                        <SelectItem key={key} value={key}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Tipo</Label>
-                  <Select
-                    value={editForm.tipo}
-                    onValueChange={(v) => setEditForm((f) => ({ ...f, tipo: v as CompanyTipo }))}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Seleccionar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(companyTipoLabels).map(([key, label]) => (
-                        <SelectItem key={key} value={key}>
-                          Tipo {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <AssignedAdvisorFormField
-                  htmlId="company-list-edit-assigned-to"
-                  value={editForm.assignedTo}
-                  onChange={(assignedTo) => setEditForm((f) => ({ ...f, assignedTo }))}
-                  disabled={!canEditAssignee}
-                  fallbackName={users.find((u) => u.id === editForm.assignedTo)?.name}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Fuente</Label>
-                <Select
-                  value={editForm.fuente}
-                  onValueChange={(v) => setEditForm((f) => ({ ...f, fuente: v as ContactSource }))}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Seleccionar" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {leadSourceOptions.map(({ value: key, label }) => (
-                      <SelectItem key={key} value={key}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-                Cancelar
-              </Button>
-              <Button onClick={() => void handleSave()} disabled={!editForm.name.trim() || saving}>
-                {saving ? 'Guardando…' : 'Guardar cambios'}
-              </Button>
-            </DialogFooter>
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
+    <FormDialogShell
+      open={open}
+      onOpenChange={onOpenChange}
+      maxWidthClassName="sm:max-w-2xl"
+      title="Editar empresa"
+      description="Modifica los datos de la empresa."
+      footer={loadingApi || saving ? null : (
+        <FormDialogActions
+          submitLabel="Guardar cambios"
+          submitDisabled={!editForm.name.trim()}
+          onCancel={() => onOpenChange(false)}
+          onSubmit={handleSave}
+        />
+      )}
+    >
+      {loadingApi ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">Cargando datos…</p>
+      ) : saving ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">Guardando…</p>
+      ) : (
+        <div className="space-y-6">
+          <FormDialogGrid>
+            <FormDialogField label="RUC">
+              <Input id="company-edit-ruc" className={formDialogInputClass} placeholder="20XXXXXXXX" value={editForm.ruc} onChange={(e) => setEditForm((f) => ({ ...f, ruc: e.target.value }))} />
+            </FormDialogField>
+            <FormDialogField label="Razón Social">
+              <Input id="company-edit-razon-social" className={formDialogInputClass} placeholder="Razón social" value={editForm.razonSocial} onChange={(e) => setEditForm((f) => ({ ...f, razonSocial: e.target.value }))} />
+            </FormDialogField>
+            <FormDialogField label="Nombre de la empresa" required>
+              <Input id="company-edit-name" className={formDialogInputClass} value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
+            </FormDialogField>
+            <FormDialogField label="Dominio web">
+              <Input id="company-edit-domain" className={formDialogInputClass} placeholder="empresa.com" value={editForm.domain} onChange={(e) => setEditForm((f) => ({ ...f, domain: e.target.value }))} />
+            </FormDialogField>
+            <FormDialogField label="Teléfono">
+              <Input id="company-edit-phone" className={formDialogInputClass} placeholder="+51 999 999 999" value={editForm.telefono} onChange={(e) => setEditForm((f) => ({ ...f, telefono: e.target.value }))} />
+            </FormDialogField>
+            <FormDialogField label="Rubro">
+              <Select value={editForm.rubro} onValueChange={(v) => setEditForm((f) => ({ ...f, rubro: v as CompanyRubro }))}>
+                <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(companyRubroLabels).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormDialogField>
+            <FormDialogField label="Tipo">
+              <Select value={editForm.tipo} onValueChange={(v) => setEditForm((f) => ({ ...f, tipo: v as CompanyTipo }))}>
+                <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(companyTipoLabels).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>Tipo {label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormDialogField>
+            <AssignedAdvisorFormField
+              htmlId="company-list-edit-assigned-to"
+              value={editForm.assignedTo}
+              onChange={(assignedTo) => setEditForm((f) => ({ ...f, assignedTo }))}
+              disabled={!canEditAssignee}
+              fallbackName={
+                users.find((u) => u.id === editForm.assignedTo)?.name ||
+                (!canEditAssignee ? currentUser.name : undefined)
+              }
+              formStyle
+            />
+          </FormDialogGrid>
+          <FormDialogField label="Fuente">
+            <Select value={editForm.fuente} onValueChange={(v) => setEditForm((f) => ({ ...f, fuente: v as ContactSource }))}>
+              <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+              <SelectContent>
+                {leadSourceOptions.map(({ value: key, label }) => (
+                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormDialogField>
+        </div>
+      )}
+    </FormDialogShell>
   );
 }

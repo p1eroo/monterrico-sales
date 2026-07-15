@@ -15,6 +15,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { useUsers } from '@/hooks/useUsers';
+import { useAppStore } from '@/store';
+import { canUserReassignCommercialAdvisor, resolveAdvisorAssigneeId } from '@/lib/advisorAssigneeDefaults';
+import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
 import { eventTypeConfig } from './eventTypeConfig';
 import { cn } from '@/lib/utils';
 import type { CalendarEvent, Contact, Opportunity } from '@/types';
@@ -94,7 +97,9 @@ export function EventFormModal({
   });
 
   const { activeAdvisors } = useUsers();
-  const defaultAssigneeId = activeAdvisors[0]?.id ?? '';
+  const currentUser = useAppStore((s) => s.currentUser);
+  const canReassign = canUserReassignCommercialAdvisor(currentUser.role);
+  const defaultAssigneeId = resolveAdvisorAssigneeId(undefined, currentUser) || activeAdvisors[0]?.id || '';
 
   useEffect(() => {
     if (!open) return;
@@ -244,28 +249,21 @@ export function EventFormModal({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Responsable</Label>
-            <Controller
-              control={control}
-              name="assignedTo"
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activeAdvisors.map((u) => (
-                      <SelectItem key={u.id} value={u.id}>
-                        {u.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {errors.assignedTo && <p className="text-xs text-destructive">{errors.assignedTo.message}</p>}
-          </div>
+          <Controller
+            control={control}
+            name="assignedTo"
+            render={({ field }) => (
+              <AssignedAdvisorFormField
+                htmlId="event-form-assigned-to"
+                value={field.value}
+                onChange={field.onChange}
+                disabled={!canReassign}
+                fallbackName={currentUser.name}
+                label="Responsable"
+              />
+            )}
+          />
+          {errors.assignedTo && <p className="text-xs text-destructive">{errors.assignedTo.message}</p>}
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">

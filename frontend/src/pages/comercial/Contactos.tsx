@@ -47,6 +47,7 @@ import {
 } from "@/components/shared/ContactEditDialog";
 import { ContactPreviewSheet } from "@/components/shared/ContactPreviewSheet";
 import { MultiAdvisorFilter } from "@/components/shared/MultiAdvisorFilter";
+import { MultiCheckboxFilterActions } from "@/components/shared/MultiCheckboxFilterActions";
 import { useMultiAdvisorFilter } from "@/hooks/useMultiAdvisorFilter";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -105,6 +106,8 @@ import {
   toggleInclusiveMultiFilter,
   formatInclusiveMultiFilterLabel,
   isInclusiveMultiFilterNone,
+  isInclusiveMultiFilterAll,
+  INCLUSIVE_MULTI_NONE,
   inclusiveMultiSourceFilterToApiParam,
   formatInclusiveMultiSourceFilterLabel,
 } from "@/lib/comercialFilterSurface";
@@ -1280,6 +1283,18 @@ export default function ContactosPage() {
                   })}
                 </CommandGroup>
               </CommandList>
+              <MultiCheckboxFilterActions
+                allSelected={isInclusiveMultiFilterAll(etapaFilter)}
+                noneSelected={isInclusiveMultiFilterNone(etapaFilter)}
+                onSelectAll={() => {
+                  setEtapaFilter([]);
+                  setPage(1);
+                }}
+                onClear={() => {
+                  setEtapaFilter([INCLUSIVE_MULTI_NONE]);
+                  setPage(1);
+                }}
+              />
             </Command>
           </PopoverContent>
         </Popover>
@@ -1405,6 +1420,18 @@ export default function ContactosPage() {
                             })}
                           </CommandGroup>
                         </CommandList>
+                        <MultiCheckboxFilterActions
+                          allSelected={isInclusiveMultiFilterAll(sourceFilter)}
+                          noneSelected={isInclusiveMultiFilterNone(sourceFilter)}
+                          onSelectAll={() => {
+                            setSourceFilter([]);
+                            setPage(1);
+                          }}
+                          onClear={() => {
+                            setSourceFilter([INCLUSIVE_MULTI_NONE]);
+                            setPage(1);
+                          }}
+                        />
                       </Command>
                     </PopoverContent>
                   </Popover>

@@ -13,6 +13,7 @@ import {
   CommandSeparator,
 } from '@/components/ui/command';
 import { UserHandIcon } from '@/components/icons/UserHandIcon';
+import { MultiCheckboxFilterActions } from '@/components/shared/MultiCheckboxFilterActions';
 import {
   comercialProCommandClass,
   comercialProPopoverClass,
@@ -70,6 +71,30 @@ export function MultiAdvisorFilter({
   };
 
   const showSpecials = !disabled;
+
+  const allSelectableIds = showSpecials
+    ? [
+        ...advisors.map((u) => u.id),
+        ...ADVISOR_SPECIAL_OPTIONS.map((o) => o.id),
+      ]
+    : advisors.map((u) => u.id);
+
+  const allSelected =
+    isInitialized &&
+    allSelectableIds.length > 0 &&
+    allSelectableIds.every((id) => value.includes(id));
+
+  const noneSelected = isInitialized && value.length === 0;
+
+  const selectAll = () => {
+    onChange(allSelectableIds);
+    onInteraction?.();
+  };
+
+  const clearAll = () => {
+    onChange([]);
+    onInteraction?.();
+  };
 
   return (
     <Popover>
@@ -145,6 +170,14 @@ export function MultiAdvisorFilter({
               </>
             )}
           </CommandList>
+          {allSelectableIds.length > 0 && (
+            <MultiCheckboxFilterActions
+              allSelected={allSelected}
+              noneSelected={noneSelected}
+              onSelectAll={selectAll}
+              onClear={clearAll}
+            />
+          )}
         </Command>
       </PopoverContent>
     </Popover>

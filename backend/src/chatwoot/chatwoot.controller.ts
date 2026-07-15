@@ -294,11 +294,13 @@ export class ChatwootController {
       skipTemplate?: boolean;
       operador?: string;
     },
+    @Req() req: AuthedReq,
   ) {
     try {
       const result = await this.service.initiateConversation({
         ...body,
         templateLanguage: body.templateLanguage ?? 'es_PE',
+        sender: { userId: req.user.userId, name: req.user.name },
       });
       return result;
     } catch (e) {

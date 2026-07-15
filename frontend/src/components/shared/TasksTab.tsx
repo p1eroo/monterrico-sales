@@ -3,6 +3,9 @@ import { CheckSquare, Phone, Mail, Users, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { priorityLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
+import { useAppStore } from '@/store';
+import { resolveAdvisorAssigneeId, canUserReassignCommercialAdvisor } from '@/lib/advisorAssigneeDefaults';
+import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
 import { useActivities } from '@/hooks/useActivities';
 import type { Contact, Opportunity, TaskAssociation, Activity, TaskKind } from '@/types';
 import { TASK_KINDS } from '@/types';
@@ -165,6 +168,9 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
   opportunityId,
 }, ref) {
   const { users, activeAdvisors } = useUsers();
+  const currentUser = useAppStore((s) => s.currentUser);
+  const canReassign = canUserReassignCommercialAdvisor(currentUser.role);
+  const resolvedDefaultAssignee = resolveAdvisorAssigneeId(defaultAssigneeId, currentUser);
   const { activities, createActivity, updateActivity, deleteActivity } = useActivities();
 
   const tasks = useMemo(() => {
@@ -221,7 +227,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
   const [linkedTaskType, setLinkedTaskType] = useState<TaskType | ''>('');
   const [linkedTaskStatus, setLinkedTaskStatus] = useState<TaskStatus>('pendiente');
   const [linkedTaskPriority, setLinkedTaskPriority] = useState<TaskPriority>('media');
-  const [linkedTaskAssignee, setLinkedTaskAssignee] = useState(defaultAssigneeId ?? '');
+  const [linkedTaskAssignee, setLinkedTaskAssignee] = useState(resolvedDefaultAssignee);
   const [linkedTaskTime, setLinkedTaskTime] = useState('');
   const [linkedTaskStartDate, setLinkedTaskStartDate] = useState('');
   const [linkedTaskDueDate, setLinkedTaskDueDate] = useState('');
@@ -249,7 +255,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
     setLinkedTaskType('');
     setLinkedTaskStatus('pendiente');
     setLinkedTaskPriority('media');
-    setLinkedTaskAssignee(defaultAssigneeId ?? '');
+    setLinkedTaskAssignee(resolvedDefaultAssignee);
     setLinkedTaskTime('');
     setLinkedTaskStartDate('');
     setLinkedTaskDueDate('');
@@ -500,19 +506,14 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
               <Input value={linkedTaskTitle} onChange={(e) => setLinkedTaskTitle(e.target.value)} placeholder="¿Qué necesitas hacer?" />
             </div>
             <div className="grid gap-4 grid-cols-2">
-              <div className="space-y-2">
-                <Label>Asignar a</Label>
-                <Select value={linkedTaskAssignee} onValueChange={setLinkedTaskAssignee}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Seleccionar asesor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activeAdvisors.map((u) => (
-                      <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <AssignedAdvisorFormField
+                htmlId="linked-task-assignee"
+                value={linkedTaskAssignee}
+                onChange={setLinkedTaskAssignee}
+                disabled={!canReassign}
+                fallbackName={currentUser.name}
+                label="Asignar a"
+              />
               <div className="space-y-2">
                 <Label>Tipo</Label>
                 <Select value={linkedTaskType} onValueChange={(v) => setLinkedTaskType(v as TaskType)}>
@@ -586,7 +587,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
                       : 'llamada',
                   title: linkedTaskTitle.trim(),
                   description: '',
-                  assignedTo: linkedTaskAssignee || defaultAssigneeId || activeAdvisors[0]?.id || '',
+                  assignedTo: linkedTaskAssignee || resolvedDefaultAssignee || activeAdvisors[0]?.id || '',
                   dueDate,
                   startDate: linkedTaskStartDate || undefined,
                   startTime: linkedTaskTime || undefined,

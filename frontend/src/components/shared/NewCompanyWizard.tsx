@@ -6,15 +6,20 @@ import { toast } from 'sonner';
 import { factilizaApi } from '@/lib/factilizaApi';
 import type { CompanyRubro, CompanyTipo, ContactSource, Etapa } from '@/types';
 import { companyRubroLabels, companyTipoLabels, etapaLabels, contactSourceLabels } from '@/data/mock';
-import { useUsers } from '@/hooks/useUsers';
+import { useAppStore } from '@/store';
+import { canUserReassignCommercialAdvisor, resolveAdvisorAssigneeId } from '@/lib/advisorAssigneeDefaults';
+import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
 import { cn } from '@/lib/utils';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
+  FormDialogShell,
+  FormDialogWizardFooter,
+  formDialogInputClass,
+  formDialogSelectTriggerClass,
+} from '@/components/ui/form-dialog';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -62,8 +67,16 @@ const steps = [
 ];
 const COMPANY_NAME_LOOKUP_DEBOUNCE_MS = 700;
 
-function mergeCompanyForm(defaults?: Partial<NewCompanyData>): NewCompanyData {
-  return { ...emptyForm, ...defaults };
+function mergeCompanyForm(
+  defaults?: Partial<NewCompanyData>,
+  currentUser?: { id: string; role?: string },
+): NewCompanyData {
+  const merged = { ...emptyForm, ...defaults };
+  merged.propietario = resolveAdvisorAssigneeId(defaults?.propietario ?? merged.propietario, {
+    id: currentUser?.id ?? '',
+    role: currentUser?.role,
+  });
+  return merged;
 }
 
 export function NewCompanyWizard({
@@ -75,8 +88,10 @@ export function NewCompanyWizard({
   defaultValues,
   confirmButtonLabel = 'Crear Empresa',
 }: NewCompanyWizardProps) {
+  const currentUser = useAppStore((s) => s.currentUser);
+  const canReassign = canUserReassignCommercialAdvisor(currentUser.role);
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState<NewCompanyData>(() => mergeCompanyForm(defaultValues));
+  const [form, setForm] = useState<NewCompanyData>(() => mergeCompanyForm(defaultValues, currentUser));
   const [rucLookupLoading, setRucLookupLoading] = useState(false);
   const [companyNameLookupLoading, setCompanyNameLookupLoading] = useState(false);
   const [companyNameSuggestions, setCompanyNameSuggestions] = useState<ApiCompanyRecord[]>([]);
@@ -86,13 +101,12 @@ export function NewCompanyWizard({
   const [submitting, setSubmitting] = useState(false);
   const [domainLookupLoading, setDomainLookupLoading] = useState(false);
   const [domainMatches, setDomainMatches] = useState<ApiCompanyRecord[]>([]);
-  const { activeAdvisors } = useUsers();
   const bundle = useCrmConfigStore((s) => s.bundle);
 
   const stageOptions = useMemo(() => {
-    const stages = bundle?.catalog.stages
-      .filter((x) => x.enabled)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
+    const stages = bundle?.catalog?.stages
+      ?.filter((x) => x.enabled)
+      ?.sort((a, b) => a.sortOrder - b.sortOrder);
     if (stages?.length) {
       return stages.map((s) => ({ value: s.slug, label: s.name }));
     }
@@ -265,7 +279,7 @@ export function NewCompanyWizard({
 
   useEffect(() => {
     if (!open) return;
-    setForm(mergeCompanyForm(defaultValues));
+    setForm(mergeCompanyForm(defaultValues, currentUser));
     setStep(0);
     setExistingCompanyId(null);
     setLoadedRucDigits(null);
@@ -357,7 +371,7 @@ export function NewCompanyWizard({
     if (!value) {
       setSubmitting(false);
       setStep(0);
-      setForm({ ...emptyForm });
+      setForm(mergeCompanyForm(undefined, currentUser));
       setExistingCompanyId(null);
       setLoadedRucDigits(null);
       resetCompanyNameLookup();
@@ -425,7 +439,7 @@ export function NewCompanyWizard({
           ),
         );
         setStep(0);
-        setForm({ ...emptyForm });
+        setForm(mergeCompanyForm(undefined, currentUser));
         setExistingCompanyId(null);
         setLoadedRucDigits(null);
         resetCompanyNameLookup();
@@ -453,7 +467,7 @@ export function NewCompanyWizard({
         onSubmit({ ...form, nombreNegocio }, { mode: 'create' }),
       );
       setStep(0);
-      setForm({ ...emptyForm });
+      setForm(mergeCompanyForm(undefined, currentUser));
       setExistingCompanyId(null);
       setLoadedRucDigits(null);
       resetCompanyNameLookup();
@@ -487,14 +501,85 @@ export function NewCompanyWizard({
 
   return (
     <>
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-
-        <div className="flex-1 overflow-y-auto min-h-0 space-y-4">
+    <FormDialogShell
+      open={open}
+      onOpenChange={handleOpenChange}
+      title={title}
+      description={description}
+      footer={(
+        <FormDialogWizardFooter
+          showBack={step > 0}
+          onBack={() => setStep((s) => s - 1)}
+          onCancel={() => handleOpenChange(false)}
+          submitting={submitting}
+          onPrimary={step < 2 ? handleNext : () => void handleSubmit()}
+          primaryLabel={step < 2 ? (
+            <>Siguiente <ChevronRight className="size-4" /></>
+          ) : (
+            <span className="inline-flex items-center gap-2">
+              {submitting ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden /> : null}
+              {existingCompanyId ? 'Actualizar empresa' : confirmButtonLabel}
+            </span>
+          )}
+        />
+      )}
+      appendContent={showCard ? (
+        <div
+          data-coincidences-card
+          className="absolute right-full top-1/2 -translate-y-1/2 mr-2 w-80"
+        >
+          <div className="rounded-lg border bg-background p-4 shadow-lg">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium">Coincidencias en el CRM</p>
+                <p className="text-xs text-muted-foreground">
+                  Escribe al menos 3 caracteres. Pulsa Enter para cargar la primera coincidencia.
+                </p>
+              </div>
+              {companyNameLookupLoading ? (
+                <Loader2 className="size-4 animate-spin text-muted-foreground" />
+              ) : null}
+            </div>
+            {companyNameSuggestions.length > 0 ? (
+              <div className="mt-3 space-y-2">
+                {companyNameSuggestions.map((company) => (
+                  <button
+                    key={company.id}
+                    type="button"
+                    className="flex w-full items-start justify-between rounded-md border bg-background px-3 py-2 text-left transition-colors hover:bg-accent"
+                    onClick={() =>
+                      applyCompanyRecord(
+                        company,
+                        'Empresa encontrada: datos cargados desde el sistema',
+                      )
+                    }
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{company.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {company.razonSocial?.trim() || 'Sin razón social'}
+                      </p>
+                    </div>
+                    <div className="ml-4 shrink-0 text-right text-xs text-muted-foreground">
+                      <p>{company.ruc?.trim() || 'Sin RUC'}</p>
+                      <p>{company.domain?.trim() || 'Sin dominio'}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            {!companyNameLookupLoading &&
+            companyNameLookupQuery.trim().length >= 3 &&
+            companyNameSuggestions.length === 0 ? (
+              <p className="mt-3 text-xs text-muted-foreground">
+                No se encontraron coincidencias para esa búsqueda.
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    >
+        <div className="space-y-6">
           <div className="flex items-center justify-center gap-0 py-2">
             {steps.map((s, i) => (
               <div key={s.label} className="flex items-center">
@@ -529,7 +614,7 @@ export function NewCompanyWizard({
                 <Label>RUC</Label>
                 <div className="relative">
                   <Input
-                    className="pr-10"
+                    className={cn(formDialogInputClass, 'pr-10')}
                     placeholder="20XXXXXXXXX"
                     maxLength={11}
                     value={form.ruc}
@@ -577,6 +662,7 @@ export function NewCompanyWizard({
               <div className="space-y-2">
                 <Label>Razón social</Label>
                 <Input
+                  className={formDialogInputClass}
                   placeholder="Razón social - Enter para cargar coincidencia"
                   value={form.razonSocial}
                   onChange={(e) => {
@@ -596,6 +682,7 @@ export function NewCompanyWizard({
               <div className="space-y-2">
                 <Label>Nombre comercial <span className="text-destructive">*</span></Label>
                 <Input
+                  className={formDialogInputClass}
                   placeholder="Nombre comercial - Enter para cargar coincidencia"
                   value={form.nombreComercial}
                   onChange={(e) => {
@@ -614,12 +701,12 @@ export function NewCompanyWizard({
               </div>
               <div className="space-y-2">
                 <Label>Teléfono</Label>
-                <Input placeholder="+51 999 999 999" value={form.telefono} onChange={(e) => set('telefono', e.target.value)} />
+                <Input className={formDialogInputClass} placeholder="+51 999 999 999" value={form.telefono} onChange={(e) => set('telefono', e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Rubro de la empresa</Label>
                 <Select value={form.rubro} onValueChange={(v) => set('rubro', v as CompanyRubro)}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar rubro" /></SelectTrigger>
+                  <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue placeholder="Seleccionar rubro" /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(companyRubroLabels).map(([key, label]) => (
                       <SelectItem key={key} value={key}>{label}</SelectItem>
@@ -630,7 +717,7 @@ export function NewCompanyWizard({
               <div className="space-y-2">
                 <Label>Tipo de empresa</Label>
                 <Select value={form.tipoEmpresa} onValueChange={(v) => set('tipoEmpresa', v as CompanyTipo)}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="-- Seleccionar --" /></SelectTrigger>
+                  <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue placeholder="-- Seleccionar --" /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(companyTipoLabels).map(([key, label]) => (
                       <SelectItem key={key} value={key}>{label}</SelectItem>
@@ -640,12 +727,12 @@ export function NewCompanyWizard({
               </div>
               <div className="space-y-2">
                 <Label>Dominio <span className="text-destructive">*</span></Label>
-                <Input placeholder="empresa.com" value={form.dominio} onChange={(e) => set('dominio', e.target.value)} />
+                <Input className={formDialogInputClass} placeholder="empresa.com" value={form.dominio} onChange={(e) => set('dominio', e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Fuente <span className="text-destructive">*</span></Label>
                 <Select value={form.origenLead} onValueChange={(v) => set('origenLead', v as ContactSource)}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar fuente" /></SelectTrigger>
+                  <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue placeholder="Seleccionar fuente" /></SelectTrigger>
                   <SelectContent>
                     {sourceOptions.map(({ value, label }) => (
                       <SelectItem key={value} value={value}>{label}</SelectItem>
@@ -660,43 +747,41 @@ export function NewCompanyWizard({
             <div className="grid gap-4 grid-cols-2">
               <div className="space-y-2">
                 <Label>Distrito</Label>
-                <Input placeholder="Ej: Surco" value={form.distrito} onChange={(e) => set('distrito', e.target.value)} />
+                <Input className={formDialogInputClass} placeholder="Ej: Surco" value={form.distrito} onChange={(e) => set('distrito', e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Provincia</Label>
-                <Input placeholder="Ej: Lima" value={form.provincia} onChange={(e) => set('provincia', e.target.value)} />
+                <Input className={formDialogInputClass} placeholder="Ej: Lima" value={form.provincia} onChange={(e) => set('provincia', e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Departamento</Label>
-                <Input placeholder="Ej: Lima" value={form.departamento} onChange={(e) => set('departamento', e.target.value)} />
+                <Input className={formDialogInputClass} placeholder="Ej: Lima" value={form.departamento} onChange={(e) => set('departamento', e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Dirección</Label>
-                <Input placeholder="Ej: Av. Primavera 1234" value={form.direccion} onChange={(e) => set('direccion', e.target.value)} />
+                <Input className={formDialogInputClass} placeholder="Ej: Av. Primavera 1234" value={form.direccion} onChange={(e) => set('direccion', e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>LinkedIn</Label>
-                <Input placeholder="https://www.linkedin.com/company/..." value={form.linkedin} onChange={(e) => set('linkedin', e.target.value)} />
+                <Input className={formDialogInputClass} placeholder="https://www.linkedin.com/company/..." value={form.linkedin} onChange={(e) => set('linkedin', e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Correo</Label>
-                <Input type="email" placeholder="contacto@empresa.com" value={form.correo} onChange={(e) => set('correo', e.target.value)} />
+                <Input className={formDialogInputClass} type="email" placeholder="contacto@empresa.com" value={form.correo} onChange={(e) => set('correo', e.target.value)} />
               </div>
-              <div className="space-y-2">
-                <Label>Propietario</Label>
-                <Select value={form.propietario} onValueChange={(v) => set('propietario', v)}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar asesor" /></SelectTrigger>
-                  <SelectContent>
-                    {activeAdvisors.map((u) => (
-                      <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <AssignedAdvisorFormField
+                htmlId="company-wizard-propietario"
+                value={form.propietario}
+                onChange={(v) => set('propietario', v)}
+                disabled={!canReassign}
+                fallbackName={currentUser.name}
+                label="Propietario"
+                formStyle
+              />
               <div className="space-y-2">
                 <Label>Cliente Recuperado</Label>
                 <Select value={form.clienteRecuperado} onValueChange={(v) => set('clienteRecuperado', v as 'si' | 'no')}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="no">No</SelectItem>
                     <SelectItem value="si">Sí</SelectItem>
@@ -722,12 +807,12 @@ export function NewCompanyWizard({
               ) : null}
               <div className="space-y-2">
                 <Label>Nombre de la oportunidad</Label>
-                <Input placeholder="Nombre de la oportunidad" value={form.nombreNegocio} onChange={(e) => set('nombreNegocio', e.target.value)} />
+                <Input className={formDialogInputClass} placeholder="Nombre de la oportunidad" value={form.nombreNegocio} onChange={(e) => set('nombreNegocio', e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Etapa</Label>
                 <Select value={form.etapa} onValueChange={(v) => set('etapa', v as Etapa)}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {stageOptions.map(({ value, label }) => (
                       <SelectItem key={value} value={value}>{label}</SelectItem>
@@ -737,122 +822,16 @@ export function NewCompanyWizard({
               </div>
               <div className="space-y-2">
                 <Label>Facturación estimada (S/) <span className="text-destructive">*</span></Label>
-                <Input type="number" min={0.01} step="0.01" placeholder="Mayor que 0" value={form.facturacion} onChange={(e) => set('facturacion', e.target.value)} />
+                <Input className={formDialogInputClass} type="number" min={0.01} step="0.01" placeholder="Mayor que 0" value={form.facturacion} onChange={(e) => set('facturacion', e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Fecha de Cierre</Label>
-                <Input type="date" value={form.fechaCierre} onChange={(e) => set('fechaCierre', e.target.value)} />
+                <Input className={formDialogInputClass} type="date" value={form.fechaCierre} onChange={(e) => set('fechaCierre', e.target.value)} />
               </div>
             </div>
           )}
         </div>
-
-        <DialogFooter className="flex-row gap-2 sm:justify-between">
-          <div>
-            {step > 0 && (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={submitting}
-                onClick={() => setStep((s) => s - 1)}
-              >
-                <ChevronLeft className="size-4" /> Anterior
-              </Button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={submitting}
-              onClick={() => handleOpenChange(false)}
-            >
-              Cancelar
-            </Button>
-            {step < 2 ? (
-              <Button
-                type="button"
-                className="bg-[#13944C] hover:bg-[#0f7a3d]"
-                disabled={submitting}
-                onClick={handleNext}
-              >
-                Siguiente <ChevronRight className="size-4" />
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                className="bg-[#13944C] hover:bg-[#0f7a3d]"
-                disabled={submitting}
-                onClick={() => void handleSubmit()}
-              >
-                <span className="inline-flex items-center gap-2">
-                  {submitting ? (
-                    <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
-                  ) : null}
-                  {existingCompanyId ? 'Actualizar empresa' : confirmButtonLabel}
-                </span>
-              </Button>
-            )}
-          </div>
-        </DialogFooter>
-
-        {showCard && (
-          <div
-            data-coincidences-card
-            className="absolute right-full top-1/2 -translate-y-1/2 mr-2 w-80"
-          >
-            <div className="rounded-lg border bg-background p-4 shadow-lg">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium">Coincidencias en el CRM</p>
-                  <p className="text-xs text-muted-foreground">
-                    Escribe al menos 3 caracteres. Pulsa Enter para cargar la primera coincidencia.
-                  </p>
-                </div>
-                {companyNameLookupLoading ? (
-                  <Loader2 className="size-4 animate-spin text-muted-foreground" />
-                ) : null}
-              </div>
-              {companyNameSuggestions.length > 0 ? (
-                <div className="mt-3 space-y-2">
-                  {companyNameSuggestions.map((company) => (
-                    <button
-                      key={company.id}
-                      type="button"
-                      className="flex w-full items-start justify-between rounded-md border bg-background px-3 py-2 text-left transition-colors hover:bg-accent"
-                      onClick={() =>
-                        applyCompanyRecord(
-                          company,
-                          'Empresa encontrada: datos cargados desde el sistema',
-                        )
-                      }
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{company.name}</p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {company.razonSocial?.trim() || 'Sin razón social'}
-                        </p>
-                      </div>
-                      <div className="ml-4 shrink-0 text-right text-xs text-muted-foreground">
-                        <p>{company.ruc?.trim() || 'Sin RUC'}</p>
-                        <p>{company.domain?.trim() || 'Sin dominio'}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-              {!companyNameLookupLoading &&
-              companyNameLookupQuery.trim().length >= 3 &&
-              companyNameSuggestions.length === 0 ? (
-                <p className="mt-3 text-xs text-muted-foreground">
-                  No se encontraron coincidencias para esa búsqueda.
-                </p>
-              ) : null}
-            </div>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+    </FormDialogShell>
 
     {domainMatches.length > 0 && !domainLookupLoading && createPortal(
       <div className="fixed left-1/2 top-14 z-50 -translate-x-1/2 animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-300 ease-out">

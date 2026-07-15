@@ -2,24 +2,20 @@ import { useEffect, useState } from 'react';
 import type { Contact, ContactSource } from '@/types';
 import { useLeadSourceOptions } from '@/store/crmConfigStore';
 import { useUsers } from '@/hooks/useUsers';
+import { useAppStore } from '@/store';
+import { resolveAdvisorAssigneeId } from '@/lib/advisorAssigneeDefaults';
 import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  FormDialogActions,
+  FormDialogField,
+  FormDialogGrid,
+  FormDialogShell,
+  formDialogInputClass,
+  formDialogSelectTriggerClass,
+} from '@/components/ui/form-dialog';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 
 export type ContactEditSavePayload = {
@@ -28,7 +24,6 @@ export type ContactEditSavePayload = {
   telefono: string;
   correo: string;
   fuente: ContactSource;
-  /** Solo enviado cuando el usuario puede reasignar asesor. */
   assignedTo?: string;
 };
 
@@ -48,6 +43,7 @@ export function ContactEditDialog({
   canEditAssignee,
 }: ContactEditDialogProps) {
   const { activeAdvisors } = useUsers();
+  const currentUser = useAppStore((s) => s.currentUser);
   const leadSourceOptions = useLeadSourceOptions();
   const [editForm, setEditForm] = useState({
     name: '',
@@ -67,10 +63,10 @@ export function ContactEditDialog({
         telefono: contact.telefono,
         correo: contact.correo,
         fuente: contact.fuente,
-        assignedTo: contact.assignedTo || activeAdvisors[0]?.id || '',
+        assignedTo: resolveAdvisorAssigneeId(contact.assignedTo, currentUser) || activeAdvisors[0]?.id || '',
       });
     }
-  }, [open, contact, activeAdvisors]);
+  }, [open, contact, activeAdvisors, currentUser.id, currentUser.role]);
 
   function handleSave() {
     if (!contact || !editForm.name.trim()) return;
@@ -87,91 +83,85 @@ export function ContactEditDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Editar Contacto</DialogTitle>
-          <DialogDescription>Modifica los datos del contacto.</DialogDescription>
-        </DialogHeader>
-        {saving ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">Guardando…</p>
-        ) : (
-        <>
-        <div className="grid gap-4 py-2">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="contact-edit-name">Nombre</Label>
+    <FormDialogShell
+      open={open}
+      onOpenChange={onOpenChange}
+      maxWidthClassName="sm:max-w-lg"
+      title="Editar Contacto"
+      description="Modifica los datos del contacto."
+      footer={saving ? null : (
+        <FormDialogActions
+          submitLabel="Guardar cambios"
+          submitDisabled={!editForm.name.trim()}
+          onCancel={() => onOpenChange(false)}
+          onSubmit={handleSave}
+        />
+      )}
+    >
+      {saving ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">Guardando…</p>
+      ) : (
+        <div className="space-y-6">
+          <FormDialogGrid>
+            <FormDialogField label="Nombre">
               <Input
                 id="contact-edit-name"
+                className={formDialogInputClass}
                 value={editForm.name}
                 onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="contact-edit-cargo">Cargo</Label>
+            </FormDialogField>
+            <FormDialogField label="Cargo">
               <Input
                 id="contact-edit-cargo"
+                className={formDialogInputClass}
                 value={editForm.cargo}
                 onChange={(e) => setEditForm((f) => ({ ...f, cargo: e.target.value }))}
               />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="contact-edit-phone">Teléfono</Label>
+            </FormDialogField>
+            <FormDialogField label="Teléfono">
               <Input
                 id="contact-edit-phone"
+                className={formDialogInputClass}
                 value={editForm.telefono}
                 onChange={(e) => setEditForm((f) => ({ ...f, telefono: e.target.value }))}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="contact-edit-email">Correo</Label>
+            </FormDialogField>
+            <FormDialogField label="Correo">
               <Input
                 id="contact-edit-email"
                 type="email"
+                className={formDialogInputClass}
                 value={editForm.correo}
                 onChange={(e) => setEditForm((f) => ({ ...f, correo: e.target.value }))}
               />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Fuente</Label>
+            </FormDialogField>
+          </FormDialogGrid>
+          <FormDialogField label="Fuente">
             <Select
               value={editForm.fuente}
               onValueChange={(v) => setEditForm((f) => ({ ...f, fuente: v as ContactSource }))}
             >
-              <SelectTrigger>
+              <SelectTrigger className={formDialogSelectTriggerClass}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {leadSourceOptions.map(({ value: key, label }) => (
-                  <SelectItem key={key} value={key}>
-                    {label}
-                  </SelectItem>
+                  <SelectItem key={key} value={key}>{label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </FormDialogField>
           <AssignedAdvisorFormField
             htmlId="contact-edit-assigned-to"
             value={editForm.assignedTo}
             onChange={(assignedTo) => setEditForm((f) => ({ ...f, assignedTo }))}
             disabled={!canEditAssignee}
-            fallbackName={contact?.assignedToName}
+            fallbackName={contact?.assignedToName || currentUser.name}
+            formStyle
           />
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancelar
-          </Button>
-          <Button onClick={() => void handleSave()} disabled={!editForm.name.trim() || saving}>
-            {saving ? 'Guardando…' : 'Guardar cambios'}
-          </Button>
-        </DialogFooter>
-        </>
-        )}
-      </DialogContent>
-    </Dialog>
+      )}
+    </FormDialogShell>
   );
 }

@@ -4,18 +4,28 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { priorityLabels } from '@/data/mock';
+import { canUserReassignCommercialAdvisor, resolveAdvisorAssigneeId } from '@/lib/advisorAssigneeDefaults';
 import { useUsers } from '@/hooks/useUsers';
+import { useAppStore } from '@/store';
 import type { Contact, Opportunity, TaskAssociation, TaskKind } from '@/types';
 import { TASK_KINDS } from '@/types';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
+  FormDialogActions,
+  FormDialogField,
+  FormDialogGrid,
+  FormDialogShell,
+  formDialogInputClass,
+  formDialogPickerTriggerClass,
+  formDialogPopoverContentClass,
+  formDialogSelectTriggerClass,
+} from '@/components/ui/form-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -52,6 +62,11 @@ const taskStatusLabels: Record<TaskFormStatus, string> = {
   vencida: 'Vencida',
 };
 
+/** Estados elegibles al crear una tarea (vencida la asigna el sistema). */
+const taskCreateStatusOptions = (
+  Object.entries(taskStatusLabels) as [TaskFormStatus, string][]
+).filter(([key]) => key !== 'vencida');
+
 /** Filas visibles por pestaña al abrir el buscador; el resto se alcanza filtrando por texto. */
 const ASSOCIATION_PICKER_PAGE_SIZE = 8;
 
@@ -68,7 +83,7 @@ export interface TaskFormDialogProps {
   defaultTitle?: string;
   /** Estado inicial al abrir (p. ej. columna Kanban desde la que se creó la tarea). */
   defaultStatus?: TaskFormStatus;
-  /** Fecha de inicio predefinida */
+  /** Fecha de tarea predefinida (p. ej. día seleccionado en calendario). */
   defaultStartDate?: string;
   /** Vínculos prellenados (p. ej. tarea de seguimiento tras completar otra). */
   defaultAssociations?: TaskAssociation[];
@@ -97,12 +112,15 @@ export function TaskFormDialog({
   optimisticClose = false,
 }: TaskFormDialogProps) {
   const { users, activeAdvisors } = useUsers();
+  const currentUser = useAppStore((s) => s.currentUser);
+  const canReassign = canUserReassignCommercialAdvisor(currentUser.role);
 
-  function getDefaultStartDate() {
-    return defaultStartDate ?? new Date().toISOString().slice(0, 10);
+  function resolveDefaultAssignee() {
+    return resolveAdvisorAssigneeId(defaultAssigneeId, currentUser);
   }
-  /** Límite sugerida: una semana después de hoy (evita prellenar hoy en fecha límite). */
+
   function getDefaultDueDate() {
+    if (defaultStartDate) return defaultStartDate;
     const d = new Date();
     d.setDate(d.getDate() + 7);
     return d.toISOString().slice(0, 10);
@@ -112,9 +130,8 @@ export function TaskFormDialog({
   const [formType, setFormType] = useState<TaskFormType | ''>('');
   const [formStatus, setFormStatus] = useState<TaskFormStatus>('pendiente');
   const [formPriority, setFormPriority] = useState<TaskFormPriority>('media');
-  const [formAssignee, setFormAssignee] = useState(defaultAssigneeId);
+  const [formAssignee, setFormAssignee] = useState(resolveDefaultAssignee);
   const [formStartTime, setFormStartTime] = useState('');
-  const [formStartDate, setFormStartDate] = useState('');
   const [formDueDate, setFormDueDate] = useState('');
   const [associations, setAssociations] = useState<TaskAssociation[]>([]);
   const [assocPanelOpen, setAssocPanelOpen] = useState(false);
@@ -124,14 +141,14 @@ export function TaskFormDialog({
   useEffect(() => {
     if (open) {
       setFormTitle(defaultTitle);
-      setFormStatus(defaultStatus ?? 'pendiente');
-      setFormStartDate(getDefaultStartDate());
+      setFormStatus(defaultStatus && defaultStatus !== 'vencida' ? defaultStatus : 'pendiente');
       setFormDueDate(getDefaultDueDate());
       setAssociations(
         defaultAssociations?.length ? defaultAssociations.map((a) => ({ ...a })) : [],
       );
+      setFormAssignee(resolveDefaultAssignee());
     }
-  }, [open, defaultTitle, defaultStatus, defaultStartDate, defaultAssociations]);
+  }, [open, defaultTitle, defaultStatus, defaultStartDate, defaultAssociations, defaultAssigneeId, canReassign, currentUser.id]);
 
   const assocCounts = {
     contactos: contacts.length,
@@ -142,11 +159,10 @@ export function TaskFormDialog({
   function resetForm() {
     setFormTitle('');
     setFormType('');
-    setFormStatus(defaultStatus ?? 'pendiente');
+    setFormStatus(defaultStatus && defaultStatus !== 'vencida' ? defaultStatus : 'pendiente');
     setFormPriority('media');
-    setFormAssignee(defaultAssigneeId);
+    setFormAssignee(resolveDefaultAssignee());
     setFormStartTime('');
-    setFormStartDate(getDefaultStartDate());
     setFormDueDate(getDefaultDueDate());
     setAssociations([]);
     setAssocPanelOpen(false);
@@ -167,19 +183,22 @@ export function TaskFormDialog({
       return;
     }
     if (!formDueDate.trim()) {
-      toast.error('Selecciona la fecha límite');
+      toast.error('Selecciona la fecha de tarea');
       return;
     }
-    const assigneeUser = users.find((u) => u.id === formAssignee);
+    const assigneeId = formAssignee.trim() || resolveDefaultAssignee();
+    const assigneeUser =
+      users.find((u) => u.id === assigneeId) ??
+      activeAdvisors.find((u) => u.id === assigneeId) ??
+      (assigneeId === currentUser.id ? { id: currentUser.id, name: currentUser.name } : undefined);
     const assigneeName = assigneeUser?.name ?? 'Sin asignar';
     const payload: TaskFormResult = {
       title: formTitle.trim(),
       type: formType,
       status: formStatus,
       priority: formPriority,
-      assignee: formAssignee,
+      assignee: assigneeId,
       assigneeName,
-      startDate: formStartDate || undefined,
       startTime: formStartTime || undefined,
       dueDate: formDueDate,
       associations: [...associations],
@@ -209,241 +228,257 @@ export function TaskFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Título de la tarea *</Label>
-            <Input
-              placeholder="¿Qué necesitas hacer?"
-              value={formTitle}
-              onChange={(e) => setFormTitle(e.target.value)}
-            />
-          </div>
+    <FormDialogShell
+      open={open}
+      onOpenChange={handleOpenChange}
+      title={title}
+      description={description}
+      footer={(
+        <FormDialogActions
+          onCancel={() => handleOpenChange(false)}
+          onSubmit={() => void handleSave()}
+        />
+      )}
+    >
+      <div className="space-y-6">
+        <FormDialogField label="Título de la tarea" required>
+          <Input
+            className={formDialogInputClass}
+            placeholder="¿Qué necesitas hacer?"
+            value={formTitle}
+            onChange={(e) => setFormTitle(e.target.value)}
+          />
+        </FormDialogField>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="flex items-center gap-1.5">
-                <Link2 className="size-3.5" /> Asociaciones *
-              </Label>
-              {associations.length > 0 && (
-                <span className="text-xs text-muted-foreground">{associations.length} registro{associations.length !== 1 ? 's' : ''}</span>
-              )}
+        <FormDialogField
+          label={(
+            <span className="inline-flex items-center gap-1.5">
+              <Link2 className="size-3.5 text-muted-foreground" />
+              Asociaciones
+            </span>
+          )}
+          required
+          compactControl={false}
+          hint={associations.length > 0
+            ? `${associations.length} registro${associations.length !== 1 ? 's' : ''} vinculado${associations.length !== 1 ? 's' : ''}`
+            : 'Vincula la tarea a un contacto, empresa u oportunidad'}
+        >
+          {associations.length > 0 && (
+            <div className="flex flex-wrap gap-2 pb-1">
+              {associations.map((a) => (
+                <Badge
+                  key={`${a.type}-${a.id}`}
+                  variant="secondary"
+                  className="gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1 pr-1.5 font-normal"
+                >
+                  {a.type === 'contacto' && <User className="size-3" />}
+                  {a.type === 'empresa' && <Building2 className="size-3" />}
+                  {a.type === 'negocio' && <Briefcase className="size-3" />}
+                  <span className="text-xs">{a.name}</span>
+                  <button
+                    type="button"
+                    className="ml-0.5 rounded-sm p-0.5 hover:bg-muted"
+                    onClick={() => setAssociations((prev) => prev.filter((x) => !(x.type === a.type && x.id === a.id)))}
+                  >
+                    <span className="text-xs leading-none text-muted-foreground">&times;</span>
+                  </button>
+                </Badge>
+              ))}
             </div>
+          )}
 
-            {associations.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {associations.map((a) => (
-                  <Badge key={`${a.type}-${a.id}`} variant="secondary" className="gap-1 pr-1">
-                    {a.type === 'contacto' && <User className="size-3" />}
-                    {a.type === 'empresa' && <Building2 className="size-3" />}
-                    {a.type === 'negocio' && <Briefcase className="size-3" />}
-                    <span className="text-xs">{a.name}</span>
-                    <button
-                      type="button"
-                      className="ml-0.5 rounded-sm hover:bg-muted p-0.5"
-                      onClick={() => setAssociations((prev) => prev.filter((x) => !(x.type === a.type && x.id === a.id)))}
-                    >
-                      <span className="text-xs leading-none">&times;</span>
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            )}
-
-            <div className="relative">
+          <Popover open={assocPanelOpen} onOpenChange={setAssocPanelOpen} modal={false}>
+            <PopoverTrigger asChild>
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
-                className="w-full justify-between text-muted-foreground font-normal"
-                onClick={() => setAssocPanelOpen(!assocPanelOpen)}
+                className={formDialogPickerTriggerClass}
               >
                 Buscar asociaciones
-                <ChevronDown className={`size-4 transition-transform ${assocPanelOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`size-4 text-muted-foreground transition-transform ${assocPanelOpen ? 'rotate-180' : ''}`} />
               </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="start"
+              side="bottom"
+              sideOffset={8}
+              collisionPadding={16}
+              className={formDialogPopoverContentClass}
+              onOpenAutoFocus={(e) => e.preventDefault()}
+            >
+              <div className="flex border-b border-border/60">
+                {(['contactos', 'empresas', 'negocios'] as const).map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    className={`flex-1 px-3 py-2.5 text-xs font-semibold capitalize transition-colors ${assocCategory === cat ? 'border-b-2 border-[#13944C] text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                    onClick={() => { setAssocCategory(cat); setAssocSearch(''); }}
+                  >
+                    {cat} <span className="font-normal text-muted-foreground">({assocCounts[cat]})</span>
+                  </button>
+                ))}
+              </div>
 
-              {assocPanelOpen && (
-                <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg">
-                  <div className="flex border-b">
-                    {(['contactos', 'empresas', 'negocios'] as const).map((cat) => (
-                      <button
-                        key={cat}
-                        type="button"
-                        className={`flex-1 px-2 py-2 text-xs font-medium capitalize transition-colors ${assocCategory === cat ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-                        onClick={() => { setAssocCategory(cat); setAssocSearch(''); }}
-                      >
-                        {cat} <span className="text-muted-foreground">({assocCounts[cat]})</span>
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="p-2">
-                    <div className="relative mb-2">
-                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-                      <Input
-                        placeholder="Buscar..."
-                        value={assocSearch}
-                        onChange={(e) => setAssocSearch(e.target.value)}
-                        className="pl-7 h-8 text-sm"
-                      />
-                    </div>
-
-                    <div className="max-h-36 overflow-y-auto space-y-0.5">
-                      {assocCategory === 'contactos' &&
-                        contacts
-                          .filter((l) => l.name.toLowerCase().includes(assocSearch.toLowerCase()))
-                          .slice(0, ASSOCIATION_PICKER_PAGE_SIZE)
-                          .map((l) => {
-                            const isSelected = associations.some((a) => a.type === 'contacto' && a.id === l.id);
-                            return (
-                              <button
-                                key={l.id}
-                                type="button"
-                                className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted ${isSelected ? 'bg-muted' : ''}`}
-                                onClick={() => {
-                                  if (isSelected) {
-                                    setAssociations((prev) => prev.filter((a) => !(a.type === 'contacto' && a.id === l.id)));
-                                  } else {
-                                    setAssociations((prev) => [...prev, { type: 'contacto', id: l.id, name: l.name }]);
-                                  }
-                                }}
-                              >
-                                <Checkbox checked={isSelected} className="size-3.5" />
-                                <User className="size-3.5 text-muted-foreground" />
-                                <span className="truncate">{l.name}</span>
-                              </button>
-                            );
-                          })}
-
-                      {assocCategory === 'empresas' &&
-                        companies
-                          .filter((c) => c.name.toLowerCase().includes(assocSearch.toLowerCase()))
-                          .slice(0, ASSOCIATION_PICKER_PAGE_SIZE)
-                          .map((c) => {
-                            const rowId = c.id ?? c.name;
-                            const isSelected = associations.some((a) => a.type === 'empresa' && a.id === rowId);
-                            return (
-                              <button
-                                key={rowId}
-                                type="button"
-                                className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted ${isSelected ? 'bg-muted' : ''}`}
-                                onClick={() => {
-                                  if (isSelected) {
-                                    setAssociations((prev) => prev.filter((a) => !(a.type === 'empresa' && a.id === rowId)));
-                                  } else {
-                                    setAssociations((prev) => [...prev, { type: 'empresa', id: rowId, name: c.name }]);
-                                  }
-                                }}
-                              >
-                                <Checkbox checked={isSelected} className="size-3.5" />
-                                <Building2 className="size-3.5 text-muted-foreground" />
-                                <span className="truncate">{c.name}</span>
-                              </button>
-                            );
-                          })}
-
-                      {assocCategory === 'negocios' &&
-                        opportunities
-                          .filter((o) => o.title.toLowerCase().includes(assocSearch.toLowerCase()))
-                          .slice(0, ASSOCIATION_PICKER_PAGE_SIZE)
-                          .map((o) => {
-                            const isSelected = associations.some((a) => a.type === 'negocio' && a.id === o.id);
-                            return (
-                              <button
-                                key={o.id}
-                                type="button"
-                                className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted ${isSelected ? 'bg-muted' : ''}`}
-                                onClick={() => {
-                                  if (isSelected) {
-                                    setAssociations((prev) => prev.filter((a) => !(a.type === 'negocio' && a.id === o.id)));
-                                  } else {
-                                    setAssociations((prev) => [...prev, { type: 'negocio', id: o.id, name: o.title }]);
-                                  }
-                                }}
-                              >
-                                <Checkbox checked={isSelected} className="size-3.5" />
-                                <Briefcase className="size-3.5 text-muted-foreground" />
-                                <span className="truncate">{o.title}</span>
-                              </button>
-                            );
-                          })}
-                    </div>
-                  </div>
+              <div className="p-3">
+                <div className="relative mb-3">
+                  <Search className="absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar..."
+                    value={assocSearch}
+                    onChange={(e) => setAssocSearch(e.target.value)}
+                    className={`${formDialogInputClass} h-10 pl-9 text-sm`}
+                  />
                 </div>
-              )}
-            </div>
-          </div>
 
-          <div className="grid gap-4 grid-cols-2">
-            <div className="space-y-2">
-              <Label>Fecha de inicio</Label>
-              <Input type="date" value={formStartDate} onChange={(e) => setFormStartDate(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Tipo</Label>
-              <Select value={formType} onValueChange={(v) => setFormType(v as TaskFormType)}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar tipo" /></SelectTrigger>
-                <SelectContent>
-                  {TASK_KINDS.map((key) => (
-                    <SelectItem key={key} value={key}>{taskTypeLabels[key]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Fecha límite</Label>
-              <Input type="date" value={formDueDate} onChange={(e) => setFormDueDate(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Hora estimada</Label>
-              <Input type="time" value={formStartTime} onChange={(e) => setFormStartTime(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Estado</Label>
-              <Select value={formStatus} onValueChange={(v) => setFormStatus(v as TaskFormStatus)}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(taskStatusLabels).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Prioridad</Label>
-              <Select value={formPriority} onValueChange={(v) => setFormPriority(v as TaskFormPriority)}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(priorityLabels).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Asignado</Label>
-              <Select value={formAssignee} onValueChange={setFormAssignee}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar asesor" /></SelectTrigger>
-                <SelectContent>
-                  {activeAdvisors.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div aria-hidden className="min-h-0" />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancelar</Button>
-          <Button className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={handleSave}>Guardar</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+                <div className="max-h-52 space-y-0.5 overflow-y-auto">
+                  {assocCategory === 'contactos' &&
+                    contacts
+                      .filter((l) => l.name.toLowerCase().includes(assocSearch.toLowerCase()))
+                      .slice(0, ASSOCIATION_PICKER_PAGE_SIZE)
+                      .map((l) => {
+                        const isSelected = associations.some((a) => a.type === 'contacto' && a.id === l.id);
+                        return (
+                          <button
+                            key={l.id}
+                            type="button"
+                            className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-muted/60 ${isSelected ? 'bg-muted/50' : ''}`}
+                            onClick={() => {
+                              if (isSelected) {
+                                setAssociations((prev) => prev.filter((a) => !(a.type === 'contacto' && a.id === l.id)));
+                              } else {
+                                setAssociations((prev) => [...prev, { type: 'contacto', id: l.id, name: l.name }]);
+                              }
+                            }}
+                          >
+                            <Checkbox checked={isSelected} className="size-3.5" />
+                            <User className="size-3.5 text-muted-foreground" />
+                            <span className="truncate">{l.name}</span>
+                          </button>
+                        );
+                      })}
+
+                  {assocCategory === 'empresas' &&
+                    companies
+                      .filter((c) => c.name.toLowerCase().includes(assocSearch.toLowerCase()))
+                      .slice(0, ASSOCIATION_PICKER_PAGE_SIZE)
+                      .map((c) => {
+                        const rowId = c.id ?? c.name;
+                        const isSelected = associations.some((a) => a.type === 'empresa' && a.id === rowId);
+                        return (
+                          <button
+                            key={rowId}
+                            type="button"
+                            className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-muted/60 ${isSelected ? 'bg-muted/50' : ''}`}
+                            onClick={() => {
+                              if (isSelected) {
+                                setAssociations((prev) => prev.filter((a) => !(a.type === 'empresa' && a.id === rowId)));
+                              } else {
+                                setAssociations((prev) => [...prev, { type: 'empresa', id: rowId, name: c.name }]);
+                              }
+                            }}
+                          >
+                            <Checkbox checked={isSelected} className="size-3.5" />
+                            <Building2 className="size-3.5 text-muted-foreground" />
+                            <span className="truncate">{c.name}</span>
+                          </button>
+                        );
+                      })}
+
+                  {assocCategory === 'negocios' &&
+                    opportunities
+                      .filter((o) => o.title.toLowerCase().includes(assocSearch.toLowerCase()))
+                      .slice(0, ASSOCIATION_PICKER_PAGE_SIZE)
+                      .map((o) => {
+                        const isSelected = associations.some((a) => a.type === 'negocio' && a.id === o.id);
+                        return (
+                          <button
+                            key={o.id}
+                            type="button"
+                            className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-muted/60 ${isSelected ? 'bg-muted/50' : ''}`}
+                            onClick={() => {
+                              if (isSelected) {
+                                setAssociations((prev) => prev.filter((a) => !(a.type === 'negocio' && a.id === o.id)));
+                              } else {
+                                setAssociations((prev) => [...prev, { type: 'negocio', id: o.id, name: o.title }]);
+                              }
+                            }}
+                          >
+                            <Checkbox checked={isSelected} className="size-3.5" />
+                            <Briefcase className="size-3.5 text-muted-foreground" />
+                            <span className="truncate">{o.title}</span>
+                          </button>
+                        );
+                      })}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </FormDialogField>
+
+        <FormDialogGrid>
+          <FormDialogField label="Fecha de tarea" required>
+            <Input
+              type="date"
+              className={formDialogInputClass}
+              value={formDueDate}
+              onChange={(e) => setFormDueDate(e.target.value)}
+            />
+          </FormDialogField>
+          <FormDialogField label="Tipo" required>
+            <Select value={formType} onValueChange={(v) => setFormType(v as TaskFormType)}>
+              <SelectTrigger className={formDialogSelectTriggerClass}>
+                <SelectValue placeholder="Seleccionar tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                {TASK_KINDS.map((key) => (
+                  <SelectItem key={key} value={key}>{taskTypeLabels[key]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormDialogField>
+          <FormDialogField label="Hora estimada">
+            <Input
+              type="time"
+              className={formDialogInputClass}
+              value={formStartTime}
+              onChange={(e) => setFormStartTime(e.target.value)}
+            />
+          </FormDialogField>
+          <FormDialogField label="Estado">
+            <Select value={formStatus} onValueChange={(v) => setFormStatus(v as TaskFormStatus)}>
+              <SelectTrigger className={formDialogSelectTriggerClass}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {taskCreateStatusOptions.map(([key, label]) => (
+                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormDialogField>
+          <FormDialogField label="Prioridad">
+            <Select value={formPriority} onValueChange={(v) => setFormPriority(v as TaskFormPriority)}>
+              <SelectTrigger className={formDialogSelectTriggerClass}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(priorityLabels).map(([key, label]) => (
+                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormDialogField>
+          <AssignedAdvisorFormField
+            htmlId="task-form-assignee"
+            value={formAssignee}
+            onChange={setFormAssignee}
+            disabled={!canReassign}
+            fallbackName={currentUser.name}
+            label="Asignado"
+            formStyle
+          />
+        </FormDialogGrid>
+      </div>
+    </FormDialogShell>
   );
 }

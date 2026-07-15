@@ -8,7 +8,7 @@ import {
   Users,
   User,
   Building2, Globe, DollarSign, CalendarDays, MapPin,
-  FileArchive, Loader2, Plus, ChevronLeft, ChevronRight,
+  FileArchive, Loader2, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import type { Contact, Etapa, CompanyRubro, CompanyTipo, TimelineEvent, Activity } from '@/types';
 import {
@@ -31,6 +31,7 @@ import { QuickActionsWithDialogs, type QuickActivityDraft } from '@/components/s
 import { TimelinePanel } from '@/components/shared/TimelinePanel';
 import { EntityInfoCard } from '@/components/shared/EntityInfoCard';
 import { ActivityPanel } from '@/components/shared/ActivityPanel';
+import { EntityNotesTab } from '@/components/shared/EntityNotesTab';
 import { DetailLayout } from '@/components/shared/DetailLayout';
 import { EntityDetailPageSkeleton } from '@/components/shared/EntityDetailPageSkeleton';
 import { LinkedOpportunitiesCard } from '@/components/shared/LinkedOpportunitiesCard';
@@ -59,7 +60,6 @@ import { ContactHeader } from '@/components/contact-detail/ContactHeader';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { api } from '@/lib/api';
@@ -1028,37 +1028,15 @@ export default function ContactoDetailPage() {
             />
           </TabsContent>
 
-<TabsContent value="notas" className="mt-4">
-  <Card>
-    <CardHeader className="pb-2">
-      <CardTitle className="text-base">Notas</CardTitle>
-    </CardHeader>
-    <CardContent className="space-y-3 p-3 sm:p-5 sm:space-y-4">
-                <div className="space-y-2">
-                  <Textarea
-                    placeholder="Escribe una nota..."
-                    value={noteText}
-                    onChange={(e) => setNoteText(e.target.value)}
-                    rows={3}
-                  />
-                  <Button size="sm" onClick={handleAddNote} disabled={!noteText.trim()}>
-                    <Plus className="size-4" /> Agregar nota
-                  </Button>
-                </div>
-                <div className="space-y-3">
-                  {noteActivities.map((note) => (
-                    <div key={note.id} className="rounded-lg border p-4">
-                      <p className="text-sm">{note.description}</p>
-                      <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="font-medium">{note.assignedToName}</span>
-                        <span>•</span>
-                        <span>{formatDate(note.createdAt || note.dueDate)}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="notas" className="mt-4">
+            <EntityNotesTab
+              notes={noteActivities}
+              noteText={noteText}
+              onNoteTextChange={setNoteText}
+              onAddNote={handleAddNote}
+              onUpdateActivity={updateActivity}
+              onDeleteActivity={deleteActivity}
+            />
           </TabsContent>
 
           {/* Historial Tab */}

@@ -12,9 +12,13 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { PaletteIcon } from '@/components/icons/PaletteIcon';
+import { MultiCheckboxFilterActions } from '@/components/shared/MultiCheckboxFilterActions';
 import {
   comercialProCommandClass,
   comercialProPopoverClass,
+  INCLUSIVE_MULTI_NONE,
+  isInclusiveMultiFilterAll,
+  isInclusiveMultiFilterNone,
   isInclusiveMultiFilterSelected,
   toggleInclusiveMultiFilter,
   formatInclusiveMultiSourceFilterLabel,
@@ -100,6 +104,18 @@ export function MultiSourceFilter({
               })}
             </CommandGroup>
           </CommandList>
+          <MultiCheckboxFilterActions
+            allSelected={isInclusiveMultiFilterAll(value)}
+            noneSelected={isInclusiveMultiFilterNone(value)}
+            onSelectAll={() => {
+              onChange([]);
+              onInteraction?.();
+            }}
+            onClear={() => {
+              onChange([INCLUSIVE_MULTI_NONE]);
+              onInteraction?.();
+            }}
+          />
         </Command>
       </PopoverContent>
     </Popover>

@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   Briefcase, DollarSign, Target, CalendarDays, User, Building2, Tag,
-  Users, Plus, FileArchive, Loader2, ChevronLeft, ChevronRight,
+  Users, FileArchive, Loader2, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { useCRMStore } from '@/store/crmStore';
 import { useAppStore } from '@/store';
@@ -20,6 +20,7 @@ import { EntityDetailPageSkeleton } from '@/components/shared/EntityDetailPageSk
 import { EntityInfoCard } from '@/components/shared/EntityInfoCard';
 import { TimelinePanel } from '@/components/shared/TimelinePanel';
 import { ActivityPanel } from '@/components/shared/ActivityPanel';
+import { EntityNotesTab } from '@/components/shared/EntityNotesTab';
 import { QuickActionsWithDialogs, type QuickActivityDraft } from '@/components/shared/QuickActionsWithDialogs';
 import { LinkedContactsCard } from '@/components/shared/LinkedContactsCard';
 import { LinkedCompaniesCard } from '@/components/shared/LinkedCompaniesCard';
@@ -33,22 +34,13 @@ import { LinkExistingDialog, type LinkExistingItem } from '@/components/shared/L
 import { NewContactWizard } from '@/components/shared/NewContactWizard';
 import type { NewContactData } from '@/components/shared/NewContactWizard';
 import { TasksTab, type TasksTabHandle } from '@/components/shared/TasksTab';
-import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
+import { OpportunityEditDialog, type OpportunityEditSavePayload } from '@/components/shared/OpportunityEditDialog';
 import { EntityFilesTab } from '@/components/files';
 import { OpportunityHeader } from '@/components/opportunity-detail/OpportunityHeader';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { ENTITY_DETAIL_SECTION_TAB_OPTIONS } from '@/lib/entityDetailSectionTabs';
@@ -355,12 +347,6 @@ export default function OportunidadDetailPage() {
 
   // --- Edit / Etapa / Asignar dialogs ---
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editForm, setEditForm] = useState({
-    title: '',
-    amount: 0,
-    expectedCloseDate: '',
-    assignedTo: '',
-  });
 
 
   const [oppTimelineEvents, setOppTimelineEvents] = useState<TimelineEvent[]>([]);
@@ -419,35 +405,26 @@ export default function OportunidadDetailPage() {
 
   function handleOpenEditDialog() {
     if (!opp) return;
-    setEditForm({
-      title: opp.title,
-      amount: opp.amount,
-      expectedCloseDate: opp.expectedCloseDate
-        ? opp.expectedCloseDate.slice(0, 10)
-        : '',
-      assignedTo: opp.assignedTo || activeAdvisors[0]?.id || '',
-    });
     setEditDialogOpen(true);
   }
 
-  function handleSaveEdit() {
+  function handleSaveOppEdit(payload: OpportunityEditSavePayload) {
     if (!opp) return;
     if (fromApi && routeId) {
       void (async () => {
         try {
           const body: Record<string, unknown> = {
-            title: editForm.title.trim(),
-            amount: editForm.amount,
-            expectedCloseDate: editForm.expectedCloseDate || null,
+            title: payload.title.trim(),
+            amount: payload.amount,
+            expectedCloseDate: payload.expectedCloseDate,
           };
-          if (canEditAssignee && editForm.assignedTo) {
-            if (!isLikelyContactCuid(editForm.assignedTo)) {
+          if (canEditAssignee && payload.assignedTo) {
+            if (!isLikelyContactCuid(payload.assignedTo)) {
               toast.error('El asesor seleccionado no es válido.');
               return;
             }
-            body.assignedTo = editForm.assignedTo;
+            body.assignedTo = payload.assignedTo;
           }
-          setEditDialogOpen(false);
           toast.loading('Guardando cambios…', { id: 'save-opp-edit' });
           const updated = await api<ApiOpportunityDetail>(`/opportunities/${routeId}`, {
             method: 'PATCH',
@@ -462,21 +439,20 @@ export default function OportunidadDetailPage() {
       return;
     }
     const assignPatch =
-      canEditAssignee && editForm.assignedTo
+      canEditAssignee && payload.assignedTo
         ? {
-            assignedTo: editForm.assignedTo,
+            assignedTo: payload.assignedTo,
             assignedToName:
-              users.find((u) => u.id === editForm.assignedTo)?.name ?? opp.assignedToName ?? 'Sin asignar',
+              users.find((u) => u.id === payload.assignedTo)?.name ?? opp.assignedToName ?? 'Sin asignar',
           }
         : {};
     updateOpportunity(opp.id, {
-      title: editForm.title,
-      amount: editForm.amount,
-      expectedCloseDate: editForm.expectedCloseDate,
+      title: payload.title,
+      amount: payload.amount,
+      expectedCloseDate: payload.expectedCloseDate ?? '',
       ...assignPatch,
     });
     toast.success('Oportunidad actualizada correctamente');
-    setEditDialogOpen(false);
   }
 
   function handleEtapaChange(newEtapa: string) {
@@ -1115,36 +1091,14 @@ async function handleCreateNewContact(data: NewContactData) {
         </TabsContent>
 
         <TabsContent value="notas" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notas</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Textarea
-                  placeholder="Escribe una nota..."
-                  value={noteText}
-                  onChange={(e) => setNoteText(e.target.value)}
-                  rows={3}
-                />
-                <Button size="sm" onClick={handleAddNote} disabled={!noteText.trim()}>
-                  <Plus className="size-4" /> Agregar nota
-                </Button>
-              </div>
-              <div className="space-y-3">
-                {noteActivities.map((note) => (
-                  <div key={note.id} className="rounded-lg border p-4">
-                    <p className="text-sm">{note.description}</p>
-                    <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="font-medium">{note.assignedToName}</span>
-                      <span>·</span>
-                      <span>{formatDate(note.createdAt || note.dueDate)}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <EntityNotesTab
+            notes={noteActivities}
+            noteText={noteText}
+            onNoteTextChange={setNoteText}
+            onAddNote={handleAddNote}
+            onUpdateActivity={updateActivity}
+            onDeleteActivity={deleteActivity}
+          />
         </TabsContent>
 
         <TabsContent value="tareas" className="mt-4">
@@ -1224,44 +1178,14 @@ async function handleCreateNewContact(data: NewContactData) {
       onLoadMore={fromApi && oppDetailCompanyPickerOptions ? linkCompanyPickerLoadMore : undefined}
     />
 
-    {/* Editar Oportunidad */}
-    <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Editar Oportunidad</DialogTitle>
-          <DialogDescription>Modifica los datos de la oportunidad.</DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-2">
-          <div className="space-y-2">
-            <Label>Nombre *</Label>
-            <Input value={editForm.title} onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))} />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Monto (S/)</Label>
-              <Input type="number" value={editForm.amount} onChange={(e) => setEditForm((f) => ({ ...f, amount: Number(e.target.value) }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Fecha estimada de cierre</Label>
-              <Input type="date" value={editForm.expectedCloseDate} onChange={(e) => setEditForm((f) => ({ ...f, expectedCloseDate: e.target.value }))} />
-            </div>
-          </div>
-          <AssignedAdvisorFormField
-            htmlId="opp-edit-assigned-to"
-            value={editForm.assignedTo}
-            onChange={(assignedTo) => setEditForm((f) => ({ ...f, assignedTo }))}
-            disabled={!canEditAssignee}
-            fallbackName={
-              users.find((u) => u.id === editForm.assignedTo)?.name ?? opp.assignedToName
-            }
-          />
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
-          <Button onClick={handleSaveEdit} disabled={!editForm.title.trim()}>Guardar cambios</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <OpportunityEditDialog
+      opportunity={opp}
+      open={editDialogOpen}
+      onOpenChange={setEditDialogOpen}
+      onSave={handleSaveOppEdit}
+      showAssignedAdvisor
+      allowWithoutApiId={!fromApi}
+    />
 
     </>
   );

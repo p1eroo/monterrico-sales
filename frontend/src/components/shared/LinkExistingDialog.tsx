@@ -39,6 +39,7 @@ interface LinkExistingDialogProps {
   confirmLabel?: string;
   /** p. ej. z-index cuando el diálogo se abre encima de otro modal */
   contentClassName?: string;
+  overlayClassName?: string;
   /** Si true, no filtra en cliente: `items` ya vienen acotados del servidor (p. ej. búsqueda paginada). */
   serverFilteredList?: boolean;
   listLoading?: boolean;
@@ -64,6 +65,7 @@ export function LinkExistingDialog({
   selectionMode = 'multiple',
   confirmLabel = 'Vincular',
   contentClassName,
+  overlayClassName,
   serverFilteredList = false,
   listLoading = false,
   listLoadingMore = false,
@@ -108,7 +110,10 @@ export function LinkExistingDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn('max-w-lg gap-0 p-0', contentClassName)}>
+      <DialogContent
+        overlayClassName={overlayClassName}
+        className={cn('max-w-lg gap-0 p-0', contentClassName)}
+      >
         <DialogHeader className="px-6 pt-6 pb-4">
           <DialogTitle className="flex items-center gap-2 text-left">
             <Link2 className="size-5 text-[#13944C]" />

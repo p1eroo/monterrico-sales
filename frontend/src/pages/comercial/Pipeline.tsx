@@ -73,6 +73,7 @@ import {
   type NewOpportunityFormValues,
 } from "@/components/shared/NewOpportunityFormDialog";
 import { MultiAdvisorFilter } from "@/components/shared/MultiAdvisorFilter";
+import { MultiCheckboxFilterActions } from "@/components/shared/MultiCheckboxFilterActions";
 import { useMultiAdvisorFilter } from "@/hooks/useMultiAdvisorFilter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1638,6 +1639,22 @@ export default function Pipeline() {
                   })}
                 </CommandGroup>
               </CommandList>
+              <MultiCheckboxFilterActions
+                allSelected={
+                  displayColumns.length > 0 &&
+                  displayColumns.every((col) => filters.etapas.includes(col.id))
+                }
+                noneSelected={filters.etapas.length === 0}
+                onSelectAll={() => {
+                  setFilters((f) => ({
+                    ...f,
+                    etapas: displayColumns.map((col) => col.id),
+                  }));
+                }}
+                onClear={() => {
+                  setFilters((f) => ({ ...f, etapas: [] }));
+                }}
+              />
             </Command>
           </PopoverContent>
         </Popover>

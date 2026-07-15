@@ -8,16 +8,27 @@ import {
 import type { ContactPriority, ContactSource } from '@/types';
 import { etapaLabels, contactSourceLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
+import { useAppStore } from '@/store';
+import { canUserReassignCommercialAdvisor, resolveAdvisorAssigneeId } from '@/lib/advisorAssigneeDefaults';
+import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
 import { useCRMStore } from '@/store/crmStore';
 import { useCrmConfigStore, getSourceLabelFromCatalog } from '@/store/crmConfigStore';
 import { getPrimaryCompany, cn } from '@/lib/utils';
 import { LinkExistingDialog, type LinkExistingItem } from '@/components/shared/LinkExistingDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
+  FormDialogActions,
+  FormDialogField,
+  FormDialogFieldError,
+  FormDialogGrid,
+  FormDialogShell,
+  formDialogInputClass,
+  formDialogLinkPickerClass,
+  formDialogSelectTriggerClass,
+  formDialogNestedOverlayClass,
+  formDialogNestedContentClass,
+} from '@/components/ui/form-dialog';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -87,6 +98,8 @@ export function NewOpportunityFormDialog({
 }: NewOpportunityFormDialogProps) {
   const { contacts } = useCRMStore();
   const { activeAdvisors } = useUsers();
+  const currentUser = useAppStore((s) => s.currentUser);
+  const canReassign = canUserReassignCommercialAdvisor(currentUser.role);
   const bundle = useCrmConfigStore((s) => s.bundle);
   const stageOptions = useMemo(() => {
     const st = bundle?.catalog.stages
@@ -172,6 +185,7 @@ export function NewOpportunityFormDialog({
       ...newOpportunityFormDefaults,
       contactId: defaultContactId || '',
       companyId: defaultCompanyId || '',
+      assignedTo: canReassign ? undefined : resolveAdvisorAssigneeId(undefined, currentUser) || undefined,
     });
     setLinkContactSearch('');
     setLinkCompanySearch('');
@@ -179,7 +193,7 @@ export function NewOpportunityFormDialog({
     setLinkCompanySelectedIds([]);
     setPickedContactRow(null);
     setPickedCompanyRow(null);
-  }, [open, defaultContactId, defaultCompanyId, form]);
+  }, [open, defaultContactId, defaultCompanyId, form, canReassign, currentUser.id, currentUser.role]);
 
   const watchContactId = form.watch('contactId');
   const watchCompanyId = form.watch('companyId');
@@ -270,7 +284,8 @@ export function NewOpportunityFormDialog({
         onSearchChange={setLinkContactSearch}
         selectionMode="single"
         confirmLabel="Usar contacto"
-        contentClassName="z-[60]"
+        overlayClassName={formDialogNestedOverlayClass}
+        contentClassName={formDialogNestedContentClass}
         serverFilteredList
         listLoading={contactPickerLoading}
         listLoadingMore={contactPickerLoadingMore}
@@ -300,7 +315,8 @@ export function NewOpportunityFormDialog({
         onSearchChange={setLinkCompanySearch}
         selectionMode="single"
         confirmLabel="Usar empresa"
-        contentClassName="z-[60]"
+        overlayClassName={formDialogNestedOverlayClass}
+        contentClassName={formDialogNestedContentClass}
         serverFilteredList
         listLoading={companyPickerLoading}
         listLoadingMore={companyPickerLoadingMore}
@@ -319,186 +335,148 @@ export function NewOpportunityFormDialog({
         }}
       />
 
-      <Dialog open={open} onOpenChange={handleDialogOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
-            <DialogDescription>{description}</DialogDescription>
-          </DialogHeader>
-          <form
-            onSubmit={form.handleSubmit((d) => void handleSubmit(d))}
-            className="space-y-4"
-          >
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="opp-form-title">Nombre *</Label>
-                <Input id="opp-form-title" {...form.register('title')} placeholder="Ej: Servicio Corporativo Empresa X" />
-                {form.formState.errors.title && (
-                  <p className="text-xs text-destructive">{form.formState.errors.title.message}</p>
-                )}
-              </div>
+      <FormDialogShell
+        open={open}
+        onOpenChange={handleDialogOpenChange}
+        title={title}
+        description={description}
+        footer={(
+          <FormDialogActions
+            submitLabel={submitting ? 'Guardando…' : 'Crear Oportunidad'}
+            submitting={submitting}
+            onCancel={() => handleDialogOpenChange(false)}
+            onSubmit={() => void form.handleSubmit((d) => void handleSubmit(d))()}
+          />
+        )}
+      >
+        <form
+          onSubmit={form.handleSubmit((d) => void handleSubmit(d))}
+          className="space-y-6"
+        >
+          <FormDialogGrid>
+            <FormDialogField label="Nombre" required>
+              <Input id="opp-form-title" className={formDialogInputClass} {...form.register('title')} placeholder="Ej: Servicio Corporativo Empresa X" />
+              <FormDialogFieldError>{form.formState.errors.title?.message}</FormDialogFieldError>
+            </FormDialogField>
 
-              <div className="space-y-2">
-                <Label htmlFor="opp-form-amount">Monto (S/) *</Label>
-                <Input
-                  id="opp-form-amount"
-                  type="number"
-                  {...form.register('amount', { valueAsNumber: true })}
-                  placeholder="0"
-                />
-                {form.formState.errors.amount && (
-                  <p className="text-xs text-destructive">{form.formState.errors.amount.message}</p>
-                )}
-              </div>
+            <FormDialogField label="Monto (S/)" required>
+              <Input id="opp-form-amount" className={formDialogInputClass} type="number" {...form.register('amount', { valueAsNumber: true })} placeholder="0" />
+              <FormDialogFieldError>{form.formState.errors.amount?.message}</FormDialogFieldError>
+            </FormDialogField>
 
-              <div className="space-y-2">
-                <Label>Contacto</Label>
-                <div className="relative">
-                  <Button
+            <FormDialogField label="Contacto" compactControl={false}>
+              <div className="relative">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={lockContactSelection}
+                  className={cn(formDialogLinkPickerClass, !contactLinkedLabel && 'text-muted-foreground', lockContactSelection && 'pr-3')}
+                  onClick={() => {
+                    if (lockContactSelection) return;
+                    setLinkContactSearch('');
+                    setLinkContactSelectedIds(watchContactId ? [watchContactId] : []);
+                    setLinkContactOpen(true);
+                  }}
+                >
+                  <User className="size-4 shrink-0 opacity-60" />
+                  <span className="min-w-0 flex-1 truncate text-left">
+                    {contactLinkedLabel ?? 'Seleccionar contacto…'}
+                  </span>
+                  <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
+                </Button>
+                {watchContactId && !lockContactSelection ? (
+                  <button
                     type="button"
-                    variant="outline"
-                    disabled={lockContactSelection}
-                    className={cn(
-                      'h-10 w-full justify-start gap-2 px-3 pr-14 font-normal',
-                      !contactLinkedLabel && 'text-muted-foreground',
-                    )}
-                    onClick={() => {
-                      if (lockContactSelection) return;
-                      setLinkContactSearch('');
-                      setLinkContactSelectedIds(watchContactId ? [watchContactId] : []);
-                      setLinkContactOpen(true);
+                    className="absolute top-1/2 right-9 z-[1] -translate-y-1/2 rounded-sm p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      form.setValue('contactId', '');
+                      setPickedContactRow(null);
                     }}
+                    aria-label="Quitar contacto"
                   >
-                    <User className="size-4 shrink-0 opacity-60" />
-                    <span className="min-w-0 flex-1 truncate text-left">
-                      {contactLinkedLabel ?? 'Seleccionar contacto…'}
-                    </span>
-                    <ChevronsUpDown className="pointer-events-none absolute right-3 top-1/2 size-4 shrink-0 -translate-y-1/2 opacity-50" />
-                  </Button>
-                  {watchContactId && !lockContactSelection ? (
-                    <button
-                      type="button"
-                      className="absolute right-9 top-1/2 z-[1] -translate-y-1/2 rounded-sm p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        form.setValue('contactId', '');
-                        setPickedContactRow(null);
-                      }}
-                      aria-label="Quitar contacto"
-                    >
-                      <X className="size-4" />
-                    </button>
-                  ) : null}
-                </div>
+                    <X className="size-4" />
+                  </button>
+                ) : null}
               </div>
+            </FormDialogField>
 
-              <div className="space-y-2">
-                <Label>Empresa</Label>
-                <div className="relative">
-                  <Button
+            <FormDialogField label="Empresa" compactControl={false}>
+              <div className="relative">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={lockCompanySelection}
+                  className={cn(formDialogLinkPickerClass, !companyLinkedLabel && 'text-muted-foreground', lockCompanySelection && 'pr-3')}
+                  onClick={() => {
+                    if (lockCompanySelection) return;
+                    setLinkCompanySearch('');
+                    setLinkCompanySelectedIds(watchCompanyId ? [watchCompanyId] : []);
+                    setLinkCompanyOpen(true);
+                  }}
+                >
+                  <Building2 className="size-4 shrink-0 opacity-60" />
+                  <span className="min-w-0 flex-1 truncate text-left">
+                    {companyLinkedLabel ?? 'Seleccionar empresa…'}
+                  </span>
+                  <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
+                </Button>
+                {watchCompanyId && !lockCompanySelection ? (
+                  <button
                     type="button"
-                    variant="outline"
-                    disabled={lockCompanySelection}
-                    className={cn(
-                      'h-10 w-full justify-start gap-2 px-3 pr-14 font-normal',
-                      !companyLinkedLabel && 'text-muted-foreground',
-                    )}
-                    onClick={() => {
-                      if (lockCompanySelection) return;
-                      setLinkCompanySearch('');
-                      setLinkCompanySelectedIds(watchCompanyId ? [watchCompanyId] : []);
-                      setLinkCompanyOpen(true);
+                    className="absolute top-1/2 right-9 z-[1] -translate-y-1/2 rounded-sm p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      form.setValue('companyId', '');
+                      setPickedCompanyRow(null);
                     }}
+                    aria-label="Quitar empresa"
                   >
-                    <Building2 className="size-4 shrink-0 opacity-60" />
-                    <span className="min-w-0 flex-1 truncate text-left">
-                      {companyLinkedLabel ?? 'Seleccionar empresa…'}
-                    </span>
-                    <ChevronsUpDown className="pointer-events-none absolute right-3 top-1/2 size-4 shrink-0 -translate-y-1/2 opacity-50" />
-                  </Button>
-                  {watchCompanyId && !lockCompanySelection ? (
-                    <button
-                      type="button"
-                      className="absolute right-9 top-1/2 z-[1] -translate-y-1/2 rounded-sm p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        form.setValue('companyId', '');
-                        setPickedCompanyRow(null);
-                      }}
-                      aria-label="Quitar empresa"
-                    >
-                      <X className="size-4" />
-                    </button>
-                  ) : null}
-                </div>
+                    <X className="size-4" />
+                  </button>
+                ) : null}
               </div>
+            </FormDialogField>
 
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label>Fuente</Label>
-                <p className="rounded-md border border-dashed bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-                  {fuentePreviewLabel}
-                </p>
-              </div>
+            <FormDialogField label="Fuente" className="sm:col-span-2" compactControl={false}>
+              <p className="rounded-lg border border-dashed border-slate-300/80 bg-muted/30 px-3 py-2.5 text-sm text-muted-foreground">
+                {fuentePreviewLabel}
+              </p>
+            </FormDialogField>
 
-              <div className="space-y-2">
-                <Label>Prioridad *</Label>
-                <Select
-                  value={form.watch('priority')}
-                  onValueChange={(v) => form.setValue('priority', v as ContactPriority)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="baja">Baja</SelectItem>
-                    <SelectItem value="media">Media</SelectItem>
-                    <SelectItem value="alta">Alta</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <FormDialogField label="Prioridad" required>
+              <Select value={form.watch('priority')} onValueChange={(v) => form.setValue('priority', v as ContactPriority)}>
+                <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="baja">Baja</SelectItem>
+                  <SelectItem value="media">Media</SelectItem>
+                  <SelectItem value="alta">Alta</SelectItem>
+                </SelectContent>
+              </Select>
+            </FormDialogField>
 
-              <div className="space-y-2">
-                <Label htmlFor="opp-form-close">Fecha estimada de cierre *</Label>
-                <Input
-                  id="opp-form-close"
-                  type="date"
-                  {...form.register('expectedCloseDate')}
-                />
-                {form.formState.errors.expectedCloseDate && (
-                  <p className="text-xs text-destructive">{form.formState.errors.expectedCloseDate.message}</p>
-                )}
-              </div>
+            <FormDialogField label="Fecha estimada de cierre" required>
+              <Input id="opp-form-close" className={formDialogInputClass} type="date" {...form.register('expectedCloseDate')} />
+              <FormDialogFieldError>{form.formState.errors.expectedCloseDate?.message}</FormDialogFieldError>
+            </FormDialogField>
 
-              <div className="space-y-2">
-                <Label>Etapa * (define probabilidad)</Label>
-                <Select
-                  value={form.watch('etapa')}
-                  onValueChange={(v) => form.setValue('etapa', v)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stageOptions.map(({ value, label }) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <FormDialogField label="Etapa" required hint="Define probabilidad">
+              <Select value={form.watch('etapa')} onValueChange={(v) => form.setValue('etapa', v)}>
+                <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {stageOptions.map(({ value, label }) => (
+                    <SelectItem key={value} value={value}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormDialogField>
 
-              <div className="space-y-2">
-                <Label>Asesor (servidor)</Label>
-                <Select
-                  value={form.watch('assignedTo') ?? 'none'}
-                  onValueChange={(v) => form.setValue('assignedTo', v === 'none' ? undefined : v)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Sin asignar en servidor" />
-                  </SelectTrigger>
+            {canReassign ? (
+              <FormDialogField label="Asesor (servidor)">
+                <Select value={form.watch('assignedTo') ?? 'none'} onValueChange={(v) => form.setValue('assignedTo', v === 'none' ? undefined : v)}>
+                  <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue placeholder="Sin asignar en servidor" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Sin asignar en servidor</SelectItem>
                     {activeAdvisors.map((u) => (
@@ -506,19 +484,21 @@ export function NewOpportunityFormDialog({
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => handleDialogOpenChange(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={submitting}>
-                {submitting ? 'Guardando…' : 'Crear Oportunidad'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+              </FormDialogField>
+            ) : (
+              <AssignedAdvisorFormField
+                htmlId="opp-form-assigned-to"
+                value={form.watch('assignedTo') ?? ''}
+                onChange={(v) => form.setValue('assignedTo', v)}
+                disabled
+                fallbackName={currentUser.name}
+                label="Asesor (servidor)"
+                formStyle
+              />
+            )}
+          </FormDialogGrid>
+        </form>
+      </FormDialogShell>
     </>
   );
 }

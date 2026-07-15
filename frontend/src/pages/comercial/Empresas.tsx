@@ -28,6 +28,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { ImportInProgressDialog } from '@/components/shared/ImportInProgressDialog';
 import { Pagination } from '@/components/shared/Pagination';
 import { MultiAdvisorFilter } from '@/components/shared/MultiAdvisorFilter';
+import { MultiCheckboxFilterActions } from '@/components/shared/MultiCheckboxFilterActions';
 import { useMultiAdvisorFilter } from '@/hooks/useMultiAdvisorFilter';
 import { CompanyEditDialog, type CompanyEditSavePayload } from '@/components/shared/CompanyEditDialog';
 import { CompanyPreviewSheet } from '@/components/shared/CompanyPreviewSheet';
@@ -74,6 +75,8 @@ import {
   toggleInclusiveMultiFilter,
   formatInclusiveMultiFilterLabel,
   isInclusiveMultiFilterNone,
+  isInclusiveMultiFilterAll,
+  INCLUSIVE_MULTI_NONE,
   inclusiveMultiSourceFilterToApiParam,
   formatInclusiveMultiSourceFilterLabel,
 } from '@/lib/comercialFilterSurface';
@@ -1624,6 +1627,18 @@ export default function EmpresasPage() {
                   })}
                 </CommandGroup>
               </CommandList>
+              <MultiCheckboxFilterActions
+                allSelected={isInclusiveMultiFilterAll(etapaFilter)}
+                noneSelected={isInclusiveMultiFilterNone(etapaFilter)}
+                onSelectAll={() => {
+                  setEtapaFilter([]);
+                  setPage(1);
+                }}
+                onClear={() => {
+                  setEtapaFilter([INCLUSIVE_MULTI_NONE]);
+                  setPage(1);
+                }}
+              />
             </Command>
           </PopoverContent>
         </Popover>
@@ -1675,6 +1690,18 @@ export default function EmpresasPage() {
                   })}
                 </CommandGroup>
               </CommandList>
+              <MultiCheckboxFilterActions
+                allSelected={isInclusiveMultiFilterAll(rubroFilter)}
+                noneSelected={isInclusiveMultiFilterNone(rubroFilter)}
+                onSelectAll={() => {
+                  setRubroFilter([]);
+                  setPage(1);
+                }}
+                onClear={() => {
+                  setRubroFilter([INCLUSIVE_MULTI_NONE]);
+                  setPage(1);
+                }}
+              />
             </Command>
           </PopoverContent>
         </Popover>
@@ -1799,6 +1826,18 @@ export default function EmpresasPage() {
                           })}
                         </CommandGroup>
                       </CommandList>
+                      <MultiCheckboxFilterActions
+                        allSelected={isInclusiveMultiFilterAll(sourceFilter)}
+                        noneSelected={isInclusiveMultiFilterNone(sourceFilter)}
+                        onSelectAll={() => {
+                          setSourceFilter([]);
+                          setPage(1);
+                        }}
+                        onClear={() => {
+                          setSourceFilter([INCLUSIVE_MULTI_NONE]);
+                          setPage(1);
+                        }}
+                      />
                     </Command>
                   </PopoverContent>
                 </Popover>
@@ -1849,6 +1888,18 @@ export default function EmpresasPage() {
                           })}
                         </CommandGroup>
                       </CommandList>
+                      <MultiCheckboxFilterActions
+                        allSelected={isInclusiveMultiFilterAll(tipoFilter)}
+                        noneSelected={isInclusiveMultiFilterNone(tipoFilter)}
+                        onSelectAll={() => {
+                          setTipoFilter([]);
+                          setPage(1);
+                        }}
+                        onClear={() => {
+                          setTipoFilter([INCLUSIVE_MULTI_NONE]);
+                          setPage(1);
+                        }}
+                      />
                     </Command>
                   </PopoverContent>
                 </Popover>

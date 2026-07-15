@@ -2,7 +2,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   Building2, Users, DollarSign, Globe, Briefcase,
-  Phone, Plus, FileArchive, Loader2,
+  Phone, FileArchive, Loader2,
   MapPin, Mail, Linkedin, ChevronLeft, ChevronRight,
   FileText, Hash, Tag, User, CalendarDays, RefreshCw,
 } from 'lucide-react';
@@ -23,6 +23,7 @@ import { DetailLayout } from '@/components/shared/DetailLayout';
 import { EntityInfoCard } from '@/components/shared/EntityInfoCard';
 import { TimelinePanel } from '@/components/shared/TimelinePanel';
 import { ActivityPanel } from '@/components/shared/ActivityPanel';
+import { EntityNotesTab } from '@/components/shared/EntityNotesTab';
 import { QuickActionsWithDialogs, type QuickActivityDraft } from '@/components/shared/QuickActionsWithDialogs';
 import { LinkedOpportunitiesCard } from '@/components/shared/LinkedOpportunitiesCard';
 import { LinkedContactsCard } from '@/components/shared/LinkedContactsCard';
@@ -35,22 +36,13 @@ import { LinkExistingDialog, type LinkExistingItem } from '@/components/shared/L
 import { NewContactWizard } from '@/components/shared/NewContactWizard';
 import type { NewContactData } from '@/components/shared/NewContactWizard';
 import { TasksTab, type TasksTabHandle } from '@/components/shared/TasksTab';
-import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
+import { CompanyEditDialog, type CompanyEditSavePayload, type CompanyEditSummaryRow } from '@/components/shared/CompanyEditDialog';
 import { EntityFilesTab } from '@/components/files';
 import { CompanyHeader } from '@/components/company-detail/CompanyHeader';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { taskAssociationsFromActivity } from '@/lib/taskAssociationsFromActivity';
@@ -88,7 +80,7 @@ import {
 import { buildOptimisticContact } from '@/lib/optimisticEntities';
 import { generateOptimisticId, useOptimisticCrmStore } from '@/store/optimisticCrmStore';
 import { useStageBadgeTone } from '@/hooks/useStageBadgeTone';
-import { useCrmConfigStore, getStageLabelFromCatalog, getSourceLabelFromCatalog, useLeadSourceOptions } from '@/store/crmConfigStore';
+import { useCrmConfigStore, getStageLabelFromCatalog, getSourceLabelFromCatalog } from '@/store/crmConfigStore';
 import { getHighestPriorityOpportunityEtapa } from '@/lib/opportunityUtils';
 
 const TIMELINE_PAGE_SIZE = 8;
@@ -118,7 +110,6 @@ export default function EmpresaDetailPage() {
   const [apiLoading, setApiLoading] = useState(fromApiById);
   const { users, activeAdvisors } = useUsers();
   const crmBundle = useCrmConfigStore((s) => s.bundle);
-  const leadSourceOptions = useLeadSourceOptions();
   const currentUserRole = useAppStore((s) => s.currentUser.role ?? '');
   const canEditAssignee = canReassignCommercialAdvisor(currentUserRole);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -608,10 +599,46 @@ export default function EmpresaDetailPage() {
       /* handleQuickActivityCreated ya notifica el error */
     }
   }
-  const [editForm, setEditForm] = useState({
-    name: '', domain: '', telefono: '', rubro: '' as CompanyRubro | '', tipo: '' as CompanyTipo | '', assignedTo: '',
-    ruc: '', razonSocial: '', fuente: 'base' as ContactSource,
-  });
+  const companyEditRow = useMemo((): CompanyEditSummaryRow | null => {
+    if (!editDialogOpen) return null;
+    if (fromApiById && apiRecord) {
+      return {
+        id: apiRecord.id,
+        name: apiRecord.name,
+        rubro: apiRecord.rubro,
+        tipo: apiRecord.tipo,
+        fuente: apiRecord.fuente,
+      };
+    }
+    if (standaloneCompany) {
+      return {
+        id: standaloneCompany.id,
+        name: standaloneCompany.name,
+        isLocalOnly: true,
+        rubro: standaloneCompany.rubro,
+        tipo: standaloneCompany.tipo,
+      };
+    }
+    if (companyName) {
+      return {
+        id: typeof resolvedCompanyId === 'string' ? resolvedCompanyId : companyName,
+        name: companyName,
+        rubro: companyData?.rubro,
+        tipo: companyData?.tipo,
+        fuente: firstContact?.fuente,
+      };
+    }
+    return null;
+  }, [
+    editDialogOpen,
+    fromApiById,
+    apiRecord,
+    standaloneCompany,
+    companyName,
+    resolvedCompanyId,
+    companyData,
+    firstContact,
+  ]);
 
 
   const [companyTimelineEvents, setCompanyTimelineEvents] = useState<TimelineEvent[]>([]);
@@ -669,49 +696,30 @@ export default function EmpresaDetailPage() {
   }, [timelinePage, totalTimelinePages]);
 
   function handleOpenEditDialog() {
-    const tel = (fromApiById && apiRecord?.telefono) ? (apiRecord.telefono ?? '') : '';
-    const assignedToInit =
-      (fromApiById ? (apiRecord?.assignedTo ?? '') : (firstContact?.assignedTo ?? '')) ||
-      activeAdvisors[0]?.id ||
-      '';
-    setEditForm({
-      name: companyData?.name ?? companyName,
-      domain: companyData?.domain ?? '',
-      telefono: tel,
-      rubro: companyData?.rubro ?? '',
-      tipo: companyData?.tipo ?? '',
-      assignedTo: assignedToInit,
-      ruc: (fromApiById && apiRecord?.ruc) ? apiRecord.ruc : '',
-      razonSocial: (fromApiById && apiRecord?.razonSocial) ? apiRecord.razonSocial : '',
-      fuente: (fromApiById && apiRecord?.fuente
-        ? apiRecord.fuente
-        : firstContact?.fuente) as ContactSource || 'base',
-    });
     setEditDialogOpen(true);
   }
 
-  function handleSaveEdit() {
+  function handleSaveCompanyEdit(payload: CompanyEditSavePayload) {
     if (fromApiById && apiRecord) {
       void (async () => {
-        setEditDialogOpen(false);
         toast.loading('Guardando cambios…', { id: `edit-company-${apiRecord.id}` });
         try {
           const body: Record<string, unknown> = {
-            name: editForm.name.trim(),
-            domain: editForm.domain?.trim() || undefined,
-            telefono: editForm.telefono?.trim() || undefined,
-            rubro: editForm.rubro || undefined,
-            tipo: editForm.tipo || undefined,
-            ruc: editForm.ruc?.trim() || undefined,
-            razonSocial: editForm.razonSocial?.trim() || undefined,
-            fuente: editForm.fuente || undefined,
+            name: payload.name.trim(),
+            domain: payload.domain?.trim() || undefined,
+            telefono: payload.telefono?.trim() || undefined,
+            rubro: payload.rubro || undefined,
+            tipo: payload.tipo || undefined,
+            ruc: payload.ruc?.trim() || undefined,
+            razonSocial: payload.razonSocial?.trim() || undefined,
+            fuente: payload.fuente || undefined,
           };
-          if (canEditAssignee && showAdvisorInCompanyEdit && editForm.assignedTo) {
-            if (!isLikelyContactCuid(editForm.assignedTo)) {
+          if (canEditAssignee && showAdvisorInCompanyEdit && payload.assignedTo) {
+            if (!isLikelyContactCuid(payload.assignedTo)) {
               toast.error('El asesor seleccionado no es válido.', { id: `edit-company-${apiRecord.id}` });
               return;
             }
-            body.assignedTo = editForm.assignedTo;
+            body.assignedTo = payload.assignedTo;
           }
           const row = await api<ApiCompanyRecord>(`/companies/${apiRecord.id}`, {
             method: 'PATCH',
@@ -733,34 +741,39 @@ export default function EmpresaDetailPage() {
     }
     if (isStandalone && standaloneCompany) {
       updateCompany(standaloneCompany.id, {
-        name: editForm.name,
-        domain: editForm.domain || undefined,
-        rubro: (editForm.rubro || undefined) as CompanyRubro | undefined,
-        tipo: (editForm.tipo || undefined) as CompanyTipo | undefined,
+        name: payload.name,
+        domain: payload.domain || undefined,
+        rubro: (payload.rubro || undefined) as CompanyRubro | undefined,
+        tipo: (payload.tipo || undefined) as CompanyTipo | undefined,
       });
     } else {
       for (const contact of companyContacts) {
         const updatedCompanies = (contact.companies ?? []).map((c) => {
           if (c.name.trim().toLowerCase() === companyName.trim().toLowerCase()) {
-            return { ...c, name: editForm.name, domain: editForm.domain || undefined, rubro: (editForm.rubro || undefined) as CompanyRubro | undefined, tipo: (editForm.tipo || undefined) as CompanyTipo | undefined };
+            return {
+              ...c,
+              name: payload.name,
+              domain: payload.domain || undefined,
+              rubro: (payload.rubro || undefined) as CompanyRubro | undefined,
+              tipo: (payload.tipo || undefined) as CompanyTipo | undefined,
+            };
           }
           return c;
         });
         const assignPatch =
-          canEditAssignee && showAdvisorInCompanyEdit && editForm.assignedTo
+          canEditAssignee && showAdvisorInCompanyEdit && payload.assignedTo
             ? {
-                assignedTo: editForm.assignedTo,
+                assignedTo: payload.assignedTo,
                 assignedToName:
-                  users.find((u) => u.id === editForm.assignedTo)?.name ?? 'Sin asignar',
+                  users.find((u) => u.id === payload.assignedTo)?.name ?? 'Sin asignar',
               }
             : {};
         updateContact(contact.id, { companies: updatedCompanies, ...assignPatch });
       }
     }
     toast.success('Empresa actualizada correctamente');
-    setEditDialogOpen(false);
-    if (editForm.name !== companyName) {
-      navigate(`/empresas/${encodeURIComponent(editForm.name)}`, { replace: true });
+    if (payload.name !== companyName) {
+      navigate(`/empresas/${encodeURIComponent(payload.name)}`, { replace: true });
     }
   }
 
@@ -1535,37 +1548,15 @@ return (
           />
         </TabsContent>
 
-<TabsContent value="notas" className="mt-4">
-  <Card>
-    <CardHeader className="pb-2">
-      <CardTitle className="text-base">Notas</CardTitle>
-    </CardHeader>
-    <CardContent className="space-y-3 p-3 sm:p-5 sm:space-y-4">
-              <div className="space-y-2">
-                <Textarea
-                  placeholder="Escribe una nota..."
-                  value={noteText}
-                  onChange={(e) => setNoteText(e.target.value)}
-                  rows={3}
-                />
-                <Button size="sm" onClick={handleAddNote} disabled={!noteText.trim()}>
-                  <Plus className="size-4" /> Agregar nota
-                </Button>
-              </div>
-              <div className="space-y-3">
-                {noteActivities.map((note) => (
-                  <div key={note.id} className="rounded-lg border p-4">
-                    <p className="text-sm">{note.description}</p>
-                    <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="font-medium">{note.assignedToName}</span>
-                      <span>·</span>
-                      <span>{formatDate(note.createdAt || note.dueDate)}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="notas" className="mt-4">
+          <EntityNotesTab
+            notes={noteActivities}
+            noteText={noteText}
+            onNoteTextChange={setNoteText}
+            onAddNote={handleAddNote}
+            onUpdateActivity={updateActivity}
+            onDeleteActivity={deleteActivity}
+          />
         </TabsContent>
 
         <TabsContent value="tareas" className="mt-4">
@@ -1657,102 +1648,12 @@ return (
       onLoadMore={fromApiById && contactLinkPickerOptions ? linkContactPickerLoadMore : undefined}
     />
 
-    {/* Editar Empresa */}
-    <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Editar Empresa</DialogTitle>
-          <DialogDescription>Modifica los datos de la empresa.</DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-2">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>RUC</Label>
-              <Input placeholder="20XXXXXXXX" value={editForm.ruc} onChange={(e) => setEditForm((f) => ({ ...f, ruc: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Razón Social</Label>
-              <Input placeholder="Razón social" value={editForm.razonSocial} onChange={(e) => setEditForm((f) => ({ ...f, razonSocial: e.target.value }))} />
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Nombre de la empresa *</Label>
-              <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Dominio web</Label>
-              <Input placeholder="empresa.com" value={editForm.domain} onChange={(e) => setEditForm((f) => ({ ...f, domain: e.target.value }))} />
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Teléfono</Label>
-              <Input placeholder="+51 999 999 999" value={editForm.telefono} onChange={(e) => setEditForm((f) => ({ ...f, telefono: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Rubro</Label>
-              <Select value={editForm.rubro} onValueChange={(v) => setEditForm((f) => ({ ...f, rubro: v as CompanyRubro }))}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(companyRubroLabels).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Tipo</Label>
-              <Select value={editForm.tipo} onValueChange={(v) => setEditForm((f) => ({ ...f, tipo: v as CompanyTipo }))}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(companyTipoLabels).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>Tipo {label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {showAdvisorInCompanyEdit ? (
-              <AssignedAdvisorFormField
-                htmlId="company-edit-assigned-to"
-                value={editForm.assignedTo}
-                onChange={(assignedTo) => setEditForm((f) => ({ ...f, assignedTo }))}
-                disabled={!canEditAssignee}
-                fallbackName={
-                  users.find((u) => u.id === editForm.assignedTo)?.name ??
-                  apiRecord?.user?.name ??
-                  firstContact?.assignedToName
-                }
-              />
-            ) : <div />}
-          </div>
-          <div className="space-y-2">
-            <Label>Fuente</Label>
-            <Select
-              value={editForm.fuente}
-              onValueChange={(v) => setEditForm((f) => ({ ...f, fuente: v as ContactSource }))}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Seleccionar" />
-              </SelectTrigger>
-              <SelectContent>
-                {leadSourceOptions.map(({ value: key, label }) => (
-                  <SelectItem key={key} value={key}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
-          <Button onClick={handleSaveEdit} disabled={!editForm.name.trim()}>Guardar cambios</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <CompanyEditDialog
+      row={companyEditRow}
+      open={editDialogOpen}
+      onOpenChange={setEditDialogOpen}
+      onSave={handleSaveCompanyEdit}
+    />
 
     </>
   );

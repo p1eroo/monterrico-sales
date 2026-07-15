@@ -12,6 +12,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { UserHandIcon } from '@/components/icons/UserHandIcon';
+import { MultiCheckboxFilterActions } from '@/components/shared/MultiCheckboxFilterActions';
 import {
   comercialProCommandClass,
   comercialProPopoverClass,
@@ -46,6 +47,13 @@ export function MultiOperadorFilter({
       value.includes(name) ? value.filter((n) => n !== name) : [...value, name],
     );
   };
+
+  const allSelected =
+    isInitialized &&
+    operadores.length > 0 &&
+    operadores.every((name) => value.includes(name));
+
+  const noneSelected = isInitialized && value.length === 0;
 
   return (
     <Popover>
@@ -101,6 +109,14 @@ export function MultiOperadorFilter({
               )}
             </CommandGroup>
           </CommandList>
+          {operadores.length > 0 && (
+            <MultiCheckboxFilterActions
+              allSelected={allSelected}
+              noneSelected={noneSelected}
+              onSelectAll={() => onChange([...operadores])}
+              onClear={() => onChange([])}
+            />
+          )}
         </Command>
       </PopoverContent>
     </Popover>

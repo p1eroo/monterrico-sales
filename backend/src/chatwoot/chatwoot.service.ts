@@ -709,6 +709,7 @@ export class ChatwootService {
     templateParams?: Record<string, unknown>;
     skipTemplate?: boolean;
     operador?: string;
+    sender?: { userId: string; name: string };
   }): Promise<{ conversationId: number; contactId: number; isNew: boolean }> {
     this.logger.log(`initiateConversation: ${data.name} ${data.phone} contactId=${data.contactId ?? '—'} skipTemplate=${data.skipTemplate}`);
 
@@ -802,7 +803,7 @@ export class ChatwootService {
       this.logger.log(`Conversación creada: id=${conversation.id}`);
     }
 
-    // Vincular prospecto con la conversación y sincronizar operador ↔ agente
+    // Vincular prospecto con la conversación
     if (conversation) {
       try {
         const prospecto = await this.prisma.flotaProspecto.findFirst({
@@ -821,22 +822,14 @@ export class ChatwootService {
               chatwootContactId: contactId ?? prospecto.chatwootContactId,
             },
           });
-          if (data.operador) {
-            await this.operadorSync.syncAssigneeFromOperador(prospecto.id, data.operador);
-          }
-        } else if (data.operador) {
-          const agent = await this.operadorSync.findAgentForOperador(data.operador);
-          if (agent) {
-            await this.client.assignConversation(conversation.id, agent.id);
-            this.logger.log(`Conversación asignada a agente: ${agent.name} (id=${agent.id})`);
-          }
         }
       } catch (e) {
-        this.logger.warn(`Error sincronizando operador/agente: ${e instanceof Error ? e.message : e}`);
+        this.logger.warn(`Error vinculando prospecto/conversación: ${e instanceof Error ? e.message : e}`);
       }
     }
 
     // 5. Enviar template a la conversación solo si no se salta
+    let templateSent = false;
     if (!data.skipTemplate && data.templateName && data.templateCategory) {
       this.logger.log(`Enviando template a conversation ${conversation.id}`);
       try {
@@ -847,10 +840,26 @@ export class ChatwootService {
           language: data.templateLanguage ?? 'es_PE',
           processed_params: data.templateParams ?? {},
         });
+        templateSent = true;
         this.logger.log(`Template enviado a conversation ${conversation.id}`);
       } catch (e) {
         this.logger.error(`Error al enviar template: ${e instanceof Error ? e.message : e}`);
         throw e;
+      }
+    }
+
+    if (templateSent && data.sender) {
+      const prospecto = await this.operadorSync.findProspectoForConversation(
+        conversation.id,
+        data.phone,
+      );
+      if (prospecto) {
+        await this.operadorSync.assignOnFirstOutbound({
+          prospectoId: prospecto.id,
+          conversationId: conversation.id,
+          senderUserId: data.sender.userId,
+          senderUserName: data.sender.name,
+        });
       }
     }
 

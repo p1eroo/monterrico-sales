@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useCrmConfigStore, getLeadSourceOptionsFromCatalog } from '@/store/crmConfigStore';
 import { toast } from 'sonner';
-import { Check, ChevronLeft, ChevronRight, Building2, Link2, Briefcase, Search, ChevronDown } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Building2, Link2, Briefcase, Search, ChevronDown, Loader2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { Etapa, ContactSource } from '@/types';
 import { contactSourceLabels, etapaLabels } from '@/data/mock';
-import { useUsers } from '@/hooks/useUsers';
 import { useAppStore } from '@/store';
+import { canUserReassignCommercialAdvisor, resolveAdvisorAssigneeId } from '@/lib/advisorAssigneeDefaults';
+import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
 import { companyListAll, type ApiCompanyRecord } from '@/lib/companyApi';
 import { opportunityListAll, type ApiOpportunityListRow } from '@/lib/opportunityApi';
 
@@ -14,8 +15,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
+  FormDialogShell,
+  FormDialogWizardFooter,
+  formDialogInputClass,
+  formDialogPickerTriggerClass,
+  formDialogPopoverContentClass,
+  formDialogSelectTriggerClass,
+} from '@/components/ui/form-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -108,7 +115,9 @@ export function NewContactWizard({
   const [phone, setPhone] = useState(defaultValues?.phone ?? '');
   const [email, setEmail] = useState(defaultValues?.email ?? '');
   const [source, setSource] = useState<ContactSource>(defaultValues?.source ?? 'base');
-  const [assignedTo, setAssignedTo] = useState(defaultValues?.assignedTo ?? useAppStore.getState().currentUser?.id ?? '');
+  const [assignedTo, setAssignedTo] = useState(() =>
+    resolveAdvisorAssigneeId(defaultValues?.assignedTo, useAppStore.getState().currentUser),
+  );
   const [clienteRecuperado, setClienteRecuperado] = useState<'si' | 'no'>(defaultValues?.clienteRecuperado ?? 'no');
   const [departamento, setDepartamento] = useState(defaultValues?.departamento ?? '');
   const [provincia, setProvincia] = useState(defaultValues?.provincia ?? '');
@@ -121,21 +130,12 @@ export function NewContactWizard({
   );
   const [assocSearch, setAssocSearch] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const assocPickerRef = useRef<HTMLDivElement>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(defaultCompanyId ?? null);
   const [selectedOpportunityIds, setSelectedOpportunityIds] = useState<string[]>(defaultOpportunityIds);
-  const { activeAdvisors } = useUsers();
   const currentUser = useAppStore((s) => s.currentUser);
+  const canReassign = canUserReassignCommercialAdvisor(currentUser.role);
   const currentUserRef = useRef(currentUser);
   currentUserRef.current = currentUser;
-  const advisorOptions = useMemo(() => {
-    if (!currentUser?.id) return activeAdvisors;
-    if (activeAdvisors.some((u) => u.id === currentUser.id)) return activeAdvisors;
-    return [
-      { id: currentUser.id, name: currentUser.name, status: 'activo' as const, role: 'asesor' as const },
-      ...activeAdvisors,
-    ];
-  }, [activeAdvisors, currentUser]);
   const bundle = useCrmConfigStore((s) => s.bundle);
 
   const stageOptions = useMemo(() => {
@@ -173,7 +173,7 @@ export function NewContactWizard({
     setEmail(d?.email ?? '');
     setSource(d?.source ?? 'base');
     const cu = currentUserRef.current;
-    setAssignedTo(d?.assignedTo ?? cu?.id ?? '');
+    setAssignedTo(resolveAdvisorAssigneeId(d?.assignedTo, cu));
     setClienteRecuperado(d?.clienteRecuperado ?? 'no');
     setDepartamento(d?.departamento ?? '');
     setProvincia(d?.provincia ?? '');
@@ -220,25 +220,6 @@ export function NewContactWizard({
 
   const assocCompanyCount = apiCompanies.length;
   const assocOppCount = apiOpportunities.length;
-
-  useEffect(() => {
-    if (!assocPanelOpen) return;
-    function onMouseDown(e: MouseEvent) {
-      const root = assocPickerRef.current;
-      if (root && !root.contains(e.target as Node)) {
-        setAssocPanelOpen(false);
-      }
-    }
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') setAssocPanelOpen(false);
-    }
-    document.addEventListener('mousedown', onMouseDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', onMouseDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [assocPanelOpen]);
 
 function handleCompanyWizardSubmit(
     data: NewCompanyData,
@@ -354,13 +335,26 @@ return () => {
 
   return (
     <>
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-
+    <FormDialogShell
+      open={open}
+      onOpenChange={handleOpenChange}
+      title={title}
+      description={description}
+      footer={(
+        <FormDialogWizardFooter
+          showBack={step > 0}
+          onBack={() => setStep((s) => s - 1)}
+          onCancel={() => handleOpenChange(false)}
+          submitting={submitting}
+          primaryDisabled={step === 2 ? !name.trim() || !company.trim() : false}
+          onPrimary={step < 2 ? handleNext : handleSubmit}
+          primaryLabel={step < 2 ? (
+            <>Siguiente <ChevronRight className="size-4" /></>
+          ) : submitLabel}
+          primaryIcon={step === 2 && submitting ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden /> : undefined}
+        />
+      )}
+    >
         <div className="flex items-center justify-center gap-0 py-2">
           {WIZARD_STEPS.map((s, i) => (
             <div key={s.label} className="flex items-center">
@@ -394,11 +388,11 @@ return () => {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Nombre completo *</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre del contacto" />
+                <Input className={formDialogInputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre del contacto" />
               </div>
               <div className="space-y-2">
                 <Label>Cargo</Label>
-                <Input value={cargo} onChange={(e) => setCargo(e.target.value)} placeholder="Ej: Gerente de Compras" />
+                <Input className={formDialogInputClass} value={cargo} onChange={(e) => setCargo(e.target.value)} placeholder="Ej: Gerente de Compras" />
               </div>
 <div className="space-y-2 sm:col-span-2">
   <div className="flex items-center justify-between">
@@ -424,7 +418,7 @@ return () => {
             className="flex items-center gap-1 rounded-md border border-input bg-muted/60 px-2 py-1 text-xs"
           >
             <Building2 className="size-3" />
-            <span className="truncate max-w-[120px]">{label}</span>
+            <span className="truncate max-w-[200px]">{label}</span>
             {!lockCompanySelection && (
               <button
                 type="button"
@@ -446,7 +440,7 @@ return () => {
             className="flex items-center gap-1 rounded-md border border-input bg-muted/60 px-2 py-1 text-xs"
           >
             <Briefcase className="size-3" />
-            <span className="truncate max-w-[120px]">{label}</span>
+            <span className="truncate max-w-[200px]">{label}</span>
             <button
               type="button"
               className="ml-0.5 rounded-sm hover:bg-muted p-0.5"
@@ -460,20 +454,25 @@ return () => {
     </div>
   )}
 
-<div className="relative" ref={assocPickerRef}>
-  <Button
-    type="button"
-    variant="outline"
-    size="sm"
-    className="w-full justify-between text-muted-foreground font-normal"
-    onClick={() => setAssocPanelOpen((v) => !v)}
-  >
-    Buscar asociaciones
-    <ChevronDown className={`size-4 transition-transform ${assocPanelOpen ? 'rotate-180' : ''}`} />
-  </Button>
-
-  {assocPanelOpen && (
-    <div className="absolute z-[60] mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
+  <Popover open={assocPanelOpen} onOpenChange={setAssocPanelOpen} modal={false}>
+    <PopoverTrigger asChild>
+      <Button
+        type="button"
+        variant="outline"
+        className={formDialogPickerTriggerClass}
+      >
+        Buscar asociaciones
+        <ChevronDown className={`size-4 text-muted-foreground transition-transform ${assocPanelOpen ? 'rotate-180' : ''}`} />
+      </Button>
+    </PopoverTrigger>
+    <PopoverContent
+      align="start"
+      side="bottom"
+      sideOffset={8}
+      collisionPadding={16}
+      className={formDialogPopoverContentClass}
+      onOpenAutoFocus={(e) => e.preventDefault()}
+    >
       <div className="flex shrink-0 border-b">
         {(lockCompanySelection ? (['oportunidades'] as const) : (['empresas', 'oportunidades'] as const)).map((cat) => (
           <button
@@ -502,7 +501,7 @@ return () => {
           />
         </div>
 
-        <div className="max-h-36 overflow-y-auto overscroll-contain touch-pan-y space-y-0.5 [scrollbar-gutter:stable]">
+        <div className="max-h-52 overflow-y-auto overscroll-contain touch-pan-y space-y-0.5 [scrollbar-gutter:stable]">
           {!lockCompanySelection && assocCategory === 'empresas' &&
             apiCompanies
               .filter((c) => c.name.toLowerCase().includes(assocSearch.toLowerCase()))
@@ -561,14 +560,13 @@ return () => {
               })}
         </div>
       </div>
-    </div>
-  )}
-</div>
+    </PopoverContent>
+  </Popover>
 </div>
               <div className="space-y-2">
                 <Label>Etapa</Label>
                 <Select value={etapaCiclo} onValueChange={(v) => setEtapaCiclo(v as Etapa)}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {stageOptions.map(({ value, label }) => (
                       <SelectItem key={value} value={value}>{label}</SelectItem>
@@ -578,11 +576,11 @@ return () => {
               </div>
               <div className="space-y-2">
                 <Label>Teléfono</Label>
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+51 999 999 999" />
+                <Input className={formDialogInputClass} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+51 999 999 999" />
               </div>
               <div className="space-y-2">
                 <Label>Email *</Label>
-                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@empresa.com" />
+                <Input className={formDialogInputClass} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@empresa.com" />
               </div>
             </div>
           )}
@@ -592,7 +590,7 @@ return () => {
               <div className="space-y-2">
                 <Label>Fuente</Label>
                 <Select value={source} onValueChange={(v) => setSource(v as ContactSource)}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {sourceOptions.map(({ value, label }) => (
                       <SelectItem key={value} value={value}>{label}</SelectItem>
@@ -600,21 +598,19 @@ return () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Asesor asignado</Label>
-                <Select value={assignedTo} onValueChange={setAssignedTo}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar asesor" /></SelectTrigger>
-                  <SelectContent>
-                    {advisorOptions.map((u) => (
-                      <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <AssignedAdvisorFormField
+                htmlId="contact-wizard-assigned-to"
+                value={assignedTo}
+                onChange={setAssignedTo}
+                disabled={!canReassign}
+                fallbackName={currentUser.name}
+                label="Asesor asignado"
+                formStyle
+              />
               <div className="space-y-2">
                 <Label>Cliente Recuperado</Label>
                 <Select value={clienteRecuperado} onValueChange={(v) => setClienteRecuperado(v as 'si' | 'no')}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="no">No</SelectItem>
                     <SelectItem value="si">Sí</SelectItem>
@@ -628,54 +624,25 @@ return () => {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Departamento</Label>
-                <Input value={departamento} onChange={(e) => setDepartamento(e.target.value)} placeholder="Ej: Lima" />
+                <Input className={formDialogInputClass} value={departamento} onChange={(e) => setDepartamento(e.target.value)} placeholder="Ej: Lima" />
               </div>
               <div className="space-y-2">
                 <Label>Provincia</Label>
-                <Input value={provincia} onChange={(e) => setProvincia(e.target.value)} placeholder="Ej: Lima" />
+                <Input className={formDialogInputClass} value={provincia} onChange={(e) => setProvincia(e.target.value)} placeholder="Ej: Lima" />
               </div>
               <div className="space-y-2">
                 <Label>Distrito</Label>
-                <Input value={distrito} onChange={(e) => setDistrito(e.target.value)} placeholder="Ej: Surco" />
+                <Input className={formDialogInputClass} value={distrito} onChange={(e) => setDistrito(e.target.value)} placeholder="Ej: Surco" />
               </div>
               <div className="space-y-2">
                 <Label>Dirección</Label>
-                <Input value={direccion} onChange={(e) => setDireccion(e.target.value)} placeholder="Ej: Av. Primavera 1234" />
+                <Input className={formDialogInputClass} value={direccion} onChange={(e) => setDireccion(e.target.value)} placeholder="Ej: Av. Primavera 1234" />
               </div>
             </div>
           )}
 
-          <DialogFooter className="flex-row gap-2 sm:justify-between">
-            <div>
-              {step > 0 && (
-                <Button type="button" variant="outline" onClick={() => setStep((s) => s - 1)} disabled={submitting}>
-                  <ChevronLeft className="size-4" /> Anterior
-                </Button>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={submitting}>
-                Cancelar
-              </Button>
-              {step < 2 ? (
-                <Button type="button" className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={handleNext} disabled={submitting}>
-                  Siguiente <ChevronRight className="size-4" />
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  className="bg-[#13944C] hover:bg-[#0f7a3d]"
-                  disabled={submitting || !name.trim() || !company.trim()}
-                  onClick={handleSubmit}
-                >
-                  {submitting ? 'Guardando…' : submitLabel}
-                </Button>
-              )}
-            </div>
-          </DialogFooter>
         </form>
-</DialogContent>
-  </Dialog>
+    </FormDialogShell>
   <NewCompanyWizard
     open={companyWizardOpen}
     onOpenChange={setCompanyWizardOpen}
