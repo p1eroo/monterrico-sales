@@ -351,7 +351,7 @@ export default function Clients() {
         id: 'company',
         header: 'Empresa',
         enableHiding: false,
-        size: 280,
+        size: 240,
         cell: ({ row }) => {
           const client = row.original;
           const emailDomain = getDomainFromEmail(client.email);
@@ -364,7 +364,7 @@ export default function Clients() {
               />
               <div className="min-w-0">
                 <p
-                  className="truncate text-sm font-semibold text-[#0F172A] dark:text-gray-100"
+                  className="truncate text-[13px] font-semibold text-[#0F172A] dark:text-gray-100"
                   title={client.company}
                 >
                   {truncateCompanyName(client.company)}
@@ -375,13 +375,13 @@ export default function Clients() {
                     target="_blank"
                     rel="noopener noreferrer"
                     title={`Abrir ${emailDomain}`}
-                    className="block truncate text-xs text-[#64748B] hover:text-primary hover:underline dark:text-gray-400"
+                    className="block truncate text-[11px] text-[#64748B] hover:text-primary hover:underline dark:text-gray-400"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {emailDomain}
                   </a>
                 ) : (
-                  <p className="truncate text-xs text-[#64748B] dark:text-gray-400">
+                  <p className="truncate text-[11px] text-[#64748B] dark:text-gray-400">
                     {client.contactName !== '—' ? client.contactName : '—'}
                   </p>
                 )}
@@ -395,11 +395,11 @@ export default function Clients() {
         id: 'ruc',
         header: 'RUC',
         enableHiding: true,
-        size: 120,
+        size: 100,
         cell: ({ getValue }) => {
           const val = String(getValue() || '').trim();
           return (
-            <span className="text-sm tabular-nums text-[#475569] dark:text-gray-400" title={val || undefined}>
+            <span className="text-[13px] tabular-nums text-[#475569] dark:text-gray-400" title={val || undefined}>
               {val || '—'}
             </span>
           );
@@ -410,9 +410,9 @@ export default function Clients() {
         id: 'phone',
         header: 'Teléfono',
         enableHiding: true,
-        size: 120,
+        size: 100,
         cell: ({ getValue }) => (
-          <span className="text-sm text-[#475569] dark:text-gray-400">{getValue() as string}</span>
+          <span className="text-[13px] text-[#475569] dark:text-gray-400">{getValue() as string}</span>
         ),
       },
       {
@@ -420,11 +420,11 @@ export default function Clients() {
         id: 'email',
         header: 'Email',
         enableHiding: true,
-        size: 180,
+        size: 150,
         cell: ({ getValue }) => {
           const val = String(getValue() || '');
           return (
-            <span className="block truncate text-sm text-[#475569] dark:text-gray-400" title={val || undefined}>
+            <span className="block truncate text-[13px] text-[#475569] dark:text-gray-400" title={val || undefined}>
               {val || '—'}
             </span>
           );
@@ -443,11 +443,11 @@ export default function Clients() {
         id: 'asesor',
         header: 'Asesor',
         enableHiding: true,
-        size: 150,
+        size: 130,
         cell: ({ getValue }) => {
           const val = String(getValue() || '');
           return (
-            <span className="block truncate text-sm text-[#475569] dark:text-gray-400" title={val || undefined}>
+            <span className="block truncate text-[13px] text-[#475569] dark:text-gray-400" title={val || undefined}>
               {val || '—'}
             </span>
           );
@@ -458,9 +458,9 @@ export default function Clients() {
         id: 'createdAt',
         header: 'Fecha alta',
         enableHiding: true,
-        size: 120,
+        size: 100,
         cell: ({ getValue }) => (
-          <span className="text-sm text-[#475569] dark:text-gray-400">
+          <span className="text-[13px] text-[#475569] dark:text-gray-400">
             {formatDate(getValue() as string)}
           </span>
         ),
@@ -469,13 +469,13 @@ export default function Clients() {
         id: 'ingresos',
         header: 'Ingresos',
         enableHiding: false,
-        size: 150,
+        size: 130,
         cell: ({ row }) => {
           const client = row.original;
           if (client.id.startsWith('ext-')) {
             return (
               <div className="flex flex-col items-end leading-tight">
-                <span className="text-sm font-semibold tabular-nums text-[#0F172A] dark:text-gray-100">
+                <span className="text-[13px] font-semibold tabular-nums text-[#0F172A] dark:text-gray-100">
                   {formatCurrency(client.externalMonthAmount || 0).replace('S/\u00a0', 'S/ ')}
                 </span>
                 <span className="text-[10px] font-normal uppercase text-[#64748B] dark:text-gray-400">
@@ -581,9 +581,9 @@ export default function Clients() {
 
       {/* Fases 2–4: GlassCard con filtros, tabla tanstack y paginación */}
       <GlassCard>
-        <div className="flex min-w-0 flex-col gap-3 px-5 py-4 lg:flex-row lg:items-center">
+        <div className="flex min-w-0 flex-col gap-2 px-5 py-3 lg:flex-row lg:items-center">
           <div className="relative w-full min-w-0 max-w-[400px]">
-            <Search className="absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-[#8a9aab] dark:text-gray-400" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#8a9aab] dark:text-gray-400" />
             <Input
               placeholder="Buscar por empresa, RUC, contacto, email o teléfono…"
               value={searchTerm}
@@ -591,7 +591,7 @@ export default function Clients() {
                 setSearchTerm(e.target.value);
                 setPage(1);
               }}
-              className="!h-12 rounded-lg border border-[#e1e7ee] bg-white/60 pl-10 text-[15px] text-black shadow-none transition-colors placeholder:text-[#8a9aab] hover:border-primary focus-visible:ring-1 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-100 dark:placeholder:text-gray-400"
+              className="!h-10 rounded-lg border border-[#e1e7ee] bg-white/60 pl-8 text-[13px] text-black shadow-none transition-colors placeholder:text-[#8a9aab] hover:border-primary focus-visible:ring-1 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-100 dark:placeholder:text-gray-400"
             />
           </div>
 
@@ -600,13 +600,13 @@ export default function Clients() {
               <button
                 type="button"
                 className={cn(
-                  'flex !h-12 w-[190px] cursor-pointer items-center gap-1.5 rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-left text-sm shadow-none transition-colors hover:border-primary dark:border-gray-700 dark:bg-gray-800/60',
+                  'flex !h-10 w-[190px] cursor-pointer items-center gap-1.5 rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-left text-[13px] shadow-none transition-colors hover:border-primary dark:border-gray-700 dark:bg-gray-800/60',
                   statusFilter.length > 0
                     ? 'text-black dark:text-gray-100'
                     : 'text-[#8a9aab] dark:text-gray-400',
                 )}
               >
-                <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+                <ChartSquareIcon className="size-4 shrink-0 text-[#8a9aab] dark:text-gray-400" />
                 <span className="flex-1 truncate">{statusFilterLabel}</span>
                 <ChevronDown className="size-3.5 shrink-0 opacity-50" />
               </button>
@@ -669,7 +669,7 @@ export default function Clients() {
             disabled={!canSeeAllAdvisors}
             isActive={assigneeFilterIsActive}
             isInitialized={assigneeFilterInitialized}
-            className="!h-12 w-[190px]"
+            className="!h-10 w-[190px]"
             onInteraction={() => setPage(1)}
           />
 
@@ -684,7 +684,7 @@ export default function Clients() {
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="inline-flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-[#1f2933] transition-opacity hover:opacity-70 dark:text-gray-100"
+                  className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-semibold text-[#1f2933] transition-opacity hover:opacity-70 dark:text-gray-100"
                 >
                   <ColumnsSvgIcon className="size-[18px]" />
                   Columnas
@@ -733,7 +733,7 @@ export default function Clients() {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="inline-flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-[#1f2933] transition-opacity hover:opacity-70 dark:text-gray-100"
+                  className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-semibold text-[#1f2933] transition-opacity hover:opacity-70 dark:text-gray-100"
                 >
                   <MoreVertical className="size-5" />
                 </button>
@@ -783,7 +783,7 @@ export default function Clients() {
                 {table.getHeaderGroups().map((hg) => (
                   <tr
                     key={hg.id}
-                    className="h-11 bg-[#eef1f5] text-left text-xs font-bold text-[#647789] dark:bg-gray-800 dark:text-gray-400"
+                    className="h-[36px] bg-[#eef1f5] text-left text-[11px] font-bold text-[#647789] dark:bg-gray-800 dark:text-gray-400"
                   >
                     {hg.headers.map((header) => (
                       <th
@@ -823,7 +823,7 @@ export default function Clients() {
                 {table.getRowModel().rows.map((row) => (
                     <tr
                       key={row.id}
-                      className="h-14 cursor-pointer border-b border-dashed border-[#e8ecf0] bg-transparent transition-colors last:border-b-0 hover:bg-[#fafbfc] dark:border-gray-700 dark:hover:bg-gray-800"
+                      className="h-[48px] cursor-pointer border-b border-dashed border-[#e8ecf0] bg-transparent transition-colors last:border-b-0 hover:bg-[#fafbfc] dark:border-gray-700 dark:hover:bg-gray-800"
                       onClick={() => openClientDetail(row.original)}
                     >
                       {row.getVisibleCells().map((cell) => (

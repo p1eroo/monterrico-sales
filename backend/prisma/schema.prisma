@@ -794,6 +794,7 @@ model FlotaProspecto {
   /** SI / No — aire acondicionado del vehículo */
   aireAcondicionado String?
   distrito        String?
+  ciudad          String?
    fechaCita       DateTime?
   asistencia      String?
   fechaAfiliacion DateTime? @db.Date

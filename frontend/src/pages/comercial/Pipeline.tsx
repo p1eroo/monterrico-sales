@@ -1709,7 +1709,7 @@ export default function Pipeline() {
           </div>
           <Button
             onClick={() => setNewOpportunityOpen(true)}
-            className="h-11 w-[120px] text-base font-normal shadow-md"
+            className="h-9 w-[110px] text-sm font-normal shadow-md"
           >
             <Plus /> Nueva
           </Button>

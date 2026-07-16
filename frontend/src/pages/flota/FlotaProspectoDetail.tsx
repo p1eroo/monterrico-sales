@@ -52,7 +52,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { flotaProspectoDetail, flotaProspectoUpdate, flotaProspectoFiles, flotaProspectoFileContentUrl, flotaProspectoUploadFile, flotaLlamadasList, flotaLlamadaCreate, fetchOperadores, getOperatorDisplayName, MODALIDAD_OPTIONS, type FlotaProspectoRow, type FlotaLlamada, type FlotaFile, type OperadorUser } from '@/lib/flotaProspectosApi';
+import { flotaProspectoDetail, flotaProspectoUpdate, flotaProspectoFiles, flotaProspectoFileContentUrl, flotaProspectoUploadFile, flotaLlamadasList, flotaLlamadaCreate, fetchOperadores, getOperatorDisplayName, MODALIDAD_OPTIONS, CIUDAD_OPTIONS, type FlotaProspectoRow, type FlotaLlamada, type FlotaFile, type OperadorUser } from '@/lib/flotaProspectosApi';
 import { notifyFlotaProspectosRefresh } from '@/lib/flotaProspectosRealtime';
 
 const ESTADOS = ['Afiliado', 'Citado', 'Seguimiento', 'Informacion', 'Sin Requisitos', 'No Responde'] as const;
@@ -97,6 +97,7 @@ function ProspectoInformacionAside({ prospecto, operadores }: { prospecto: Flota
         { icon: Phone, value: prospecto.celular || 'Sin teléfono', href: prospecto.celular ? `tel:${prospecto.celular}` : undefined },
         { icon: Globe, value: prospecto.redSocial || 'Sin fuente' },
         { icon: MapPin, value: prospecto.distrito || 'Sin distrito' },
+        { icon: MapPin, value: `Ciudad: ${prospecto.ciudad || '—'}` },
         { icon: CalendarDays, value: `Registrado: ${prospecto.fechaRegistro ? formatDate(prospecto.fechaRegistro) : '—'}` },
         { icon: User, value: `Operador: ${getOperatorDisplayName(prospecto.operador, operadores) || '—'}` },
         { icon: Car, value: `Año Veh.: ${prospecto.anioVehiculo || '—'}` },
@@ -782,12 +783,35 @@ export default function FlotaProspectoDetail() {
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label>Distrito</Label>
-                <Input
-                  value={editData.distrito || ''}
-                  onChange={(e) => setEditData({ ...editData, distrito: e.target.value })}
-                />
+                <Label>Ciudad</Label>
+                <Select
+                  value={editData.ciudad || '__none__'}
+                  onValueChange={(v) => setEditData({ ...editData, ciudad: v === '__none__' ? '' : v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sin ciudad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sin ciudad</SelectItem>
+                    {CIUDAD_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                    {editData.ciudad &&
+                      !CIUDAD_OPTIONS.some((o) => o.value === editData.ciudad) && (
+                        <SelectItem value={editData.ciudad}>{editData.ciudad}</SelectItem>
+                      )}
+                  </SelectContent>
+                </Select>
               </div>
+            </div>
+            <div className="grid gap-2">
+              <Label>Distrito</Label>
+              <Input
+                value={editData.distrito || ''}
+                onChange={(e) => setEditData({ ...editData, distrito: e.target.value })}
+              />
             </div>
             <div className="grid gap-2">
               <Label>Estado</Label>

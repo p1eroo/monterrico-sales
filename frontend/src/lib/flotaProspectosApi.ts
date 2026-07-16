@@ -9,6 +9,13 @@ export const MODALIDAD_OPTIONS: { label: string; value: string }[] = [
 
 export const MODALIDAD_VALUES = MODALIDAD_OPTIONS.map((o) => o.value);
 
+export const CIUDAD_OPTIONS: { label: string; value: string }[] = [
+  { label: 'Lima', value: 'Lima' },
+  { label: 'Arequipa', value: 'Arequipa' },
+];
+
+export const CIUDAD_VALUES = CIUDAD_OPTIONS.map((o) => o.value);
+
 export interface FlotaProspectoRow {
   id: string;
   fechaRegistro: string | null;
@@ -23,6 +30,7 @@ export interface FlotaProspectoRow {
   placa: string | null;
   aireAcondicionado: string | null;
   distrito: string | null;
+  ciudad: string | null;
   asignadoAt?: string | null;
   fechaCita: string | null;
   asistencia: string | null;
@@ -242,7 +250,7 @@ export async function fetchOperadores(): Promise<OperadorUser[]> {
 export interface FlotaProspectoDetalle {
   id: string; nombreCompleto: string; celular: string | null; operador: string | null; estado: string;
   edad?: number | null; modalidad?: string | null; placa?: string | null; aireAcondicionado?: string | null; anioVehiculo?: number | null;
-  distrito?: string | null; fechaCita?: string | null; movil?: string | null; observaciones?: string | null;
+  distrito?: string | null; ciudad?: string | null; fechaCita?: string | null; movil?: string | null; observaciones?: string | null;
   asistencia?: string | null; llamadaCount?: number;
   eliminadoAt?: string | null;
 }
@@ -363,4 +371,15 @@ export interface CalendarCita {
 
 export async function flotaCalendarCitas(): Promise<CalendarCita[]> {
   return api('/flota/calendario-citas');
+}
+
+export interface FlotaProspectoConArchivosResponse {
+  prospecto: FlotaProspectoRow;
+  archivos: FlotaFile[];
+}
+
+export async function flotaProspectoConArchivos(
+  id: string,
+): Promise<FlotaProspectoConArchivosResponse> {
+  return api<FlotaProspectoConArchivosResponse>(`/flota-prospectos/${id}/con-archivos`);
 }

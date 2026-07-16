@@ -107,12 +107,12 @@ export function DateRangeFilterButton({
           type="button"
           disabled={disabled}
           className={cn(
-            'flex !h-12 w-[210px] cursor-pointer items-center gap-1.5 truncate rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-left text-sm shadow-none transition-colors hover:border-primary dark:border-gray-700 dark:bg-gray-800/60',
+            'flex !h-10 w-[210px] cursor-pointer items-center gap-1.5 truncate rounded-lg border border-[#e1e7ee] bg-white/60 px-3 text-left text-[13px] shadow-none transition-colors hover:border-primary dark:border-gray-700 dark:bg-gray-800/60',
             hasValue ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400',
             className,
           )}
         >
-          <CalendarSvgIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+          <CalendarSvgIcon className="size-4 shrink-0 text-[#8a9aab] dark:text-gray-400" />
           <span className="min-w-0 flex-1 truncate">
             {displayText || placeholder}
           </span>

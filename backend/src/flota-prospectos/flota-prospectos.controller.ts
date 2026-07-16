@@ -32,11 +32,16 @@ export class FlotaProspectosController {
     private readonly importExportJobs: ImportExportJobsService,
   ) {}
 
-  private async buildFlotaScope(userId: string, roleId?: string): Promise<CrmDataScope> {
-    const perm = roleId ? await this.prisma.authority.findFirst({
-      where: { roleId, permission: 'flota_prospectos.ver_todos' },
-      select: { id: true },
-    }) : null;
+  private async buildFlotaScope(
+    userId: string,
+    roleId?: string,
+  ): Promise<CrmDataScope> {
+    const perm = roleId
+      ? await this.prisma.authority.findFirst({
+          where: { roleId, permission: 'flota_prospectos.ver_todos' },
+          select: { id: true },
+        })
+      : null;
     return { viewerUserId: userId, unrestricted: !!perm };
   }
 
@@ -61,27 +66,27 @@ export class FlotaProspectosController {
     @Query('filters') filters?: string,
     @Query('conLlamadas') conLlamadas?: string,
   ) {
-    const scope = await this.buildFlotaScope(
-      req.user.userId,
-      req.user.roleId,
+    const scope = await this.buildFlotaScope(req.user.userId, req.user.roleId);
+    return this.service.findAll(
+      {
+        page: page ? parseInt(page, 10) : 1,
+        limit: limit ? parseInt(limit, 10) : 25,
+        search: search || undefined,
+        estado: estado || undefined,
+        duplicados: duplicados === 'true',
+        mes: mes || undefined,
+        mesImport: mesImport || undefined,
+        fechaRegistroDesde: fechaRegistroDesde || undefined,
+        fechaRegistroHasta: fechaRegistroHasta || undefined,
+        mesImportDesde: mesImportDesde || undefined,
+        mesImportHasta: mesImportHasta || undefined,
+        redSocial: redSocial || undefined,
+        operador: operador || undefined,
+        filters: filters || undefined,
+        conLlamadas: conLlamadas || undefined,
+      },
+      scope,
     );
-    return this.service.findAll({
-      page: page ? parseInt(page, 10) : 1,
-      limit: limit ? parseInt(limit, 10) : 25,
-      search: search || undefined,
-      estado: estado || undefined,
-      duplicados: duplicados === 'true',
-      mes: mes || undefined,
-      mesImport: mesImport || undefined,
-      fechaRegistroDesde: fechaRegistroDesde || undefined,
-      fechaRegistroHasta: fechaRegistroHasta || undefined,
-      mesImportDesde: mesImportDesde || undefined,
-      mesImportHasta: mesImportHasta || undefined,
-      redSocial: redSocial || undefined,
-      operador: operador || undefined,
-      filters: filters || undefined,
-      conLlamadas: conLlamadas || undefined,
-    }, scope);
   }
 
   /** GET /flota-prospectos/operadores — Lista de operadores activos para dropdowns */
@@ -113,10 +118,7 @@ export class FlotaProspectosController {
   @Get('flota-prospectos/counts')
   @RequirePermissions('flota_prospectos.ver')
   async getCounts(@Req() req: AuthedReq) {
-    const scope = await this.buildFlotaScope(
-      req.user.userId,
-      req.user.roleId,
-    );
+    const scope = await this.buildFlotaScope(req.user.userId, req.user.roleId);
     return this.service.getCounts(scope);
   }
 
@@ -128,10 +130,7 @@ export class FlotaProspectosController {
     @Query('fecfin') fecfin: string,
     @Req() req: AuthedReq,
   ) {
-    const scope = await this.buildFlotaScope(
-      req.user.userId,
-      req.user.roleId,
-    );
+    const scope = await this.buildFlotaScope(req.user.userId, req.user.roleId);
     return this.service.getOperadorStats(fecini, fecfin, scope);
   }
 
@@ -143,10 +142,7 @@ export class FlotaProspectosController {
     @Query('fecfin') fecfin: string,
     @Req() req: AuthedReq,
   ) {
-    const scope = await this.buildFlotaScope(
-      req.user.userId,
-      req.user.roleId,
-    );
+    const scope = await this.buildFlotaScope(req.user.userId, req.user.roleId);
     return this.service.getOperadorStatsDaily(fecini, fecfin, scope);
   }
 
@@ -167,7 +163,10 @@ export class FlotaProspectosController {
     const fecini = body.fecini?.trim();
     const fecfin = body.fecfin?.trim();
     if (!fecini || !fecfin) {
-      throw new HttpException('fecini y fecfin son requeridos (YYYY-MM-DD)', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'fecini y fecfin son requeridos (YYYY-MM-DD)',
+        HttpStatus.BAD_REQUEST,
+      );
     }
     if (body.fromActivityLog) {
       return this.service.backfillOperadorStatsFromActivityLog(fecini, fecfin);
@@ -196,11 +195,12 @@ export class FlotaProspectosController {
   /** GET /flota-prospectos/masivo-list — Lista ligera de prospectos para el envío masivo */
   @Get('flota-prospectos/masivo-list')
   @RequirePermissions('flota_prospectos.ver')
-  async listForMasivo(@Req() req: AuthedReq, @Query('search') search?: string, @Query('estado') estado?: string) {
-    const scope = await this.buildFlotaScope(
-      req.user.userId,
-      req.user.roleId,
-    );
+  async listForMasivo(
+    @Req() req: AuthedReq,
+    @Query('search') search?: string,
+    @Query('estado') estado?: string,
+  ) {
+    const scope = await this.buildFlotaScope(req.user.userId, req.user.roleId);
     return this.service.listForMasivo(search, scope, estado);
   }
 
@@ -229,7 +229,10 @@ export class FlotaProspectosController {
   /** GET /flota/preview/:sheetName — Vista previa de una hoja */
   @Public()
   @Get('flota/preview/:sheetName')
-  async getPreview(@Param('sheetName') sheetName: string, @Query('spreadsheetId') spreadsheetId?: string) {
+  async getPreview(
+    @Param('sheetName') sheetName: string,
+    @Query('spreadsheetId') spreadsheetId?: string,
+  ) {
     try {
       return await this.service.getPreview(sheetName, spreadsheetId);
     } catch (err) {
@@ -243,10 +246,7 @@ export class FlotaProspectosController {
   /** POST /flota/import-rows — Importar desde filas enviadas (archivo local) */
   @Post('flota/import-rows')
   @RequirePermissions('flota_prospectos.crear')
-  async importRows(
-    @Body() body: { rows: string[][] },
-    @Req() req: AuthedReq,
-  ) {
+  async importRows(@Body() body: { rows: string[][] }, @Req() req: AuthedReq) {
     try {
       const totalRows = body.rows.length > 1 ? body.rows.length - 1 : 0;
       const actor = { userId: req.user.userId, userName: req.user.name };
@@ -257,7 +257,8 @@ export class FlotaProspectosController {
           ownerUserId: req.user.userId,
           totalRows,
         },
-        (update) => this.service.importRowsWithProgress(body.rows, update, actor),
+        (update) =>
+          this.service.importRowsWithProgress(body.rows, update, actor),
       );
     } catch (err) {
       throw new HttpException(
@@ -286,7 +287,13 @@ export class FlotaProspectosController {
           ownerUserId: req.user.userId,
           totalRows,
         },
-        (update) => this.service.importFromSheetsWithProgress(sheetName, update, spreadsheetId, actor),
+        (update) =>
+          this.service.importFromSheetsWithProgress(
+            sheetName,
+            update,
+            spreadsheetId,
+            actor,
+          ),
       );
     } catch (err) {
       throw new HttpException(
@@ -294,6 +301,17 @@ export class FlotaProspectosController {
         HttpStatus.BAD_GATEWAY,
       );
     }
+  }
+
+  /** GET /flota-prospectos/:id/con-archivos — Prospecto + archivos vinculados */
+  @Get('flota-prospectos/:id/con-archivos')
+  @RequirePermissions('flota_prospectos.ver')
+  async findWithFiles(@Param('id') id: string) {
+    const result = await this.service.findWithFiles(id);
+    if (!result) {
+      throw new HttpException('Prospecto no encontrado', HttpStatus.NOT_FOUND);
+    }
+    return result;
   }
 
   /** GET /flota-prospectos/:id — Detalle de un prospecto */
@@ -424,7 +442,12 @@ export class FlotaProspectosController {
   @RequirePermissions('flota_prospectos.crear')
   async createLlamada(
     @Param('id') id: string,
-    @Body() body: { userName: string; notas?: string | null; createdAt?: string | null },
+    @Body()
+    body: {
+      userName: string;
+      notas?: string | null;
+      createdAt?: string | null;
+    },
     @Req() req: AuthedReq,
   ) {
     try {

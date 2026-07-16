@@ -677,7 +677,7 @@ export default function EmpresasPage() {
         accessorKey: 'name',
         id: 'empresa',
         header: 'Empresa',
-        size: 280,
+        size: 240,
         enableHiding: false,
         cell: ({ row }) => {
           const companyId = row.original.id;
@@ -688,13 +688,13 @@ export default function EmpresasPage() {
               <CompanyLogoImg companyId={companyId} isLocal={isLocal} />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-[#0F172A] dark:text-gray-100" title={row.original.name}>{row.original.name}</p>
+              <p className="truncate text-[13px] font-semibold text-[#0F172A] dark:text-gray-100" title={row.original.name}>{row.original.name}</p>
               {row.original.domain && (
                 <a
                   href={row.original.domain.startsWith('http') ? row.original.domain : `https://${row.original.domain}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-muted-foreground hover:text-primary hover:underline truncate block"
+                  className="text-[11px] text-muted-foreground hover:text-primary hover:underline truncate block"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {row.original.domain}
@@ -721,7 +721,7 @@ export default function EmpresasPage() {
         header: 'Fuente',
         enableHiding: true,
         cell: ({ getValue }) => (
-          <span className="text-sm text-[#475569] dark:text-gray-400">{sourceLabelFromApi(getValue() as string | null, bundle)}</span>
+          <span className="text-[13px] text-[#475569] dark:text-gray-400">{sourceLabelFromApi(getValue() as string | null, bundle)}</span>
         ),
         enableSorting: false,
         size: 100,
@@ -733,10 +733,10 @@ export default function EmpresasPage() {
         enableHiding: true,
         cell: ({ getValue }) => {
           const rubro = parseRubroFromApi(getValue() as string | null | undefined);
-          return <span className="block truncate text-sm text-[#475569] dark:text-gray-400" title={rubro ? companyRubroLabels[rubro] : undefined}>{rubro ? companyRubroLabels[rubro] : '—'}</span>;
+          return <span className="block truncate text-[13px] text-[#475569] dark:text-gray-400" title={rubro ? companyRubroLabels[rubro] : undefined}>{rubro ? companyRubroLabels[rubro] : '—'}</span>;
         },
         enableSorting: false,
-        size: 170,
+        size: 140,
       },
       {
         accessorKey: 'tipo',
@@ -745,7 +745,7 @@ export default function EmpresasPage() {
         enableHiding: true,
         cell: ({ getValue }) => {
           const tipo = parseTipoFromApi(getValue() as string | null | undefined);
-          return <span className="text-sm text-[#475569] dark:text-gray-400">{tipo ?? '—'}</span>;
+          return <span className="text-[13px] text-[#475569] dark:text-gray-400">{tipo ?? '—'}</span>;
         },
         enableSorting: false,
         size: 65,
@@ -757,12 +757,12 @@ export default function EmpresasPage() {
         header: 'Recuperado',
         enableHiding: true,
         cell: ({ getValue }) => (
-          <span className="text-sm text-[#475569] dark:text-gray-400">
+          <span className="text-[13px] text-[#475569] dark:text-gray-400">
             {getValue() === 'si' ? 'Recuperado' : '—'}
           </span>
         ),
         enableSorting: false,
-        size: 110,
+        size: 95,
       },
       {
         accessorKey: 'displayAdvisorName',
@@ -770,7 +770,7 @@ export default function EmpresasPage() {
         header: 'Asesor',
         enableHiding: true,
         cell: ({ getValue }) => (
-          <span className="text-sm text-[#475569] dark:text-gray-400">{getValue() as string ?? '—'}</span>
+          <span className="text-[13px] text-[#475569] dark:text-gray-400">{getValue() as string ?? '—'}</span>
         ),
         enableSorting: false,
         size: 120,
@@ -781,7 +781,7 @@ export default function EmpresasPage() {
         header: 'Creación',
         enableHiding: true,
         cell: ({ getValue }) => (
-          <span className="text-sm text-[#475569] dark:text-gray-400">
+          <span className="text-[13px] text-[#475569] dark:text-gray-400">
             {formatDateShort(String(getValue() ?? ''))}
           </span>
         ),
@@ -802,20 +802,20 @@ export default function EmpresasPage() {
           </div>
         ),
         enableSorting: false,
-        size: 115,
+        size: 100,
       },
       {
         accessorKey: 'lastInteractionAt',
         id: 'ultimaInteraccion',
-        header: 'Última interacción',
+        header: 'U. Interacción',
         enableHiding: true,
         cell: ({ getValue }) => (
-          <span className="text-sm text-[#475569] dark:text-gray-400">
+          <span className="text-[13px] text-[#475569] dark:text-gray-400">
             {getValue() ? formatDateShort(String(getValue())) : '—'}
           </span>
         ),
         enableSorting: false,
-        size: 145,
+        size: 120,
       },
     ],
     [openCompanyPreview, openCompanyEdit, requestDeleteCompany, hasPermission, bundle],
@@ -1544,7 +1544,7 @@ export default function EmpresasPage() {
       <PageHeader
         title="Empresas"
         description="Gestiona empresas y cuentas comerciales"
-        className="mb-6"
+        className="mb-4"
       >
         {hasPermission('empresas.eliminar') && selectedCompanies.length > 0 && (
           <Button
@@ -1560,16 +1560,16 @@ export default function EmpresasPage() {
             Eliminar ({selectedCompanies.length})
           </Button>
         )}
-        <Button onClick={() => setNewEmpresaOpen(true)} className="h-11 w-[120px] text-base font-normal shadow-md">
+        <Button onClick={() => setNewEmpresaOpen(true)} className="h-9 w-[110px] text-sm font-normal shadow-md">
           <Plus /> Nueva
         </Button>
       </PageHeader>
 
       <GlassCard>
       {/* Filter bar */}
-      <div className="flex min-w-0 flex-col gap-3 px-5 py-4 lg:flex-row lg:items-center">
+      <div className="flex min-w-0 flex-col gap-2 px-5 py-3 lg:flex-row lg:items-center">
         <div className="relative w-full min-w-0 max-w-[400px]">
-          <Search className="absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-[#8a9aab] dark:text-gray-400" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#8a9aab] dark:text-gray-400" />
           <Input
             placeholder="Buscar por empresa o contacto..."
             value={search}
@@ -1577,13 +1577,13 @@ export default function EmpresasPage() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="!h-12 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 pl-10 text-[15px] text-black dark:text-gray-100 placeholder:text-[#8a9aab] dark:placeholder:text-gray-400 transition-colors hover:border-primary focus-visible:ring-1 shadow-none"
+            className="!h-10 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 pl-8 text-[13px] text-black dark:text-gray-100 placeholder:text-[#8a9aab] dark:placeholder:text-gray-400 transition-colors hover:border-primary focus-visible:ring-1 shadow-none"
           />
         </div>
         <Popover>
           <PopoverTrigger asChild>
-            <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left ${etapaFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
-              <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+            <button className={`!h-10 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-[13px] hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left ${etapaFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
+              <ChartSquareIcon className="size-4 shrink-0 text-[#8a9aab] dark:text-gray-400" />
               <span className="truncate flex-1">
                 {formatInclusiveMultiFilterLabel(
                   etapaFilter,
@@ -1645,8 +1645,8 @@ export default function EmpresasPage() {
 
         <Popover>
           <PopoverTrigger asChild>
-            <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${rubroFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
-              <CategorySolidIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+            <button className={`!h-10 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-[13px] hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${rubroFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
+              <CategorySolidIcon className="size-4 shrink-0 text-[#8a9aab] dark:text-gray-400" />
               <span className="truncate flex-1">
                 {formatInclusiveMultiFilterLabel(
                   rubroFilter,
@@ -1724,7 +1724,7 @@ export default function EmpresasPage() {
         <div className="ml-auto hidden sm:flex items-center gap-5">
           <Popover>
             <PopoverTrigger asChild>
-              <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] dark:text-gray-100 transition-opacity hover:opacity-70 cursor-pointer">
+              <button className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#1f2933] dark:text-gray-100 transition-opacity hover:opacity-70 cursor-pointer">
                 <ColumnsSvgIcon className="size-[18px]" />
                 Columnas
               </button>
@@ -1741,7 +1741,7 @@ export default function EmpresasPage() {
                       { id: 'asesor', label: 'Asesor' },
                       { id: 'creacion', label: 'Creación' },
                       { id: 'contactos', label: 'Contactos' },
-                      { id: 'ultimaInteraccion', label: 'Última interacción' },
+                      { id: 'ultimaInteraccion', label: 'U. Interacción' },
                     ].map((col) => {
                       const visible = columnVisibility[col.id] ?? true;
                       return (
@@ -1765,7 +1765,7 @@ export default function EmpresasPage() {
           </Popover>
           <Popover>
             <PopoverTrigger asChild>
-              <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] dark:text-gray-100 transition-opacity hover:opacity-70 cursor-pointer">
+              <button className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#1f2933] dark:text-gray-100 transition-opacity hover:opacity-70 cursor-pointer">
                 <FilterSvgIcon className="size-[18px]" />
                 Filtros
               </button>
@@ -1774,8 +1774,8 @@ export default function EmpresasPage() {
               <div className="flex items-center gap-3">
                 <Popover>
                   <PopoverTrigger asChild>
-                    <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate flex items-center gap-1.5 ${sourceFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
-                      <PaletteIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+                    <button className={`!h-10 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-[13px] hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate flex items-center gap-1.5 ${sourceFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
+                      <PaletteIcon className="size-4 shrink-0 text-[#8a9aab] dark:text-gray-400" />
                       <span className="truncate flex-1">
                         {formatInclusiveMultiSourceFilterLabel(
                           sourceFilter,
@@ -1843,8 +1843,8 @@ export default function EmpresasPage() {
                 </Popover>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate flex items-center gap-1.5 ${tipoFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
-                      <GitForkIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+                    <button className={`!h-10 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-[13px] hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate flex items-center gap-1.5 ${tipoFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
+                      <GitForkIcon className="size-4 shrink-0 text-[#8a9aab] dark:text-gray-400" />
                       <span className="truncate flex-1">
                         {formatInclusiveMultiFilterLabel(
                           tipoFilter,
@@ -1910,7 +1910,7 @@ export default function EmpresasPage() {
                   disabled={!canSeeAllAdvisors}
                   isActive={advisorFilterIsActive}
                   isInitialized={advisorFilterInitialized}
-                  className="!h-12 flex-1"
+                  className="!h-10 flex-1"
                   onInteraction={() => setPage(1)}
                 />
                 <DateRangeFilterButton
@@ -1928,7 +1928,7 @@ export default function EmpresasPage() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] dark:text-gray-100 transition-opacity hover:opacity-70 cursor-pointer">
+              <button className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#1f2933] dark:text-gray-100 transition-opacity hover:opacity-70 cursor-pointer">
                 <MoreVertical className="size-5" />
               </button>
             </DropdownMenuTrigger>
@@ -1990,7 +1990,7 @@ export default function EmpresasPage() {
               { label: 'Asesor', width: 120, className: 'hidden xl:table-cell' },
               { label: 'Creación', width: 115 },
               { label: 'Contactos', width: 115, className: 'text-center' },
-              { label: 'Última interacción', width: 145 },
+              { label: 'U. Interacción', width: 145 },
             ]}
             rows={10}
           />
@@ -2010,7 +2010,7 @@ export default function EmpresasPage() {
           <table className="w-full table-fixed" style={{ minWidth: table.getTotalSize() }}>
             <thead>
               {table.getHeaderGroups().map((hg) => (
-                <tr key={hg.id} className="h-11 bg-[#eef1f5] dark:bg-gray-800 text-left text-xs font-bold text-[#647789] dark:text-gray-400">
+                <tr key={hg.id} className="h-[36px] bg-[#eef1f5] dark:bg-gray-800 text-left text-[11px] font-bold text-[#647789] dark:text-gray-400">
                   {hg.headers.map((header) => (
                     <th
                       key={header.id}
@@ -2059,7 +2059,7 @@ export default function EmpresasPage() {
               {table.getRowModel().rows.map((row) => (
                 <tr
                   key={row.id}
-                  className="h-14 border-b border-dashed border-[#e8ecf0] dark:border-gray-700 bg-card/30 transition-colors cursor-pointer last:border-b-0 hover:bg-[#fafbfc] dark:hover:bg-gray-800"
+                  className="h-[48px] border-b border-dashed border-[#e8ecf0] dark:border-gray-700 bg-card/30 transition-colors cursor-pointer last:border-b-0 hover:bg-[#fafbfc] dark:hover:bg-gray-800"
                   onClick={() => openCompanyDetail(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => (

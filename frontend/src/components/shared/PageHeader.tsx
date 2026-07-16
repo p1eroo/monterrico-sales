@@ -16,9 +16,9 @@ export function PageHeader({ title, description, children, className }: PageHead
       )}
     >
       <div className="flex min-w-0 flex-col gap-1">
-        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{title}</h1>
+        <h1 className="text-lg font-bold tracking-tight sm:text-xl">{title}</h1>
         {description ? (
-          <p className="text-sm text-muted-foreground">{description}</p>
+          <p className="text-[13px] text-muted-foreground">{description}</p>
         ) : null}
       </div>
       {children && (

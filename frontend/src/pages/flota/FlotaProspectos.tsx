@@ -26,6 +26,7 @@ import {
   Lock,
   MessageCircle,
   Send,
+  FolderOpen,
 } from "lucide-react";
 import {
   DateRangeCalendar,
@@ -87,6 +88,7 @@ import {
   fetchOperadores,
   getOperatorDisplayName,
   MODALIDAD_OPTIONS,
+  CIUDAD_OPTIONS,
   type FlotaProspectoRow,
   type FlotaProspectosCounts,
   type OperadorUser,
@@ -100,6 +102,7 @@ import { DataTable, type ColumnDef } from "@/components/shared/DataTable";
 import { TableWithStickyScroll } from "@/components/shared/TableWithStickyScroll";
 import { Pagination } from "@/components/shared/Pagination";
 import ChatwootInboxPanel from "@/components/flota/ChatwootInboxPanel";
+import { ProspectoArchivosModal } from "@/components/flota/ProspectoArchivosModal";
 
 const ESTADO_OPTIONS = [
   { label: "Nuevo", value: "Nuevo" },
@@ -196,6 +199,8 @@ export default function FlotaProspectos() {
   const [operadores, setOperadores] = useState<OperadorUser[]>([]);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [archivosModalOpen, setArchivosModalOpen] = useState(false);
+  const [archivosProspectoId, setArchivosProspectoId] = useState<string | null>(null);
   const [editProspectoId, setEditProspectoId] = useState<string | null>(null);
   const [editSaving, setEditSaving] = useState(false);
   const [editData, setEditData] = useState({
@@ -203,6 +208,7 @@ export default function FlotaProspectos() {
     celular: "",
     redSocial: "",
     distrito: "",
+    ciudad: "",
     operador: "",
     edad: "",
     modalidad: "",
@@ -222,6 +228,7 @@ export default function FlotaProspectos() {
           celular: String(data.celular || ""),
           redSocial: String(data.redSocial || ""),
           distrito: String(data.distrito || ""),
+          ciudad: String(data.ciudad || ""),
           operador: String(data.operador || ""),
           edad: data.edad != null ? String(data.edad) : "",
           modalidad: String(data.modalidad || ""),
@@ -237,6 +244,7 @@ export default function FlotaProspectos() {
     celular: "",
     redSocial: "",
     distrito: "",
+    ciudad: "",
     operador: "",
     edad: "",
     modalidad: "",
@@ -271,6 +279,7 @@ export default function FlotaProspectos() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [blockedProspects, setBlockedProspects] = useState<FlotaProspectoRow[]>([]);
   const [modalidadFilter, setModalidadFilter] = useState("all");
+  const [ciudadFilter, setCiudadFilter] = useState("all");
   const [aireAcondicionadoFilter, setAireAcondicionadoFilter] = useState("all");
   const [redSocialFilter, setRedSocialFilter] = useState("all");
   const [operadorFilter, setOperadorFilter] = useState("all");
@@ -345,6 +354,31 @@ export default function FlotaProspectos() {
             </div>
           );
         },
+      },
+      {
+        id: "actions",
+        header: "",
+        enableSorting: false,
+        enableColumnFilter: false,
+        size: 40,
+        minSize: 40,
+        maxSize: 40,
+        cell: ({ row }) => (
+          <div className="flex justify-center">
+            <button
+              type="button"
+              className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+              title="Ver archivos"
+              onClick={(e) => {
+                e.stopPropagation();
+                setArchivosProspectoId(row.original.id);
+                setArchivosModalOpen(true);
+              }}
+            >
+              <FolderOpen className="size-4" />
+            </button>
+          </div>
+        ),
       },
       {
         id: "fechaRegistro",
@@ -646,6 +680,21 @@ export default function FlotaProspectos() {
         ),
       },
       {
+        accessorKey: "ciudad",
+        id: "ciudad",
+        header: "Ciudad",
+        size: 90,
+        enableColumnFilter: false,
+        cell: ({ getValue }) => (
+          <span
+            className="truncate block max-w-[80px] text-[10px]"
+            title={String(getValue() ?? "")}
+          >
+            {String(getValue() ?? "") || "—"}
+          </span>
+        ),
+      },
+      {
         accessorKey: "fechaCita",
         id: "fechaCita",
         header: "F. Cita",
@@ -909,10 +958,12 @@ export default function FlotaProspectos() {
           filters:
             Object.keys(columnFilters).length > 0
             || modalidadFilter !== "all"
+            || ciudadFilter !== "all"
             || aireAcondicionadoFilter !== "all"
               ? {
                   ...columnFilters,
                   ...(modalidadFilter !== "all" ? { modalidad: modalidadFilter } : {}),
+                  ...(ciudadFilter !== "all" ? { ciudad: ciudadFilter } : {}),
                   ...(aireAcondicionadoFilter !== "all"
                     ? { aireAcondicionado: aireAcondicionadoFilter }
                     : {}),
@@ -942,6 +993,7 @@ export default function FlotaProspectos() {
       redSocialFilter,
       operadorFilter,
       modalidadFilter,
+      ciudadFilter,
       aireAcondicionadoFilter,
       conLlamadasFilter,
       columnFilters,
@@ -1235,6 +1287,7 @@ export default function FlotaProspectos() {
         redSocial: newProspecto.redSocial.trim() || null,
         operador: newProspecto.operador.trim() || null,
         modalidad: newProspecto.modalidad.trim() || null,
+        ciudad: newProspecto.ciudad.trim() || null,
         distrito: newProspecto.distrito.trim() || null,
         edad: newProspecto.edad ? parseInt(newProspecto.edad, 10) : null,
         anioVehiculo: newProspecto.anioVehiculo
@@ -1251,6 +1304,7 @@ export default function FlotaProspectos() {
         celular: "",
         redSocial: "",
         distrito: "",
+        ciudad: "",
         operador: "",
         edad: "",
         modalidad: "",
@@ -1385,6 +1439,7 @@ export default function FlotaProspectos() {
       if (editData.celular.trim()) body.celular = editData.celular.trim();
       if (editData.redSocial.trim()) body.redSocial = editData.redSocial.trim();
       if (editData.distrito.trim()) body.distrito = editData.distrito.trim();
+      if (editData.ciudad.trim()) body.ciudad = editData.ciudad.trim();
       if (editData.operador.trim()) body.operador = editData.operador.trim();
       if (editData.modalidad.trim()) body.modalidad = editData.modalidad.trim();
       if (editData.placa.trim()) body.placa = editData.placa.trim();
@@ -1738,6 +1793,23 @@ export default function FlotaProspectos() {
                     ))}
                   </select>
                 ),
+                ciudad: (
+                  <select
+                    value={ciudadFilter}
+                    onChange={(e) => {
+                      setCiudadFilter(e.target.value);
+                      setPage(1);
+                    }}
+                    className="w-full h-6 rounded border border-input bg-background px-1.5 text-[10px] outline-none text-muted-foreground"
+                  >
+                    <option value="all">Ciudad</option>
+                    {CIUDAD_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                ),
                 aireAcondicionado: (
                   <select
                     value={aireAcondicionadoFilter}
@@ -1775,6 +1847,7 @@ export default function FlotaProspectos() {
                 estado: "select",
                 asistencia: "select",
                 modalidad: "select",
+                ciudad: "select",
                 aireAcondicionado: "select",
                 fechaCita: "datetime-local",
                 fechaAfiliacion: "date",
@@ -1784,12 +1857,14 @@ export default function FlotaProspectos() {
                 estado: ESTADO_OPTIONS,
                 asistencia: ASISTENCIA_OPTIONS,
                 modalidad: MODALIDAD_OPTIONS,
+                ciudad: CIUDAD_OPTIONS,
                 aireAcondicionado: AIRE_ACONDICIONADO_OPTIONS,
               }}
                onEditStart={(row, columnId) => {
                  if (columnId === "estado") return false;
                  if (columnId === "operador") return false;
                  if (columnId === "modalidad") return;
+                 if (columnId === "ciudad") return;
                  if (columnId === "aireAcondicionado") return;
                  return false;
                }}
@@ -2172,6 +2247,32 @@ export default function FlotaProspectos() {
                 </Select>
               </div>
               <div className="grid gap-2">
+                <label className="text-sm font-medium">Ciudad</label>
+                <Select
+                  value={newProspecto.ciudad || "__none__"}
+                  onValueChange={(v) =>
+                    setNewProspecto({
+                      ...newProspecto,
+                      ciudad: v === "__none__" ? "" : v,
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sin ciudad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sin ciudad</SelectItem>
+                    {CIUDAD_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+              <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
                 <label className="text-sm font-medium">Distrito</label>
                 <Input
                   value={newProspecto.distrito}
@@ -2446,11 +2547,41 @@ export default function FlotaProspectos() {
                 <Input value={editData.redSocial} onChange={(e) => setEditData((p) => ({ ...p, redSocial: e.target.value }))} placeholder="Facebook, Instagram..." />
               </div>
               <div className="grid gap-2">
-                <label className="text-sm font-medium">Distrito</label>
-                <Input value={editData.distrito} onChange={(e) => setEditData((p) => ({ ...p, distrito: e.target.value }))} placeholder="Lima" />
+                <label className="text-sm font-medium">Ciudad</label>
+                <Select
+                  value={editData.ciudad || "__none__"}
+                  onValueChange={(v) =>
+                    setEditData((p) => ({
+                      ...p,
+                      ciudad: v === "__none__" ? "" : v,
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sin ciudad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sin ciudad</SelectItem>
+                    {CIUDAD_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                    {editData.ciudad &&
+                      !CIUDAD_OPTIONS.some((o) => o.value === editData.ciudad) && (
+                        <SelectItem value={editData.ciudad}>
+                          {editData.ciudad}
+                        </SelectItem>
+                      )}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Distrito</label>
+                <Input value={editData.distrito} onChange={(e) => setEditData((p) => ({ ...p, distrito: e.target.value }))} placeholder="Lima" />
+              </div>
               <div className="grid gap-2">
                 <label className="text-sm font-medium">Modalidad</label>
                 <Select
@@ -2571,6 +2702,15 @@ tr[data-row-id="${bp.id}"] {
           } finally {
             setNewChatSending(false);
           }
+        }}
+      />
+
+      <ProspectoArchivosModal
+        prospectoId={archivosProspectoId}
+        open={archivosModalOpen}
+        onOpenChange={(open) => {
+          setArchivosModalOpen(open);
+          if (!open) setArchivosProspectoId(null);
         }}
       />
     </div>

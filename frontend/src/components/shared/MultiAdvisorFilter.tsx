@@ -103,14 +103,14 @@ export function MultiAdvisorFilter({
           type="button"
           disabled={disabled}
           className={cn(
-            '!h-12 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate disabled:opacity-50 disabled:cursor-not-allowed',
+            '!h-10 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-[13px] hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate disabled:opacity-50 disabled:cursor-not-allowed',
             isActive
               ? 'text-black dark:text-gray-100'
               : 'text-[#8a9aab] dark:text-gray-400',
             className,
           )}
         >
-          <UserHandIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+          <UserHandIcon className="size-4 shrink-0 text-[#8a9aab] dark:text-gray-400" />
           <span className="truncate flex-1">{label}</span>
           <ChevronDown className="size-3.5 shrink-0 opacity-50" />
         </button>

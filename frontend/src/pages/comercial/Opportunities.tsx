@@ -528,7 +528,7 @@ export default function OpportunitiesPage() {
         id: 'title',
         header: 'Nombre',
         enableHiding: false,
-        size: 280,
+        size: 240,
         cell: ({ row }) => {
           const opp = row.original;
           const pending = isPendingOpportunityId(opp.id);
@@ -536,7 +536,7 @@ export default function OpportunitiesPage() {
           return (
             <div className="min-w-0 max-w-[20rem]">
               <div className="flex items-center gap-2">
-                <p className="truncate text-sm font-semibold text-[#0F172A] dark:text-gray-100" title={opp.title}>
+                <p className="truncate text-[13px] font-semibold text-[#0F172A] dark:text-gray-100" title={opp.title}>
                   {opp.title}
                 </p>
                 {pending && (
@@ -546,7 +546,7 @@ export default function OpportunitiesPage() {
                   </Badge>
                 )}
               </div>
-              <p className="truncate text-xs text-[#64748B] dark:text-gray-400">{contactClientLabel}</p>
+              <p className="truncate text-[11px] text-[#64748B] dark:text-gray-400">{contactClientLabel}</p>
             </div>
           );
         },
@@ -556,9 +556,9 @@ export default function OpportunitiesPage() {
         accessorKey: 'amount',
         id: 'amount',
         header: 'Monto',
-        size: 150,
+        size: 130,
         cell: ({ getValue }) => (
-          <span className="font-semibold tabular-nums text-sm text-[#0F172A] dark:text-gray-100">
+          <span className="font-semibold tabular-nums text-[13px] text-[#0F172A] dark:text-gray-100">
             {formatCurrency(getValue() as number)}
           </span>
         ),
@@ -569,7 +569,7 @@ export default function OpportunitiesPage() {
         id: 'etapa',
         header: 'Etapa',
         enableHiding: true,
-        size: 140,
+        size: 120,
         cell: ({ getValue }) => <EtapaBadge etapa={getValue() as Etapa} />,
         enableSorting: false,
       },
@@ -578,11 +578,11 @@ export default function OpportunitiesPage() {
         id: 'asesor',
         header: 'Asesor',
         enableHiding: true,
-        size: 150,
+        size: 130,
         cell: ({ getValue }) => {
           const val = String(getValue() || '');
           return (
-            <span className="block truncate text-sm text-[#475569] dark:text-gray-400" title={val || undefined}>
+            <span className="block truncate text-[13px] text-[#475569] dark:text-gray-400" title={val || undefined}>
               {val || '—'}
             </span>
           );
@@ -594,11 +594,11 @@ export default function OpportunitiesPage() {
         id: 'fuente',
         header: 'Fuente',
         enableHiding: true,
-        size: 120,
+        size: 100,
         cell: ({ getValue }) => {
           const val = String(getValue() || '');
           return (
-            <span className="text-sm text-[#475569] dark:text-gray-400">
+            <span className="text-[13px] text-[#475569] dark:text-gray-400">
               {getSourceLabelFromCatalog(val, bundle, contactSourceLabels) || '—'}
             </span>
           );
@@ -630,9 +630,9 @@ export default function OpportunitiesPage() {
         id: 'expectedCloseDate',
         header: 'Fecha cierre',
         enableHiding: true,
-        size: 120,
+        size: 100,
         cell: ({ getValue }) => (
-          <span className="text-sm text-[#475569] dark:text-gray-400">{formatDate(getValue() as string)}</span>
+          <span className="text-[13px] text-[#475569] dark:text-gray-400">{formatDate(getValue() as string)}</span>
         ),
         enableSorting: false,
       },
@@ -665,63 +665,63 @@ export default function OpportunitiesPage() {
         onChange={onOppImportChange}
       />
       <PageHeader title="Oportunidades" description="Gestiona el pipeline de ventas y oportunidades comerciales">
-        <div className="flex items-center rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 p-0.5">
-          <button className="rounded-md px-3 py-1.5 text-sm font-medium bg-[#e8f5e9] dark:bg-green-900/30 text-[#13944C] dark:text-green-400">
+<div className="flex items-center rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 p-0.5">
+          <button className="rounded-md px-2.5 py-1 text-[13px] font-medium bg-[#e8f5e9] dark:bg-green-900/30 text-[#13944C] dark:text-green-400">
             Lista
           </button>
           <button
-            className="rounded-md px-3 py-1.5 text-sm font-medium text-[#647789] dark:text-gray-400 hover:text-[#1f2933] dark:hover:text-gray-100 transition-colors cursor-pointer"
+            className="rounded-md px-2.5 py-1 text-[13px] font-medium text-[#647789] dark:text-gray-400 hover:text-[#1f2933] dark:hover:text-gray-100 transition-colors cursor-pointer"
             onClick={() => navigate('/pipeline')}
           >
             Pipeline
           </button>
         </div>
-        <Button onClick={() => setNewDialogOpen(true)} className="h-11 w-[120px] text-base font-normal shadow-md">
+        <Button onClick={() => setNewDialogOpen(true)} className="h-9 w-[110px] text-sm font-normal shadow-md">
           <Plus /> Nueva
         </Button>
       </PageHeader>
 
       {/* Stats — móvil: fila horizontal con scroll; desktop: 3 columnas iguales */}
       <Card className="flex-row flex-nowrap overflow-x-auto overflow-y-hidden py-0 scrollbar-thin [-webkit-overflow-scrolling:touch] sm:overflow-hidden">
-        <div className="relative flex w-[min(280px,82vw)] shrink-0 items-center gap-3 px-5 py-4 sm:w-auto sm:min-w-0 sm:flex-1 sm:justify-center">
-          <div className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-emerald-500 bg-transparent text-emerald-600">
-            <BlackSuitcaseSvgIcon className="size-7" />
+        <div className="relative flex w-[min(280px,82vw)] shrink-0 items-center gap-2 px-4 py-3 sm:w-auto sm:min-w-0 sm:flex-1 sm:justify-center">
+          <div className="flex size-14 shrink-0 items-center justify-center rounded-full border-2 border-emerald-500 bg-transparent text-emerald-600">
+            <BlackSuitcaseSvgIcon className="size-6" />
           </div>
           <div className="min-w-0 space-y-0.5">
-            <p className="text-sm font-medium text-[#647789] dark:text-gray-400">Total oportunidades</p>
-            <p className="text-[22px] font-bold tracking-tight text-[#0F172A] dark:text-gray-100">{stats.total}</p>
-            <div className="flex items-center gap-1.5 text-xs">
-              <TrendingUp className="size-3.5 text-emerald-500" />
+            <p className="text-[13px] font-medium text-[#647789] dark:text-gray-400">Total oportunidades</p>
+            <p className="text-xl font-bold tracking-tight text-[#0F172A] dark:text-gray-100">{stats.total}</p>
+            <div className="flex items-center gap-1 text-[11px]">
+              <TrendingUp className="size-3 text-emerald-500" />
               <span className="font-medium text-emerald-600">+3</span>
               <span className="text-[#8a9aab] dark:text-gray-400">este mes</span>
             </div>
           </div>
           <div className="absolute right-0 top-4 bottom-4 border-r border-dashed border-border sm:w-px sm:border-0 sm:bg-border" />
         </div>
-        <div className="relative flex w-[min(280px,82vw)] shrink-0 items-center gap-3 px-5 py-4 sm:w-auto sm:min-w-0 sm:flex-1 sm:justify-center">
-          <div className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-blue-500 bg-transparent text-blue-600">
-            <MoneySackSvgIcon className="size-7" />
+        <div className="relative flex w-[min(280px,82vw)] shrink-0 items-center gap-2 px-4 py-3 sm:w-auto sm:min-w-0 sm:flex-1 sm:justify-center">
+          <div className="flex size-14 shrink-0 items-center justify-center rounded-full border-2 border-blue-500 bg-transparent text-blue-600">
+            <MoneySackSvgIcon className="size-6" />
           </div>
           <div className="min-w-0 space-y-0.5">
-            <p className="text-sm font-medium text-[#647789] dark:text-gray-400">Valor total</p>
-            <p className="text-[22px] font-bold tracking-tight text-[#0F172A] dark:text-gray-100">{formatCurrency(stats.totalValue)}</p>
-            <div className="flex items-center gap-1.5 text-xs">
-              <TrendingUp className="size-3.5 text-emerald-500" />
+            <p className="text-[13px] font-medium text-[#647789] dark:text-gray-400">Valor total</p>
+            <p className="text-xl font-bold tracking-tight text-[#0F172A] dark:text-gray-100">{formatCurrency(stats.totalValue)}</p>
+            <div className="flex items-center gap-1 text-[11px]">
+              <TrendingUp className="size-3 text-emerald-500" />
               <span className="font-medium text-emerald-600">+12%</span>
               <span className="text-[#8a9aab] dark:text-gray-400">vs mes anterior</span>
             </div>
           </div>
           <div className="absolute right-0 top-4 bottom-4 border-r border-dashed border-border sm:w-px sm:border-0 sm:bg-border" />
         </div>
-        <div className="relative flex w-[min(280px,82vw)] shrink-0 items-center gap-3 px-5 py-4 sm:w-auto sm:min-w-0 sm:flex-1 sm:justify-center">
-          <div className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-amber-500 bg-transparent text-amber-600">
-            <BusinessGraphBoardSvgIcon className="size-7" />
+        <div className="relative flex w-[min(280px,82vw)] shrink-0 items-center gap-2 px-4 py-3 sm:w-auto sm:min-w-0 sm:flex-1 sm:justify-center">
+          <div className="flex size-14 shrink-0 items-center justify-center rounded-full border-2 border-amber-500 bg-transparent text-amber-600">
+            <BusinessGraphBoardSvgIcon className="size-6" />
           </div>
           <div className="min-w-0 space-y-0.5">
-            <p className="text-sm font-medium text-[#647789] dark:text-gray-400">Tasa promedio de cierre</p>
-            <p className="text-[22px] font-bold tracking-tight text-[#0F172A] dark:text-gray-100">{stats.avgProbability}%</p>
-            <div className="flex items-center gap-1.5 text-xs">
-              <TrendingUp className="size-3.5 text-emerald-500" />
+            <p className="text-[13px] font-medium text-[#647789] dark:text-gray-400">Tasa promedio de cierre</p>
+            <p className="text-xl font-bold tracking-tight text-[#0F172A] dark:text-gray-100">{stats.avgProbability}%</p>
+            <div className="flex items-center gap-1 text-[11px]">
+              <TrendingUp className="size-3 text-emerald-500" />
               <span className="font-medium text-emerald-600">+5%</span>
               <span className="text-[#8a9aab] dark:text-gray-400">tendencia</span>
             </div>
@@ -731,9 +731,9 @@ export default function OpportunitiesPage() {
 
       <GlassCard>
         {/* Filter bar */}
-        <div className="flex min-w-0 flex-col gap-3 px-5 py-4 lg:flex-row lg:items-center">
+        <div className="flex min-w-0 flex-col gap-2 px-5 py-3 lg:flex-row lg:items-center">
           <div className="relative w-full min-w-0 max-w-[400px]">
-            <Search className="absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-[#8a9aab] dark:text-gray-400" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#8a9aab] dark:text-gray-400" />
             <Input
               placeholder="Buscar por nombre, contacto o cliente..."
               value={search}
@@ -741,13 +741,13 @@ export default function OpportunitiesPage() {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="!h-12 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 pl-10 text-[15px] text-black dark:text-gray-100 placeholder:text-[#8a9aab] dark:placeholder:text-gray-400 transition-colors hover:border-primary focus-visible:ring-1 shadow-none"
+              className="!h-10 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 pl-8 text-[13px] text-black dark:text-gray-100 placeholder:text-[#8a9aab] dark:placeholder:text-gray-400 transition-colors hover:border-primary focus-visible:ring-1 shadow-none"
             />
           </div>
           <Popover>
             <PopoverTrigger asChild>
-              <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left ${etapaFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
-                <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+              <button className={`!h-10 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-[13px] hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left ${etapaFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
+                <ChartSquareIcon className="size-4 shrink-0 text-[#8a9aab] dark:text-gray-400" />
                 <span className="truncate flex-1">
                   {formatInclusiveMultiFilterLabel(
                     etapaFilter,
@@ -814,14 +814,14 @@ export default function OpportunitiesPage() {
             disabled={!canSeeAllAdvisors}
             isActive={assigneeFilterIsActive}
             isInitialized={assigneeFilterInitialized}
-            className="!h-12 w-[190px]"
+            className="!h-10 w-[190px]"
             onInteraction={() => setPage(1)}
           />
 
           <Popover>
             <PopoverTrigger asChild>
-              <button className={`!h-12 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${sourceFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
-                <PaletteIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+              <button className={`!h-10 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-[13px] hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${sourceFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
+                <PaletteIcon className="size-4 shrink-0 text-[#8a9aab] dark:text-gray-400" />
                 <span className="truncate flex-1">
                   {formatInclusiveMultiSourceFilterLabel(
                     sourceFilter,
@@ -890,7 +890,7 @@ export default function OpportunitiesPage() {
           <div className="ml-auto hidden sm:flex items-center gap-5">
             <Popover>
               <PopoverTrigger asChild>
-                <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] dark:text-gray-100 transition-opacity hover:opacity-70 cursor-pointer">
+                <button className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#1f2933] dark:text-gray-100 transition-opacity hover:opacity-70 cursor-pointer">
                   <ColumnsSvgIcon className="size-[18px]" />
                   Columnas
                 </button>
@@ -929,7 +929,7 @@ export default function OpportunitiesPage() {
             </Popover>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] dark:text-gray-100 transition-opacity hover:opacity-70 cursor-pointer">
+                <button className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#1f2933] dark:text-gray-100 transition-opacity hover:opacity-70 cursor-pointer">
                   <MoreVertical className="size-5" />
                 </button>
               </DropdownMenuTrigger>
@@ -989,7 +989,7 @@ export default function OpportunitiesPage() {
             <table className="w-full table-fixed" style={{ minWidth: table.getTotalSize() }}>
               <thead>
                 {table.getHeaderGroups().map((hg) => (
-                  <tr key={hg.id} className="h-11 bg-[#eef1f5] dark:bg-gray-800 text-left text-xs font-bold text-[#647789] dark:text-gray-400">
+                  <tr key={hg.id} className="h-[36px] bg-[#eef1f5] dark:bg-gray-800 text-left text-[11px] font-bold text-[#647789] dark:text-gray-400">
                     {hg.headers.map((header: any) => (
                       <th
                         key={header.id}
@@ -1040,7 +1040,7 @@ export default function OpportunitiesPage() {
                     <tr
                       key={row.id}
                       className={cn(
-                        'h-14 border-b border-dashed border-[#e8ecf0] dark:border-gray-700 bg-card/30 transition-colors cursor-pointer last:border-b-0',
+                        'h-[48px] border-b border-dashed border-[#e8ecf0] dark:border-gray-700 bg-card/30 transition-colors cursor-pointer last:border-b-0',
                         pending ? 'bg-muted/40' : 'hover:bg-[#fafbfc] dark:hover:bg-gray-800',
                       )}
                       onClick={() => openOpportunityDetail(row.original)}

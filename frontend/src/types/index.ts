@@ -458,7 +458,7 @@ export interface EmailAttachment {
 }
 
 /** Tipo de entidad a la que puede estar vinculado un archivo */
-export type FileEntityType = 'contact' | 'company' | 'opportunity' | 'activity' | 'email' | 'task';
+export type FileEntityType = 'contact' | 'company' | 'opportunity' | 'activity' | 'email' | 'task' | 'flota-prospecto';
 
 /** Archivo adjunto en el CRM (vinculado a entidades) */
 export interface FileAttachment {
