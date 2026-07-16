@@ -54,6 +54,10 @@ export const formDialogBtnOutlineClass =
 export const formDialogBtnPrimaryClass =
   'h-10 rounded-lg bg-[#13944C] px-6 shadow-none hover:bg-[#0f7a3d]';
 
+/** Lista con scroll siempre visible (p. ej. plantillas WhatsApp). */
+export const formDialogScrollListClass =
+  'max-h-56 overflow-y-scroll overscroll-contain pr-1 [scrollbar-gutter:stable] scrollbar-thin';
+
 /** Popover anclado dentro de FormDialogShell (por encima del modal z-[201]). */
 export const formDialogPopoverContentClass =
   'z-[210] w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-xl border border-border/80 bg-popover p-0 shadow-lg';

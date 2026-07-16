@@ -310,6 +310,7 @@ export async function initiateConversation(data: {
   templateName?: string;
   templateCategory?: string;
   templateLanguage?: string;
+  templateContent?: string;
   templateParams?: Record<string, unknown>;
   skipTemplate?: boolean;
   operador?: string;
@@ -343,6 +344,8 @@ export async function fetchChatwootTemplates(): Promise<{
   language: string;
   category: string;
   content?: string;
+  kind?: 'standard' | 'flow';
+  apiSendable?: boolean;
 }[]> {
   return api('/api/chatwoot/templates');
 }

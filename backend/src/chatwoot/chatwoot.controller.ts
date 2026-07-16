@@ -290,6 +290,7 @@ export class ChatwootController {
       templateName?: string;
       templateCategory?: string;
       templateLanguage?: string;
+      templateContent?: string;
       templateParams?: Record<string, unknown>;
       skipTemplate?: boolean;
       operador?: string;

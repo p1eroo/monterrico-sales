@@ -2,7 +2,13 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
-import { initiateConversation, fetchChatwootTemplates, resolveConversationByPhone, fetchConversation, conversationPhoneMatches } from "@/lib/chatwootApi";
+import { initiateConversation, resolveConversationByPhone, fetchConversation, conversationPhoneMatches } from "@/lib/chatwootApi";
+import {
+  useWhatsappTemplates,
+  resolveSelectedTemplate,
+  pickDefaultSendableTemplate,
+} from "@/components/flota/WhatsappTemplatePicker";
+import { WhatsappNewMessageDialog } from "@/components/flota/WhatsappNewMessageDialog";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAppStore } from "@/store";
 import { useImportJobsStore } from "@/store/importJobsStore";
@@ -278,10 +284,14 @@ export default function FlotaProspectos() {
   const [chatInitialContact, setChatInitialContact] = useState<{ name?: string; phone?: string } | null>(null);
   const [openingChatProspectoId, setOpeningChatProspectoId] = useState<string | null>(null);
   const [newChatData, setNewChatData] = useState<{ phone: string; name: string; operador?: string } | null>(null);
-  const [newChatTemplates, setNewChatTemplates] = useState<{ name: string; language: string; category: string; content?: string }[]>([]);
   const [newChatSelected, setNewChatSelected] = useState('afiliacion_atu');
-  const [newChatLoadingTpl, setNewChatLoadingTpl] = useState(false);
+  const { templates: newChatTemplates, loading: newChatLoadingTpl } = useWhatsappTemplates(!!newChatData);
   const [newChatSending, setNewChatSending] = useState(false);
+
+  useEffect(() => {
+    if (!newChatData || newChatTemplates.length === 0) return;
+    setNewChatSelected(pickDefaultSendableTemplate(newChatTemplates));
+  }, [newChatData, newChatTemplates]);
 
 
   const blockedProspectsRef = useRef(blockedProspects);
@@ -443,6 +453,7 @@ export default function FlotaProspectos() {
                         openExisting(existing.id);
                         return;
                       }
+                      setNewChatSelected('afiliacion_atu');
                       setNewChatData({
                         phone: fullPhone,
                         name: p.nombreCompleto,
@@ -940,16 +951,6 @@ export default function FlotaProspectos() {
   useEffect(() => {
     void loadProspectos(page);
   }, [loadProspectos, page]);
-
-  useEffect(() => {
-    if (!newChatData) return;
-    setNewChatSelected('afiliacion_atu');
-    setNewChatLoadingTpl(true);
-    fetchChatwootTemplates().then((tpls) => {
-      setNewChatTemplates(tpls);
-      if (tpls.length > 0) setNewChatSelected(tpls[0].name);
-    }).catch(() => {}).finally(() => setNewChatLoadingTpl(false));
-  }, [newChatData]);
 
   const displayData = useMemo(() => {
     if (blockedProspects.length === 0) return prospectos;
@@ -2531,94 +2532,47 @@ tr[data-row-id="${bp.id}"] {
         initialContact={chatInitialContact}
       />
 
-      <Dialog open={!!newChatData} onOpenChange={(v) => { if (!v) setNewChatData(null); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Nuevo mensaje</DialogTitle>
-            <DialogDescription>Selecciona una plantilla para iniciar la conversación</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label>Número</Label>
-              <p className="text-sm font-medium">{newChatData?.phone}</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Nombre</Label>
-              <p className="text-sm font-medium">{newChatData?.name}</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Plantilla</Label>
-              {newChatLoadingTpl ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Cargando...
-                </div>
-              ) : newChatTemplates.length === 0 ? (
-                newChatSelected === 'afiliacion_atu' ? (
-                  <div className="rounded-lg border border-primary bg-primary/10 px-3 py-2">
-                    <p className="font-medium text-xs">afiliacion_atu</p>
-                    <p className="text-[10px] text-muted-foreground">UTILITY</p>
-                    <div className="mt-2 text-[13px] leading-relaxed whitespace-pre-line text-foreground">
-                      Hola estimado(a), reciba un cordial saludo de parte de Taxi Monterrico.{'\n\n'}
-                      Hemos observado su interés en formar parte de nuestra flota.{'\n'}
-                      ¿usted cuenta con vehiculo particular o tiene permiso de la ATU?
-                    </div>
-                  </div>
-                ) : null
-              ) : (
-                <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
-                  {newChatTemplates.map((t) => (
-                    <button key={t.name} onClick={() => setNewChatSelected(t.name)}
-                      className={`rounded-lg border px-3 py-2 text-left transition-colors ${
-                        newChatSelected === t.name ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:border-primary/50 hover:bg-muted'
-                      }`}
-                    >
-                      <p className="font-medium text-xs">{t.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{t.category}</p>
-                      {t.content && (
-                        <div className="mt-1 text-[13px] leading-relaxed whitespace-pre-line text-foreground/80">{t.content}</div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setNewChatData(null)}>Cancelar</Button>
-            <Button onClick={async () => {
-              if (!newChatData) return;
-              const template = newChatTemplates.find((t) => t.name === newChatSelected);
-              const templateName = template?.name || 'afiliacion_atu';
-              const templateCategory = template?.category || 'UTILITY';
-              setNewChatSending(true);
-              try {
-                const result = await initiateConversation({
-                  name: newChatData.name,
-                  phone: newChatData.phone,
-                  templateName,
-                  templateCategory,
-                  operador: newChatData.operador,
-                });
-                setChatInitialContact({
-                  name: newChatData.name,
-                  phone: newChatData.phone,
-                });
-                setNewChatData(null);
-                setChatActiveId(result.conversationId);
-                setChatPanelOpen(true);
-                toast.success('Mensaje enviado');
-              } catch (e) {
-                toast.error(e instanceof Error ? e.message : 'Error al enviar');
-              } finally {
-                setNewChatSending(false);
-              }
-            }} disabled={newChatSending}>
-              {newChatSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-              {newChatSending ? 'Enviando...' : 'Enviar plantilla'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <WhatsappNewMessageDialog
+        open={!!newChatData}
+        onOpenChange={(v) => { if (!v) setNewChatData(null); }}
+        phone={newChatData?.phone ?? ''}
+        name={newChatData?.name ?? ''}
+        phoneReadOnly
+        nameReadOnly
+        templates={newChatTemplates}
+        loadingTemplates={newChatLoadingTpl}
+        selectedTemplate={newChatSelected}
+        onSelectTemplate={setNewChatSelected}
+        submitting={newChatSending}
+        onSubmit={async () => {
+          if (!newChatData) return;
+          const template = resolveSelectedTemplate(newChatTemplates, newChatSelected);
+          setNewChatSending(true);
+          try {
+            const result = await initiateConversation({
+              name: newChatData.name,
+              phone: newChatData.phone,
+              templateName: template.name,
+              templateCategory: template.category,
+              templateLanguage: template.language,
+              templateContent: template.content ?? '',
+              operador: newChatData.operador,
+            });
+            setChatInitialContact({
+              name: newChatData.name,
+              phone: newChatData.phone,
+            });
+            setNewChatData(null);
+            setChatActiveId(result.conversationId);
+            setChatPanelOpen(true);
+            toast.success('Mensaje enviado');
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : 'Error al enviar');
+          } finally {
+            setNewChatSending(false);
+          }
+        }}
+      />
     </div>
   );
 }

@@ -10,6 +10,14 @@ import type {
   ChatwootInbox,
   ChatwootAgent,
 } from './chatwoot.types';
+import {
+  buildTemplateProcessedParams,
+  isTemplateApiSendable,
+  mergeWhatsappTemplateLists,
+  normalizeTemplateLanguage,
+  resolveWhatsappTemplate,
+  type WhatsappTemplateDefinition,
+} from './whatsapp-templates.catalog';
 
 @Injectable()
 export class ChatwootService {
@@ -607,7 +615,39 @@ export class ChatwootService {
     },
     sender?: { userId: string; name: string },
   ): Promise<ChatwootMessage> {
-    const message = await this.client.sendMessage(conversationId, content, 'outgoing', templateParams);
+    let resolvedContent = content;
+    let resolvedParams = templateParams;
+    if (templateParams) {
+      if (!isTemplateApiSendable(templateParams.name)) {
+        throw new Error(
+          `La plantilla "${templateParams.name}" usa WhatsApp Flow y no puede enviarse desde esta app. Envíala desde Chatwoot directamente.`,
+        );
+      }
+      const catalog = resolveWhatsappTemplate(templateParams.name);
+      const processed =
+        templateParams.processed_params && Object.keys(templateParams.processed_params).length > 0
+          ? templateParams.processed_params
+          : catalog
+            ? buildTemplateProcessedParams(catalog)
+            : {};
+      resolvedParams = {
+        ...templateParams,
+        category: templateParams.category || catalog?.category || 'UTILITY',
+        language: normalizeTemplateLanguage(
+          templateParams.language || catalog?.language || 'es_pe',
+        ),
+        processed_params: processed,
+      };
+      if (!resolvedContent.trim()) {
+        resolvedContent = catalog?.content ?? resolvedContent;
+      }
+    }
+    const message = await this.client.sendMessage(
+      conversationId,
+      resolvedContent,
+      'outgoing',
+      resolvedParams,
+    );
     if (sender) {
       const prospecto = await this.operadorSync.findProspectoForConversation(conversationId);
       if (prospecto) {
@@ -706,6 +746,7 @@ export class ChatwootService {
     templateName?: string;
     templateCategory?: string;
     templateLanguage?: string;
+    templateContent?: string;
     templateParams?: Record<string, unknown>;
     skipTemplate?: boolean;
     operador?: string;
@@ -830,15 +871,33 @@ export class ChatwootService {
 
     // 5. Enviar template a la conversación solo si no se salta
     let templateSent = false;
-    if (!data.skipTemplate && data.templateName && data.templateCategory) {
+    if (!data.skipTemplate && data.templateName) {
+      if (!isTemplateApiSendable(data.templateName)) {
+        throw new Error(
+          `La plantilla "${data.templateName}" usa WhatsApp Flow y no puede enviarse desde esta app. Envíala desde Chatwoot directamente.`,
+        );
+      }
       this.logger.log(`Enviando template a conversation ${conversation.id}`);
       try {
-        const templateContent = 'Hola estimado(a), reciba un cordial saludo de parte de Taxi Monterrico.\n\nHemos observado su interés en formar parte de nuestra flota. \n¿usted cuenta con vehiculo particular o tiene permiso de la ATU?';
+        const catalog = resolveWhatsappTemplate(data.templateName);
+        const templateContent =
+          data.templateContent?.trim() || catalog?.content || '';
+        const templateCategory =
+          data.templateCategory || catalog?.category || 'UTILITY';
+        const templateLanguage = normalizeTemplateLanguage(
+          data.templateLanguage || catalog?.language || 'es_pe',
+        );
+        const processedParams =
+          data.templateParams && Object.keys(data.templateParams).length > 0
+            ? data.templateParams
+            : catalog
+              ? buildTemplateProcessedParams(catalog)
+              : {};
         await this.client.sendTemplateMessage(conversation.id, templateContent, {
           name: data.templateName,
-          category: data.templateCategory,
-          language: data.templateLanguage ?? 'es_PE',
-          processed_params: data.templateParams ?? {},
+          category: templateCategory,
+          language: templateLanguage,
+          processed_params: processedParams,
         });
         templateSent = true;
         this.logger.log(`Template enviado a conversation ${conversation.id}`);

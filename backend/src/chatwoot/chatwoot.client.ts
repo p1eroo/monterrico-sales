@@ -10,6 +10,10 @@ import type {
   ChatwootConversationListItem,
   ChatwootCreateContactResponse,
 } from './chatwoot.types';
+import {
+  mergeWhatsappTemplateLists,
+  type WhatsappTemplateDefinition,
+} from './whatsapp-templates.catalog';
 
 @Injectable()
 export class ChatwootClient {
@@ -414,7 +418,7 @@ export class ChatwootClient {
     throw new Error('Chatwoot media fetch: too many redirects');
   }
 
-  async listTemplates(): Promise<{ name: string; language: string; category: string; content?: string }[]> {
+  async listTemplates(): Promise<WhatsappTemplateDefinition[]> {
     const inboxId = this.config.inboxId;
     const routes = [
       `/inboxes/${inboxId}/whatsapp_templates`,
@@ -423,34 +427,36 @@ export class ChatwootClient {
       `/inboxes/${inboxId}/templates`,
       `/whatsapp/${inboxId}/templates`,
     ];
-    const fallbackContent = 'Hola estimado(a), reciba un cordial saludo de parte de Taxi Monterrico.\n\nHemos observado su interés en formar parte de nuestra flota. \n¿usted cuenta con vehiculo particular o tiene permiso de la ATU?';
+    const remote: WhatsappTemplateDefinition[] = [];
     for (const route of routes) {
       try {
         const raw = await this.request<any>('GET', route);
-        const extract = (items: any[]) => {
+        const extract = (items: any[]): WhatsappTemplateDefinition[] | null => {
           if (!Array.isArray(items) || items.length === 0) return null;
           return items.map((t: any) => {
-            // Extraer texto del body desde components
             const bodyComponent = t.components?.find((c: any) => c.type === 'BODY');
             return {
               name: t.name ?? t.id ?? '',
-              language: t.language ?? t.locale ?? '',
-              category: t.category ?? '',
-              content: bodyComponent?.text ?? bodyComponent?.content ?? fallbackContent,
+              language: t.language ?? t.locale ?? 'es_PE',
+              category: t.category ?? 'UTILITY',
+              content: bodyComponent?.text ?? bodyComponent?.content ?? '',
             };
           });
         };
-        let result =
+        const result =
           extract(raw?.data?.payload) ??
           extract(raw?.data?.data) ??
           extract(raw?.data) ??
           extract(raw?.payload) ??
           extract(raw);
-        if (result && result.length > 0) return result;
+        if (result && result.length > 0) {
+          remote.push(...result);
+          break;
+        }
       } catch {
         // probar siguiente ruta
       }
     }
-    return [];
+    return mergeWhatsappTemplateLists(remote);
   }
 }

@@ -85,7 +85,6 @@ import {
   uploadAttachment,
   initiateConversation,
   sendTemplateToConversation,
-  fetchChatwootTemplates,
   fetchChatwootContacts,
   searchChatwootConversations,
   fetchUnreadConversations,
@@ -99,6 +98,15 @@ import { notifyFlotaProspectosRefresh } from '@/lib/flotaProspectosRealtime';
 import { getConductorTelefonos } from '@/lib/flotaConductoresApi';
 import { api } from '@/lib/api';
 import { useAppStore } from '@/store';
+import {
+  useWhatsappTemplates,
+  resolveSelectedTemplate,
+  pickDefaultSendableTemplate,
+} from '@/components/flota/WhatsappTemplatePicker';
+import {
+  WhatsappNewMessageDialog,
+  WhatsappTemplateSendDialog,
+} from '@/components/flota/WhatsappNewMessageDialog';
 
 /* ==================== CHATWOOT INBOX VIEW ==================== */
 
@@ -139,11 +147,15 @@ export default function ChatwootInboxView() {
   const contactPageRef = useRef(1);
   const loadingContactRef = useRef(false);
   const [hasMoreContacts, setHasMoreContacts] = useState(true);
-  const [newChatTemplates, setNewChatTemplates] = useState<{ name: string; language: string; category: string; content?: string }[]>([]);
   const [newChatSelectedTemplate, setNewChatSelectedTemplate] = useState('afiliacion_atu');
-  const [newChatLoadingTpl, setNewChatLoadingTpl] = useState(false);
+  const { templates: newChatTemplates, loading: newChatLoadingTpl } = useWhatsappTemplates(newChatOpen);
   const [contactNewChatData, setContactNewChatData] = useState<{ phone: string; name: string; contactId?: number } | null>(null);
   const [openingContactId, setOpeningContactId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!newChatOpen || newChatTemplates.length === 0) return;
+    setNewChatSelectedTemplate(pickDefaultSendableTemplate(newChatTemplates));
+  }, [newChatOpen, newChatTemplates]);
 
   useEffect(() => {
     getConductorTelefonos().then((r) => setConductorCodesAll(r.codigoByTelefono)).catch(() => {});
@@ -533,13 +545,7 @@ export default function ChatwootInboxView() {
   const openNewChatForContact = useCallback((phone: string, name: string, contactId?: number) => {
     setContactNewChatData({ phone, name, contactId });
     setNewChatSelectedTemplate('afiliacion_atu');
-    setNewChatLoadingTpl(true);
-    setNewChatTemplates([]);
     setNewChatOpen(true);
-    fetchChatwootTemplates().then((tpls) => {
-      setNewChatTemplates(tpls);
-      if (tpls.length > 0) setNewChatSelectedTemplate(tpls[0].name);
-    }).catch(() => {}).finally(() => setNewChatLoadingTpl(false));
   }, []);
 
   const handleContactClick = useCallback(async (contact: ChatwootContact) => {
@@ -574,10 +580,11 @@ export default function ChatwootInboxView() {
     const phone = (contactNewChatData?.phone || newPhone).trim();
     const name = (contactNewChatData?.name || newName).trim() || phone;
     if (!phone) return;
-    const templateName = newChatSelectedTemplate;
-    const template = newChatTemplates.find((t) => t.name === templateName);
-    const finalName = template?.name || templateName || 'afiliacion_atu';
-    const finalCategory = template?.category || 'UTILITY';
+    const template = resolveSelectedTemplate(newChatTemplates, newChatSelectedTemplate);
+    const finalName = template.name;
+    const finalCategory = template.category;
+    const finalLanguage = template.language;
+    const finalContent = template.content ?? '';
     const cleaned = phone.replace(/\D/g, '');
     const fullPhone = cleaned.length === 9 ? `51${cleaned}` : cleaned;
     setCreatingChat(true);
@@ -589,6 +596,8 @@ export default function ChatwootInboxView() {
         contactId: contactNewChatData?.contactId,
         templateName: finalName,
         templateCategory: finalCategory,
+        templateLanguage: finalLanguage,
+        templateContent: finalContent,
         operador: currentUser.name,
       });
       setNewChatOpen(false);
@@ -759,65 +768,28 @@ export default function ChatwootInboxView() {
         )}
       </div>
 
-      <Dialog open={newChatOpen} onOpenChange={(v) => { if (!v) { setNewChatOpen(false); setContactNewChatData(null); } }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Nuevo mensaje</DialogTitle>
-            <DialogDescription>Selecciona una plantilla para iniciar la conversación</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label>Número</Label>
-              <Input value={contactNewChatData?.phone || newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="+51999999999" />
-            </div>
-            <div className="space-y-2">
-              <Label>Nombre</Label>
-              <Input value={contactNewChatData?.name || newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nombre del contacto" />
-            </div>
-            <div className="space-y-2">
-              <Label>Plantilla</Label>
-              {newChatLoadingTpl ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Cargando plantillas...
-                </div>
-              ) : newChatTemplates.length === 0 ? (
-                <div className="rounded-lg border border-primary bg-primary/10 px-3 py-2">
-                  <p className="font-medium text-xs">afiliacion_atu</p>
-                  <p className="text-[10px] text-muted-foreground">UTILITY</p>
-                  <div className="mt-2 text-[13px] leading-relaxed whitespace-pre-line text-foreground">
-                    Hola estimado(a), reciba un cordial saludo de parte de Taxi Monterrico.{'\n\n'}
-                    Hemos observado su interés en formar parte de nuestra flota.{'\n'}
-                    ¿usted cuenta con vehiculo particular o tiene permiso de la ATU?
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
-                  {newChatTemplates.map((t) => (
-                    <button key={t.name} onClick={() => setNewChatSelectedTemplate(t.name)}
-                      className={`rounded-lg border px-3 py-2 text-left transition-colors ${
-                        newChatSelectedTemplate === t.name ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:border-primary/50 hover:bg-muted'
-                      }`}
-                    >
-                      <p className="font-medium text-xs">{t.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{t.category}</p>
-                      {t.content && (
-                        <div className="mt-1 text-[13px] leading-relaxed whitespace-pre-line text-foreground/80">{t.content}</div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setNewChatOpen(false); setContactNewChatData(null); }} disabled={creatingChat}>Cancelar</Button>
-            <Button onClick={handleNewChat} disabled={(!newPhone.trim() && !contactNewChatData) || creatingChat}>
-              {creatingChat ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-              {creatingChat ? 'Enviando...' : 'Enviar plantilla'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <WhatsappNewMessageDialog
+        open={newChatOpen}
+        onOpenChange={(v) => {
+          if (!v) {
+            setNewChatOpen(false);
+            setContactNewChatData(null);
+          }
+        }}
+        phone={contactNewChatData?.phone || newPhone}
+        name={contactNewChatData?.name || newName}
+        onPhoneChange={contactNewChatData ? undefined : setNewPhone}
+        onNameChange={contactNewChatData ? undefined : setNewName}
+        phoneReadOnly={!!contactNewChatData}
+        nameReadOnly={!!contactNewChatData}
+        templates={newChatTemplates}
+        loadingTemplates={newChatLoadingTpl}
+        selectedTemplate={newChatSelectedTemplate}
+        onSelectTemplate={setNewChatSelectedTemplate}
+        onSubmit={() => { void handleNewChat(); }}
+        submitting={creatingChat}
+        submitDisabled={!newPhone.trim() && !contactNewChatData}
+      />
     </div>
   );
 
@@ -1333,8 +1305,13 @@ export function ChatwootChatPanel({
   const [dismiss24h, setDismiss24h] = useState(false);
   const [sendingTemplate, setSendingTemplate] = useState<string | null>(null);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
-  const [availableTemplates, setAvailableTemplates] = useState<{ name: string; language: string; category: string }[]>([]);
-  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [selectedTemplateForSend, setSelectedTemplateForSend] = useState('afiliacion_atu');
+  const { templates: availableTemplates, loading: loadingTemplates } = useWhatsappTemplates(templateDialogOpen);
+
+  useEffect(() => {
+    if (!templateDialogOpen || availableTemplates.length === 0) return;
+    setSelectedTemplateForSend(pickDefaultSendableTemplate(availableTemplates));
+  }, [templateDialogOpen, availableTemplates]);
 
   const convo = conversations.find((c) => c.id === conversationId);
   const sender = convo?.meta.sender;
@@ -1854,15 +1831,16 @@ export function ChatwootChatPanel({
     }
   }
 
-  async function handleSendTemplate(templateName: string, templateCategory: string) {
-    setSendingTemplate(templateName);
+  async function handleSendTemplate(templateName: string) {
+    const template = resolveSelectedTemplate(availableTemplates, templateName);
+    setSendingTemplate(template.name);
     try {
       await sendTemplateToConversation(conversationId, {
-        content: 'Hola estimado(a), reciba un cordial saludo de parte de Taxi Monterrico.\n\nHemos observado su interés en formar parte de nuestra flota. \n¿usted cuenta con vehiculo particular o tiene permiso de la ATU?',
+        content: template.content ?? '',
         template_params: {
-          name: templateName,
-          category: templateCategory,
-          language: 'es_PE',
+          name: template.name,
+          category: template.category,
+          language: template.language,
           processed_params: {},
         },
       });
@@ -2169,71 +2147,19 @@ export function ChatwootChatPanel({
         </div>
       </section>
 
-      <Dialog open={templateDialogOpen} onOpenChange={(v) => {
-        setTemplateDialogOpen(v);
-        if (v) {
-          setLoadingTemplates(true);
-          fetchChatwootTemplates().then(setAvailableTemplates).catch(() => {}).finally(() => setLoadingTemplates(false));
-        }
-      }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Enviar plantilla</DialogTitle>
-            <DialogDescription>
-              Selecciona una plantilla para enviar al contacto.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            {loadingTemplates ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="size-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : availableTemplates.length > 0 ? (
-              <div className="space-y-2">
-                {availableTemplates.map((t, i) => (
-                  <button
-                    key={i}
-                    onClick={() => { void handleSendTemplate(t.name, t.category); setTemplateDialogOpen(false); }}
-                    disabled={sendingTemplate !== null}
-                    className="flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left text-sm hover:bg-muted transition-colors disabled:opacity-50"
-                  >
-                    <div>
-                      <p className="font-medium">{t.name}</p>
-                      <p className="text-xs text-muted-foreground">Idioma: {t.language} · Categoría: {t.category}</p>
-                    </div>
-                    {sendingTemplate === t.name ? (
-                      <Loader2 className="size-4 animate-spin shrink-0" />
-                    ) : (
-                      <Send className="size-4 shrink-0 text-muted-foreground" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-lg border bg-muted/20 p-4 text-center text-sm text-muted-foreground">
-                No se pudieron cargar los templates. Usa la plantilla predefinida.
-              </div>
-            )}
-
-            <div className="rounded-lg border bg-muted/10 p-4">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Plantilla predefinida</p>
-              <p className="mt-1 text-sm font-medium">Afiliación ATU</p>
-              <div className="mt-3 space-y-1 text-sm text-muted-foreground">
-                <p>Hola estimado(a), reciba un cordial saludo de parte de Taxi Monterrico.</p>
-                <p>Hemos observado su interés en formar parte de nuestra flota.</p>
-                <p>¿usted cuenta con vehiculo particular o tiene permiso de la ATU?</p>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setTemplateDialogOpen(false)} disabled={sendingTemplate !== null}>Cancelar</Button>
-            <Button onClick={() => { void handleSendTemplate('afiliacion_atu', 'UTILITY'); setTemplateDialogOpen(false); }} disabled={sendingTemplate !== null}>
-              {sendingTemplate === 'procesar_afiliacion_atu' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Enviar plantilla
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <WhatsappTemplateSendDialog
+        open={templateDialogOpen}
+        onOpenChange={setTemplateDialogOpen}
+        templates={availableTemplates}
+        loadingTemplates={loadingTemplates}
+        selectedTemplate={selectedTemplateForSend}
+        onSelectTemplate={setSelectedTemplateForSend}
+        onSubmit={() => {
+          void handleSendTemplate(selectedTemplateForSend);
+          setTemplateDialogOpen(false);
+        }}
+        submitting={sendingTemplate !== null}
+      />
 
       {lightboxIndex !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90" onClick={() => setLightboxIndex(null)}>
