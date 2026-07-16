@@ -78,7 +78,7 @@ export default function AreaSelect() {
       className="flex min-h-screen flex-col items-center justify-center p-4 transition-all duration-500"
       style={{
         ...backgroundStyle,
-        fontFamily: "'Outfit', sans-serif",
+        fontFamily: "'Poppins', sans-serif",
       }}
     >
       {/* Botón de Administrador arriba a la derecha */}

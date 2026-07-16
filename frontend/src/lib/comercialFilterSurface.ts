@@ -13,7 +13,7 @@ export const comercialFilterSurfaceClass = cn(
 );
 
 export const comercialFilterActionClass = cn(
-  'flex h-12 items-center gap-1.5 rounded-lg border px-3 text-sm text-black transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60 dark:text-gray-100',
+  'flex h-10 items-center gap-1.5 rounded-lg border px-3 text-[13px] text-black transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60 dark:text-gray-100',
   comercialCardSurfaceClass,
 );
 

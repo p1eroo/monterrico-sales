@@ -937,14 +937,14 @@ export default function Reports() {
           disabled={!canSeeAllAdvisors}
           isActive={advisorFilterIsActive}
           isInitialized={advisorFilterInitialized}
-          className={cn('!h-12 w-full min-[400px]:w-[190px] sm:w-[190px]', comercialFilterSurfaceClass)}
+          className={cn('!h-10 w-full min-[400px]:w-[190px] sm:w-[190px]', comercialFilterSurfaceClass)}
         />
 
         <MultiSourceFilter
           value={sourceFilter}
           onChange={setSourceFilter}
           options={leadSourceOptions}
-          className={cn('!h-12 w-full min-[400px]:w-[190px] sm:w-[190px]', comercialFilterSurfaceClass)}
+          className={cn('!h-10 w-full min-[400px]:w-[190px] sm:w-[190px]', comercialFilterSurfaceClass)}
         />
 
         {hasPermission('reportes.exportar') && (
