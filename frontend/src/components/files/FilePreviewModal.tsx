@@ -36,6 +36,7 @@ interface FilePreviewModalProps {
   onOpenChange: (open: boolean) => void;
   onDownload?: (file: FileAttachment) => void;
   onNavigateToEntity?: (file: FileAttachment) => void;
+  fetchBlobUrl?: (fileId: string, disposition: string) => Promise<string>;
 }
 
 export function FilePreviewModal({
@@ -44,6 +45,7 @@ export function FilePreviewModal({
   onOpenChange,
   onDownload,
   onNavigateToEntity,
+  fetchBlobUrl,
 }: FilePreviewModalProps) {
   const isImage = useMemo(
     () => (file ? looksLikeImage(file) : false),
@@ -74,7 +76,8 @@ export function FilePreviewModal({
       if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev);
       return null;
     });
-    void fetchFileContentBlobUrl(file.id, 'inline')
+    const fetcher = fetchBlobUrl || fetchFileContentBlobUrl;
+    void fetcher(file.id, 'inline')
       .then((url) => {
         if (cancelled) {
           URL.revokeObjectURL(url);
@@ -95,7 +98,7 @@ export function FilePreviewModal({
       cancelled = true;
       if (blobUrl?.startsWith('blob:')) URL.revokeObjectURL(blobUrl);
     };
-  }, [open, file?.id, file?.mimeType, canPreview]);
+  }, [open, file?.id, file?.mimeType, canPreview, fetchBlobUrl, file]);
 
   if (!file) return null;
 

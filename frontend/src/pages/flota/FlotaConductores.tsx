@@ -578,7 +578,7 @@ const stats = useMemo(() => {
                 { label: "DNI" },
                 { label: "Teléfono" },
                 { label: "Placa" },
-                { label: "Zona" },
+                { label: "Distrito" },
                 { label: "Estado" },
                 { label: "Ingresos" },
                 { label: "" },

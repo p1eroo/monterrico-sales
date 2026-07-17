@@ -34,11 +34,15 @@ export function ProspectoArchivosModal({
     previewFile,
     previewOpen,
     setPreviewOpen,
+    fetchBlobUrl,
   } = useFlotaArchivos(open ? prospectoId : null);
 
   const [filePendingDelete, setFilePendingDelete] = useState<FileAttachment | null>(null);
   const onFilesLoadRef = useRef(onFilesLoad);
-  onFilesLoadRef.current = onFilesLoad;
+
+  useEffect(() => {
+    onFilesLoadRef.current = onFilesLoad;
+  });
 
   useEffect(() => {
     if (prospectoId && !loading) {
@@ -111,6 +115,7 @@ export function ProspectoArchivosModal({
         open={previewOpen}
         onOpenChange={setPreviewOpen}
         onDownload={handleDownload}
+        fetchBlobUrl={fetchBlobUrl}
       />
     </Dialog>
   );

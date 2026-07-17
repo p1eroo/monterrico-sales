@@ -50,7 +50,7 @@ export function OperadorAsignacionesZonaPanel({
         {!day ? (
           <p className="px-1 py-6 text-center text-xs text-muted-foreground">
             Haz clic en un día del gráfico para ver la actividad y asignaciones
-            por zona de cada operador.
+            por distrito de cada operador.
           </p>
         ) : day.operadores.length === 0 ? (
           <p className="px-1 py-6 text-center text-xs text-muted-foreground">
@@ -103,7 +103,7 @@ export function OperadorAsignacionesZonaPanel({
                 {row.zonas.length > 0 ? (
                   <>
                     <p className="mb-1 border-t border-border/60 pt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Asignaciones por zona
+                      Asignaciones por distrito
                     </p>
                     <ul className="space-y-0.5">
                       {row.zonas.map((z) => (

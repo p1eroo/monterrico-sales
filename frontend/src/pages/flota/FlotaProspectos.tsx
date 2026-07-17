@@ -688,7 +688,7 @@ export default function FlotaProspectos() {
       {
         accessorKey: "distrito",
         id: "distrito",
-        header: "Zona",
+        header: "Distrito",
         size: 100,
         cell: ({ getValue }) => (
           <span
@@ -1419,7 +1419,7 @@ export default function FlotaProspectos() {
         Placa: p.placa ?? "",
         "A.C.": p.aireAcondicionado ?? "",
         "Año Veh.": p.anioVehiculo != null ? String(p.anioVehiculo) : "",
-        Zona: p.distrito ?? "",
+        Distrito: p.distrito ?? "",
         "F. Cita": p.fechaCita
           ? new Date(p.fechaCita).toLocaleDateString("es-PE")
           : "",
@@ -1507,7 +1507,7 @@ export default function FlotaProspectos() {
             { label: "Placa", width: 90 },
             { label: "A.C.", width: 70 },
             { label: "Año Veh.", width: 65 },
-            { label: "Zona", width: 100 },
+            { label: "Distrito", width: 100 },
             { label: "Ciudad", width: 90 },
             { label: "F. Cita", width: 130 },
             { label: "Asistencia", width: 80 },

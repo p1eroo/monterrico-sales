@@ -144,7 +144,7 @@ export default function FlotaReportes() {
     { key: "conversion", label: "Conversión" },
     { key: "conductores", label: "Nuevos Conductores" },
     { key: "fuente", label: "Prospectos por Fuente" },
-    { key: "zona", label: "Prospectos por Zona" },
+    { key: "zona", label: "Prospectos por Distrito" },
     { key: "operador", label: "Actividad por Operador" },
     { key: "sunat", label: "SUNAT - Gestión de Flota" },
   ] as const;
@@ -687,7 +687,7 @@ export default function FlotaReportes() {
       })),
     );
     addSheet(
-      "Prospectos por Zona",
+      "Prospectos por Distrito",
       prospectosByZona.allZones.map((x) => ({
         Distrito: x.name,
         Cantidad: x.count,
@@ -870,7 +870,7 @@ export default function FlotaReportes() {
         },
         {
           key: "zona",
-          title: "Prospectos por Zona",
+          title: "Prospectos por Distrito",
           head: [["Distrito", "Cantidad"]],
           body: prospectosByZona.allZones.map((x) => [x.name, x.count]),
         },
@@ -1129,7 +1129,7 @@ export default function FlotaReportes() {
           <Card id="chart-zona" className="h-full w-full">
             <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 px-5 pt-4 pb-1">
               <div className="min-w-0 space-y-1">
-                <CardTitle className="text-base font-medium">Prospectos por Zona</CardTitle>
+                <CardTitle className="text-base font-medium">Prospectos por Distrito</CardTitle>
                 <p className="text-xs text-muted-foreground">
                   Totales del periodo
                 </p>
@@ -1459,7 +1459,7 @@ export default function FlotaReportes() {
         >
           <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
             <DialogTitle className="pr-8 text-base">
-              Prospectos por Zona
+              Prospectos por Distrito
             </DialogTitle>
             <DialogDescription className="sr-only">
               Totales del periodo y distribución temporal por zona de registro

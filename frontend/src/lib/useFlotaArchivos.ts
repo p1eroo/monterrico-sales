@@ -2,7 +2,32 @@ import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import type { FileAttachment } from '@/types';
 import { api, API_BASE } from '@/lib/api';
-import { fetchFileContentBlobUrl } from '@/lib/fileApi';
+
+async function flotaFileContentBlobUrl(
+  prospectoId: string,
+  fileId: string,
+  disposition: 'inline' | 'attachment',
+): Promise<string> {
+  const token = localStorage.getItem('accessToken');
+  const res = await fetch(
+    `${API_BASE}/flota-prospectos/${prospectoId}/archivos/${fileId}/content?disposition=${disposition}`,
+    { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+  );
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    let msg = text || res.statusText || 'Error al obtener el archivo';
+    try {
+      const j = JSON.parse(text) as { message?: string | string[] };
+      if (Array.isArray(j.message)) msg = j.message.join(', ');
+      else if (typeof j.message === 'string') msg = j.message;
+    } catch {
+      /* usar text */
+    }
+    throw new Error(msg);
+  }
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+}
 
 export interface UseFlotaArchivosReturn {
   loading: boolean;
@@ -14,6 +39,7 @@ export interface UseFlotaArchivosReturn {
   previewFile: FileAttachment | null;
   previewOpen: boolean;
   setPreviewOpen: (open: boolean) => void;
+  fetchBlobUrl: (fileId: string, disposition: string) => Promise<string>;
 }
 
 export function useFlotaArchivos(prospectoId: string | null): UseFlotaArchivosReturn {
@@ -44,6 +70,18 @@ export function useFlotaArchivos(prospectoId: string | null): UseFlotaArchivosRe
   useEffect(() => {
     void load();
   }, [load]);
+
+  const fetchBlobUrl = useCallback(
+    async (fileId: string, disposition: string) => {
+      if (!prospectoId) throw new Error('Falta el identificador del prospecto');
+      return flotaFileContentBlobUrl(
+        prospectoId,
+        fileId,
+        disposition as 'inline' | 'attachment',
+      );
+    },
+    [prospectoId],
+  );
 
   const handleUpload = useCallback(
     async (uploadedFiles: File[]) => {
@@ -85,7 +123,8 @@ export function useFlotaArchivos(prospectoId: string | null): UseFlotaArchivosRe
 
   const handleDownload = useCallback(async (file: FileAttachment) => {
     try {
-      const url = await fetchFileContentBlobUrl(file.id, 'attachment');
+      if (!prospectoId) throw new Error('Falta el identificador del prospecto');
+      const url = await flotaFileContentBlobUrl(prospectoId, file.id, 'attachment');
       const a = document.createElement('a');
       a.href = url;
       a.download = file.name;
@@ -96,7 +135,7 @@ export function useFlotaArchivos(prospectoId: string | null): UseFlotaArchivosRe
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'No se pudo descargar');
     }
-  }, []);
+  }, [prospectoId]);
 
   const handleDelete = useCallback(
     async (file: FileAttachment) => {
@@ -129,5 +168,6 @@ export function useFlotaArchivos(prospectoId: string | null): UseFlotaArchivosRe
     previewFile,
     previewOpen,
     setPreviewOpen,
+    fetchBlobUrl,
   };
 }

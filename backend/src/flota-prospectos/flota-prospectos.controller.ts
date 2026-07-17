@@ -15,6 +15,7 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  StreamableFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
@@ -517,5 +518,32 @@ export class FlotaProspectosController {
     @Req() req: AuthedReq,
   ) {
     return this.filesService.remove(fileId, req.user.userId);
+  }
+
+  /** GET /flota-prospectos/:id/archivos/:fileId/content — Vista previa / descarga */
+  @Get('flota-prospectos/:id/archivos/:fileId/content')
+  @RequirePermissions('flota_prospectos.ver')
+  async streamArchivo(
+    @Param('fileId') fileId: string,
+    @Query('disposition') disposition?: string,
+  ): Promise<StreamableFile> {
+    const disp = disposition === 'attachment' ? 'attachment' : 'inline';
+    const { stream, mimeType, contentDisposition } =
+      await this.filesService.openContentStream(fileId, disp);
+    return new StreamableFile(stream, {
+      type: mimeType,
+      disposition: contentDisposition,
+    });
+  }
+
+  /** GET /flota-prospectos/:id/archivos/:fileId/url — URL prefirmada */
+  @Get('flota-prospectos/:id/archivos/:fileId/url')
+  @RequirePermissions('flota_prospectos.ver')
+  async presignArchivo(
+    @Param('fileId') fileId: string,
+    @Query('disposition') disposition?: string,
+  ) {
+    const disp = disposition === 'attachment' ? 'attachment' : 'inline';
+    return this.filesService.presignGet(fileId, disp);
   }
 }
