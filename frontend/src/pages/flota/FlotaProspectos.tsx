@@ -915,6 +915,7 @@ export default function FlotaProspectos() {
                 nombreCompleto: p.nombreCompleto, edad: null,
                 operador: p.operador, estado: p.estado || '',
                 modalidad: null, anioVehiculo: null, placa: null, aireAcondicionado: null, distrito: null,
+                ciudad: null,
                 fechaCita: null, asistencia: null, fechaAfiliacion: null, movil: null,
                 observaciones: null, esDuplicado: false, origen: '', createdAt: '', updatedAt: '',
                 _count: { llamadas: 0 },
