@@ -485,7 +485,7 @@ export function AiAssistantDrawer() {
       }
       const toRead = fileArr.slice(0, room);
       if (fileArr.length > room) {
-        toast(
+        toast.info(
           `Solo se añaden ${room} archivo(s) más (${CHAT_ATTACH_MAX_FILES} máx.).`,
         );
       }
