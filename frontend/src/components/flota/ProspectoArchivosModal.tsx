@@ -1,11 +1,17 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { EntityFilesTab } from "@/components/files/EntityFilesTab";
-import { flotaProspectoConArchivos } from "@/lib/flotaProspectosApi";
-import { Loader2 } from "lucide-react";
+import { FileArchive } from "lucide-react";
+import { FileUploadArea } from "@/components/files/FileUploadArea";
+import { FileListItem } from "@/components/files/FileListItem";
+import { FilePreviewModal } from "@/components/files/FilePreviewModal";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { useFlotaArchivos } from "@/lib/useFlotaArchivos";
+import type { FileAttachment } from "@/types";
 
 interface ProspectoArchivosModalProps {
   prospectoId: string | null;
+  prospectoNombre?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onFilesLoad?: (prospectoId: string, fileCount: number) => void;
@@ -13,39 +19,30 @@ interface ProspectoArchivosModalProps {
 
 export function ProspectoArchivosModal({
   prospectoId,
+  prospectoNombre,
   open,
   onOpenChange,
   onFilesLoad,
 }: ProspectoArchivosModalProps) {
-  const [prospectoNombre, setProspectoNombre] = useState("");
-  const [loading, setLoading] = useState(false);
-  const mountedRef = useRef(true);
+  const {
+    loading,
+    files,
+    handleUpload,
+    handleView,
+    handleDownload,
+    handleDelete,
+    previewFile,
+    previewOpen,
+    setPreviewOpen,
+  } = useFlotaArchivos(open ? prospectoId : null);
 
-  const loadNombre = useCallback(async (id: string) => {
-    setLoading(true);
-    try {
-      const res = await flotaProspectoConArchivos(id);
-      if (mountedRef.current) {
-        setProspectoNombre(res.prospecto.nombreCompleto || "");
-        onFilesLoad?.(id, res.archivos.length);
-      }
-    } catch {
-      if (mountedRef.current) setProspectoNombre("");
-    } finally {
-      if (mountedRef.current) setLoading(false);
-    }
-  }, []);
+  const [filePendingDelete, setFilePendingDelete] = useState<FileAttachment | null>(null);
 
   useEffect(() => {
-    mountedRef.current = true;
-    if (!prospectoId || !open) {
-      setProspectoNombre("");
-      setLoading(false);
-      return () => { mountedRef.current = false; };
+    if (prospectoId && !loading) {
+      onFilesLoad?.(prospectoId, files.length);
     }
-    void loadNombre(prospectoId);
-    return () => { mountedRef.current = false; };
-  }, [prospectoId, open, loadNombre]);
+  }, [prospectoId, loading, files.length, onFilesLoad]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -53,9 +50,7 @@ export function ProspectoArchivosModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             Archivos del prospecto
-            {loading ? (
-              <Loader2 className="size-4 animate-spin text-muted-foreground" />
-            ) : prospectoNombre ? (
+            {prospectoNombre ? (
               <span className="font-normal text-muted-foreground text-sm">
                 — {prospectoNombre}
               </span>
@@ -65,16 +60,56 @@ export function ProspectoArchivosModal({
             Fotos, documentos y archivos subidos por el contacto o el operador.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex-1 overflow-y-auto -mx-6 px-6">
-          {prospectoId && (
-            <EntityFilesTab
-              entityType="flota-prospecto"
-              entityId={prospectoId}
-              entityName={prospectoNombre}
+        <div className="flex-1 overflow-y-auto -mx-6 px-6 space-y-4">
+          <FileUploadArea onUpload={handleUpload} className="min-h-[100px]" />
+
+          {loading ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">
+              Cargando archivos…
+            </p>
+          ) : files.length === 0 ? (
+            <EmptyState
+              icon={FileArchive}
+              title="No hay archivos adjuntos"
+              description="Los archivos que subas quedarán asociados a este prospecto."
             />
+          ) : (
+            <div className="divide-y divide-border">
+              {files.map((f) => (
+                <FileListItem
+                  key={f.id}
+                  file={f}
+                  onView={handleView}
+                  onDownload={handleDownload}
+                  onDelete={(file) => setFilePendingDelete(file)}
+                  canDelete
+                />
+              ))}
+            </div>
           )}
         </div>
       </DialogContent>
+
+      <ConfirmDialog
+        open={filePendingDelete !== null}
+        onOpenChange={(v) => {
+          if (!v) setFilePendingDelete(null);
+        }}
+        title="Eliminar Archivo"
+        description="¿Estás seguro que deseas eliminar este archivo? Esta acción no se puede deshacer."
+        onConfirm={() => {
+          const f = filePendingDelete;
+          if (f) void handleDelete(f);
+        }}
+        variant="destructive"
+      />
+
+      <FilePreviewModal
+        file={previewFile}
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        onDownload={handleDownload}
+      />
     </Dialog>
   );
 }

@@ -12,16 +12,25 @@ import {
   HttpStatus,
   Req,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { FlotaProspectosService } from './flota-prospectos.service';
 import { Public } from '../auth/decorators/public.decorator';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { ImportExportJobsService } from '../import-export/import-export-jobs.service';
+import { FilesService } from '../files/files.service';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 
-type AuthedReq = { user: { userId: string; name: string; roleId?: string } };
+type AuthedReq = {
+  user: { userId: string; name: string; roleId?: string };
+  headers: { authorization?: string };
+};
 
 @Controller()
 @UseGuards(PermissionsGuard)
@@ -30,6 +39,7 @@ export class FlotaProspectosController {
     private readonly service: FlotaProspectosService,
     private readonly prisma: PrismaService,
     private readonly importExportJobs: ImportExportJobsService,
+    private readonly filesService: FilesService,
   ) {}
 
   private async buildFlotaScope(
@@ -462,5 +472,50 @@ export class FlotaProspectosController {
         HttpStatus.BAD_REQUEST,
       );
     }
+  }
+
+  /** GET /flota-prospectos/:id/archivos — Listar archivos de un prospecto */
+  @Get('flota-prospectos/:id/archivos')
+  @RequirePermissions('flota_prospectos.ver')
+  async listArchivos(@Param('id') id: string) {
+    return this.filesService.findAll('flota-prospecto', id);
+  }
+
+  /** POST /flota-prospectos/:id/archivos — Subir archivo a un prospecto */
+  @Post('flota-prospectos/:id/archivos')
+  @RequirePermissions('flota_prospectos.editar')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 50 * 1024 * 1024 },
+    }),
+  )
+  async uploadArchivo(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Req() req: AuthedReq,
+  ) {
+    if (!file?.buffer) {
+      throw new BadRequestException('Falta el archivo (campo file)');
+    }
+    return this.filesService.create(req.user.userId, {
+      buffer: file.buffer,
+      originalName: file.originalname || 'archivo',
+      mimeType: file.mimetype || 'application/octet-stream',
+      entityType: 'flota-prospecto',
+      entityId: id,
+      authorizationHeader: req.headers.authorization as string,
+    });
+  }
+
+  /** DELETE /flota-prospectos/:id/archivos/:fileId — Eliminar archivo de un prospecto */
+  @Delete('flota-prospectos/:id/archivos/:fileId')
+  @RequirePermissions('flota_prospectos.editar')
+  async deleteArchivo(
+    @Param('id') id: string,
+    @Param('fileId') fileId: string,
+    @Req() req: AuthedReq,
+  ) {
+    return this.filesService.remove(fileId, req.user.userId);
   }
 }
