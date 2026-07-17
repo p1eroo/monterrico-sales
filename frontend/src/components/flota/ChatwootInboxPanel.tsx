@@ -173,7 +173,13 @@ export default function ChatwootInboxPanel({
   const [hasMoreUnread, setHasMoreUnread] = useState(true);
   const activeIdRef = useRef<number | null>(null);
 
-  async function loadConversations(force = false) {
+  async function loadConversations(
+    options: boolean | { force?: boolean; silent?: boolean } = false,
+  ) {
+    const { force, silent } = typeof options === 'boolean'
+      ? { force: options, silent: false }
+      : { force: options.force ?? false, silent: options.silent ?? false };
+
     const now = Date.now();
     if (!force && loadPage1InFlightRef.current) {
       return loadPage1InFlightRef.current;
@@ -187,10 +193,10 @@ export default function ChatwootInboxPanel({
 
     const run = (async () => {
       loadingPage1Ref.current = true;
+      if (!silent) setLoading(true);
       try {
         convPageRef.current = 1;
         loadingConvRef.current = false;
-        setLoading(true);
         const page1 = await fetchConversations({ page: 1 }) as ChatwootConversation[];
         page1.sort((a, b) => b.last_activity_at - a.last_activity_at);
         const keepId = activeIdRef.current;
@@ -210,7 +216,7 @@ export default function ChatwootInboxPanel({
         // silent
       } finally {
         loadingPage1Ref.current = false;
-        setLoading(false);
+        if (!silent) setLoading(false);
       }
     })();
 
@@ -379,7 +385,7 @@ export default function ChatwootInboxPanel({
       setNewChatOpen(false);
       setNewChatPhone('');
       setNewChatName('');
-      await loadConversations(true);
+      await loadConversations({ force: true, silent: true });
       setTimeout(() => setActiveId(result.conversationId), 200);
       toast.success('Plantilla enviada');
     } catch (e) {
@@ -501,7 +507,7 @@ export default function ChatwootInboxPanel({
             return [opened.conversation!, ...prev].sort((a, b) => (b.last_activity_at ?? 0) - (a.last_activity_at ?? 0));
           });
         } else {
-          await loadConversations(true);
+          await loadConversations({ force: true, silent: true });
         }
         setFilter('all');
         setActiveId(opened.conversationId);

@@ -739,6 +739,128 @@ export class ChatwootService {
     return this.client.listContacts({ page, q });
   }
 
+  /** Busca chatwootContactId en BD del prospecto o vía API de Chatwoot. */
+  private async resolveContactIdForPhone(
+    cleanPhone: string,
+    e164Phone: string,
+  ): Promise<number | null> {
+    const suffix = cleanPhone.slice(-9);
+    if (suffix.length < 9) return null;
+
+    try {
+      const prospecto = await this.prisma.flotaProspecto.findFirst({
+        where: {
+          OR: [
+            { celular: { endsWith: suffix } },
+            { movil: { endsWith: suffix } },
+          ],
+          chatwootContactId: { not: null },
+        },
+        select: { chatwootContactId: true },
+      });
+      if (prospecto?.chatwootContactId) {
+        const dbId = Number(prospecto.chatwootContactId);
+        const contact = await this.client.getContact(dbId);
+        if (contact && this.phonesMatch(contact.phone_number, suffix)) {
+          return dbId;
+        }
+        this.logger.warn(`chatwootContactId en BD inválido para ${suffix}: ${dbId}`);
+      }
+    } catch { /* ignorar */ }
+
+    const queries = [cleanPhone, e164Phone, suffix, `+${suffix}`];
+    for (const q of queries) {
+      if (!q || q.length < 9) continue;
+      try {
+        const results = await this.searchContacts(q);
+        const found = results.find((c) =>
+          this.phonesMatch(c.phone_number, suffix),
+        );
+        if (found) return found.id;
+      } catch { /* ignorar */ }
+    }
+    return null;
+  }
+
+  /**
+   * Obtiene o crea el contact_inbox en el inbox Flota y devuelve el source_id
+   * que Chatwoot exige para abrir la conversación.
+   */
+  private async ensureContactInboxForFlota(
+    contactId: number,
+    preferredSourceId: string,
+  ): Promise<string> {
+    const inboxId = this.client.getConfig().inboxId;
+
+    const fromContactable = async (): Promise<string | null> => {
+      try {
+        const items = await this.client.getContactableInboxes(contactId);
+        const match = items.find((ci) => ci.inbox_id === inboxId);
+        return match?.source_id?.trim() || null;
+      } catch (e) {
+        this.logger.warn(
+          `contactable_inboxes contactId=${contactId}: ${e instanceof Error ? e.message : e}`,
+        );
+        return null;
+      }
+    };
+
+    const existing = await fromContactable();
+    if (existing) {
+      this.logger.log(`contact_inbox existente: contactId=${contactId} source_id=${existing}`);
+      return existing;
+    }
+
+    try {
+      const created = await this.client.createContactInbox(contactId, preferredSourceId);
+      const sourceId = created.source_id || preferredSourceId;
+      this.logger.log(`contact_inbox creado: contactId=${contactId} source_id=${sourceId}`);
+      return sourceId;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/already|taken|exist|duplicate|422|409/i.test(msg)) {
+        const retry = await fromContactable();
+        if (retry) return retry;
+      }
+      throw e;
+    }
+  }
+
+  private async createConversationForPhone(
+    cleanPhone: string,
+    contactId: number | null,
+    e164Phone: string,
+  ): Promise<{ conversation: ChatwootConversation; contactId: number | null }> {
+    const inboxId = this.client.getConfig().inboxId;
+    let resolvedContactId = contactId;
+    let sourceId = cleanPhone;
+
+    const tryCreate = async (sid: string) =>
+      this.client.createConversation(sid, inboxId);
+
+    if (resolvedContactId) {
+      sourceId = await this.ensureContactInboxForFlota(resolvedContactId, cleanPhone);
+    }
+
+    try {
+      const conversation = await tryCreate(sourceId);
+      return { conversation, contactId: resolvedContactId };
+    } catch (err) {
+      if (!resolvedContactId) {
+        resolvedContactId = await this.resolveContactIdForPhone(cleanPhone, e164Phone);
+      }
+      if (!resolvedContactId) throw err;
+
+      this.logger.warn(
+        `createConversation falló (${err instanceof Error ? err.message : err}); ` +
+          `asegurando contact_inbox contactId=${resolvedContactId}`,
+      );
+      sourceId = await this.ensureContactInboxForFlota(resolvedContactId, cleanPhone);
+      const conversation = await tryCreate(sourceId);
+      return { conversation, contactId: resolvedContactId };
+    }
+  }
+
   async initiateConversation(data: {
     name: string;
     phone: string;
@@ -772,37 +894,9 @@ export class ChatwootService {
         const msg = createErr instanceof Error ? createErr.message : '';
         if (msg.includes('already been taken')) {
           this.logger.log('Contacto ya existe, buscando ID...');
-          // Buscar en nuestra base de datos primero (chatwootContactId)
-          try {
-            const suffix = cleanPhone.slice(-9);
-            const prospecto = await this.prisma.flotaProspecto.findFirst({
-              where: {
-                OR: [
-                  { celular: { endsWith: suffix } },
-                  { movil: { endsWith: suffix } },
-                ],
-                chatwootContactId: { not: null },
-              },
-              select: { chatwootContactId: true },
-            });
-            if (prospecto?.chatwootContactId) {
-              contactId = Number(prospecto.chatwootContactId);
-              this.logger.log(`ID encontrado en DB: ${contactId}`);
-            }
-          } catch { /* ignorar */ }
-          // Fallback: buscar en Chatwoot API
-          if (!contactId) {
-            const suffix = cleanPhone.slice(-9);
-            const queries = [cleanPhone, e164Phone, suffix];
-            for (const q of queries) {
-              try {
-                const results = await this.searchContacts(q);
-                const found = results.find((c) =>
-                  this.phonesMatch(c.phone_number, suffix),
-                );
-                if (found) { contactId = found.id; break; }
-              } catch { /* ignorar */ }
-            }
+          contactId = await this.resolveContactIdForPhone(cleanPhone, e164Phone);
+          if (contactId) {
+            this.logger.log(`ID encontrado: ${contactId}`);
           }
         } else {
           throw createErr;
@@ -826,21 +920,12 @@ export class ChatwootService {
       this.logger.log(`Conversación existente encontrada: id=${conversation.id} status=${conversation.status}`);
     }
 
-    // 3. Si no hay conversación activa, crear una nueva
+    // 3. Si no hay conversación activa, crear una nueva (con contact_inbox si el contacto ya existía)
     if (!conversation) {
-      this.logger.log(`Creando conversación source_id=${cleanPhone}`);
-      try {
-        conversation = await this.client.createConversation(cleanPhone, this.client.getConfig().inboxId);
-      } catch (err) {
-        // Si el contacto no tiene contact_inbox, crearlo y reintentar
-        if (contactId && err instanceof Error && err.message.includes('404')) {
-          this.logger.log('Creando contact_inbox y reintentando...');
-          await this.client.createContactInbox(contactId);
-          conversation = await this.client.createConversation(cleanPhone, this.client.getConfig().inboxId);
-        } else {
-          throw err;
-        }
-      }
+      this.logger.log(`Creando conversación source_id=${cleanPhone} contactId=${contactId ?? '—'}`);
+      const created = await this.createConversationForPhone(cleanPhone, contactId, e164Phone);
+      conversation = created.conversation;
+      contactId = created.contactId ?? contactId;
       this.logger.log(`Conversación creada: id=${conversation.id}`);
     }
 

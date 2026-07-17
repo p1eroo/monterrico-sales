@@ -91,6 +91,7 @@ import {
   conversationMatchesQuery,
   openContactChat,
   findConversationByPhone,
+  toListConversation,
   type ChatwootAgent,
 } from '@/lib/chatwootApi';
 import { fetchOperadores, getOperatorDisplayName, flotaProspectosByPhone, flotaProspectoCreate, MODALIDAD_OPTIONS, type OperadorUser, type FlotaProspectoDetalle } from '@/lib/flotaProspectosApi';
@@ -151,6 +152,41 @@ export default function ChatwootInboxView() {
   const { templates: newChatTemplates, loading: newChatLoadingTpl } = useWhatsappTemplates(newChatOpen);
   const [contactNewChatData, setContactNewChatData] = useState<{ phone: string; name: string; contactId?: number } | null>(null);
   const [openingContactId, setOpeningContactId] = useState<number | null>(null);
+  const recentMessagePatchRef = useRef<Map<number, number>>(new Map());
+  const loadConversationsRef = useRef<
+    (options?: boolean | { force?: boolean; silent?: boolean }) => Promise<void>
+  >(() => Promise.resolve());
+
+  const MESSAGE_PATCH_SUPPRESS_MS = 4000;
+
+  const markMessagePatched = useCallback((conversationId: number) => {
+    recentMessagePatchRef.current.set(conversationId, Date.now());
+  }, []);
+
+  const wasRecentlyMessagePatched = useCallback((conversationId: number) => {
+    const ts = recentMessagePatchRef.current.get(conversationId);
+    if (!ts) return false;
+    if (Date.now() - ts > MESSAGE_PATCH_SUPPRESS_MS) {
+      recentMessagePatchRef.current.delete(conversationId);
+      return false;
+    }
+    return true;
+  }, []);
+
+  const insertConversationFromServer = useCallback(async (conversationId: number) => {
+    try {
+      const detail = await fetchConversation(conversationId);
+      const item = toListConversation(detail);
+      setConversations((prev) => {
+        if (prev.some((c) => c.id === conversationId)) return prev;
+        return [item, ...prev].sort(
+          (a, b) => (b.last_activity_at ?? 0) - (a.last_activity_at ?? 0),
+        );
+      });
+    } catch {
+      await loadConversationsRef.current({ force: true, silent: true });
+    }
+  }, []);
 
   useEffect(() => {
     if (!newChatOpen || newChatTemplates.length === 0) return;
@@ -272,8 +308,65 @@ export default function ChatwootInboxView() {
     void loadUnreadList({ force: true });
   }, [filter, debouncedQuery]);
 
+  async function loadConversations(
+    options: boolean | { force?: boolean; silent?: boolean } = false,
+  ) {
+    const { force, silent } = typeof options === 'boolean'
+      ? { force: options, silent: false }
+      : { force: options.force ?? false, silent: options.silent ?? false };
+
+    const now = Date.now();
+    if (!force && loadPage1InFlightRef.current) {
+      return loadPage1InFlightRef.current;
+    }
+    if (!force && hasConvDataRef.current && now - lastConvLoadAtRef.current < 30_000) {
+      return;
+    }
+    if (loadingPage1Ref.current && !force) {
+      return loadPage1InFlightRef.current ?? undefined;
+    }
+
+    const run = (async () => {
+      loadingPage1Ref.current = true;
+      if (!silent) setLoading(true);
+      try {
+        convPageRef.current = 1;
+        loadingConvRef.current = false;
+        const page1 = await fetchConversations({ page: 1 });
+        page1.sort((a, b) => b.last_activity_at - a.last_activity_at);
+        const keepId = activeIdRef.current;
+        setConversations((prev) => {
+          const active = keepId
+            ? prev.find((c) => c.id === keepId) ?? page1.find((c) => c.id === keepId)
+            : undefined;
+          if (active && !page1.some((c) => c.id === active.id)) {
+            return [active, ...page1];
+          }
+          return page1;
+        });
+        setHasMoreConv(page1.length >= 25);
+        hasConvDataRef.current = page1.length > 0;
+        lastConvLoadAtRef.current = Date.now();
+      } catch {
+        // silent
+      } finally {
+        loadingPage1Ref.current = false;
+        if (!silent) setLoading(false);
+      }
+    })();
+
+    loadPage1InFlightRef.current = run;
+    try {
+      await run;
+    } finally {
+      loadPage1InFlightRef.current = null;
+    }
+  }
+
+  loadConversationsRef.current = loadConversations;
+
   useEffect(() => {
-    void loadConversations(true);
+    void loadConversations({ force: true });
   }, []);
 
   /** Socket.IO para tiempo real */
@@ -290,68 +383,75 @@ export default function ChatwootInboxView() {
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log('✅ Socket /chatwoot conectado, id:', socket.id);
-      // Probar que el socket funciona con ping/pong
-      socket.emit('ping', (response: unknown) => {
-        console.log('🏓 Ping response:', response);
-      });
-      void loadConversations(false);
+      void loadConversationsRef.current(false);
     });
 
     socket.on('connect_error', (err: Error) => {
       console.error('❌ Socket /chatwoot error:', err.message);
     });
 
-    socket.on('chatwoot', (payload: { event: string; conversationId?: number; data?: { conversationId?: number } }) => {
-      const convId = payload.conversationId ?? payload.data?.conversationId;
-      console.log('📩 Socket /chatwoot recibió:', payload.event, 'conv:', convId);
+    socket.on('chatwoot', (payload: {
+      event: string;
+      conversationId?: number;
+      data?: Record<string, unknown>;
+    }) => {
+      const data = payload.data;
+      const convId =
+        payload.conversationId
+        ?? (data?.conversationId as number | undefined)
+        ?? (data?.id as number | undefined)
+        ?? ((data?.conversation as { id?: number } | undefined)?.id);
       if (!convId) return;
-      payload.conversationId = convId;
+
       const currentActiveId = activeIdRef.current;
 
       if (payload.event === 'message_created') {
-        const msgData = (payload.data as any)?.message;
+        const msgData = data?.message as ChatwootMessage | undefined;
         if (!msgData) return;
 
-        // Solo agregar mensajes entrantes (del contacto). Los salientes (nuestros)
-        // ya se manejan con el mensaje optimista + loadMessages.
-        const normalizedMsg = normalizeMsg(msgData as ChatwootMessage);
-        if (normalizedMsg.message_type !== CHATWOOT_MESSAGE_TYPE.OUTGOING) {
-          if (payload.conversationId === currentActiveId) {
-            setMessagesCache((prev) => {
-              const existing = prev[payload.conversationId!] ?? [];
-              if (existing.some((m) => m.id === normalizedMsg.id)) return prev;
-              return { ...prev, [payload.conversationId!]: [...existing, normalizedMsg] };
-            });
-          }
-        }
-        // Marcar como leído si estamos en el chat (solo para entrantes)
-        if (payload.conversationId === currentActiveId) {
-          markConversationAsRead(payload.conversationId).catch(() => {});
+        markMessagePatched(convId);
+
+        const normalizedMsg = normalizeMsg(msgData);
+        const isOutgoing = normalizedMsg.message_type === CHATWOOT_MESSAGE_TYPE.OUTGOING;
+
+        if (!isOutgoing && convId === currentActiveId) {
+          setMessagesCache((prev) => {
+            const existing = prev[convId] ?? [];
+            if (existing.some((m) => m.id === normalizedMsg.id)) return prev;
+            return { ...prev, [convId]: [...existing, normalizedMsg] };
+          });
+          markConversationAsRead(convId).catch(() => {});
         }
 
-        // Actualizar el listado de conversaciones optimistamente
-        const listNorm = normalizeMsg(msgData as ChatwootMessage);
+        let missingFromList = false;
+        const body = String(msgData.content || '').slice(0, 100);
+
         setConversations((prev) => {
-          const existing = prev.find((c) => c.id === payload.conversationId);
-          if (!existing) return prev;
-          const body = String(msgData.content || '').slice(0, 100);
-          const isOutgoing = listNorm.message_type === CHATWOOT_MESSAGE_TYPE.OUTGOING;
+          const existing = prev.find((c) => c.id === convId);
+          if (!existing) {
+            missingFromList = true;
+            return prev;
+          }
+
           const updated = prev.map((c) =>
-            c.id === payload.conversationId
-                  ? {
-                      ...c,
-                      preview: body,
-                      direction: isOutgoing ? 'outbound' : 'inbound',
-                      last_activity_at: Math.floor(Date.now() / 1000),
-                      unread_count: payload.conversationId === currentActiveId ? 0 : (c.unread_count ?? 0) + 1,
-                      messages: [{ ...msgData }],
-                    }
+            c.id === convId
+              ? {
+                  ...c,
+                  preview: body,
+                  direction: isOutgoing ? 'outbound' : 'inbound',
+                  last_activity_at: Math.floor(Date.now() / 1000),
+                  unread_count: convId === currentActiveId
+                    ? 0
+                    : isOutgoing
+                      ? (c.unread_count ?? 0)
+                      : (c.unread_count ?? 0) + 1,
+                  messages: [{ ...msgData }],
+                }
               : c,
           ).sort((a, b) => (b.last_activity_at || 0) - (a.last_activity_at || 0));
 
-          if (!isOutgoing && payload.conversationId !== currentActiveId) {
-            const conv = updated.find((c) => c.id === payload.conversationId);
+          if (!isOutgoing && convId !== currentActiveId) {
+            const conv = updated.find((c) => c.id === convId);
             if (conv) {
               setUnreadList((ul) => {
                 const idx = ul.findIndex((c) => c.id === conv.id);
@@ -363,14 +463,61 @@ export default function ChatwootInboxView() {
                 return [conv, ...ul].sort((a, b) => (b.last_activity_at || 0) - (a.last_activity_at || 0));
               });
             }
-          } else if (payload.conversationId === currentActiveId) {
-            setUnreadList((ul) => ul.filter((c) => c.id !== payload.conversationId));
+          } else if (convId === currentActiveId) {
+            setUnreadList((ul) => ul.filter((c) => c.id !== convId));
           }
 
           return updated;
         });
-      } else if (payload.event === 'conversation_created' || payload.event === 'conversation_updated' || payload.event === 'conversation_status_changed') {
-        void loadConversations(true);
+
+        if (missingFromList) {
+          void insertConversationFromServer(convId);
+        }
+        return;
+      }
+
+      if (payload.event === 'conversation_created') {
+        void insertConversationFromServer(convId);
+        return;
+      }
+
+      if (payload.event === 'conversation_status_changed') {
+        const status = data?.status as ChatwootConversation['status'] | undefined;
+        if (status) {
+          setConversations((prev) =>
+            prev.map((c) => (c.id === convId ? { ...c, status } : c)),
+          );
+        }
+        return;
+      }
+
+      if (payload.event === 'conversation_updated') {
+        if (wasRecentlyMessagePatched(convId)) return;
+
+        const assignee = data?.assignee as ChatwootConversation['meta']['assignee'] | undefined;
+        const status = data?.status as ChatwootConversation['status'] | undefined;
+        let patched = false;
+
+        setConversations((prev) => {
+          const idx = prev.findIndex((c) => c.id === convId);
+          if (idx < 0) return prev;
+          patched = true;
+          const next = [...prev];
+          const cur = next[idx];
+          next[idx] = {
+            ...cur,
+            ...(status ? { status } : {}),
+            meta: {
+              ...cur.meta,
+              ...(assignee !== undefined ? { assignee } : {}),
+            },
+          };
+          return next;
+        });
+
+        if (!patched) {
+          void loadConversationsRef.current({ force: true, silent: true });
+        }
       }
     });
 
@@ -378,54 +525,7 @@ export default function ChatwootInboxView() {
       socketRef.current = null;
       socket.disconnect();
     };
-  }, []);
-
-  async function loadConversations(force = false) {
-    const now = Date.now();
-    if (
-      !force
-      && loadPage1InFlightRef.current
-    ) {
-      return loadPage1InFlightRef.current;
-    }
-    if (
-      !force
-      && hasConvDataRef.current
-      && now - lastConvLoadAtRef.current < 30_000
-    ) {
-      return;
-    }
-    if (loadingPage1Ref.current && !force) {
-      return loadPage1InFlightRef.current ?? undefined;
-    }
-
-    const run = (async () => {
-      loadingPage1Ref.current = true;
-      try {
-        convPageRef.current = 1;
-        loadingConvRef.current = false;
-        setLoading(true);
-        const page1 = await fetchConversations({ page: 1 });
-        page1.sort((a, b) => b.last_activity_at - a.last_activity_at);
-        setConversations(page1);
-        setHasMoreConv(page1.length >= 25);
-        hasConvDataRef.current = page1.length > 0;
-        lastConvLoadAtRef.current = Date.now();
-      } catch {
-        // silent
-      } finally {
-        loadingPage1Ref.current = false;
-        setLoading(false);
-      }
-    })();
-
-    loadPage1InFlightRef.current = run;
-    try {
-      await run;
-    } finally {
-      loadPage1InFlightRef.current = null;
-    }
-  }
+  }, [insertConversationFromServer, markMessagePatched, wasRecentlyMessagePatched]);
 
   // Scroll infinito: cargar más conversaciones al llegar al final (solo listado normal)
   useEffect(() => {
@@ -560,7 +660,7 @@ export default function ChatwootInboxView() {
             return [opened.conversation!, ...prev].sort((a, b) => (b.last_activity_at ?? 0) - (a.last_activity_at ?? 0));
           });
         } else {
-          await loadConversations(true);
+          await loadConversations({ force: true, silent: true });
         }
         setFilter('all');
         setActiveId(opened.conversationId);
@@ -604,7 +704,7 @@ export default function ChatwootInboxView() {
       setNewPhone('');
       setNewName('');
       setContactNewChatData(null);
-      await loadConversations(true);
+      await loadConversations({ force: true, silent: true });
       await new Promise((r) => setTimeout(r, 100));
       setActiveId(result.conversationId);
     } catch (e) {

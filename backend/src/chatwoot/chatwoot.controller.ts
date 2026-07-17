@@ -11,7 +11,7 @@ import {
   Req,
   Logger,
 } from '@nestjs/common';
-import { NotFoundException } from '@nestjs/common';
+import { HttpException, HttpStatus, NotFoundException } from '@nestjs/common';
 import type { Response } from 'express';
 import { Public } from '../auth/decorators/public.decorator';
 import { ChatwootService } from './chatwoot.service';
@@ -307,7 +307,13 @@ export class ChatwootController {
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Error desconocido';
       this.logger.error(`[initiate-conversation] ${msg}`);
-      throw e;
+      const statusMatch = msg.match(/Chatwoot API error (\d{3})/);
+      const status = statusMatch
+        ? (Number(statusMatch[1]) >= 400 && Number(statusMatch[1]) < 600
+            ? Number(statusMatch[1])
+            : HttpStatus.BAD_GATEWAY)
+        : HttpStatus.BAD_GATEWAY;
+      throw new HttpException(msg, status);
     }
   }
 

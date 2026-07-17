@@ -183,10 +183,66 @@ export class ChatwootClient {
     return extract(raw?.payload) ?? extract(raw?.data) ?? extract(raw) ?? [];
   }
 
-  async createContactInbox(contactId: number): Promise<void> {
-    await this.request('POST', `/contacts/${contactId}/inboxes`, {
-      inbox_id: this.config.inboxId,
-    });
+  async getContact(contactId: number): Promise<ChatwootContact | null> {
+    try {
+      const raw = await this.request<Record<string, unknown>>('GET', `/contacts/${contactId}`);
+      const payload = (raw?.payload ?? raw) as Record<string, unknown>;
+      const contact = (payload?.contact ?? payload) as Record<string, unknown>;
+      if (!contact?.id) return null;
+      return {
+        id: Number(contact.id),
+        name: String(contact.name ?? ''),
+        phone_number: String(contact.phone_number ?? ''),
+        email: String(contact.email ?? ''),
+        identifier: String(contact.identifier ?? ''),
+        additional_attributes: (contact.additional_attributes as Record<string, unknown>) ?? {},
+        custom_attributes: (contact.custom_attributes as Record<string, unknown>) ?? {},
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  async getContactableInboxes(
+    contactId: number,
+  ): Promise<Array<{ inbox_id: number; source_id: string }>> {
+    const raw = await this.request<unknown>(
+      'GET',
+      `/contacts/${contactId}/contactable_inboxes`,
+    );
+    const r = raw as Record<string, unknown>;
+    const items =
+      (r?.payload as unknown[]) ??
+      ((r?.data as Record<string, unknown>)?.payload as unknown[]) ??
+      (Array.isArray(r?.data) ? (r.data as unknown[]) : null) ??
+      (Array.isArray(raw) ? (raw as unknown[]) : []);
+    if (!Array.isArray(items)) return [];
+    return items
+      .map((item) => {
+        const row = item as Record<string, unknown>;
+        const inbox = row.inbox as Record<string, unknown> | undefined;
+        const inboxId = Number(inbox?.id ?? row.inbox_id);
+        const sourceId = String(row.source_id ?? '').trim();
+        if (!inboxId || !sourceId) return null;
+        return { inbox_id: inboxId, source_id: sourceId };
+      })
+      .filter((x): x is { inbox_id: number; source_id: string } => Boolean(x));
+  }
+
+  async createContactInbox(
+    contactId: number,
+    sourceId?: string,
+  ): Promise<{ source_id: string }> {
+    const body: Record<string, unknown> = { inbox_id: this.config.inboxId };
+    if (sourceId?.trim()) body.source_id = sourceId.trim();
+    const raw = await this.request<Record<string, unknown>>(
+      'POST',
+      `/contacts/${contactId}/contact_inboxes`,
+      body,
+    );
+    const payload = (raw?.payload ?? raw) as Record<string, unknown>;
+    const resolved = String(payload?.source_id ?? sourceId ?? '').trim();
+    return { source_id: resolved };
   }
 
   async listMessages(

@@ -55,7 +55,7 @@ export const FLOTA_WHATSAPP_TEMPLATES: WhatsappTemplateDefinition[] = [
     kind: 'standard',
     apiSendable: true,
     content:
-      'Te informamos que se encuentra en pausa la afiliación de vehículos con placa particular, ya que actualmente estamos incorporando únicamente unidades que cuentan con autorización y permiso vigente de la ATU para la prestación de servicios a entidades del Estado. Agradecemos tu interés y, apenas se reabra la convocatoria para vehículos particulares, nos estaremos comunicando contigo a la brevedad.',
+      'Muchas gracias por tu interés y por la información brindada sobre tu vehículo.\n\nPor el momento, hemos puesto en pausa la afiliación de vehículos con placa particular, ya que actualmente estamos incorporando únicamente unidades que cuentan con autorización y permiso vigente de la ATU para la prestación de servicios a entidades del Estado.\n\nAgradecemos tu interés y, apenas se reabra la convocatoria para vehículos particulares, nos estaremos comunicando contigo a la brevedad.',
   },
   {
     name: 'afiliacion_arequipa',
