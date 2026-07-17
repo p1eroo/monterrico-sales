@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { LayoutGrid, Shield } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from '@/lib/notify';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { comercialProPopoverClass } from "@/lib/comercialFilterSurface";
 import { cn } from "@/lib/utils";

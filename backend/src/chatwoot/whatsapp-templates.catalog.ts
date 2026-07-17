@@ -57,6 +57,15 @@ export const FLOTA_WHATSAPP_TEMPLATES: WhatsappTemplateDefinition[] = [
     content:
       'Te informamos que se encuentra en pausa la afiliación de vehículos con placa particular, ya que actualmente estamos incorporando únicamente unidades que cuentan con autorización y permiso vigente de la ATU para la prestación de servicios a entidades del Estado. Agradecemos tu interés y, apenas se reabra la convocatoria para vehículos particulares, nos estaremos comunicando contigo a la brevedad.',
   },
+  {
+    name: 'afiliacion_arequipa',
+    language: 'es_PE',
+    category: 'UTILITY',
+    kind: 'standard',
+    apiSendable: true,
+    content:
+      'Estimad@, ya iniciamos el proceso de afiliación de conductores en Arequipa.\n\nSi deseas formar parte de nuestro equipo, envíanos por este medio la siguiente documentación:\n\n✅ DNI\n✅ Licencia de Conducir vigente\n✅ Tarjeta de Propiedad del vehículo\n✅ SOAT vigente\n✅ Certiadulto',
+  },
 ];
 
 /** Chatwoot/Meta son sensibles a mayúsculas en el código de idioma. */

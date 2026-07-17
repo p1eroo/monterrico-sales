@@ -15,7 +15,7 @@ import {
   CalendarDays,
   Maximize2,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import { buildOpportunitiesStageFunnelStages } from '@/lib/companyStageFunnelData';
 import { AdvisorPerformanceBarChart } from '@/components/shared/AdvisorPerformanceBarChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

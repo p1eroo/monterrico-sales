@@ -8,12 +8,14 @@ interface ProspectoArchivosModalProps {
   prospectoId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onFilesLoad?: (prospectoId: string, fileCount: number) => void;
 }
 
 export function ProspectoArchivosModal({
   prospectoId,
   open,
   onOpenChange,
+  onFilesLoad,
 }: ProspectoArchivosModalProps) {
   const [prospectoNombre, setProspectoNombre] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,6 +27,7 @@ export function ProspectoArchivosModal({
       const res = await flotaProspectoConArchivos(id);
       if (mountedRef.current) {
         setProspectoNombre(res.prospecto.nombreCompleto || "");
+        onFilesLoad?.(id, res.archivos.length);
       }
     } catch {
       if (mountedRef.current) setProspectoNombre("");

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Video, Loader2, CheckCircle2, XCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import { linkGoogleCalendarEvent } from '@/lib/calendarApi';
 import type { CalendarEvent } from '@/types';
 

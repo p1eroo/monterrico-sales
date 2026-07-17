@@ -61,7 +61,7 @@ import {
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 import { API_BASE } from '@/lib/api';
 import { EmojiGrid } from '@/components/EmojiGrid';

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { toast } from "sonner";
+import { toast } from '@/lib/notify';
 import { api } from "@/lib/api";
 import { initiateConversation, resolveConversationByPhone, fetchConversation, conversationPhoneMatches } from "@/lib/chatwootApi";
 import {
@@ -14,19 +14,18 @@ import { useAppStore } from "@/store";
 import { useImportJobsStore } from "@/store/importJobsStore";
 import * as XLSX from "xlsx";
 import {
+  Plus,
   UserPlus,
   FileSpreadsheet,
   Loader2,
   Trash2,
   Info,
-  Upload,
   Phone,
-  Download,
   Edit2,
   Lock,
   MessageCircle,
   Send,
-  FolderOpen,
+  MoreVertical,
 } from "lucide-react";
 import {
   DateRangeCalendar,
@@ -70,6 +69,19 @@ import {
 
 
 import { PageHeader } from "@/components/shared/PageHeader";
+import { GlassCard } from "@/components/shared/GlassCard";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { FileNewSvgIcon } from "@/components/icons/FileNewSvgIcon";
+import { ImportSvgIcon } from "@/components/icons/ImportSvgIcon";
+import { ExportSvgIcon } from "@/components/icons/ExportSvgIcon";
+import excelDocumentSvg from "@/components/icons/excel-document.svg";
+import filesSiSvg from "@/components/icons/files-si.svg";
+import filesNoSvg from "@/components/icons/files-no.svg";
 import { CrmDataTableSkeleton } from "@/components/shared/CrmListPageSkeleton";
 import { formatDateDMY } from "@/lib/formatters";
 
@@ -288,6 +300,8 @@ export default function FlotaProspectos() {
   const [exportBusy, setExportBusy] = useState(false);
   const [conLlamadasFilter, setConLlamadasFilter] = useState("all");
   const [fechasOpen, setFechasOpen] = useState(false);
+  const [sheetsPopoverOpen, setSheetsPopoverOpen] = useState(false);
+  const [prospectsWithFiles, setProspectsWithFiles] = useState<Set<string>>(new Set());
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
   const [chatActiveId, setChatActiveId] = useState<number | null>(null);
   const [chatInitialContact, setChatInitialContact] = useState<{ name?: string; phone?: string } | null>(null);
@@ -305,6 +319,8 @@ export default function FlotaProspectos() {
 
   const blockedProspectsRef = useRef(blockedProspects);
   blockedProspectsRef.current = blockedProspects;
+  const prospectsWithFilesRef = useRef(prospectsWithFiles);
+  prospectsWithFilesRef.current = prospectsWithFiles;
   const selectedIdsRef = useRef(selectedIds);
   selectedIdsRef.current = selectedIds;
   const columnFiltersRef = useRef(columnFilters);
@@ -340,6 +356,7 @@ export default function FlotaProspectos() {
               ) : (
                 <Checkbox
                   checked={selectedIdsRef.current.has(row.original.id)}
+                  className="h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
                   onCheckedChange={() => {
                     const id = row.original.id;
                     setSelectedIds((prev) => {
@@ -360,14 +377,16 @@ export default function FlotaProspectos() {
         header: "",
         enableSorting: false,
         enableColumnFilter: false,
-        size: 40,
-        minSize: 40,
-        maxSize: 40,
-        cell: ({ row }) => (
+        size: 52,
+        minSize: 52,
+        maxSize: 52,
+        cell: ({ row }) => {
+          const hasFiles = (row.original._count?.archivos ?? 0) > 0 || prospectsWithFilesRef.current.has(row.original.id);
+          return (
           <div className="flex justify-center">
             <button
               type="button"
-              className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+              className="p-1 rounded hover:bg-accent transition-colors"
               title="Ver archivos"
               onClick={(e) => {
                 e.stopPropagation();
@@ -375,10 +394,11 @@ export default function FlotaProspectos() {
                 setArchivosModalOpen(true);
               }}
             >
-              <FolderOpen className="size-4" />
+              <img src={hasFiles ? filesSiSvg : filesNoSvg} className="size-6" alt={hasFiles ? "Con archivos" : "Sin archivos"} />
             </button>
           </div>
-        ),
+          );
+        },
       },
       {
         id: "fechaRegistro",
@@ -534,7 +554,7 @@ export default function FlotaProspectos() {
             </span>
             {row.original.esDuplicado && (
               <Badge
-                variant="outline"
+                variant="ghost"
                 className="border-red-200 bg-red-50 text-[10px] text-red-600"
               >
                 Duplicado
@@ -726,7 +746,7 @@ export default function FlotaProspectos() {
           const val = String(getValue() ?? "");
           return val ? (
             <Badge
-              variant="outline"
+              variant="ghost"
               className={`text-[10px] ${val === "Asistió" || val === "ASISTIO" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}
             >
               {val}
@@ -1468,149 +1488,171 @@ export default function FlotaProspectos() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Prospectos"
-        description="Personas interesadas en unirse a la flota de Taxi Monterrico"
-      >
-        <div className="flex items-center gap-2">
-          <span className="mr-2 text-sm text-muted-foreground">
-            Total: {counts?.total ?? "—"}
-          </span>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="gap-1.5"
-                disabled={previewLoading || importing}
-              >
-                {previewLoading || importing ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <FileSpreadsheet className="size-4" />
-                )}
-                Sheets
+    <div>
+      {initialLoading ? (
+        <CrmDataTableSkeleton
+          columns={[
+            { label: "" },
+            { label: "F.Registro" },
+            { label: "Red Social" },
+            { label: "Celular" },
+            { label: "Nombres y Apellidos" },
+            { label: "Edad" },
+            { label: "Operador" },
+            { label: "Estado" },
+            { label: "Modalidad" },
+            { label: "Placa" },
+            { label: "Año Veh." },
+            { label: "Zona" },
+            { label: "F. Cita" },
+            { label: "Asistencia" },
+            { label: "F. Afiliacion" },
+            { label: "Movil" },
+            { label: "Observaciones" },
+            { label: "Llamadas" },
+          ]}
+          rows={5}
+          aria-label="Cargando prospectos"
+          className="bg-card"
+        />
+      ) : (
+        <GlassCard className="overflow-hidden">
+          <PageHeader
+            title="Prospectos"
+            className="px-5 pt-4 pb-3"
+          >
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon-sm" className="h-9 w-9">
+                    <MoreVertical className="size-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    disabled={previewLoading || importing}
+                    onClick={() => setSheetsPopoverOpen(true)}
+                  >
+                    <img src={excelDocumentSvg} className="size-4 mr-2" alt="" />
+                    Sheets
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleDownloadTemplate}>
+                    <FileNewSvgIcon className="size-4 mr-2" />
+                    Plantilla
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={importingFile}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {importingFile ? (
+                      <Loader2 className="size-4 mr-2 animate-spin" />
+                    ) : (
+                      <ImportSvgIcon className="size-4 mr-2" />
+                    )}
+                    {importingFile ? "Importando..." : "Importar"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={exportBusy}
+                    onClick={() => void handleExport()}
+                  >
+                    {exportBusy ? (
+                      <Loader2 className="size-4 mr-2 animate-spin" />
+                    ) : (
+                      <ExportSvgIcon className="size-4 mr-2" />
+                    )}
+                    Exportar
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={handleFileImport}
+              />
+              <Popover open={sheetsPopoverOpen} onOpenChange={setSheetsPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <span className="hidden" />
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-72 space-y-4 p-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Spreadsheet
+                    </label>
+                    <Select
+                      value={selectedSpreadsheetId ?? ""}
+                      onValueChange={(v) => {
+                        setSelectedSpreadsheetId(v);
+                        setSelectedSheet("");
+                      }}
+                    >
+                      <SelectTrigger className="w-full bg-card">
+                        <SelectValue placeholder="Seleccionar..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {spreadsheets.map((sp) => (
+                          <SelectItem key={sp.id} value={sp.id}>
+                            {sp.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Hoja
+                    </label>
+                    <Select
+                      value={selectedSheet ?? ""}
+                      onValueChange={(v) => setSelectedSheet(v)}
+                    >
+                      <SelectTrigger className="w-full bg-card">
+                        <SelectValue placeholder="Seleccionar..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sheetNames.map((name) => (
+                          <SelectItem key={name} value={name}>
+                            {name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="w-full gap-1.5"
+                    disabled={!selectedSheet || previewLoading || importing}
+                    onClick={() => {
+                      if (!selectedSheet) {
+                        toast.error("Selecciona una hoja");
+                        return;
+                      }
+                      setSheetsPopoverOpen(false);
+                      void handleOpenImportPreview();
+                    }}
+                  >
+                    {previewLoading ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <FileSpreadsheet className="size-4" />
+                    )}
+                    {previewLoading ? "Cargando…" : "Importar"}
+                  </Button>
+                </PopoverContent>
+              </Popover>
+              <Button className="h-9 w-[110px] text-sm font-normal shadow-md" onClick={() => setCreateModalOpen(true)}>
+                <Plus /> Nuevo
               </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-72 space-y-4 p-4">
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">
-                  Spreadsheet
-                </label>
-                <Select
-                  value={selectedSpreadsheetId ?? ""}
-                  onValueChange={(v) => {
-                    setSelectedSpreadsheetId(v);
-                    setSelectedSheet("");
-                  }}
-                >
-                  <SelectTrigger className="w-full bg-card">
-                    <SelectValue placeholder="Seleccionar..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {spreadsheets.map((sp) => (
-                      <SelectItem key={sp.id} value={sp.id}>
-                        {sp.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">
-                  Hoja
-                </label>
-                <Select
-                  value={selectedSheet ?? ""}
-                  onValueChange={(v) => setSelectedSheet(v)}
-                >
-                  <SelectTrigger className="w-full bg-card">
-                    <SelectValue placeholder="Seleccionar..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sheetNames.map((name) => (
-                      <SelectItem key={name} value={name}>
-                        {name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                size="sm"
-                className="w-full gap-1.5"
-                disabled={!selectedSheet || previewLoading || importing}
-                onClick={() => {
-                  if (!selectedSheet) {
-                    toast.error("Selecciona una hoja");
-                    return;
-                  }
-                  void handleOpenImportPreview();
-                }}
-              >
-                {previewLoading ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <FileSpreadsheet className="size-4" />
-                )}
-                {previewLoading ? "Cargando…" : "Importar"}
-              </Button>
-            </PopoverContent>
-          </Popover>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx,.xls"
-            className="hidden"
-            onChange={handleFileImport}
-          />
-          <Button
-            variant="outline"
-            className="gap-1.5"
-            onClick={handleDownloadTemplate}
-          >
-            <FileSpreadsheet className="size-4" />
-            Plantilla
-          </Button>
-          <Button
-            variant="outline"
-            className="gap-1.5"
-            disabled={importingFile}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            {importingFile ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Upload className="size-4" />
-            )}
-            {importingFile ? "Importando…" : "Importar"}
-          </Button>
-          <Button
-            variant="outline"
-            className="gap-1.5"
-            disabled={exportBusy}
-            onClick={() => void handleExport()}
-          >
-            {exportBusy ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Download className="size-4" />
-            )}
-            Exportar
-          </Button>
-          <Button className="gap-1.5" onClick={() => setCreateModalOpen(true)}>
-            <UserPlus className="size-4" />
-            Nuevo Prospecto
-          </Button>
-        </div>
-      </PageHeader>
+            </div>
+          </PageHeader>
 
-      {selectedIds.size > 0 && (
-        <div className="flex items-center gap-2">
-          {selectedIds.size === 1 && (
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-2 px-5">
+              {selectedIds.size === 1 && (
             <>
               <Button
-                variant="outline"
+                variant="ghost"
                 className="gap-1.5"
                 onClick={() => {
                   const id = Array.from(selectedIds)[0];
@@ -1621,7 +1663,7 @@ export default function FlotaProspectos() {
                 Vista detallada
               </Button>
               <Button
-                variant="outline"
+                variant="ghost"
                 className="gap-1.5"
                 onClick={() => {
                   const id = Array.from(selectedIds)[0];
@@ -1632,7 +1674,7 @@ export default function FlotaProspectos() {
                 Editar
               </Button>
               <Button
-                variant="outline"
+                variant="ghost"
                 className="gap-1.5"
                 onClick={() => {
                   const id = Array.from(selectedIds)[0];
@@ -1663,34 +1705,7 @@ export default function FlotaProspectos() {
           )}
         </div>
       )}
-      {initialLoading ? (
-        <CrmDataTableSkeleton
-          columns={[
-            { label: "" },
-            { label: "F.Registro" },
-            { label: "Red Social" },
-            { label: "Celular" },
-            { label: "Nombres y Apellidos" },
-            { label: "Edad" },
-            { label: "Operador" },
-            { label: "Estado" },
-            { label: "Modalidad" },
-            { label: "Placa" },
-            { label: "Año Veh." },
-            { label: "Zona" },
-            { label: "F. Cita" },
-            { label: "Asistencia" },
-            { label: "F. Afiliacion" },
-            { label: "Movil" },
-            { label: "Observaciones" },
-            { label: "Llamadas" },
-          ]}
-          rows={5}
-          aria-label="Cargando prospectos"
-          className="bg-card"
-        />
-      ) : (
-        <>
+
           <div className="text-xs">
             <DataTable
               columns={columns}
@@ -1974,17 +1989,14 @@ export default function FlotaProspectos() {
               filterValues={columnFilters}
             />
           </div>
-        </>
-      )}
-
-      {!initialLoading && (
-        <div>
-          {selectedIds.size > 0 && (
-            <p className="text-xs text-muted-foreground mb-1 text-left italic">
-              ({selectedIds.size} seleccionados)
-            </p>
-          )}
-          <Pagination
+          {!initialLoading && (
+            <div className="flex h-14 items-center border-t border-dashed border-[#e8ecf0] bg-card/30 px-5 dark:border-gray-700">
+              {selectedIds.size > 0 && (
+                <p className="text-xs text-muted-foreground mr-4 italic">
+                  ({selectedIds.size} seleccionados)
+                </p>
+              )}
+              <Pagination
             page={page}
             totalPages={Math.ceil(totalProspectos / pageSize)}
             totalItems={totalProspectos}
@@ -1998,7 +2010,9 @@ export default function FlotaProspectos() {
             }}
             pageSizeOptions={[10, 25, 50, 100]}
           />
-        </div>
+          </div>
+        )}
+        </GlassCard>
       )}
 
       <Dialog
@@ -2067,7 +2081,7 @@ export default function FlotaProspectos() {
             </div>
           </div>
           <DialogFooter className="shrink-0 border-t px-6 py-4">
-            <Button type="button" variant="outline" onClick={closePreview}>
+            <Button type="button" variant="ghost" onClick={closePreview}>
               Cancelar
             </Button>
             <Button
@@ -2301,7 +2315,7 @@ export default function FlotaProspectos() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateModalOpen(false)}>
+            <Button variant="ghost" onClick={() => setCreateModalOpen(false)}>
               Cancelar
             </Button>
             <Button
@@ -2345,7 +2359,7 @@ export default function FlotaProspectos() {
           </div>
           <DialogFooter>
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={() => setCitadoDialogOpen(false)}
             >
               Cancelar
@@ -2396,7 +2410,7 @@ export default function FlotaProspectos() {
           <DialogFooter>
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               onClick={() => setDeleteDialogOpen(false)}
               disabled={deleting}
             >
@@ -2481,7 +2495,7 @@ export default function FlotaProspectos() {
           </div>
           <DialogFooter>
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={() => setLlamadaProspecto(null)}
               disabled={llamadaSaving}
             >
@@ -2633,7 +2647,7 @@ export default function FlotaProspectos() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditProspectoId(null)} disabled={editSaving}>Cancelar</Button>
+            <Button variant="ghost" onClick={() => setEditProspectoId(null)} disabled={editSaving}>Cancelar</Button>
             <Button onClick={() => void handleEditSave()} disabled={editSaving || !editData.nombreCompleto.trim()}>
               {editSaving && <Loader2 className="mr-2 size-4 animate-spin" />}
               Guardar
@@ -2711,6 +2725,17 @@ tr[data-row-id="${bp.id}"] {
         onOpenChange={(open) => {
           setArchivosModalOpen(open);
           if (!open) setArchivosProspectoId(null);
+        }}
+        onFilesLoad={(prospectoId, fileCount) => {
+          setProspectsWithFiles((prev) => {
+            const next = new Set(prev);
+            if (fileCount > 0) {
+              next.add(prospectoId);
+            } else {
+              next.delete(prospectoId);
+            }
+            return next;
+          });
         }}
       />
     </div>

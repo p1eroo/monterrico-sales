@@ -503,7 +503,34 @@ export class FlotaProspectosService {
       this.prisma.flotaProspecto.count({ where: where as any }),
     ]);
 
-    return { data, total, page, limit };
+    // Obtener conteo de archivos de forma batch (CrmFile usa entityType/entityId)
+    const ids = data.map((p) => p.id);
+    const fileCounts =
+      ids.length > 0
+        ? await this.prisma.crmFile.groupBy({
+            by: ['entityId'],
+            where: {
+              entityType: 'flota-prospecto',
+              entityId: { in: ids },
+            },
+            _count: { id: true },
+          })
+        : [];
+
+    const fileCountMap = new Map<string, number>();
+    for (const fc of fileCounts) {
+      fileCountMap.set(fc.entityId, fc._count.id);
+    }
+
+    const dataWithFiles = data.map((p) => ({
+      ...p,
+      _count: {
+        ...(p as any)._count,
+        archivos: fileCountMap.get(p.id) ?? 0,
+      },
+    }));
+
+    return { data: dataWithFiles, total, page, limit };
   }
 
   /** Obtener un prospecto por ID */

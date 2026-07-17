@@ -15,7 +15,10 @@ export type GmailMessageDetail = GmailMessage & {
   to: string;
   cc?: string;
   messageId?: string;
+  /** HTML o texto plano (prioriza HTML). Compatibilidad con clientes antiguos. */
   body: string;
+  bodyHtml?: string | null;
+  bodyText?: string | null;
   attachments: {
     filename: string;
     mimeType: string;
@@ -52,6 +55,29 @@ export type GmailThreadDetail = {
 
 export async function fetchGmailThread(threadId: string): Promise<GmailThreadDetail> {
   return api<GmailThreadDetail>(`/gmail/threads/${threadId}`);
+}
+
+export async function markGmailThreadRead(threadId: string): Promise<void> {
+  await api(`/gmail/threads/${encodeURIComponent(threadId)}/read`, { method: 'POST' });
+}
+
+export async function setGmailThreadStarred(threadId: string, starred: boolean): Promise<void> {
+  await api(`/gmail/threads/${encodeURIComponent(threadId)}/star`, {
+    method: 'POST',
+    body: JSON.stringify({ starred }),
+  });
+}
+
+export async function archiveGmailThread(threadId: string): Promise<void> {
+  await api(`/gmail/threads/${encodeURIComponent(threadId)}/archive`, { method: 'POST' });
+}
+
+export async function trashGmailThread(threadId: string): Promise<void> {
+  await api(`/gmail/threads/${encodeURIComponent(threadId)}/trash`, { method: 'POST' });
+}
+
+export async function markGmailThreadUnread(threadId: string): Promise<void> {
+  await api(`/gmail/threads/${encodeURIComponent(threadId)}/unread`, { method: 'POST' });
 }
 
 export type GmailAttachmentInput = {

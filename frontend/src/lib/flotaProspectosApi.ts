@@ -43,7 +43,7 @@ export interface FlotaProspectoRow {
   updatedAt: string;
   chatwootContactId?: number | null;
   chatwootConversationId?: number | null;
-  _count?: { llamadas: number };
+  _count?: { llamadas: number; archivos?: number };
 }
 
 export interface FlotaProspectosListResponse {

@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Database, BookOpen, Globe, Braces } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 
 export type ToolChoice =
   | 'knowledge'

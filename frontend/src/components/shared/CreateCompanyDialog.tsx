@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import type { CompanyRubro, CompanyTipo } from '@/types';
 import { companyRubroLabels, companyTipoLabels } from '@/data/mock';
 import { useCompaniesStore } from '@/store/companiesStore';

@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, type ComponentProps } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCrmTeamAdvisorFilter } from '@/hooks/useCrmTeamAdvisorFilter';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import {
   Plus, Search, X, MoreHorizontal, Phone, Users,
   CheckSquare, Mail, MessageCircle,

@@ -19,7 +19,7 @@ import {
   Video,
   X,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import type { Contact } from '@/types';
 import { usePermissions } from '@/hooks/usePermissions';
 import { API_BASE } from '@/lib/api';

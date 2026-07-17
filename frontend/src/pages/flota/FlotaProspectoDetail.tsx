@@ -37,7 +37,7 @@ import { DetailLayout } from '@/components/shared/DetailLayout';
 import { EntityInfoCard } from '@/components/shared/EntityInfoCard';
 import { TimelinePanel } from '@/components/shared/TimelinePanel';
 import { formatDate } from '@/lib/formatters';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import { api } from '@/lib/api';
 import { QuickActionsWithDialogs } from '@/components/shared/QuickActionsWithDialogs';
 import {

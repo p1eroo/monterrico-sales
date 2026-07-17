@@ -61,7 +61,7 @@ import {
 import { useEffect, useState } from 'react';
 import { useAgentesIaStore } from './store';
 import { apiRowToMockKnowledge, fetchKnowledgeBases } from './knowledgeApi';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import { NewAgentDialog } from './flows/NewAgentDialog';
 import { NewKnowledgeDialog } from './flows/NewKnowledgeDialog';
 import { NewRuleDialog } from './flows/NewRuleDialog';

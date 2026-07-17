@@ -73,7 +73,7 @@ import {
 } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import { parseCampaignRecipientsFromXlsx } from '@/lib/campaignImport';
 import { IMPORT_SPREADSHEET_ACCEPT } from '@/lib/importSpreadsheet';
 import {

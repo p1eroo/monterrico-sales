@@ -35,7 +35,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { formatDate } from '@/lib/formatters';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 
 const STATUS_LABELS: Record<CampaignStatus, string> = {
   draft: 'Borrador',

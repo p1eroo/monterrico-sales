@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import {
   Building2, Globe, GitBranch, Flag,
   Activity, Settings as SettingsIcon,

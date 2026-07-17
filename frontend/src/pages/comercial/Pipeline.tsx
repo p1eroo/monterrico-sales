@@ -39,7 +39,7 @@ import {
   CheckSquare,
   Search,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from '@/lib/notify';
 import type { Contact, Etapa, Opportunity, PipelineColumn } from "@/types";
 import {
   companyRubroLabels,

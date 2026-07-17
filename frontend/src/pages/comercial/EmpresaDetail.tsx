@@ -39,7 +39,7 @@ import { TasksTab, type TasksTabHandle } from '@/components/shared/TasksTab';
 import { CompanyEditDialog, type CompanyEditSavePayload, type CompanyEditSummaryRow } from '@/components/shared/CompanyEditDialog';
 import { EntityFilesTab } from '@/components/files';
 import { CompanyHeader } from '@/components/company-detail/CompanyHeader';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

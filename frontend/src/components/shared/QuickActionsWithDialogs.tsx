@@ -9,7 +9,7 @@ import {
   Paperclip,
   CheckSquare,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import type { Contact, Opportunity, TaskAssociation } from '@/types';
 
 import { cn } from '@/lib/utils';

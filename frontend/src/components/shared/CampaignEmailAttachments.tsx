@@ -4,7 +4,7 @@ import type { CampaignAttachment } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 
 const MAX_FILES = 15;
 const MAX_BYTES_PER_FILE = 12 * 1024 * 1024;

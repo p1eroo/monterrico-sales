@@ -32,7 +32,7 @@ import {
   Copy,
   Trash2,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 
 interface BotListViewProps {
   onEdit: (agent: BotAgent) => void;

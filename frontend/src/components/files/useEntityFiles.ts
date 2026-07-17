@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import { usePermissions } from '@/hooks/usePermissions';
 import type { FileAttachment, FileEntityType } from '@/types';
 import {

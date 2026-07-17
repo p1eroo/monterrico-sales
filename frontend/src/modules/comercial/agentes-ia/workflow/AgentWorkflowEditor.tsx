@@ -32,7 +32,7 @@ import { WorkflowLabeledEdge } from './WorkflowLabeledEdge';
 import { AddToolSidePanel } from './AddToolSidePanel';
 import type { FlowNodeType, FlowNodeData } from './flowTypes';
 import type { ToolChoice } from '../flows/AddToolDialog';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 import type { MockAgent } from '../mockData';
 

@@ -130,14 +130,22 @@ export class GmailService {
     // Fetch raw format for reliable body extraction via mailparser
     const raw = await gmail.users.messages.get({ userId: 'me', id: messageId, format: 'raw' });
     const rawEmail = Buffer.from(raw.data.raw ?? '', 'base64url').toString();
-    let body = full.data.snippet || '';
+    const snippet = full.data.snippet || '';
+    let bodyHtml: string | null = null;
+    let bodyText: string | null = null;
     try {
       const parsed = await simpleParser(rawEmail);
-      body = parsed.text || parsed.html || body;
-      this.logger.log(`[parseMessage OK] subject="${headers.find((h) => h.name === 'Subject')?.value}" html=${typeof parsed.html === 'string' ? parsed.html.length : 'false'} text=${typeof parsed.text === 'string' ? parsed.text.length : 'false'} bodyLen=${body.length} attachments=${parsed.attachments.length}`);
+      bodyHtml =
+        typeof parsed.html === 'string' && parsed.html.trim() ? parsed.html : null;
+      bodyText =
+        typeof parsed.text === 'string' && parsed.text.trim() ? parsed.text : null;
+      this.logger.log(
+        `[parseMessage OK] subject="${headers.find((h) => h.name === 'Subject')?.value}" html=${bodyHtml?.length ?? 0} text=${bodyText?.length ?? 0} attachments=${parsed.attachments.length}`,
+      );
     } catch (e: any) {
       this.logger.error(`[parseMessage FAIL] mailparser error: ${e?.message || e}`);
     }
+    const body = bodyHtml || bodyText || snippet;
 
     // Extract attachment metadata from full format
     const attachments: any[] = [];
@@ -170,6 +178,8 @@ export class GmailService {
       date: headers.find((h) => h.name === 'Date')?.value ?? '',
       cc: headers.find((h) => h.name === 'Cc')?.value ?? '',
       body,
+      bodyHtml,
+      bodyText,
       attachments,
       labelIds: full.data.labelIds ?? [],
     };
@@ -201,6 +211,58 @@ export class GmailService {
       )?.value ||
       '';
     return { id: threadId, subject, messages };
+  }
+
+  async markThreadAsRead(userId: string, threadId: string) {
+    const gmail = await this.getGmailClient(userId);
+    await gmail.users.threads.modify({
+      userId: 'me',
+      id: threadId,
+      requestBody: {
+        removeLabelIds: ['UNREAD'],
+      },
+    });
+  }
+
+  async setThreadStarred(userId: string, threadId: string, starred: boolean) {
+    const gmail = await this.getGmailClient(userId);
+    await gmail.users.threads.modify({
+      userId: 'me',
+      id: threadId,
+      requestBody: starred
+        ? { addLabelIds: ['STARRED'] }
+        : { removeLabelIds: ['STARRED'] },
+    });
+  }
+
+  async archiveThread(userId: string, threadId: string) {
+    const gmail = await this.getGmailClient(userId);
+    await gmail.users.threads.modify({
+      userId: 'me',
+      id: threadId,
+      requestBody: {
+        removeLabelIds: ['INBOX'],
+      },
+    });
+  }
+
+  async trashThread(userId: string, threadId: string) {
+    const gmail = await this.getGmailClient(userId);
+    await gmail.users.threads.trash({
+      userId: 'me',
+      id: threadId,
+    });
+  }
+
+  async markThreadAsUnread(userId: string, threadId: string) {
+    const gmail = await this.getGmailClient(userId);
+    await gmail.users.threads.modify({
+      userId: 'me',
+      id: threadId,
+      requestBody: {
+        addLabelIds: ['UNREAD'],
+      },
+    });
   }
 
   private buildRawEmail(params: {

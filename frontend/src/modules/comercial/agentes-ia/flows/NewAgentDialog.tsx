@@ -21,7 +21,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import type { AgentStatus } from '../mockData';
 import { useAgentesIaStore } from '../store';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 
 const MODELS = [
   'gpt-4o-mini',

@@ -9,7 +9,7 @@ import {
   Lock,
 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from '@/lib/notify';
 import { useTheme } from "next-themes";
 import bgClaro from "@/assets/select_claro.webp";
 import bgOscuro from "@/assets/select_oscuro.webp";

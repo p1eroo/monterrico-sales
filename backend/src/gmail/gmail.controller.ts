@@ -80,6 +80,43 @@ export class GmailController {
     return this.gmailService.getThread(req.user.userId, id);
   }
 
+  @Post('threads/:id/read')
+  async markThreadRead(@Req() req: AuthedReq, @Param('id') id: string) {
+    await this.gmailService.markThreadAsRead(req.user.userId, id);
+    return { ok: true };
+  }
+
+  @Post('threads/:id/star')
+  async setThreadStar(
+    @Req() req: AuthedReq,
+    @Param('id') id: string,
+    @Body() body: { starred?: boolean },
+  ) {
+    if (typeof body?.starred !== 'boolean') {
+      throw new BadRequestException('starred es obligatorio (boolean)');
+    }
+    await this.gmailService.setThreadStarred(req.user.userId, id, body.starred);
+    return { ok: true };
+  }
+
+  @Post('threads/:id/archive')
+  async archiveThread(@Req() req: AuthedReq, @Param('id') id: string) {
+    await this.gmailService.archiveThread(req.user.userId, id);
+    return { ok: true };
+  }
+
+  @Post('threads/:id/trash')
+  async trashThread(@Req() req: AuthedReq, @Param('id') id: string) {
+    await this.gmailService.trashThread(req.user.userId, id);
+    return { ok: true };
+  }
+
+  @Post('threads/:id/unread')
+  async markThreadUnread(@Req() req: AuthedReq, @Param('id') id: string) {
+    await this.gmailService.markThreadAsUnread(req.user.userId, id);
+    return { ok: true };
+  }
+
   @Get('messages/:messageId/attachments/:attachmentId')
   async downloadAttachment(
     @Req() req: AuthedReq,

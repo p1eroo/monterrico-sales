@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose,
 } from '@/components/ui/dialog';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import { API_BASE } from '@/lib/api';
 import {
   fetchFacebookAccounts, connectFacebookAccount, disconnectFacebookAccount,

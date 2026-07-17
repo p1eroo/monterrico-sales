@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Phone, Users, Mail, MessageCircle, User, Building2, Briefcase } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import type { ActivityType, ActivityStatus } from '@/types';
 import { formatNowPeruTimeHHmm, formatTodayPeruYmd } from '@/lib/formatters';
 

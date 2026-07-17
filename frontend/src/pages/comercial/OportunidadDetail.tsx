@@ -37,7 +37,7 @@ import { TasksTab, type TasksTabHandle } from '@/components/shared/TasksTab';
 import { OpportunityEditDialog, type OpportunityEditSavePayload } from '@/components/shared/OpportunityEditDialog';
 import { EntityFilesTab } from '@/components/files';
 import { OpportunityHeader } from '@/components/opportunity-detail/OpportunityHeader';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

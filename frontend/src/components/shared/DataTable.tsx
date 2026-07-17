@@ -147,10 +147,10 @@ export function DataTable<TData>({
   const rows = table.getRowModel().rows;
 
   return (
-    <div className="rounded-xl bg-background shadow-none overflow-hidden">
+    <div className="overflow-hidden">
       <div
-        className="overflow-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-corner]:bg-transparent"
-        style={{ maxHeight, scrollbarWidth: "thin" }}
+        className="overflow-auto scrollbar-thin"
+        style={{ maxHeight }}
       >
         <table
           className="w-full border-collapse"
@@ -158,11 +158,11 @@ export function DataTable<TData>({
         >
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id} className="bg-[#e2e6eb] dark:bg-[#2a2f33] sticky top-0 z-10">
+              <tr key={headerGroup.id} className="h-[36px] bg-[#eef1f5] dark:bg-gray-800 sticky top-0 z-10">
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="h-8 px-2 text-xs font-medium whitespace-nowrap text-foreground border-r last:border-r-0 border-border/50 relative select-none"
+                    className="px-3 align-middle overflow-hidden text-[11px] font-bold whitespace-nowrap text-[#647789] dark:text-gray-400 border-r last:border-r-0 border-border/50 relative select-none"
                     style={{ width: header.getSize() }}
                   >
                     {header.column.getCanSort() ? (
@@ -199,12 +199,12 @@ export function DataTable<TData>({
                 ))}
               </tr>
             ))}
-            <tr className="bg-[#e2e6eb] dark:bg-[#2a2f33] sticky top-8 z-10">
+            <tr className="bg-[#eef1f5] dark:bg-gray-800" style={{ top: 36, position: 'sticky', zIndex: 10 }}>
               {table.getHeaderGroups().map((headerGroup) =>
                 headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="px-2 py-1 border-r last:border-r-0 border-border/50"
+                    className="px-3 py-1 border-r last:border-r-0 border-border/50"
                     style={{ width: header.getSize() }}
                   >
                     {filterComponents?.[header.column.id] ??
@@ -236,11 +236,7 @@ export function DataTable<TData>({
                 <tr
                   key={row.id}
                   data-row-id={(row.original as any)?.id || row.id}
-                  className="border-b border-border/50 transition-colors hover:bg-muted/30"
-                  style={{
-                    contentVisibility: "auto",
-                    containIntrinsicHeight: 35,
-                  }}
+                  className="h-[48px] border-b border-dashed border-[#e8ecf0] dark:border-gray-700 bg-card/30 transition-colors cursor-pointer last:border-b-0 hover:bg-[#fafbfc] dark:hover:bg-gray-800"
                 >
                   {row.getVisibleCells().map((cell) => {
                     const colId = cell.column.id;
@@ -251,7 +247,7 @@ export function DataTable<TData>({
                     return (
                       <td
                         key={cell.id}
-                        className="px-2 py-2 border-r last:border-r-0 border-border/50"
+                                                className={`${(colId === 'actions' || colId === 'select') ? 'px-1' : 'px-3'} align-middle overflow-hidden border-r last:border-r-0 border-border/50`}
                         style={{ width: cell.column.getSize() }}
                         onClick={
                           editing

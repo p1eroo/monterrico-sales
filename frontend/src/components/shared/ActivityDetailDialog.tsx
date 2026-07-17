@@ -33,7 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import type { UpdateActivityPayload } from '@/lib/activityApi';
 
 const activityTypeIconMap: Record<string, typeof Phone> = {

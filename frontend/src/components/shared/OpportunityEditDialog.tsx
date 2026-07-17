@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import type { Opportunity } from '@/types';
 import { isLikelyOpportunityCuid } from '@/lib/opportunityApi';
 import { useUsers } from '@/hooks/useUsers';

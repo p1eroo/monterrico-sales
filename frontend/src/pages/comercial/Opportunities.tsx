@@ -8,7 +8,7 @@ import {
   type ColumnDef,
   type SortingState,
 } from '@tanstack/react-table';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import {
   Plus, Search,
   MoreVertical,

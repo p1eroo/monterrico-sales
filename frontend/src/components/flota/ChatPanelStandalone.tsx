@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import { api, API_BASE } from '@/lib/api';
 import { Loader2, Send, Paperclip, Music2, Smile, X, Mic, StopCircle, FileText, Phone, CheckCheck, Download, ArrowDown, Info, Edit2, Lock, PanelRight, ImageIcon, MoreVertical, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';

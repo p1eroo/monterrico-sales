@@ -6,7 +6,7 @@ export default function AgentesIaWorkflowPage() {
   return (
     <div className="fixed inset-0 z-[100] flex min-h-0 min-w-0 flex-col bg-background text-foreground">
       <AgentWorkflowEditor />
-      <Toaster position="bottom-right" richColors />
+      <Toaster position="bottom-right" />
     </div>
   );
 }

@@ -5,7 +5,7 @@ import {
   ChevronLeft, ChevronRight, Calendar as CalendarIcon, Search,
   Phone, Mail, MessageCircle, ClipboardList,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { ActivityFormDialog, type ActivityFormData } from '@/components/shared/ActivityFormDialog';
 import { TaskFormDialog, type TaskFormResult } from '@/components/shared/TaskFormDialog';
@@ -18,8 +18,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { useUsers } from '@/hooks/useUsers';
-import { useActivities } from '@/hooks/useActivities';
-import { activityToCalendarEvent, type CreateActivityPayload } from '@/lib/activityApi';
+import {
+  activityToCalendarEvent, type CreateActivityPayload,
+  fetchActivitiesList, createActivity as apiCreateActivity,
+  updateActivity as apiUpdateActivity, deleteActivity as apiDeleteActivity,
+} from '@/lib/activityApi';
 import { contactListAll, mapApiContactRowToContact, contactCreate } from '@/lib/contactApi';
 import { companyListAll } from '@/lib/companyApi';
 import { opportunityListAll, mapApiOpportunityToOpportunity } from '@/lib/opportunityApi';
@@ -31,7 +34,7 @@ import { cn } from '@/lib/utils';
 import { fetchGoogleEvents, type GoogleEvent } from '@/lib/calendarApi';
 import { useAppStore } from '@/store';
 import { batchCheckCompanies } from '@/lib/apolloApi';
-import type { CalendarEvent, Contact, Opportunity, TaskKind, TaskAssociation } from '@/types';
+import type { CalendarEvent, Contact, Opportunity, TaskKind, TaskAssociation, Activity } from '@/types';
 import { TASK_KINDS } from '@/types';
 import { taskAssociationsFromEntityCtx } from '@/lib/taskAssociationsFromActivity';
 
@@ -134,18 +137,8 @@ export default function CalendarioPage() {
   const currentUser = useAppStore((s) => s.currentUser);
   const { activeAdvisors } = useUsers();
   const defaultAssigneeId = activeAdvisors[0]?.id ?? '';
-  const { activities, loading: activitiesLoading, createActivity, updateActivity, deleteActivity, error: activitiesError } = useActivities();
-
-  const events = useMemo(
-    () =>
-      activities
-        .filter((a) => {
-          if (a.type === 'tarea') return !!(a.taskKind && TASK_KINDS.includes(a.taskKind));
-          return ['llamada', 'reunion', 'correo', 'whatsapp'].includes(a.type);
-        })
-        .map(activityToCalendarEvent),
-    [activities],
-  );
+  const [localActivities, setLocalActivities] = useState<Activity[]>([]);
+  const [activitiesError, setActivitiesError] = useState<string | null>(null);
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -154,6 +147,33 @@ export default function CalendarioPage() {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [taskKindSubFilter, setTaskKindSubFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  const loadCalendarActivities = useCallback(async () => {
+    if (!currentUser?.id) return;
+    const assignedTo = userFilter === 'all' ? currentUser.id : userFilter;
+    setActivitiesError(null);
+    try {
+      const data = await fetchActivitiesList({ assignedTo, limit: 5000 });
+      setLocalActivities(data);
+    } catch (e) {
+      setActivitiesError(e instanceof Error ? e.message : 'Error al cargar actividades');
+    }
+  }, [userFilter, currentUser?.id]);
+
+  useEffect(() => {
+    void loadCalendarActivities();
+  }, [loadCalendarActivities]);
+
+  const events = useMemo(
+    () =>
+      localActivities
+        .filter((a) => {
+          if (a.type === 'tarea') return !!(a.taskKind && TASK_KINDS.includes(a.taskKind));
+          return ['llamada', 'reunion', 'correo', 'whatsapp'].includes(a.type);
+        })
+        .map(activityToCalendarEvent),
+    [localActivities],
+  );
   const [googleEvents, setGoogleEvents] = useState<CalendarEvent[]>([]);
   const [googleEventsLoading, setGoogleEventsLoading] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
@@ -400,7 +420,8 @@ export default function CalendarioPage() {
         defaultAssigneeId,
       );
       const ctx = activityEntityCtx;
-      await createActivity(payload);
+      await apiCreateActivity(payload);
+      void loadCalendarActivities();
       setActivityFormKind(null);
       setActivityEntityCtx(null);
       setTaskFormDefaultAssociations(
@@ -425,7 +446,7 @@ export default function CalendarioPage() {
       throw new Error('validation');
     }
     try {
-      await createActivity({
+      await apiCreateActivity({
         type: 'tarea',
         taskKind: data.type,
         title: data.title,
@@ -438,6 +459,7 @@ export default function CalendarioPage() {
         companyId,
         opportunityId: negocioAssoc?.id,
       });
+      void loadCalendarActivities();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al crear la tarea');
       throw e;
@@ -479,10 +501,10 @@ export default function CalendarioPage() {
                 startDate: data.date,
                 startTime: data.startTime,
               };
-        await updateActivity(editingEvent.id, editPayload);
+        await apiUpdateActivity(editingEvent.id, editPayload);
         toast.success('Evento actualizado');
       } else {
-        await createActivity({
+        await apiCreateActivity({
           type: data.type,
           title: data.title,
           description: data.description ?? '',
@@ -496,6 +518,7 @@ export default function CalendarioPage() {
         });
         toast.success('Evento creado');
       }
+      void loadCalendarActivities();
       setEditingEvent(null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al guardar');
@@ -1013,7 +1036,7 @@ export default function CalendarioPage() {
 
       <EventDetailModal event={selectedEvent} open={detailOpen} onOpenChange={setDetailOpen}
         onEdit={(ev) => { setDetailOpen(false); setEditingEvent(ev); setFormOpen(true); }}
-        onDelete={async (ev) => { try { await deleteActivity(ev.id); setDetailOpen(false); setSelectedEvent(null); toast.success('Actividad eliminada'); } catch (e) { toast.error(e instanceof Error ? e.message : 'Error al eliminar'); } }}
+        onDelete={async (ev) => { try { await apiDeleteActivity(ev.id); void loadCalendarActivities(); setDetailOpen(false); setSelectedEvent(null); toast.success('Actividad eliminada'); } catch (e) { toast.error(e instanceof Error ? e.message : 'Error al eliminar'); } }}
       />
 
       <EventFormModal open={formOpen} onOpenChange={(open) => { setFormOpen(open); if (!open) setEditingEvent(null); }}

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   User, Building2, Briefcase, Search, Link2, ChevronDown,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import { priorityLabels } from '@/data/mock';
 import { canUserReassignCommercialAdvisor, resolveAdvisorAssigneeId } from '@/lib/advisorAssigneeDefaults';
 import { useUsers } from '@/hooks/useUsers';

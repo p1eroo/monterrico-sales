@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef, type DragEvent, type ChangeEvent } from 'react';
 import type { Editor } from '@tiptap/core';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { notify } from '@/lib/notify';
 import {
   Search,
   PenSquare,
@@ -24,6 +24,9 @@ import {
   X,
   Download,
   Settings,
+  Archive,
+  Mail,
+  MailOpen,
 } from 'lucide-react';
 import type { EmailThread, EmailFolder, EmailMessage } from '@/types';
 import { emailThreads, folderLabels, entityTypeLabels } from '@/data/emailMock';
@@ -33,11 +36,16 @@ import {
   contactDetailHref,
   opportunityDetailHref,
 } from '@/lib/detailRoutes';
-import { fetchGmailMessages, fetchGmailThread, sendGmailMessage, filesToGmailAttachments, linkEmailToCRM, downloadGmailAttachment } from '@/lib/gmailApi';
+import { fetchGmailMessages, fetchGmailThread, sendGmailMessage, filesToGmailAttachments, linkEmailToCRM, downloadGmailAttachment, markGmailThreadRead, setGmailThreadStarred, archiveGmailThread, trashGmailThread, markGmailThreadUnread } from '@/lib/gmailApi';
 import { fetchEmailSignature, resolveSignatureHtmlForEditor, prepareBodyHtmlForSend } from '@/lib/emailSignatureApi';
 import { filterValidAttachmentFiles, ingestComposeFiles } from '@/lib/composeFiles';
 import { EmailSignatureSettingsDialog } from '@/components/shared/EmailSignatureSettingsDialog';
 import { ComposeEmailPanel } from '@/components/shared/ComposeEmailPanel';
+import { GmailMessageBody } from '@/components/shared/GmailMessageBody';
+import {
+  InboxThreadContextMenu,
+  useInboxThreadContextMenu,
+} from '@/components/shared/InboxThreadContextMenu';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,7 +70,7 @@ import { GmailSvgIcon } from '@/components/icons/GmailSvgIcon';
 import { PencilFileSvgIcon } from '@/components/icons/PencilFileSvgIcon';
 import { Layout3SvgIcon } from '@/components/icons/Layout3SvgIcon';
 import { Columns32SvgIcon } from '@/components/icons/Columns32SvgIcon';
-import DOMPurify from 'dompurify';
+import type { GmailMessageDetail } from '@/lib/gmailApi';
 
 type InboxLayoutMode = 'three-column' | 'two-column';
 
@@ -110,6 +118,30 @@ function formatFullDate(iso: string) {
   });
 }
 
+function getGmailThreadId(thread: EmailThread): string {
+  return thread.messages[0]?.threadId ?? thread.id;
+}
+
+function patchGmailLabelIds(
+  labelIds: string[] | undefined,
+  patch: { removeUnread?: boolean; addUnread?: boolean; starred?: boolean },
+): string[] {
+  let next = [...(labelIds ?? [])];
+  if (patch.removeUnread) {
+    next = next.filter((id) => id !== 'UNREAD');
+  }
+  if (patch.addUnread && !next.includes('UNREAD')) {
+    next.push('UNREAD');
+  }
+  if (patch.starred === true && !next.includes('STARRED')) {
+    next.push('STARRED');
+  }
+  if (patch.starred === false) {
+    next = next.filter((id) => id !== 'STARRED');
+  }
+  return next;
+}
+
 function getAttachmentIcon(filename?: string, mimeType?: string) {
   const name = (filename ?? '').toLowerCase();
   const mime = (mimeType ?? '').toLowerCase();
@@ -152,37 +184,12 @@ function replySubject(subject: string): string {
   return `Re: ${trimmed}`;
 }
 
-function GmailMessageBody({ body }: { body: string }) {
-  if (!body) {
-    return <p className="text-sm text-muted-foreground italic">(Sin contenido)</p>;
-  }
-  if (/<[a-z][\s\S]*>/i.test(body)) {
-    return (
-      <div
-        className="max-w-full overflow-x-hidden text-sm leading-relaxed [overflow-wrap:anywhere] [&_*]:!max-w-full [&_a]:[overflow-wrap:anywhere] [&_a]:text-[#13944C] [&_a]:underline [&_img]:h-auto [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_table]:!w-auto"
-        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(body, { ADD_ATTR: ['target'], ADD_TAGS: ['a'] }) }}
-      />
-    );
-  }
-  const text = body.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const linked = text.replace(
-    /(https?:\/\/\S+)/g,
-    '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:#13944C;text-decoration:underline">$1</a>',
-  );
-  return (
-    <div
-      className="max-w-full whitespace-pre-wrap text-sm leading-relaxed [overflow-wrap:anywhere]"
-      dangerouslySetInnerHTML={{ __html: linked }}
-    />
-  );
-}
-
 function GmailMessageItem({
   msg,
   showReply,
   onReply,
 }: {
-  msg: any;
+  msg: GmailMessageDetail;
   showReply: boolean;
   onReply: () => void;
 }) {
@@ -212,7 +219,12 @@ function GmailMessageItem({
         </div>
       </div>
 
-      <GmailMessageBody body={msg.body} />
+      <GmailMessageBody
+        bodyHtml={msg.bodyHtml}
+        bodyText={msg.bodyText}
+        body={msg.body}
+        subject={msg.subject}
+      />
 
       {msg.attachments?.length > 0 && (
         <div className="mt-4 rounded-xl bg-muted/50 p-4">
@@ -230,7 +242,7 @@ function GmailMessageItem({
                   type="button"
                   onClick={() =>
                     downloadGmailAttachment(msg.id, att.attachmentId, att.filename).catch(() =>
-                      toast.error('Error al descargar el archivo'),
+                      notify.error('Error al descargar el archivo'),
                     )
                   }
                   className="flex cursor-pointer items-center gap-3 rounded-lg border bg-background px-3 py-2 text-left transition-colors hover:bg-muted/40"
@@ -284,7 +296,7 @@ export default function InboxPage() {
   const [userSignatureHtml, setUserSignatureHtml] = useState<string | null>(null);
 
   const reportComposeFileErrors = useCallback((errors: string[]) => {
-    for (const err of errors) toast.error(err);
+    for (const err of errors) notify.error(err);
   }, []);
 
   const addComposeAttachments = useCallback((files: File[]) => {
@@ -297,7 +309,7 @@ export default function InboxPage() {
       if (!files.length) return;
       const result = await ingestComposeFiles(files, null);
       if (result.inlineImages > 0) {
-        toast.success(
+        notify.success(
           result.inlineImages === 1
             ? 'Imagen insertada en el mensaje'
             : `${result.inlineImages} imágenes insertadas en el mensaje`,
@@ -305,7 +317,7 @@ export default function InboxPage() {
       }
       if (result.attachments.length) {
         addComposeAttachments(result.attachments);
-        toast.success(
+        notify.success(
           result.attachments.length === 1
             ? 'Archivo adjuntado'
             : `${result.attachments.length} archivos adjuntados`,
@@ -324,7 +336,7 @@ export default function InboxPage() {
       const { valid, errors } = filterValidAttachmentFiles(files);
       if (valid.length) {
         addComposeAttachments(valid);
-        toast.success(
+        notify.success(
           valid.length === 1 ? 'Archivo adjuntado' : `${valid.length} archivos adjuntados`,
         );
       }
@@ -411,7 +423,7 @@ export default function InboxPage() {
 
   const insertComposeSignature = useCallback(async () => {
     if (!userSignatureHtml) {
-      toast.error('No tienes firma configurada. Ve a Configuración para crearla.');
+      notify.error('No tienes firma configurada. Ve a Configuración para crearla.');
       setSignatureSettingsOpen(true);
       return;
     }
@@ -420,14 +432,14 @@ export default function InboxPage() {
     );
     if (composeEditorRef.current) {
       composeEditorRef.current.chain().focus().insertContent(resolvedHtml).run();
-      toast.success('Firma insertada');
+      notify.success('Firma insertada');
       return;
     }
     setComposeBody((prev) => {
       const sep = prev.trim() && prev !== '<p></p>' ? '<br><br>' : '';
       return prev + sep + resolvedHtml;
     });
-    toast.success('Firma insertada');
+    notify.success('Firma insertada');
   }, [userSignatureHtml, formatSignatureForInsert]);
 
   const handleComposeEditorReady = useCallback((editor: Editor | null) => {
@@ -488,7 +500,7 @@ export default function InboxPage() {
         // Populate starred set
         setStarredThreads(new Set(res.messages.filter((m) => m.labelIds?.includes('STARRED')).map((m) => m.id)));
       })
-      .catch(() => toast.error('Error al cargar correos'))
+      .catch(() => notify.error('Error al cargar correos'))
       .finally(() => setGmailLoading(false));
   }, [googleConnected, gmailFolderParams]);
 
@@ -499,13 +511,18 @@ export default function InboxPage() {
       const res = await fetchGmailMessages(50, nextPageToken, gmailFolderParams.labelIds, gmailFolderParams.q);
       setGmailMessages((prev) => [...prev, ...res.messages]);
       setNextPageToken(res.nextPageToken);
+      setReadThreads((prev) => {
+        const next = new Set(prev);
+        res.messages.filter((m) => !m.labelIds?.includes('UNREAD')).forEach((m) => next.add(m.id));
+        return next;
+      });
       setStarredThreads((prev) => {
         const next = new Set(prev);
         res.messages.filter((m) => m.labelIds?.includes('STARRED')).forEach((m) => next.add(m.id));
         return next;
       });
     } catch {
-      toast.error('Error al cargar más correos');
+      notify.error('Error al cargar más correos');
     } finally {
       setLoadingMore(false);
     }
@@ -531,7 +548,7 @@ export default function InboxPage() {
       })
       .catch(() => {
         setGmailDetailError(true);
-        toast.error('No se pudo cargar el contenido del correo');
+        notify.error('No se pudo cargar el contenido del correo');
       })
       .finally(() => setGmailDetailLoading(false));
   }, [selectedGmailThreadId]);
@@ -582,25 +599,84 @@ export default function InboxPage() {
     });
   }, [displayThreads, activeFolder, search, starredThreads]);
 
-  const toggleStar = (threadId: string) => {
-    setStarredThreads((prev) => {
-      const next = new Set(prev);
-      if (next.has(threadId)) next.delete(threadId);
-      else next.add(threadId);
-      return next;
-    });
-  };
+  const syncGmailThreadLabels = useCallback(
+    (
+      gmailThreadId: string,
+      patch: { removeUnread?: boolean; addUnread?: boolean; starred?: boolean },
+    ) => {
+      setGmailMessages((prev) =>
+        prev.map((msg) => {
+          const msgThreadId = msg.threadId ?? msg.id;
+          if (msgThreadId !== gmailThreadId) return msg;
+          return { ...msg, labelIds: patchGmailLabelIds(msg.labelIds, patch) };
+        }),
+      );
+    },
+    [],
+  );
 
-  const markAsRead = (threadId: string) => {
-    setReadThreads((prev) => new Set(prev).add(threadId));
-  };
+  const toggleStar = useCallback(
+    (thread: EmailThread) => {
+      const listId = thread.id;
+      const wasStarred = starredThreads.has(listId);
+      const nextStarred = !wasStarred;
+
+      setStarredThreads((prev) => {
+        const next = new Set(prev);
+        if (nextStarred) next.add(listId);
+        else next.delete(listId);
+        return next;
+      });
+
+      if (!googleConnected) return;
+
+      const gmailThreadId = getGmailThreadId(thread);
+      syncGmailThreadLabels(gmailThreadId, { starred: nextStarred });
+
+      void setGmailThreadStarred(gmailThreadId, nextStarred).catch(() => {
+        setStarredThreads((prev) => {
+          const next = new Set(prev);
+          if (wasStarred) next.add(listId);
+          else next.delete(listId);
+          return next;
+        });
+        syncGmailThreadLabels(gmailThreadId, { starred: wasStarred });
+        notify.error('No se pudo actualizar el destacado en Gmail');
+      });
+    },
+    [googleConnected, starredThreads, syncGmailThreadLabels],
+  );
+
+  const markAsRead = useCallback(
+    (thread: EmailThread) => {
+      if (readThreads.has(thread.id)) return;
+
+      setReadThreads((prev) => new Set(prev).add(thread.id));
+
+      if (!googleConnected) return;
+
+      const gmailThreadId = getGmailThreadId(thread);
+      syncGmailThreadLabels(gmailThreadId, { removeUnread: true });
+
+      void markGmailThreadRead(gmailThreadId).catch(() => {
+        setReadThreads((prev) => {
+          const next = new Set(prev);
+          next.delete(thread.id);
+          return next;
+        });
+        syncGmailThreadLabels(gmailThreadId, { addUnread: true });
+        notify.error('No se pudo marcar como leído en Gmail');
+      });
+    },
+    [googleConnected, readThreads, syncGmailThreadLabels],
+  );
 
   const isThreadUnread = (thread: EmailThread) => !readThreads.has(thread.id);
   const isThreadStarred = (thread: EmailThread) => starredThreads.has(thread.id);
 
   const handleSelectThread = (thread: EmailThread) => {
     setSelectedThread(thread);
-    markAsRead(thread.id);
+    markAsRead(thread);
     if (googleConnected) {
       setSelectedGmailId(thread.id);
       setSelectedGmailThreadId(thread.messages[0]?.threadId ?? thread.id);
@@ -612,6 +688,178 @@ export default function InboxPage() {
     setSelectedGmailId(null);
     setSelectedGmailThreadId(null);
   }, []);
+
+  const threadContextMenu = useInboxThreadContextMenu();
+
+  const refreshGmailList = useCallback(async () => {
+    if (!googleConnected) return;
+    try {
+      const res = await fetchGmailMessages(
+        50,
+        undefined,
+        gmailFolderParams.labelIds,
+        gmailFolderParams.q,
+      );
+      setGmailMessages(res.messages);
+      setNextPageToken(res.nextPageToken);
+      setReadThreads(
+        new Set(res.messages.filter((m) => !m.labelIds?.includes('UNREAD')).map((m) => m.id)),
+      );
+      setStarredThreads(
+        new Set(res.messages.filter((m) => m.labelIds?.includes('STARRED')).map((m) => m.id)),
+      );
+    } catch {
+      notify.error('Error al actualizar la lista de correos');
+    }
+  }, [googleConnected, gmailFolderParams]);
+
+  const removeThreadFromList = useCallback(
+    (thread: EmailThread) => {
+      const gmailThreadId = getGmailThreadId(thread);
+      setGmailMessages((prev) =>
+        prev.filter((msg) => {
+          const msgThreadId = msg.threadId ?? msg.id;
+          return msgThreadId !== gmailThreadId && msg.id !== thread.id;
+        }),
+      );
+      setReadThreads((prev) => {
+        const next = new Set(prev);
+        next.delete(thread.id);
+        return next;
+      });
+      setStarredThreads((prev) => {
+        const next = new Set(prev);
+        next.delete(thread.id);
+        return next;
+      });
+      if (selectedThread?.id === thread.id) {
+        clearSelectedThread();
+      }
+    },
+    [selectedThread?.id, clearSelectedThread],
+  );
+
+  const handleArchiveThread = useCallback(
+    (thread: EmailThread) => {
+      if (!googleConnected) return;
+      const gmailThreadId = getGmailThreadId(thread);
+      removeThreadFromList(thread);
+      void archiveGmailThread(gmailThreadId)
+        .then(() => notify.success('Correo archivado', 'Sincronizado con Gmail'))
+        .catch(() => {
+          notify.error('No se pudo archivar', 'Inténtalo de nuevo');
+          void refreshGmailList();
+        });
+    },
+    [googleConnected, removeThreadFromList, refreshGmailList],
+  );
+
+  const handleTrashThread = useCallback(
+    (thread: EmailThread) => {
+      if (!googleConnected) return;
+      const gmailThreadId = getGmailThreadId(thread);
+      removeThreadFromList(thread);
+      void trashGmailThread(gmailThreadId)
+        .then(() => notify.success('Correo eliminado', 'Movido a la papelera'))
+        .catch(() => {
+          notify.error('No se pudo eliminar', 'Inténtalo de nuevo');
+          void refreshGmailList();
+        });
+    },
+    [googleConnected, removeThreadFromList, refreshGmailList],
+  );
+
+  const handleMarkThreadUnread = useCallback(
+    (thread: EmailThread) => {
+      if (!googleConnected) return;
+      const gmailThreadId = getGmailThreadId(thread);
+      setReadThreads((prev) => {
+        const next = new Set(prev);
+        next.delete(thread.id);
+        return next;
+      });
+      syncGmailThreadLabels(gmailThreadId, { addUnread: true });
+      void markGmailThreadUnread(gmailThreadId)
+        .then(() => notify.success('Estado actualizado', 'Marcado como no leído'))
+        .catch(() => {
+          setReadThreads((prev) => new Set(prev).add(thread.id));
+          syncGmailThreadLabels(gmailThreadId, { removeUnread: true });
+          notify.error('No se pudo actualizar', 'No se marcó como no leído');
+        });
+    },
+    [googleConnected, syncGmailThreadLabels],
+  );
+
+  const handleMarkThreadRead = useCallback(
+    (thread: EmailThread) => {
+      if (!googleConnected || readThreads.has(thread.id)) return;
+
+      const gmailThreadId = getGmailThreadId(thread);
+      setReadThreads((prev) => new Set(prev).add(thread.id));
+      syncGmailThreadLabels(gmailThreadId, { removeUnread: true });
+
+      void markGmailThreadRead(gmailThreadId)
+        .then(() => notify.success('Estado actualizado', 'Marcado como leído'))
+        .catch(() => {
+          setReadThreads((prev) => {
+            const next = new Set(prev);
+            next.delete(thread.id);
+            return next;
+          });
+          syncGmailThreadLabels(gmailThreadId, { addUnread: true });
+          notify.error('No se pudo actualizar', 'No se marcó como leído');
+        });
+    },
+    [googleConnected, readThreads, syncGmailThreadLabels],
+  );
+
+  const contextMenuThread = useMemo(
+    () => filteredThreads.find((thread) => thread.id === threadContextMenu.threadId) ?? null,
+    [filteredThreads, threadContextMenu.threadId],
+  );
+
+  const contextMenuItems = useMemo(() => {
+    if (!contextMenuThread) return [];
+
+    const unread = !readThreads.has(contextMenuThread.id);
+    const readToggleItem = unread
+      ? {
+          id: 'read',
+          label: 'Marcar como leído',
+          icon: MailOpen,
+          onSelect: () => handleMarkThreadRead(contextMenuThread),
+        }
+      : {
+          id: 'unread',
+          label: 'Marcar como no leída',
+          icon: Mail,
+          onSelect: () => handleMarkThreadUnread(contextMenuThread),
+        };
+
+    return [
+      {
+        id: 'archive',
+        label: 'Archivar',
+        icon: Archive,
+        onSelect: () => handleArchiveThread(contextMenuThread),
+      },
+      {
+        id: 'delete',
+        label: 'Eliminar',
+        icon: Trash2,
+        onSelect: () => handleTrashThread(contextMenuThread),
+        destructive: true,
+      },
+      readToggleItem,
+    ];
+  }, [
+    contextMenuThread,
+    handleArchiveThread,
+    handleTrashThread,
+    handleMarkThreadRead,
+    handleMarkThreadUnread,
+    readThreads,
+  ]);
 
   const toggleLayoutMode = useCallback(() => {
     setLayoutMode((prev) => {
@@ -629,9 +877,9 @@ export default function InboxPage() {
     const bodyHtml = prepareBodyHtmlForSend(composeBody, userSignatureHtml);
     const bodyText = bodyHtml.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
     if (!composeTo.trim() || !composeSubject.trim() || !bodyText) {
-      if (!composeTo.trim()) toast.error('Indica el destinatario');
-      else if (!composeSubject.trim()) toast.error('El asunto es obligatorio');
-      else toast.error('El mensaje no puede estar vacío');
+      if (!composeTo.trim()) notify.error('Indica el destinatario');
+      else if (!composeSubject.trim()) notify.error('El asunto es obligatorio');
+      else notify.error('El mensaje no puede estar vacío');
       return;
     }
     setSendingEmail(true);
@@ -647,7 +895,7 @@ export default function InboxPage() {
         cc: cc || undefined,
         attachments,
       });
-      toast.success('Correo enviado');
+      notify.success('Correo enviado', 'El mensaje se entregó correctamente');
       setComposeOpen(false);
       setComposeMinimized(false);
       setComposeFullscreen(false);
@@ -661,9 +909,9 @@ export default function InboxPage() {
       setComposeShowCc(false);
       setComposeShowBcc(false);
       void linkEmailToCRM(to, subject)
-        .then(() => toast.success('Destinatario vinculado al CRM'))
+        .then(() => notify.success('Destinatario vinculado al CRM'))
         .catch((e) =>
-          toast.error('Error al vincular: ' + (e instanceof Error ? e.message : '')),
+          notify.error('Error al vincular: ' + (e instanceof Error ? e.message : '')),
         );
       setTimeout(async () => {
         try {
@@ -675,7 +923,7 @@ export default function InboxPage() {
       }, 2000);
     } catch (e) {
       console.error('Error sending email:', e);
-      toast.error(e instanceof Error ? e.message : 'Error al enviar el correo');
+      notify.error(e instanceof Error ? e.message : 'Error al enviar el correo');
     } finally {
       setSendingEmail(false);
     }
@@ -708,7 +956,7 @@ export default function InboxPage() {
     if (!replyTarget) return;
     const bodyText = replyHtml.replace(/<[^>]*>/g, '').trim();
     if (!bodyText) {
-      toast.error('Escribe un mensaje antes de enviar');
+      notify.error('Escribe un mensaje antes de enviar');
       return;
     }
     const to = extractEmailFromHeader(replyTarget.from);
@@ -719,7 +967,7 @@ export default function InboxPage() {
         threadId: replyTarget.threadId,
         inReplyTo: replyTarget.messageId,
       });
-      toast.success('Respuesta enviada');
+      notify.success('Respuesta enviada', 'Tu mensaje fue enviado');
       handleDiscardReply();
       if (selectedGmailThreadId) {
         const thread = await fetchGmailThread(selectedGmailThreadId);
@@ -732,7 +980,7 @@ export default function InboxPage() {
         .catch(() => {});
     } catch (e) {
       console.error('Error sending reply:', e);
-      toast.error(e instanceof Error ? e.message : 'Error al enviar la respuesta');
+      notify.error(e instanceof Error ? e.message : 'Error al enviar la respuesta');
     } finally {
       setSendingReply(false);
     }
@@ -881,6 +1129,10 @@ export default function InboxPage() {
                 <div
                   key={thread.id}
                   onClick={() => handleSelectThread(thread)}
+                  onContextMenu={(event) => {
+                    if (!googleConnected) return;
+                    threadContextMenu.openMenu(event, thread.id);
+                  }}
                   className={cn(
                     'relative flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50',
                     selectedThread?.id === thread.id && 'bg-muted/70',
@@ -891,7 +1143,7 @@ export default function InboxPage() {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      toggleStar(thread.id);
+                      toggleStar(thread);
                     }}
                     className="shrink-0 text-muted-foreground hover:text-amber-500"
                   >
@@ -1226,7 +1478,7 @@ export default function InboxPage() {
                     </div>
                     <span className="text-xs text-muted-foreground shrink-0">{formatFullDate(msg.timestamp)}</span>
                   </div>
-                  <div className="mt-4 max-w-full whitespace-pre-wrap break-words text-sm leading-relaxed">{msg.body}</div>
+                  <GmailMessageBody body={msg.body} subject={selectedThread.subject} />
                 </div>
               ))}
             </div>
@@ -1287,7 +1539,7 @@ export default function InboxPage() {
                     <p className="text-xs text-muted-foreground">
                       {formatFullDate(msg.timestamp)}
                     </p>
-                    <div className="mt-3 whitespace-pre-wrap text-sm">{msg.body}</div>
+                    <GmailMessageBody body={msg.body} subject={selectedThread.subject} />
                   </div>
                 ))
               )}
@@ -1324,7 +1576,7 @@ export default function InboxPage() {
                     <p className="text-xs text-muted-foreground">
                       {formatFullDate(msg.timestamp)}
                     </p>
-                    <div className="mt-3 whitespace-pre-wrap text-sm">{msg.body}</div>
+                    <GmailMessageBody body={msg.body} subject={selectedThread.subject} />
                   </div>
                 ))
               )}
@@ -1435,6 +1687,14 @@ export default function InboxPage() {
           />
         </div>
       )}
+
+      <InboxThreadContextMenu
+        open={threadContextMenu.open}
+        x={threadContextMenu.x}
+        y={threadContextMenu.y}
+        items={contextMenuItems}
+        onClose={threadContextMenu.closeMenu}
+      />
 
       <EmailSignatureSettingsDialog
         open={signatureSettingsOpen}

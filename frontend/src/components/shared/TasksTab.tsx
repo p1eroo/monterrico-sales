@@ -1,6 +1,6 @@
 import { useState, forwardRef, useImperativeHandle, useMemo } from 'react';
 import { CheckSquare, Phone, Mail, Users, MessageCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import { priorityLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
 import { useAppStore } from '@/store';

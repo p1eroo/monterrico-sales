@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import {
   Search, UserPlus, Phone, Users, UserCheck,
   Grid3X3, List, Eye, Pencil, Loader2,

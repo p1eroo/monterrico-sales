@@ -22,7 +22,7 @@ import {
   sendLeadToComercial, sendLeadToFlota, deleteFacebookLead, bulkDeleteFacebookLeads,
   type FacebookLead, type FacebookForm,
 } from '@/lib/marketingApi';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 
 function LeadDetailModal({ lead, open, onOpenChange, onSent }: { lead: FacebookLead | null; open: boolean; onOpenChange: (v: boolean) => void; onSent: () => void }) {
   const [sendingComercial, setSendingComercial] = useState(false);

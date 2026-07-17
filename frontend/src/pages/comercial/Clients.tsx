@@ -53,7 +53,7 @@ import { cn } from '@/lib/utils';
 import { comercialProPopoverClass, comercialProCommandClass } from '@/lib/comercialFilterSurface';
 import { rightDrawerSheetContentClass } from '@/lib/rightPanelShell';
 import { formatCurrency, formatDate } from '@/lib/formatters';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAppStore } from '@/store';
 import { fetchExternalClients } from '@/lib/clientApi';

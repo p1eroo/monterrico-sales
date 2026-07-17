@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAgentesIaStore } from '../store';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 
 type Props = { open: boolean; onOpenChange: (v: boolean) => void };
 

@@ -53,7 +53,7 @@ import { Pagination } from "@/components/shared/Pagination";
 import { getConductores, type Conductor } from "@/lib/flotaConductoresApi";
 import { TableWithStickyScroll } from "@/components/shared/TableWithStickyScroll";
 import { formatCurrency, formatDate, formatDateDMY } from "@/lib/formatters";
-import { toast } from "sonner";
+import { toast } from '@/lib/notify';
 
 const CONDUCTORES_MOCK = [
   {

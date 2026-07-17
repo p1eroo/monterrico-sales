@@ -58,7 +58,7 @@ import {
 } from '@/lib/comercialFilterSurface';
 import { fetchFiles, deleteFileApi, fetchFileContentBlobUrl } from '@/lib/fileApi';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 
 const FILTER_BTN_BASE =
   '!h-12 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left';

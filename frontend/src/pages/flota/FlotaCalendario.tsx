@@ -31,7 +31,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { toast } from '@/lib/notify';
 import { api } from "@/lib/api";
 import { flotaCalendarCitas, type CalendarCita } from "@/lib/flotaProspectosApi";
 import { notifyFlotaProspectosRefresh } from "@/lib/flotaProspectosRealtime";

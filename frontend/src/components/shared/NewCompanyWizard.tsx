@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useCrmConfigStore, getLeadSourceOptionsFromCatalog } from '@/store/crmConfigStore';
 import { Check, ChevronLeft, ChevronRight, Loader2, Search } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import { factilizaApi } from '@/lib/factilizaApi';
 import type { CompanyRubro, CompanyTipo, ContactSource, Etapa } from '@/types';
 import { companyRubroLabels, companyTipoLabels, etapaLabels, contactSourceLabels } from '@/data/mock';

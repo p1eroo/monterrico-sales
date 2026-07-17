@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { toast, notify } from '@/lib/notify';
 import * as XLSX from 'xlsx';
 import {
   Search, Building2, Users, Briefcase,
@@ -1062,7 +1062,7 @@ export default function EmpresasPage() {
         tipo: (payload.tipo || undefined) as CompanyTipo | undefined,
       });
       setEditEmpresa(null);
-      toast.success('Empresa actualizada correctamente');
+      notify.success('Empresa actualizada', 'Los cambios se guardaron correctamente');
       return;
     }
 
@@ -1076,7 +1076,7 @@ export default function EmpresasPage() {
       });
     }
 
-    toast.loading('Guardando cambios…', { id: `save-${empresaId}` });
+    toast.loading('Guardando cambios…', { id: `save-${empresaId}`, description: 'Esto puede tardar unos segundos' });
     try {
       const result = await api<ApiCompanyRecord>(`/companies/${empresaId}`, {
         method: 'PATCH',
@@ -1096,7 +1096,7 @@ export default function EmpresasPage() {
       });
       // Reconcile with API response
       setSummaryRows((prev) => prev.map((r) => (r.id === empresaId ? { ...r, ...result, clienteRecuperado: result.clienteRecuperado as CompanySummaryRow['clienteRecuperado'] } : r)));
-      toast.success('Empresa actualizada', { id: `save-${empresaId}` });
+      notify.success('Empresa actualizada', 'Los cambios se guardaron correctamente', { id: `save-${empresaId}` });
     } catch (e) {
       // Revert on error
       if (prevRow && prevRowIndex >= 0) {
@@ -1106,7 +1106,7 @@ export default function EmpresasPage() {
           return next;
         });
       }
-      toast.error(e instanceof Error ? e.message : 'No se pudo guardar', { id: `save-${empresaId}` });
+      notify.error('No se pudo guardar', e instanceof Error ? e.message : 'Inténtalo de nuevo', { id: `save-${empresaId}` });
     }
   }
 
@@ -1116,7 +1116,7 @@ export default function EmpresasPage() {
       if (empresaToDelete.isLocalOnly) {
         deleteCompany(empresaToDelete.id);
         await loadSummary();
-        toast.success('Empresa eliminada correctamente', { id: 'delete-empresa' });
+        notify.success('Empresa eliminada', 'Se eliminó correctamente del sistema', { id: 'delete-empresa' });
         return;
       }
       if (!isLikelyCompanyCuid(empresaToDelete.id)) {
@@ -1126,7 +1126,7 @@ export default function EmpresasPage() {
       toast.loading('Eliminando…', { id: 'delete-empresa' });
       await api(`/companies/${empresaToDelete.id}`, { method: 'DELETE' });
       await loadSummary();
-      toast.success('Empresa eliminada correctamente', { id: 'delete-empresa' });
+      notify.success('Empresa eliminada', 'Se eliminó correctamente del sistema', { id: 'delete-empresa' });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'No se pudo eliminar', { id: 'delete-empresa' });
     } finally {

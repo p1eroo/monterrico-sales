@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useCrmConfigStore, getLeadSourceOptionsFromCatalog } from '@/store/crmConfigStore';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import { Check, ChevronLeft, ChevronRight, Building2, Link2, Briefcase, Search, ChevronDown, Loader2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { Etapa, ContactSource } from '@/types';

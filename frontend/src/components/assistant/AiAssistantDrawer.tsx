@@ -22,7 +22,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import { AiBrainSvgIcon } from '@/components/icons/AiBrainSvgIcon';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';

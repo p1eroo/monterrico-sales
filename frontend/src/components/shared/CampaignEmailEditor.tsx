@@ -42,7 +42,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 
 /** Imágenes incrustadas como data URL en el HTML del correo (sin servidor de subida) */
 const MAX_INLINE_IMAGE_BYTES = 3 * 1024 * 1024;

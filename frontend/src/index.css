@@ -309,6 +309,121 @@
     .crm-info-link {
         @apply text-text-secondary hover:text-primary hover:underline;
     }
+
+    [data-sonner-toaster] {
+        --offset-top: 20px;
+        --offset-right: 20px;
+        --width: 380px;
+        --toast-close-button-start: unset;
+        --toast-close-button-end: 0;
+        --toast-close-button-transform: none;
+    }
+
+    [data-sonner-toaster] [data-sonner-toast].crm-toast {
+        position: relative;
+        display: flex;
+        width: min(380px, calc(100vw - 40px));
+        padding: 16px 44px 16px 16px;
+        background: var(--card) !important;
+        border: none !important;
+        outline: none !important;
+        border-radius: 12px;
+        box-shadow:
+            0 1px 2px rgb(15 23 42 / 0.04),
+            0 8px 24px rgb(15 23 42 / 0.08);
+        color: var(--foreground);
+        align-items: flex-start;
+        gap: 12px;
+        overflow: hidden;
+    }
+
+    [data-sonner-toast] .crm-toast__content {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+        flex: 1;
+    }
+
+    [data-sonner-toast] .crm-toast__title {
+        font-weight: 600;
+        font-size: 0.875rem;
+        line-height: 1.4;
+        color: var(--foreground);
+    }
+
+    [data-sonner-toast] .crm-toast__description {
+        font-size: 0.8125rem;
+        line-height: 1.45;
+        color: var(--muted-foreground);
+    }
+
+    [data-sonner-toast] .crm-toast__icon,
+    [data-sonner-toast] [data-icon] {
+        display: flex !important;
+        width: auto !important;
+        height: auto !important;
+        margin: 0 !important;
+        align-self: flex-start;
+        flex-shrink: 0;
+    }
+
+    [data-sonner-toast] .crm-toast__icon-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        flex-shrink: 0;
+        border-radius: 9999px;
+    }
+
+    [data-sonner-toast] .crm-toast__icon-badge--success {
+        background: color-mix(in srgb, var(--primary) 12%, transparent);
+        color: var(--primary);
+    }
+
+    [data-sonner-toast] .crm-toast__icon-badge--error {
+        background: color-mix(in srgb, var(--destructive) 12%, transparent);
+        color: var(--destructive);
+    }
+
+    [data-sonner-toast] .crm-toast__icon-badge--warning {
+        background: color-mix(in srgb, var(--warning) 14%, transparent);
+        color: var(--warning);
+    }
+
+    [data-sonner-toast] .crm-toast__icon-badge--info {
+        background: color-mix(in srgb, var(--info) 12%, transparent);
+        color: var(--info);
+    }
+
+    [data-sonner-toast] .crm-toast__icon-badge--loading {
+        background: var(--muted);
+    }
+
+    [data-sonner-toast] .crm-toast__close,
+    [data-sonner-toast] [data-close-button] {
+        position: absolute !important;
+        top: 10px !important;
+        right: 10px !important;
+        left: auto !important;
+        transform: none !important;
+        width: 28px !important;
+        height: 28px !important;
+        border: 0 !important;
+        border-radius: 9999px !important;
+        background: transparent !important;
+        color: var(--muted-foreground) !important;
+        opacity: 1 !important;
+        box-shadow: none !important;
+    }
+
+    [data-sonner-toast] .crm-toast__close:hover,
+    [data-sonner-toast] [data-close-button]:hover {
+        background: var(--muted) !important;
+        color: var(--foreground) !important;
+    }
 }
 
 @layer utilities {

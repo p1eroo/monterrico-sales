@@ -30,7 +30,7 @@ import {
 import {
   Maximize2, Loader2,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import { useChartTheme } from '@/hooks/useChartTheme';
 import { formatCurrency } from '@/lib/formatters';
 import { usePermissions } from '@/hooks/usePermissions';
