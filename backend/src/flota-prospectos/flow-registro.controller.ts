@@ -101,6 +101,8 @@ export class FlowRegistroController {
       modalidad?: string;
       distrito?: string;
       aireAcondicionado?: string;
+      redSocial?: string;
+      observaciones?: string;
     },
     @UploadedFiles() files: Express.Multer.File[],
     @Req() req: Request,
@@ -154,6 +156,12 @@ export class FlowRegistroController {
       if (body.aireAcondicionado !== undefined) {
         updateData.aireAcondicionado = body.aireAcondicionado || null;
       }
+      if (body.redSocial !== undefined) {
+        updateData.redSocial = body.redSocial || null;
+      }
+      if (body.observaciones !== undefined) {
+        updateData.observaciones = body.observaciones || null;
+      }
       if (Object.keys(updateData).length > 0) {
         prospecto = await this.prisma.flotaProspecto.update({
           where: { id: prospecto.id },
@@ -169,6 +177,8 @@ export class FlowRegistroController {
           modalidad: body.modalidad || null,
           distrito: body.distrito || null,
           aireAcondicionado: body.aireAcondicionado || null,
+          redSocial: body.redSocial || null,
+          observaciones: body.observaciones || null,
           estado: 'Nuevo',
           origen: 'FLOW',
           fechaRegistro: new Date(),

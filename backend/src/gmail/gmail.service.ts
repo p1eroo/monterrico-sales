@@ -33,6 +33,12 @@ const PERSONAL_EMAIL_DOMAINS = new Set([
   'zoho.com',
 ]);
 
+/** Dominios que no generan contacto, empresa ni oportunidad al vincular correo enviado. */
+const CRM_LINK_EXCLUDED_DOMAINS = new Set([
+  'gmail.com',
+  'taximonterrico.com',
+]);
+
 @Injectable()
 export class GmailService {
   private readonly logger = new Logger(GmailService.name);
@@ -382,7 +388,96 @@ export class GmailService {
     return res.data;
   }
 
+  private async resolveCompanyForEmail(contactId: string, domain: string) {
+    const byDomain = await this.prisma.company.findFirst({
+      where: { domain: { equals: domain, mode: 'insensitive' } },
+    });
+    if (byDomain) return byDomain;
+
+    const link = await this.prisma.companyContact.findFirst({
+      where: { contactId },
+      orderBy: [{ isPrimary: 'desc' }],
+      include: { company: true },
+    });
+    return link?.company ?? null;
+  }
+
+  private async resolveOpportunityForEmail(contactId: string, companyId?: string) {
+    if (companyId) {
+      const linked = await this.prisma.contactOpportunity.findFirst({
+        where: {
+          contactId,
+          opportunity: { companies: { some: { companyId } } },
+        },
+        orderBy: { opportunity: { createdAt: 'desc' } },
+        select: { opportunityId: true },
+      });
+      if (linked) return linked.opportunityId;
+
+      const companyOpp = await this.prisma.companyOpportunity.findFirst({
+        where: { companyId },
+        orderBy: { opportunity: { createdAt: 'desc' } },
+        select: { opportunityId: true },
+      });
+      if (companyOpp) return companyOpp.opportunityId;
+    }
+
+    const contactOpp = await this.prisma.contactOpportunity.findFirst({
+      where: { contactId },
+      orderBy: { opportunity: { createdAt: 'desc' } },
+      select: { opportunityId: true },
+    });
+    return contactOpp?.opportunityId;
+  }
+
+  private async createEmailActivity(
+    assignedTo: string,
+    subject: string,
+    email: string,
+    contactId: string,
+    companyId?: string,
+    opportunityId?: string,
+  ): Promise<string> {
+    const now = new Date();
+    const title = subject.trim() || `Correo a ${email}`;
+    const activity = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.activity.create({
+        data: {
+          type: 'correo',
+          title,
+          description: `Correo enviado a ${email}`,
+          assignedTo,
+          status: 'completada',
+          priority: 'media',
+          dueDate: now,
+          startDate: now,
+          completedAt: now,
+        },
+      });
+      await tx.contactActivity.create({
+        data: { contactId, activityId: row.id },
+      });
+      if (companyId) {
+        await tx.companyActivity.create({
+          data: { companyId, activityId: row.id },
+        });
+      }
+      if (opportunityId) {
+        await tx.opportunityActivity.create({
+          data: { opportunityId, activityId: row.id },
+        });
+      }
+      return row;
+    });
+    this.logger.log(`Actividad correo creada: ${activity.id} (${email})`);
+    return activity.id;
+  }
+
   async linkEmail(to: string, subject: string, assignedTo?: string) {
+    if (!assignedTo) {
+      throw new BadRequestException('Usuario no autenticado');
+    }
+
     const emailRegex = /([^<]+)?\s*<([^>]+)>|([^\s,;]+)/g;
     const recipients: { name?: string; email: string }[] = [];
     let match: RegExpExecArray | null;
@@ -394,18 +489,41 @@ export class GmailService {
       }
     }
 
-    const results: { email: string; contactId?: string; companyId?: string; opportunityId?: string }[] = [];
+    const results: {
+      email: string;
+      contactId: string;
+      companyId?: string;
+      opportunityId?: string;
+      activityId: string;
+      created: { contact: boolean; company: boolean; opportunity: boolean };
+    }[] = [];
 
     for (const { name, email: rawEmail } of recipients) {
       const email = rawEmail.trim().toLowerCase();
       if (!email || !email.includes('@')) continue;
 
-      // 1. Buscar o crear contacto
-      let contact = await this.prisma.contact.findFirst({ where: { correo: email } });
-      if (!contact) {
+      const domain = email.split('@')[1]?.trim().toLowerCase();
+      if (!domain || CRM_LINK_EXCLUDED_DOMAINS.has(domain)) {
+        this.logger.log(`Omitiendo vinculación CRM para ${email} (dominio excluido: ${domain ?? 'n/a'})`);
+        continue;
+      }
+
+      const created = { contact: false, company: false, opportunity: false };
+      let contactId: string;
+      let companyId: string | undefined;
+      let opportunityId: string | undefined;
+
+      const existingContact = await this.prisma.contact.findFirst({ where: { correo: email } });
+      if (existingContact) {
+        contactId = existingContact.id;
+        this.logger.log(`Contacto ya existe, reutilizando: ${email}`);
+        const company = await this.resolveCompanyForEmail(contactId, domain);
+        companyId = company?.id;
+        opportunityId = await this.resolveOpportunityForEmail(contactId, companyId);
+      } else {
         const contactName = name || email;
         const ts = Date.now();
-        contact = await this.prisma.contact.create({
+        const contact = await this.prisma.contact.create({
           data: {
             name: contactName,
             correo: email,
@@ -416,67 +534,76 @@ export class GmailService {
             estimatedValue: 0,
           },
         });
+        contactId = contact.id;
+        created.contact = true;
         this.logger.log(`Contacto creado: ${contact.id} (${email})`);
-      }
 
-      // 2. Extraer dominio
-      const domain = email.split('@')[1].toLowerCase();
+        let company = await this.prisma.company.findFirst({
+          where: { domain: { equals: domain, mode: 'insensitive' } },
+        });
+        if (!company) {
+          const companyTs = Date.now();
+          company = await this.prisma.company.create({
+            data: {
+              name: domain,
+              domain,
+              urlSlug: `gmail-${companyTs}-${Math.random().toString(36).slice(2, 6)}`,
+              fuente: 'referido',
+              facturacionEstimada: 0,
+            },
+          });
+          created.company = true;
+          this.logger.log(`Empresa creada: ${company.id} (${domain})`);
+        }
 
-      // 3. Buscar o crear empresa
-      let company = await this.prisma.company.findFirst({
-        where: { domain: { equals: domain, mode: 'insensitive' } },
-      });
-      if (!company) {
-        const ts = Date.now();
-        company = await this.prisma.company.create({
+        companyId = company.id;
+
+        const existingLink = await this.prisma.companyContact.findUnique({
+          where: { companyId_contactId: { companyId: company.id, contactId } },
+        });
+        if (!existingLink) {
+          await this.prisma.companyContact.create({
+            data: { companyId: company.id, contactId },
+          });
+          this.logger.log(`Contacto ${contactId} vinculado a empresa ${company.id}`);
+        }
+
+        const oppTs = Date.now();
+        const opp = await this.prisma.opportunity.create({
           data: {
-            name: domain,
-            domain,
-            urlSlug: `gmail-${ts}-${Math.random().toString(36).slice(2, 6)}`,
+            title: domain,
+            amount: 2000,
+            etapa: 'lead',
             fuente: 'referido',
-            facturacionEstimada: 0,
+            assignedTo,
+            urlSlug: `gmail-${oppTs}-${Math.random().toString(36).slice(2, 6)}`,
+            probability: 0,
+            companies: {
+              create: { companyId: company.id },
+            },
+            contacts: {
+              create: { contactId },
+            },
           },
         });
-        this.logger.log(`Empresa creada: ${company.id} (${domain})`);
+        opportunityId = opp.id;
+        created.opportunity = true;
+        this.logger.log(`Oportunidad creada: ${opp.id} (${domain})`);
+
+        await this.entitySync.propagateFromOpportunityAllCompanies(opp.id);
+        this.logger.log(`Sincronización completada para oportunidad ${opp.id}`);
       }
 
-      // 4. Vincular contacto a empresa (si no existe el vínculo)
-      const existingLink = await this.prisma.companyContact.findUnique({
-        where: { companyId_contactId: { companyId: company.id, contactId: contact.id } },
-      });
-      if (!existingLink) {
-        await this.prisma.companyContact.create({
-          data: { companyId: company.id, contactId: contact.id },
-        });
-        this.logger.log(`Contacto ${contact.id} vinculado a empresa ${company.id}`);
-      }
+      const activityId = await this.createEmailActivity(
+        assignedTo,
+        subject,
+        email,
+        contactId,
+        companyId,
+        opportunityId,
+      );
 
-      // 5. Crear oportunidad
-      const ts = Date.now();
-      const opp = await this.prisma.opportunity.create({
-        data: {
-          title: domain,
-          amount: 2000,
-          etapa: 'lead',
-          fuente: 'referido',
-          assignedTo: assignedTo || null,
-          urlSlug: `gmail-${ts}-${Math.random().toString(36).slice(2, 6)}`,
-          probability: 0,
-          companies: {
-            create: { companyId: company.id },
-          },
-          contacts: {
-            create: { contactId: contact.id },
-          },
-        },
-      });
-      this.logger.log(`Oportunidad creada: ${opp.id} (${domain})`);
-
-      // 6. Sincronizar: oportunidad → empresa → contactos
-      await this.entitySync.propagateFromOpportunityAllCompanies(opp.id);
-      this.logger.log(`Sincronización completada para oportunidad ${opp.id}`);
-
-      results.push({ email, contactId: contact.id, companyId: company.id, opportunityId: opp.id });
+      results.push({ email, contactId, companyId, opportunityId, activityId, created });
     }
 
     return { linked: results };

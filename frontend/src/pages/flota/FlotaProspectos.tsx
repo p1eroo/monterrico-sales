@@ -82,7 +82,7 @@ import { ExportSvgIcon } from "@/components/icons/ExportSvgIcon";
 import excelDocumentSvg from "@/components/icons/excel-document.svg";
 import filesSiSvg from "@/components/icons/files-si.svg";
 import filesNoSvg from "@/components/icons/files-no.svg";
-import { CrmDataTableSkeleton } from "@/components/shared/CrmListPageSkeleton";
+import { GhostTableSkeleton } from "@/components/shared/GhostTableSkeleton";
 import { formatDateDMY } from "@/lib/formatters";
 
 import {
@@ -1490,31 +1490,32 @@ export default function FlotaProspectos() {
 
   return (
     <div>
-      {initialLoading ? (
-        <CrmDataTableSkeleton
+      {initialLoading && prospectos.length === 0 ? (
+        <GhostTableSkeleton
           columns={[
-            { label: "" },
-            { label: "F.Registro" },
-            { label: "Red Social" },
-            { label: "Celular" },
-            { label: "Nombres y Apellidos" },
-            { label: "Edad" },
-            { label: "Operador" },
-            { label: "Estado" },
-            { label: "Modalidad" },
-            { label: "Placa" },
-            { label: "Año Veh." },
-            { label: "Zona" },
-            { label: "F. Cita" },
-            { label: "Asistencia" },
-            { label: "F. Afiliacion" },
-            { label: "Movil" },
-            { label: "Observaciones" },
-            { label: "Llamadas" },
+            { label: "", width: 44 },
+            { label: "", width: 52 },
+            { label: "F.Registro", width: 110 },
+            { label: "Red Social", width: 90 },
+            { label: "Celular", width: 110 },
+            { label: "Nombres", width: 180 },
+            { label: "Edad", width: 60 },
+            { label: "Operador", width: 110 },
+            { label: "Llamadas", width: 70 },
+            { label: "Estado", width: 90 },
+            { label: "Modalidad", width: 100 },
+            { label: "Placa", width: 90 },
+            { label: "A.C.", width: 70 },
+            { label: "Año Veh.", width: 65 },
+            { label: "Zona", width: 100 },
+            { label: "Ciudad", width: 90 },
+            { label: "F. Cita", width: 130 },
+            { label: "Asistencia", width: 80 },
+            { label: "F. Afiliacion", width: 110 },
+            { label: "Movil", width: 100 },
+            { label: "Observaciones", width: 170 },
           ]}
-          rows={5}
-          aria-label="Cargando prospectos"
-          className="bg-card"
+          rows={8}
         />
       ) : (
         <GlassCard className="overflow-hidden">

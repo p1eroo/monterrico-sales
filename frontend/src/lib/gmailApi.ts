@@ -142,7 +142,16 @@ export async function fetchGmailProfile(): Promise<{ emailAddress: string; messa
   return api('/gmail/profile');
 }
 
-export async function linkEmailToCRM(to: string, subject: string): Promise<{ linked: { email: string; contactId?: string; companyId?: string; opportunityId?: string }[] }> {
+export async function linkEmailToCRM(to: string, subject: string): Promise<{
+  linked: {
+    email: string;
+    contactId: string;
+    companyId?: string;
+    opportunityId?: string;
+    activityId: string;
+    created: { contact: boolean; company: boolean; opportunity: boolean };
+  }[];
+}> {
   return api('/gmail/link', {
     method: 'POST',
     body: JSON.stringify({ to, subject }),

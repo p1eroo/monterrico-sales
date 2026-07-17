@@ -909,7 +909,19 @@ export default function InboxPage() {
       setComposeShowCc(false);
       setComposeShowBcc(false);
       void linkEmailToCRM(to, subject)
-        .then(() => notify.success('Destinatario vinculado al CRM'))
+        .then((res) => {
+          if (res.linked.length > 0) {
+            const createdNew = res.linked.some(
+              (r) => r.created.contact || r.created.company || r.created.opportunity,
+            );
+            notify.success(
+              'Correo registrado en el CRM',
+              createdNew
+                ? 'Se crearon registros y la actividad de correo'
+                : 'Se registró la actividad de correo',
+            );
+          }
+        })
         .catch((e) =>
           notify.error('Error al vincular: ' + (e instanceof Error ? e.message : '')),
         );
