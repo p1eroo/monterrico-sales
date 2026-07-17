@@ -191,17 +191,7 @@ export function NewCompanyWizard({
       return null;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'No se pudo buscar empresas por nombre o razón social';
-      if (message.includes('\n')) {
-        toast.error(
-          <div className="flex flex-col gap-0.5">
-            {message.split('\n').map((line, i) => (
-              <span key={i}>{line.trim()}</span>
-            ))}
-          </div>
-        );
-      } else {
-        toast.error(message);
-      }
+      toast.error(message);
       return null;
     } finally {
       setCompanyNameLookupLoading(false);
@@ -228,17 +218,7 @@ export function NewCompanyWizard({
         const st = (err as Error & { status?: number }).status;
         if (st !== 404) {
           const message = err instanceof Error ? err.message : 'No se pudo buscar la empresa por RUC';
-          if (message.includes('\n')) {
-            toast.error(
-              <div className="flex flex-col gap-0.5">
-                {message.split('\n').map((line, i) => (
-                  <span key={i}>{line.trim()}</span>
-                ))}
-              </div>
-            );
-          } else {
-            toast.error(message);
-          }
+          toast.error(message);
           return;
         }
       }
@@ -261,17 +241,7 @@ export function NewCompanyWizard({
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'No se pudo consultar el RUC';
-      if (message.includes('\n')) {
-        toast.error(
-          <div className="flex flex-col gap-0.5">
-            {message.split('\n').map((line, i) => (
-              <span key={i}>{line.trim()}</span>
-            ))}
-          </div>
-        );
-      } else {
-        toast.error(message);
-      }
+      toast.error(message);
     } finally {
       setRucLookupLoading(false);
     }
@@ -474,17 +444,7 @@ export function NewCompanyWizard({
       onOpenChange(false);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error al crear o resolver empresa';
-      if (message.includes('\n')) {
-        toast.error(
-          <div className="flex flex-col gap-0.5">
-            {message.split('\n').map((line, i) => (
-              <span key={i}>{line.trim()}</span>
-            ))}
-          </div>
-        );
-      } else {
-        toast.error(message);
-      }
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }

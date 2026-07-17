@@ -7,6 +7,7 @@ export const FILE_ENTITY_TYPE_LABELS: Record<FileAttachment['entityType'], strin
   activity: 'Actividad',
   email: 'Correo',
   task: 'Tarea',
+  'flota-prospecto': 'Prospecto',
 };
 
 export const FILE_TYPE_FILTER_OPTIONS = [
