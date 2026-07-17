@@ -18,6 +18,7 @@ import type { Request } from 'express';
 import { Public } from '../auth/decorators/public.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { FilesService } from '../files/files.service';
+import { FlotaDocumentExtractionService } from './flota-document-extraction.service';
 
 @Controller('api/flow')
 export class FlowRegistroController {
@@ -27,6 +28,7 @@ export class FlowRegistroController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly filesService: FilesService,
+    private readonly documentExtraction: FlotaDocumentExtractionService,
   ) {}
 
   private async resolveBotUserId(): Promise<string> {
@@ -171,7 +173,7 @@ export class FlowRegistroController {
     } else {
       prospecto = await this.prisma.flotaProspecto.create({
         data: {
-          nombreCompleto: nombreRaw || `Contacto ${cleaned}`,
+          nombreCompleto: nombreRaw || `Pendiente DNI (${cleaned})`,
           celular: cleaned.length === 9 ? '51' + cleaned : cleaned,
           ciudad: body.ciudad || null,
           modalidad: body.modalidad || null,
@@ -194,6 +196,12 @@ export class FlowRegistroController {
       storageKey: string;
     }> = [];
 
+    const filesForExtraction: Array<{
+      buffer: Buffer;
+      mimeType: string;
+      originalName?: string;
+    }> = [];
+
     if (files && files.length > 0) {
       const botUserId = await this.resolveBotUserId();
       const authHeader = req.headers.authorization;
@@ -214,11 +222,33 @@ export class FlowRegistroController {
             size: created.size,
             storageKey: '',
           });
+          filesForExtraction.push({
+            buffer: file.buffer,
+            mimeType: file.mimetype || 'application/octet-stream',
+            originalName: file.originalname,
+          });
         } catch (e) {
           this.logger.warn(
             `Error al subir archivo ${file.originalname}: ${e instanceof Error ? e.message : e}`,
           );
         }
+      }
+    }
+
+    if (filesForExtraction.length > 0) {
+      try {
+        await this.documentExtraction.processFiles(
+          prospecto.id,
+          filesForExtraction,
+        );
+        prospecto =
+          (await this.prisma.flotaProspecto.findUnique({
+            where: { id: prospecto.id },
+          })) ?? prospecto;
+      } catch (e) {
+        this.logger.warn(
+          `Extracción de documentos falló para prospecto ${prospecto.id}: ${e instanceof Error ? e.message : e}`,
+        );
       }
     }
 

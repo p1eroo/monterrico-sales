@@ -20,6 +20,7 @@ import {
   Loader2,
   Trash2,
   Info,
+  History,
   Phone,
   Edit2,
   Lock,
@@ -115,6 +116,8 @@ import { TableWithStickyScroll } from "@/components/shared/TableWithStickyScroll
 import { Pagination } from "@/components/shared/Pagination";
 import ChatwootInboxPanel from "@/components/flota/ChatwootInboxPanel";
 import { ProspectoArchivosModal } from "@/components/flota/ProspectoArchivosModal";
+import { ProspectoInfoModal } from "@/components/flota/ProspectoInfoModal";
+import { ProspectoHistorialModal } from "@/components/flota/ProspectoHistorialModal";
 
 const ESTADO_OPTIONS = [
   { label: "Nuevo", value: "Nuevo" },
@@ -213,6 +216,8 @@ export default function FlotaProspectos() {
   const [creating, setCreating] = useState(false);
   const [archivosModalOpen, setArchivosModalOpen] = useState(false);
   const [archivosProspectoId, setArchivosProspectoId] = useState<string | null>(null);
+  const [infoModalProspecto, setInfoModalProspecto] = useState<FlotaProspectoRow | null>(null);
+  const [historialModalProspecto, setHistorialModalProspecto] = useState<FlotaProspectoRow | null>(null);
   const [editProspectoId, setEditProspectoId] = useState<string | null>(null);
   const [editSaving, setEditSaving] = useState(false);
   const [editData, setEditData] = useState({
@@ -331,6 +336,10 @@ export default function FlotaProspectos() {
   conductorTelefonosRef.current = conductorTelefonos;
   const openingChatProspectoIdRef = useRef(openingChatProspectoId);
   openingChatProspectoIdRef.current = openingChatProspectoId;
+  const setInfoModalProspectoRef = useRef(setInfoModalProspecto);
+  setInfoModalProspectoRef.current = setInfoModalProspecto;
+  const setHistorialModalProspectoRef = useRef(setHistorialModalProspecto);
+  setHistorialModalProspectoRef.current = setHistorialModalProspecto;
 
   const columns = useMemo<ColumnDef<FlotaProspectoRow>[]>(
     () => [
@@ -371,6 +380,49 @@ export default function FlotaProspectos() {
             </div>
           );
         },
+      },
+      {
+        id: "rowMenu",
+        header: "",
+        enableSorting: false,
+        enableColumnFilter: false,
+        size: 36,
+        minSize: 36,
+        maxSize: 36,
+        cell: ({ row }) => (
+          <div
+            className="flex justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="p-1 rounded hover:bg-accent transition-colors text-muted-foreground"
+                  title="Opciones"
+                >
+                  <MoreVertical className="size-3.5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem
+                  className="gap-2 text-xs cursor-pointer"
+                  onClick={() => setInfoModalProspectoRef.current(row.original)}
+                >
+                  <Info className="size-3.5" />
+                  Información
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="gap-2 text-xs cursor-pointer"
+                  onClick={() => setHistorialModalProspectoRef.current(row.original)}
+                >
+                  <History className="size-3.5" />
+                  Historial
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        ),
       },
       {
         id: "actions",
@@ -1062,6 +1114,17 @@ export default function FlotaProspectos() {
   useFlotaProspectosRealtime(() => {
     void Promise.all([loadProspectos(page), loadCounts()]);
   });
+
+  const infoModalProspectoId = infoModalProspecto?.id;
+  useEffect(() => {
+    if (!infoModalProspectoId) return;
+    const fresh = prospectos.find((p) => p.id === infoModalProspectoId);
+    if (fresh) {
+      setInfoModalProspecto((prev) =>
+        prev?.id === fresh.id ? { ...prev, ...fresh } : prev,
+      );
+    }
+  }, [prospectos, infoModalProspectoId]);
 
   useEffect(() => {
     void loadCounts();
@@ -1856,7 +1919,7 @@ export default function FlotaProspectos() {
                   </select>
                 ),
               }}
-              readOnlyColumns={["select", "actions", "fechaRegistro"]}
+              readOnlyColumns={["select", "rowMenu", "actions", "fechaRegistro"]}
               editTypes={{
                 edad: "number",
                 anioVehiculo: "number",
@@ -2738,6 +2801,24 @@ tr[data-row-id="${bp.id}"] {
             }
             return next;
           });
+        }}
+      />
+
+      <ProspectoInfoModal
+        prospecto={infoModalProspecto}
+        operadores={operadores}
+        open={!!infoModalProspecto}
+        onOpenChange={(open) => {
+          if (!open) setInfoModalProspecto(null);
+        }}
+      />
+
+      <ProspectoHistorialModal
+        prospecto={historialModalProspecto}
+        operadores={operadores}
+        open={!!historialModalProspecto}
+        onOpenChange={(open) => {
+          if (!open) setHistorialModalProspecto(null);
         }}
       />
     </div>

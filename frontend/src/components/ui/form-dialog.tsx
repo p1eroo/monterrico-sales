@@ -258,7 +258,7 @@ export function FormDialogShell({
           contentClassName,
         )}
       >
-        <div className="min-h-0 flex-1 overflow-y-auto px-8 pt-8">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-8 pt-8 scrollbar-thin [scrollbar-gutter:stable]">
           <div className="flex items-start justify-between gap-4">
             <DialogHeader className="gap-1 p-0 text-left">
               <DialogTitle className="text-xl font-bold tracking-tight text-foreground">

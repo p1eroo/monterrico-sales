@@ -26,6 +26,7 @@ export function ProspectoArchivosModal({
 }: ProspectoArchivosModalProps) {
   const {
     loading,
+    uploadStatus,
     files,
     handleUpload,
     handleView,
@@ -51,7 +52,13 @@ export function ProspectoArchivosModal({
   }, [prospectoId, loading, files.length]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && uploadStatus) return;
+        onOpenChange(next);
+      }}
+    >
       <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -67,7 +74,13 @@ export function ProspectoArchivosModal({
           </DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto -mx-6 px-6 space-y-4">
-          <FileUploadArea onUpload={handleUpload} className="min-h-[100px]" />
+          <FileUploadArea
+            onUpload={handleUpload}
+            disabled={loading}
+            busy={!!uploadStatus}
+            busyMessage={uploadStatus?.message}
+            className="min-h-[100px]"
+          />
 
           {loading ? (
             <p className="py-4 text-center text-sm text-muted-foreground">

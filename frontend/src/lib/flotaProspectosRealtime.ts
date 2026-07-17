@@ -4,23 +4,39 @@ import { API_BASE } from './api';
 
 const CHANNEL = 'flota-prospectos';
 
-/** Avisa a otras pestañas del mismo navegador que recarguen prospectos. */
-export function notifyFlotaProspectosRefresh() {
+export type FlotaProspectosRefreshEvent = {
+  type: 'refresh';
+  prospectoId?: string;
+};
+
+/** Avisa al navegador (misma pestaña y otras) que recarguen prospectos. */
+export function notifyFlotaProspectosRefresh(prospectoId?: string) {
+  const payload: FlotaProspectosRefreshEvent = { type: 'refresh', prospectoId };
   try {
-    new BroadcastChannel(CHANNEL).postMessage({ type: 'refresh' });
+    const bc = new BroadcastChannel(CHANNEL);
+    bc.postMessage(payload);
+    bc.close();
   } catch {
     /* BroadcastChannel no soportado */
   }
 }
 
+export type FlotaProspectosRefreshHandler = (
+  event?: FlotaProspectosRefreshEvent,
+) => void;
+
 /** Escucha cambios vía BroadcastChannel, Socket.IO y al volver a la pestaña. */
-export function subscribeFlotaProspectosRefresh(onRefresh: () => void): () => void {
+export function subscribeFlotaProspectosRefresh(
+  onRefresh: FlotaProspectosRefreshHandler,
+): () => void {
   const cleanups: (() => void)[] = [];
 
   try {
     const bc = new BroadcastChannel(CHANNEL);
     bc.onmessage = (event) => {
-      if (event.data?.type === 'refresh') onRefresh();
+      if (event.data?.type === 'refresh') {
+        onRefresh(event.data as FlotaProspectosRefreshEvent);
+      }
     };
     cleanups.push(() => bc.close());
   } catch {
@@ -36,7 +52,9 @@ export function subscribeFlotaProspectosRefresh(onRefresh: () => void): () => vo
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
     });
-    socket.on('flota_prospecto', () => onRefresh());
+    socket.on('flota_prospecto', (payload: { prospectoId?: string }) => {
+      onRefresh({ type: 'refresh', prospectoId: payload?.prospectoId });
+    });
     cleanups.push(() => {
       socket.disconnect();
     });
@@ -53,11 +71,11 @@ export function subscribeFlotaProspectosRefresh(onRefresh: () => void): () => vo
   };
 }
 
-export function useFlotaProspectosRealtime(onRefresh: () => void) {
+export function useFlotaProspectosRealtime(onRefresh: FlotaProspectosRefreshHandler) {
   const onRefreshRef = useRef(onRefresh);
   onRefreshRef.current = onRefresh;
   useEffect(
-    () => subscribeFlotaProspectosRefresh(() => onRefreshRef.current()),
+    () => subscribeFlotaProspectosRefresh((event) => onRefreshRef.current(event)),
     [],
   );
 }

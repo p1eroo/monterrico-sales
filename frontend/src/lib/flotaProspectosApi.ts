@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api, API_BASE } from '@/lib/api';
 import type { ImportJob } from './importExportApi';
 
 export const MODALIDAD_OPTIONS: { label: string; value: string }[] = [
@@ -22,7 +22,13 @@ export interface FlotaProspectoRow {
   redSocial: string | null;
   celular: string | null;
   nombreCompleto: string;
+  dni?: string | null;
   edad: number | null;
+  categoriaVehiculo?: string | null;
+  marca?: string | null;
+  modelo?: string | null;
+  color?: string | null;
+  combustible?: string | null;
   operador: string | null;
   estado: string;
   modalidad: string | null;
@@ -221,6 +227,36 @@ export async function flotaProspectoFiles(prospectoId: string): Promise<FlotaFil
 
 export async function flotaProspectoFileContentUrl(fileId: string): Promise<{ url: string }> {
   return api<{ url: string }>(`/files/${fileId}/url`);
+}
+
+export interface FlotaArchivoExtraction {
+  tipoDocumento: string;
+  confianza: number;
+}
+
+export interface FlotaArchivoUploadResponse extends FlotaFile {
+  analyzed?: boolean;
+  extraction?: FlotaArchivoExtraction | null;
+}
+
+export async function flotaProspectoUploadArchivo(
+  prospectoId: string,
+  file: File,
+): Promise<FlotaArchivoUploadResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const token = localStorage.getItem('accessToken');
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const res = await fetch(
+    `${API_BASE}/flota-prospectos/${prospectoId}/archivos`,
+    { method: 'POST', headers, body: formData },
+  );
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(text || 'Error al subir');
+  }
+  return res.json() as Promise<FlotaArchivoUploadResponse>;
 }
 
 export async function flotaProspectoUploadFile(

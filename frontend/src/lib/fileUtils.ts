@@ -18,6 +18,23 @@ export const FILE_TYPE_FILTER_OPTIONS = [
   { value: 'spreadsheet', label: 'Hojas de cálculo' },
 ] as const;
 
+export function isExtractableDocumentFile(file: File): boolean {
+  const m = (file.type || '').toLowerCase().split(';')[0].trim();
+  return m.startsWith('image/') || m === 'application/pdf';
+}
+
+export function isExtractableDocumentMime(mimeType: string): boolean {
+  const m = (mimeType || '').toLowerCase().split(';')[0].trim();
+  return m.startsWith('image/') || m === 'application/pdf';
+}
+
+export const DOCUMENT_TIPO_LABELS: Record<string, string> = {
+  dni: 'DNI',
+  licencia: 'Licencia de conducir',
+  soat: 'SOAT',
+  tive: 'Tarjeta vehicular',
+};
+
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;

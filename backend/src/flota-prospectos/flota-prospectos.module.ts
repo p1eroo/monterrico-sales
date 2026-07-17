@@ -10,6 +10,7 @@ import { FlowRegistroController } from './flow-registro.controller';
 import { FlotaProspectosService } from './flota-prospectos.service';
 import { FlotaOperadorStatsScheduler } from './flota-operador-stats.scheduler';
 import { GoogleSheetsService } from './google-sheets.service';
+import { FlotaDocumentExtractionModule } from './flota-document-extraction.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { GoogleSheetsService } from './google-sheets.service';
     AuthModule,
     ImportExportModule,
     FilesModule,
+    FlotaDocumentExtractionModule,
   ],
   controllers: [FlotaProspectosController, FlowRegistroController],
   providers: [
@@ -26,6 +28,6 @@ import { GoogleSheetsService } from './google-sheets.service';
     GoogleSheetsService,
     FlotaOperadorStatsScheduler,
   ],
-  exports: [FlotaProspectosService],
+  exports: [FlotaProspectosService, FlotaDocumentExtractionModule],
 })
 export class FlotaProspectosModule {}

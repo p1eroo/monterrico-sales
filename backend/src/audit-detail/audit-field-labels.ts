@@ -55,6 +55,7 @@ export const OPPORTUNITY_FIELD_LABELS: Record<string, string> = {
 
 export const FLOTA_PROSPECTO_FIELD_LABELS: Record<string, string> = {
   nombreCompleto: 'Nombre completo',
+  dni: 'DNI',
   celular: 'Celular',
   redSocial: 'Red social',
   edad: 'Edad',
@@ -62,6 +63,11 @@ export const FLOTA_PROSPECTO_FIELD_LABELS: Record<string, string> = {
   estado: 'Estado',
   modalidad: 'Modalidad',
   placa: 'Placa',
+  categoriaVehiculo: 'Categoría vehicular',
+  marca: 'Marca',
+  modelo: 'Modelo',
+  color: 'Color',
+  combustible: 'Combustible',
   aireAcondicionado: 'Aire acondicionado',
   anioVehiculo: 'Año vehículo',
   distrito: 'Distrito',

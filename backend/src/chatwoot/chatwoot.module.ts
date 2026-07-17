@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
 import { FilesModule } from '../files/files.module';
 import { MediaModule } from '../media/media.module';
+import { FlotaDocumentExtractionModule } from '../flota-prospectos/flota-document-extraction.module';
 import { ChatwootClient } from './chatwoot.client';
 import { ChatwootService } from './chatwoot.service';
 import { ChatwootController } from './chatwoot.controller';
@@ -14,7 +15,7 @@ import { ChatwootAttachmentStorageService } from './chatwoot-attachment-storage.
 
 @Global()
 @Module({
-  imports: [PrismaModule, FilesModule, MediaModule],
+  imports: [PrismaModule, FilesModule, MediaModule, FlotaDocumentExtractionModule],
   controllers: [ChatwootController, ChatwootWebhookController],
   providers: [
     ChatwootClient,

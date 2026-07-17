@@ -2,6 +2,15 @@ import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import type { FileAttachment } from '@/types';
 import { api, API_BASE } from '@/lib/api';
+import {
+  DOCUMENT_TIPO_LABELS,
+  isExtractableDocumentFile,
+} from '@/lib/fileUtils';
+import {
+  flotaProspectoUploadArchivo,
+  type FlotaArchivoExtraction,
+} from '@/lib/flotaProspectosApi';
+import { notifyFlotaProspectosRefresh } from '@/lib/flotaProspectosRealtime';
 
 async function flotaFileContentBlobUrl(
   prospectoId: string,
@@ -29,8 +38,30 @@ async function flotaFileContentBlobUrl(
   return URL.createObjectURL(blob);
 }
 
+export type FlotaUploadStatus = {
+  message: string;
+  current: number;
+  total: number;
+} | null;
+
+function uploadMessage(file: File, index: number, total: number): string {
+  const suffix = total > 1 ? ` (${index}/${total})` : '';
+  if (isExtractableDocumentFile(file)) {
+    return `Subiendo y analizando documento${suffix}…`;
+  }
+  return `Subiendo archivo${suffix}…`;
+}
+
+function toastExtraction(extraction: FlotaArchivoExtraction | null | undefined) {
+  if (!extraction?.tipoDocumento || extraction.tipoDocumento === 'otro') return;
+  const label =
+    DOCUMENT_TIPO_LABELS[extraction.tipoDocumento] ?? extraction.tipoDocumento;
+  toast.success(`Documento identificado: ${label}`);
+}
+
 export interface UseFlotaArchivosReturn {
   loading: boolean;
+  uploadStatus: FlotaUploadStatus;
   files: FileAttachment[];
   handleUpload: (uploadedFiles: File[]) => Promise<void>;
   handleView: (file: FileAttachment) => void;
@@ -45,6 +76,7 @@ export interface UseFlotaArchivosReturn {
 export function useFlotaArchivos(prospectoId: string | null): UseFlotaArchivosReturn {
   const [files, setFiles] = useState<FileAttachment[]>([]);
   const [loading, setLoading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<FlotaUploadStatus>(null);
   const [previewFile, setPreviewFile] = useState<FileAttachment | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
@@ -89,28 +121,34 @@ export function useFlotaArchivos(prospectoId: string | null): UseFlotaArchivosRe
         toast.error('Falta el identificador del prospecto');
         return;
       }
+      const total = uploadedFiles.length;
+      let extracted = 0;
       try {
-        for (const f of uploadedFiles) {
-          const fd = new FormData();
-          fd.append('file', f);
-
-          const token = localStorage.getItem('accessToken');
-          const headers = new Headers();
-          if (token) headers.set('Authorization', `Bearer ${token}`);
-
-          const res = await fetch(
-            `${API_BASE}/flota-prospectos/${prospectoId}/archivos`,
-            { method: 'POST', headers, body: fd },
-          );
-          if (!res.ok) {
-            const text = await res.text().catch(() => '');
-            throw new Error(text || 'Error al subir');
+        for (let i = 0; i < uploadedFiles.length; i++) {
+          const f = uploadedFiles[i];
+          setUploadStatus({
+            message: uploadMessage(f, i + 1, total),
+            current: i + 1,
+            total,
+          });
+          const res = await flotaProspectoUploadArchivo(prospectoId, f);
+          if (res.extraction?.tipoDocumento && res.extraction.tipoDocumento !== 'otro') {
+            extracted++;
+            toastExtraction(res.extraction);
           }
         }
-        toast.success(`${uploadedFiles.length} archivo(s) subido(s)`);
+        const noun = total === 1 ? 'archivo' : 'archivos';
+        toast.success(
+          extracted > 0
+            ? `${total} ${noun} subido(s); ${extracted} documento(s) analizado(s)`
+            : `${total} ${noun} subido(s)`,
+        );
+        notifyFlotaProspectosRefresh(prospectoId);
         await load();
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'Error al subir');
+      } finally {
+        setUploadStatus(null);
       }
     },
     [prospectoId, load],
@@ -160,6 +198,7 @@ export function useFlotaArchivos(prospectoId: string | null): UseFlotaArchivosRe
 
   return {
     loading,
+    uploadStatus,
     files,
     handleUpload,
     handleView,

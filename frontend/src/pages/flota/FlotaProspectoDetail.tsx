@@ -52,7 +52,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { flotaProspectoDetail, flotaProspectoUpdate, flotaProspectoFiles, flotaProspectoFileContentUrl, flotaProspectoUploadFile, flotaLlamadasList, flotaLlamadaCreate, fetchOperadores, getOperatorDisplayName, MODALIDAD_OPTIONS, CIUDAD_OPTIONS, type FlotaProspectoRow, type FlotaLlamada, type FlotaFile, type OperadorUser } from '@/lib/flotaProspectosApi';
+import { flotaProspectoDetail, flotaProspectoUpdate, flotaProspectoFiles, flotaProspectoFileContentUrl, flotaProspectoUploadArchivo, flotaLlamadasList, flotaLlamadaCreate, fetchOperadores, getOperatorDisplayName, MODALIDAD_OPTIONS, CIUDAD_OPTIONS, type FlotaProspectoRow, type FlotaLlamada, type FlotaFile, type OperadorUser } from '@/lib/flotaProspectosApi';
+import { DOCUMENT_TIPO_LABELS, isExtractableDocumentFile } from '@/lib/fileUtils';
 import { notifyFlotaProspectosRefresh } from '@/lib/flotaProspectosRealtime';
 
 const ESTADOS = ['Afiliado', 'Citado', 'Seguimiento', 'Informacion', 'Sin Requisitos', 'No Responde'] as const;
@@ -155,6 +156,7 @@ export default function FlotaProspectoDetail() {
   const [files, setFiles] = useState<FlotaFile[]>([]);
   const [filesLoading, setFilesLoading] = useState(false);
   const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadStatusMessage, setUploadStatusMessage] = useState<string | null>(null);
   const [fileLightboxUrl, setFileLightboxUrl] = useState<string | null>(null);
   const [fileUrls, setFileUrls] = useState<Record<string, string>>({});
   const [operadores, setOperadores] = useState<OperadorUser[]>([]);
@@ -316,14 +318,28 @@ export default function FlotaProspectoDetail() {
     const file = e.target.files?.[0];
     if (!file || !prospecto?.id) return;
     setUploadLoading(true);
+    setUploadStatusMessage(
+      isExtractableDocumentFile(file)
+        ? 'Subiendo y analizando documento…'
+        : 'Subiendo archivo…',
+    );
     try {
-      await flotaProspectoUploadFile(prospecto.id, file);
-      toast.success('Archivo subido');
+      const res = await flotaProspectoUploadArchivo(prospecto.id, file);
+      if (res.extraction?.tipoDocumento && res.extraction.tipoDocumento !== 'otro') {
+        const label =
+          DOCUMENT_TIPO_LABELS[res.extraction.tipoDocumento] ?? res.extraction.tipoDocumento;
+        toast.success(`Archivo subido — documento identificado: ${label}`);
+      } else {
+        toast.success('Archivo subido');
+      }
       void fetchFiles();
+      void flotaProspectoDetail(prospecto.id).then(setProspecto).catch(() => undefined);
+      notifyFlotaProspectosRefresh(prospecto.id);
     } catch {
       toast.error('No se pudo subir el archivo');
     } finally {
       setUploadLoading(false);
+      setUploadStatusMessage(null);
     }
     e.target.value = '';
   }, [prospecto?.id, fetchFiles]);
@@ -610,9 +626,15 @@ export default function FlotaProspectoDetail() {
               <p className="text-sm text-muted-foreground">
                 {files.length > 0 ? `${files.length} archivo${files.length !== 1 ? 's' : ''}` : 'Sin archivos'}
               </p>
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-                <Upload className="h-4 w-4" />
-                Subir archivo
+              <label
+                className={`inline-flex cursor-pointer items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 ${uploadLoading ? 'pointer-events-none opacity-70' : ''}`}
+              >
+                {uploadLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
+                {uploadStatusMessage ?? 'Subir archivo'}
                 <input type="file" className="hidden" onChange={handleFileUpload} disabled={uploadLoading} />
               </label>
             </div>

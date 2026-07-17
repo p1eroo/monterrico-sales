@@ -26,6 +26,7 @@ import { RequirePermissions } from '../auth/decorators/require-permissions.decor
 import { PrismaService } from '../prisma/prisma.service';
 import { ImportExportJobsService } from '../import-export/import-export-jobs.service';
 import { FilesService } from '../files/files.service';
+import { FlotaDocumentExtractionService } from './flota-document-extraction.service';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 
 type AuthedReq = {
@@ -41,6 +42,7 @@ export class FlotaProspectosController {
     private readonly prisma: PrismaService,
     private readonly importExportJobs: ImportExportJobsService,
     private readonly filesService: FilesService,
+    private readonly documentExtraction: FlotaDocumentExtractionService,
   ) {}
 
   private async buildFlotaScope(
@@ -499,7 +501,7 @@ export class FlotaProspectosController {
     if (!file?.buffer) {
       throw new BadRequestException('Falta el archivo (campo file)');
     }
-    return this.filesService.create(req.user.userId, {
+    const created = await this.filesService.create(req.user.userId, {
       buffer: file.buffer,
       originalName: file.originalname || 'archivo',
       mimeType: file.mimetype || 'application/octet-stream',
@@ -507,6 +509,34 @@ export class FlotaProspectosController {
       entityId: id,
       authorizationHeader: req.headers.authorization as string,
     });
+
+    const mime = file.mimetype || 'application/octet-stream';
+    const extractable = this.isExtractableMime(mime);
+    let extraction: {
+      tipoDocumento: string;
+      confianza: number;
+    } | null = null;
+
+    if (extractable) {
+      const result = await this.documentExtraction
+        .processFile(id, file.buffer, mime, file.originalname)
+        .catch(() => null);
+      if (result && result.tipoDocumento !== 'otro') {
+        extraction = {
+          tipoDocumento: result.tipoDocumento,
+          confianza: result.confianza,
+        };
+      }
+    }
+
+    this.documentExtraction.notifyProspectoUpdated(id);
+
+    return { ...created, extraction, analyzed: extractable };
+  }
+
+  private isExtractableMime(mime: string): boolean {
+    const m = (mime || '').toLowerCase().split(';')[0].trim();
+    return m.startsWith('image/') || m === 'application/pdf';
   }
 
   /** DELETE /flota-prospectos/:id/archivos/:fileId — Eliminar archivo de un prospecto */

@@ -535,7 +535,21 @@ export class FlotaProspectosService {
 
   /** Obtener un prospecto por ID */
   async findOne(id: string) {
-    return this.prisma.flotaProspecto.findUnique({ where: { id } });
+    const prospecto = await this.prisma.flotaProspecto.findUnique({
+      where: { id },
+      include: { _count: { select: { llamadas: true } } },
+    });
+    if (!prospecto) return null;
+    const archivos = await this.prisma.crmFile.count({
+      where: { entityType: 'flota-prospecto', entityId: id },
+    });
+    return {
+      ...prospecto,
+      _count: {
+        llamadas: prospecto._count.llamadas,
+        archivos,
+      },
+    };
   }
 
   /** Actualizar un prospecto (ignora campo operador) */

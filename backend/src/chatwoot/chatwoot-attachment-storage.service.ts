@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { FilesService } from '../files/files.service';
 import { ChatwootClient } from './chatwoot.client';
 import { ChatwootOperadorSyncService } from './chatwoot-operador-sync.service';
+import { FlotaDocumentExtractionService } from '../flota-prospectos/flota-document-extraction.service';
 import type { ChatwootAttachment, ChatwootMessage } from './chatwoot.types';
 
 type ProspectoRef = { id: string; nombreCompleto: string };
@@ -16,6 +17,7 @@ export class ChatwootAttachmentStorageService {
     private readonly files: FilesService,
     private readonly client: ChatwootClient,
     private readonly operadorSync: ChatwootOperadorSyncService,
+    private readonly documentExtraction: FlotaDocumentExtractionService,
   ) {}
 
   /** Guarda adjuntos de un mensaje Chatwoot ya enviado (buffer local disponible). */
@@ -145,6 +147,14 @@ export class ChatwootAttachmentStorageService {
       relatedEntityName: `chatwoot-${args.mimeType.split('/')[0] || 'file'}`,
       authorizationHeader: args.authorizationHeader,
     });
+    void this.documentExtraction
+      .processFile(
+        args.prospecto.id,
+        args.buffer,
+        args.mimeType,
+        args.originalName,
+      )
+      .catch(() => undefined);
     this.logger.log(
       `Adjunto Chatwoot guardado en bucket Flota (prospecto ${args.prospecto.id}, ${relatedEntityId})`,
     );
