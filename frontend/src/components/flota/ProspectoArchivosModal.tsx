@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FileArchive } from "lucide-react";
 import { FileUploadArea } from "@/components/files/FileUploadArea";
@@ -37,12 +37,14 @@ export function ProspectoArchivosModal({
   } = useFlotaArchivos(open ? prospectoId : null);
 
   const [filePendingDelete, setFilePendingDelete] = useState<FileAttachment | null>(null);
+  const onFilesLoadRef = useRef(onFilesLoad);
+  onFilesLoadRef.current = onFilesLoad;
 
   useEffect(() => {
     if (prospectoId && !loading) {
-      onFilesLoad?.(prospectoId, files.length);
+      onFilesLoadRef.current?.(prospectoId, files.length);
     }
-  }, [prospectoId, loading, files.length, onFilesLoad]);
+  }, [prospectoId, loading, files.length]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
