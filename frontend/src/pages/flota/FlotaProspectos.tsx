@@ -594,6 +594,20 @@ export default function FlotaProspectos() {
         },
       },
       {
+        accessorKey: "dni",
+        id: "dni",
+        header: "DNI",
+        size: 85,
+        cell: ({ getValue }) => (
+          <span
+            className="truncate block max-w-[80px] text-[10px] font-mono tabular-nums"
+            title={String(getValue() ?? "")}
+          >
+            {String(getValue() ?? "") || "—"}
+          </span>
+        ),
+      },
+      {
         accessorKey: "nombreCompleto",
         id: "nombreCompleto",
         header: "Nombres y Apellidos",
@@ -1474,6 +1488,7 @@ export default function FlotaProspectos() {
         Origen: p.origen === "IMPORTADO" ? "Importado" : "Manual",
         "Red Social": p.redSocial ?? "",
         Celular: p.celular ?? "",
+        DNI: p.dni ?? "",
         "Nombres y Apellidos": p.nombreCompleto,
         Edad: p.edad != null ? String(p.edad) : "",
         Operador: p.operador ?? "",
@@ -1561,6 +1576,7 @@ export default function FlotaProspectos() {
             { label: "F.Registro", width: 110 },
             { label: "Red Social", width: 90 },
             { label: "Celular", width: 110 },
+            { label: "DNI", width: 85 },
             { label: "Nombres", width: 180 },
             { label: "Edad", width: 60 },
             { label: "Operador", width: 110 },
