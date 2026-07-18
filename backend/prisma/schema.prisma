@@ -484,6 +484,67 @@ model Client {
   @@index([companyId])
 }
 
+/** Cartera de clientes activos (sync Taxi Monterrico). Dominio aparte del CRM. */
+model ClienteEmpresa {
+  id             String   @id @default(cuid())
+  externalId     Int      @unique
+  empresa        String
+  ruc            String?
+  telefono       String?
+  email          String?
+  asesor         String
+  /** Username usado en WClientes/Registrados al sincronizar (scope de lectura). */
+  agenteSync     String
+  fechaAlta      DateTime
+  ingresos       Float    @default(0)
+  ingresosAnual  Float    @default(0)
+  mesActual      String?
+  logoUrl        String?
+  /** activo | inactivo | potencial */
+  status         String   @default("activo")
+  contactoNombre String?
+  servicio       String?
+  mes1           String?
+  monto1         Float?
+  mes2           String?
+  monto2         Float?
+  mes3           String?
+  monto3         Float?
+  mes4           String?
+  monto4         Float?
+  mes5           String?
+  monto5         Float?
+  syncedAt       DateTime @updatedAt
+  createdAt      DateTime @default(now())
+  contactos      ContactoEmpresa[]
+
+  @@index([asesor])
+  @@index([agenteSync])
+  @@index([ruc])
+  @@index([status])
+  @@index([fechaAlta])
+}
+
+/** Contactos vinculados a empresas de la cartera (sync wpersonal). */
+model ContactoEmpresa {
+  id               String         @id @default(cuid())
+  externalId       Int            @unique
+  clienteEmpresaId String
+  clienteEmpresa   ClienteEmpresa @relation(fields: [clienteEmpresaId], references: [id], onDelete: Cascade)
+  nombres          String
+  apellidos        String?
+  telefono         String?
+  email            String?
+  cargo            String?
+  empresaNombre    String?
+  asesor           String?
+  syncedAt         DateTime       @updatedAt
+  createdAt        DateTime       @default(now())
+
+  @@index([clienteEmpresaId])
+  @@index([asesor])
+}
+
 model Opportunity {
   id                String    @id @default(cuid())
   urlSlug           String    @unique

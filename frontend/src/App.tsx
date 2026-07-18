@@ -20,7 +20,9 @@ const Tareas = lazy(() => import('@/pages/comercial/Tareas'));
 const Calendario = lazy(() => import('@/pages/comercial/Calendario'));
 const Opportunities = lazy(() => import('@/pages/comercial/Opportunities'));
 const OportunidadDetail = lazy(() => import('@/pages/comercial/OportunidadDetail'));
-const Clients = lazy(() => import('@/pages/comercial/Clients'));
+// const Clients = lazy(() => import('@/pages/comercial/Clients'));
+const ClienteEmpresas = lazy(() => import('@/pages/comercial/ClienteEmpresas'));
+const ClienteContactos = lazy(() => import('@/pages/comercial/ClienteContactos'));
 const Reports = lazy(() => import('@/pages/comercial/Reports'));
 const Team = lazy(() => import('@/pages/comercial/Team'));
 const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard'));
@@ -144,7 +146,9 @@ function MainRoutes() {
         <Route path="/calendario" element={<Calendario />} />
         <Route path="/opportunities" element={<Opportunities />} />
         <Route path="/opportunities/:id" element={<OportunidadDetail />} />
-        <Route path="/clients" element={<Clients />} />
+        <Route path="/clients" element={<Navigate to="/clientes/empresas" replace />} />
+        <Route path="/clientes/empresas" element={<ClienteEmpresas />} />
+        <Route path="/clientes/contactos" element={<ClienteContactos />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/team" element={<Team />} />
         

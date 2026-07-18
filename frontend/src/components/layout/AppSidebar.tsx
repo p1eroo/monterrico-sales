@@ -1,12 +1,6 @@
 import { useState, type ComponentType } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import {
-  UserPlus,
-  Briefcase,
-  CalendarCheck,
-  Calendar,
-  Target,
-  Building2,
+import { UserPlus, Briefcase, CalendarCheck, Calendar, Target, Building2,
   BarChart3,
   Users,
   Shield,
@@ -72,7 +66,16 @@ const navItems: NavDef[] = [
   { to: '/calendario', label: 'Calendario', icon: Calendar, permission: 'actividades.ver' },
   { to: '/inbox', label: 'Correo', icon: Mail, permission: 'correo.ver' },
   { to: '/campaigns', label: 'Masivo', icon: Send, permission: 'campanas.ver' },
-  { to: '/clients', label: 'Clientes', icon: Building2, permission: 'clientes.ver' },
+  {
+    to: '/clientes',
+    label: 'Clientes',
+    icon: Building2,
+    permission: 'clientes.ver',
+    children: [
+      { to: '/clientes/empresas', label: 'Empresas', icon: Briefcase },
+      { to: '/clientes/contactos', label: 'Contactos', icon: UserPlus },
+    ],
+  },
   { to: '/reports', label: 'Reportes', icon: BarChart3, permission: 'reportes.ver' },
   { to: '/archivos', label: 'Archivos', icon: FileArchive, permission: 'archivos.ver' },
   {

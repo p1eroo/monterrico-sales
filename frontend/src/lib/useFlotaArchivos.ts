@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/notify';
 import type { FileAttachment } from '@/types';
 import { api, API_BASE } from '@/lib/api';
 import {

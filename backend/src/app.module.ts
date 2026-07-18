@@ -33,6 +33,7 @@ import { FacebookLeadsModule } from './facebook-leads/facebook-leads.module';
 import { ChatwootModule } from './chatwoot/chatwoot.module';
 import { GmailModule } from './gmail/gmail.module';
 import { GoogleCalendarModule } from './google-calendar/google-calendar.module';
+import { ClienteCarteraModule } from './cliente-cartera/cliente-cartera.module';
 
 @Module({
   imports: [
@@ -79,6 +80,7 @@ import { GoogleCalendarModule } from './google-calendar/google-calendar.module';
     ChatwootModule,
     GmailModule,
     GoogleCalendarModule,
+    ClienteCarteraModule,
   ],
   controllers: [AppController],
   providers: [
