@@ -1,4 +1,5 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { navigateOnClick } from '@/lib/navigateOnClick';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   Building2, Users, DollarSign, Globe, Briefcase,
@@ -48,7 +49,7 @@ import { formatCurrency, formatDate } from '@/lib/formatters';
 import { taskAssociationsFromActivity } from '@/lib/taskAssociationsFromActivity';
 import { ENTITY_DETAIL_SECTION_TAB_OPTIONS } from '@/lib/entityDetailSectionTabs';
 import { api } from '@/lib/api';
-import { companyDetailHref, contactDetailHref, isEntityDetailApiParam } from '@/lib/detailRoutes';
+import { APP_PATHS, companyDetailHref, companyDetailPath, contactDetailHref, isEntityDetailApiParam } from '@/lib/detailRoutes';
 import { type ApiCompanyRecord, isLikelyCompanyCuid } from '@/lib/companyApi';
 import {
   type ApiContactListRow,
@@ -773,7 +774,7 @@ export default function EmpresaDetailPage() {
     }
     toast.success('Empresa actualizada correctamente');
     if (payload.name !== companyName) {
-      navigate(`/empresas/${encodeURIComponent(payload.name)}`, { replace: true });
+      navigate(companyDetailPath({ name: payload.name }), { replace: true });
     }
   }
 
@@ -1254,7 +1255,7 @@ async function handleCreateNewContact(data: NewContactData) {
   ) {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" onClick={() => navigate('/empresas')}>
+        <Button variant="ghost" onClick={() => navigate(APP_PATHS.companies)}>
           <Building2 className="size-4" /> Volver a Empresas
         </Button>
         <EmptyState
@@ -1262,7 +1263,7 @@ async function handleCreateNewContact(data: NewContactData) {
           title="Empresa no encontrada"
           description={apiError ?? 'La empresa que buscas no existe.'}
           actionLabel="Volver a Empresas"
-          onAction={() => navigate('/empresas')}
+          onAction={() => navigate(APP_PATHS.companies)}
         />
       </div>
     );
@@ -1286,12 +1287,12 @@ const displayLastInteraction = companyTimelineEvents[0]?.date
 return (
     <>
     <DetailLayout
-      backPath="/empresas"
+      backPath={APP_PATHS.companies}
       title={companyData?.name ?? companyName}
       subtitle={subtitle || undefined}
       header={(
         <CompanyHeader
-          backPath="/empresas"
+          backPath={APP_PATHS.companies}
           name={companyData?.name ?? companyName}
           subtitle={subtitle || undefined}
           stageLabel={displayEtapaLabel}
@@ -1438,12 +1439,12 @@ return (
             onCreate={() => setNewContactOpen(true)}
             onAddExisting={() => setAddExistingContactOpen(true)}
             onRemove={handleRemoveContact}
-            onContactNavigate={(c) => {
+            onContactNavigate={(c, e) => {
               if (isPendingContactId(c.id)) {
                 toast.info('El contacto se está guardando; en unos segundos podrás abrir el detalle.');
                 return;
               }
-              navigate(contactDetailHref(c));
+              navigateOnClick(e, contactDetailHref(c), navigate);
             }}
           />
         </>

@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
+import { navigateOnAuxClick, navigateOnClick } from '@/lib/navigateOnClick';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,7 +29,9 @@ export interface LinkedEntitiesCardProps<T> {
   /** Nombre del item para el aviso de confirmación (ej: "Minera Los Andes SAC") */
   getUnlinkLabel?: (item: T) => string;
   getItemKey: (item: T, index?: number) => string;
-  onItemClick: (item: T) => void;
+  /** Ruta de detalle; habilita clic medio y Ctrl/Cmd+clic en nueva pestaña. */
+  getItemPath?: (item: T) => string;
+  onItemClick?: (item: T, event: React.MouseEvent) => void;
   /** Segundo parámetro: menú de acciones (p. ej. desvincular) cuando hay onRemove */
   renderItem: (item: T, itemActions?: React.ReactNode) => React.ReactNode;
   collapsible?: boolean;
@@ -52,15 +56,36 @@ export function LinkedEntitiesCard<T>({
   onRemove,
   getUnlinkLabel,
   getItemKey,
+  getItemPath,
   onItemClick,
   renderItem,
   collapsible = false,
   defaultOpen = true,
   itemClassName,
 }: LinkedEntitiesCardProps<T>) {
+  const navigate = useNavigate();
   const [pendingUnlink, setPendingUnlink] = useState<T | null>(null);
   const [open, setOpen] = useState(defaultOpen);
   const hasActions = onCreate || onAddExisting;
+  const isClickable = Boolean(getItemPath || onItemClick);
+
+  function handleItemClick(item: T, event: React.MouseEvent) {
+    if (getItemPath) {
+      navigateOnClick(event, getItemPath(item), navigate);
+      return;
+    }
+    onItemClick?.(item, event);
+  }
+
+  function handleItemAuxClick(item: T, event: React.MouseEvent) {
+    if (getItemPath) {
+      navigateOnAuxClick(event, getItemPath(item));
+      return;
+    }
+    if (onItemClick && event.button === 1) {
+      onItemClick(item, event);
+    }
+  }
 
   function handleUnlinkClick(item: T) {
     setPendingUnlink(item);
@@ -138,10 +163,12 @@ export function LinkedEntitiesCard<T>({
               <div
                 key={getItemKey(item, idx)}
                 className={cn(
-                  'cursor-pointer py-2.5 transition-colors hover:bg-muted/35',
+                  isClickable && 'cursor-pointer py-2.5 transition-colors hover:bg-muted/35',
+                  !isClickable && 'py-2.5',
                   itemClassName,
                 )}
-                onClick={() => onItemClick(item)}
+                onClick={isClickable ? (e) => handleItemClick(item, e) : undefined}
+                onAuxClick={isClickable ? (e) => handleItemAuxClick(item, e) : undefined}
               >
                 {renderItem(item, itemActions)}
               </div>

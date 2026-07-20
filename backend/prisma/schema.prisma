@@ -67,6 +67,7 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   contactsAssigned     Contact[]
+  contactosClienteAssigned ContactoCliente[]
   opportunitiesAssigned Opportunity[]
   companiesAssigned    Company[]
   activitiesAssigned   Activity[]
@@ -516,7 +517,8 @@ model ClienteEmpresa {
   monto5         Float?
   syncedAt       DateTime @updatedAt
   createdAt      DateTime @default(now())
-  contactos      ContactoEmpresa[]
+  contactLinks   ClienteEmpresaContacto[]
+  activities     ClienteEmpresaActivity[]
 
   @@index([asesor])
   @@index([agenteSync])
@@ -525,24 +527,41 @@ model ClienteEmpresa {
   @@index([fechaAlta])
 }
 
-/** Contactos vinculados a empresas de la cartera (sync wpersonal). */
-model ContactoEmpresa {
-  id               String         @id @default(cuid())
-  externalId       Int            @unique
-  clienteEmpresaId String
-  clienteEmpresa   ClienteEmpresa @relation(fields: [clienteEmpresaId], references: [id], onDelete: Cascade)
-  nombres          String
-  apellidos        String?
-  telefono         String?
-  email            String?
-  cargo            String?
-  empresaNombre    String?
-  asesor           String?
-  syncedAt         DateTime       @updatedAt
-  createdAt        DateTime       @default(now())
+/** Contacto de cartera (solo manual; dominio aparte del CRM). */
+model ContactoCliente {
+  id                 String   @id @default(cuid())
+  nombres            String
+  apellidos          String?
+  telefono           String?
+  email              String?
+  cargo              String?
+  etapa              String?
+  source             String?
+  clienteRecuperado  String?
+  departamento       String?
+  provincia          String?
+  distrito           String?
+  direccion          String?
+  assignedTo         String?
+  user               User?    @relation(fields: [assignedTo], references: [id], onDelete: SetNull)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  empresas           ClienteEmpresaContacto[]
 
+  @@index([assignedTo])
+}
+
+model ClienteEmpresaContacto {
+  id                String          @id @default(cuid())
+  clienteEmpresaId  String
+  contactoClienteId String
+  isPrimary         Boolean         @default(false)
+  clienteEmpresa    ClienteEmpresa  @relation(fields: [clienteEmpresaId], references: [id], onDelete: Cascade)
+  contactoCliente   ContactoCliente @relation(fields: [contactoClienteId], references: [id], onDelete: Cascade)
+
+  @@unique([clienteEmpresaId, contactoClienteId])
   @@index([clienteEmpresaId])
-  @@index([asesor])
+  @@index([contactoClienteId])
 }
 
 model Opportunity {
@@ -598,6 +617,7 @@ model Activity {
   contacts      ContactActivity[]
   companies     CompanyActivity[]
   opportunities OpportunityActivity[]
+  clienteEmpresas ClienteEmpresaActivity[]
 
   @@index([assignedTo])
   @@index([dueDate])
@@ -689,6 +709,18 @@ model OpportunityActivity {
   opportunity    Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
   activity       Activity    @relation(fields: [activityId], references: [id], onDelete: Cascade)
   @@unique([opportunityId, activityId])
+}
+
+model ClienteEmpresaActivity {
+  id               String         @id @default(cuid())
+  clienteEmpresaId String
+  activityId       String
+  clienteEmpresa   ClienteEmpresa @relation(fields: [clienteEmpresaId], references: [id], onDelete: Cascade)
+  activity         Activity       @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@unique([clienteEmpresaId, activityId])
+  @@index([clienteEmpresaId])
+  @@index([activityId])
 }
 
 // Envíos de campaña por SMTP: historial para límite anti-spam por destinatario / hora

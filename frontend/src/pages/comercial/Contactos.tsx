@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+import { navigateOnAuxClick, navigateOnClick } from "@/lib/navigateOnClick";
 import type { DateRange } from "react-day-picker";
 import {
   flexRender,
@@ -97,6 +98,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { ComercialTableColgroup } from "@/components/shared/ComercialTableColgroup";
+import {
+  comercialTableActionsColumnSizing,
+  comercialTableCellStyle,
+  comercialTableLeadingCellClass,
+  comercialTableSelectColumnSizing,
+  comercialTableCheckboxWrapClass,
+} from "@/lib/comercialTableLayout";
 import { formatDateShort } from "@/lib/formatters";
 import {
   comercialProPopoverClass,
@@ -399,12 +408,17 @@ export default function ContactosPage() {
     setPage(1);
   }, [etapaTabCounts, etapaFilter, effectiveEtapaTabCounts]);
 
-  function openContactDetail(contact: Contact) {
+  function openContactDetail(contact: Contact, event?: React.MouseEvent) {
     if (isPendingContactId(contact.id)) {
       toast.info("Guardando contacto…");
       return;
     }
-    navigate(contactDetailHref(contact));
+    const path = contactDetailHref(contact);
+    if (event) {
+      navigateOnClick(event, path, navigate);
+      return;
+    }
+    navigate(path);
   }
 
   function openContactPreview(contact: Contact) {
@@ -1502,7 +1516,7 @@ export default function ContactosPage() {
             <GhostTableSkeleton
               columns={[
                 { label: "", width: 44 },
-                { label: "", width: 60 },
+                { label: "", width: 40 },
                 { label: "Nombre", width: 280 },
                 { label: "Empresa", width: 200 },
                 { label: "Teléfono", width: 120, className: "hidden lg:table-cell" },
@@ -1529,8 +1543,6 @@ export default function ContactosPage() {
             icon={Users}
             title="No se encontraron contactos"
             description="Intenta ajustar los filtros o crea un nuevo contacto."
-            actionLabel="Nuevo Contacto"
-            onAction={() => setNewContactOpen(true)}
           />
         ) : viewMode === "table" ? (
           <div className="border-t border-border/40 overflow-auto max-h-[calc(100vh-330px)] scrollbar-thin">
@@ -1655,7 +1667,7 @@ interface ContactsTableProps {
   onToggleSelectAll: () => void;
   onToggleSelect: (id: string) => void;
   isPendingContactId: (id: string) => boolean;
-  onView: (contact: Contact) => void;
+  onView: (contact: Contact, event?: React.MouseEvent) => void;
   onPreview: (contact: Contact) => void;
   onEdit: (contact: Contact) => void;
   onDelete: (id: string) => void;
@@ -1687,12 +1699,12 @@ function ContactsTable({
         id: "select",
         meta: { responsive: "" } as any,
         header: () => (
-          <div className="inline-flex items-center justify-center rounded-full p-1.5 transition-colors hover:bg-primary/10 pl-2">
+          <div className={comercialTableCheckboxWrapClass}>
             <Checkbox checked={allSelected} onCheckedChange={onToggleSelectAll} className="h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded" />
           </div>
         ),
         cell: ({ row }) => (
-          <div className="inline-flex items-center justify-center rounded-full p-1.5 transition-colors hover:bg-primary/10 pl-2">
+          <div className={comercialTableCheckboxWrapClass}>
             <Checkbox
               checked={selectedContacts.includes(row.original.id)}
               onCheckedChange={() => onToggleSelect(row.original.id)}
@@ -1700,22 +1712,18 @@ function ContactsTable({
             />
           </div>
         ),
-        size: 44,
-        maxSize: 44,
-        enableSorting: false,
-        enableResizing: false,
+        ...comercialTableSelectColumnSizing,
       },
       {
         id: "actions",
         header: "",
-        meta: { responsive: "" } as any,
         cell: ({ row }) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon-sm"
-                className="h-8 w-8 rounded-lg"
+                aria-label="Acciones"
               >
                 <MoreVertical className="size-4" />
               </Button>
@@ -1736,10 +1744,7 @@ function ContactsTable({
             </DropdownMenuContent>
           </DropdownMenu>
         ),
-        size: 60,
-        maxSize: 60,
-        enableSorting: false,
-        enableResizing: false,
+        ...comercialTableActionsColumnSizing,
       },
       {
         accessorKey: "name",
@@ -1752,12 +1757,23 @@ function ContactsTable({
           return (
             <div className="min-w-0 max-w-[20rem]">
               <div className="flex items-center gap-2">
-                <p
-                  className="truncate text-[13px] font-semibold text-[#0F172A] dark:text-gray-100"
-                  title={contact.name}
-                >
-                  {contact.name}
-                </p>
+                {pending ? (
+                  <p
+                    className="truncate text-[13px] font-semibold text-[#0F172A] dark:text-gray-100"
+                    title={contact.name}
+                  >
+                    {contact.name}
+                  </p>
+                ) : (
+                  <Link
+                    to={contactDetailHref(contact)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="truncate text-[13px] font-semibold text-[#0F172A] hover:text-primary dark:text-gray-100"
+                    title={contact.name}
+                  >
+                    {contact.name}
+                  </Link>
+                )}
                 {pending && (
                   <Badge variant="secondary" className="shrink-0 gap-1 font-normal">
                     <Loader2 className="size-3 animate-spin" />
@@ -1930,6 +1946,7 @@ function ContactsTable({
 
   return (
     <table className="w-full table-fixed" style={{ minWidth: table.getTotalSize() }}>
+        <ComercialTableColgroup columns={table.getVisibleLeafColumns()} />
         <thead>
           {table.getHeaderGroups().map((hg) => (
             <tr key={hg.id} className="h-[36px] bg-[#eef1f5] dark:bg-gray-800 text-left text-[11px] font-bold text-[#647789] dark:text-gray-400">
@@ -1937,14 +1954,11 @@ function ContactsTable({
                 <th
                   key={header.id}
                   colSpan={header.colSpan}
-                  className={cn(
-                    "relative px-3 align-middle overflow-hidden",
-                    header.column.getCanSort() && "cursor-pointer select-none hover:text-[#1f2933] dark:hover:text-gray-100",
-                    header.column.id === "select" && "pr-0",
-                    header.column.id === "actions" && "px-1",
-                    header.column.id === "nombre" && "pl-2",
-                  )}
-                  style={{ width: header.getSize() }}
+                  className={comercialTableLeadingCellClass(header.column.id, {
+                    primaryColumnId: "nombre",
+                    sortable: header.column.getCanSort(),
+                  })}
+                  style={comercialTableCellStyle(header.column.id, header.getSize())}
                   onClick={header.column.getToggleSortingHandler()}
                 >
                   <div className="flex items-center gap-1">
@@ -1986,18 +2000,16 @@ function ContactsTable({
                   "h-[48px] border-b border-dashed border-[#e8ecf0] dark:border-gray-700 bg-card/30 transition-colors cursor-pointer last:border-b-0",
                   pending ? "bg-muted/40" : "hover:bg-[#fafbfc] dark:hover:bg-gray-800",
                 )}
-                onClick={() => onView(row.original)}
+                onClick={(e) => onView(row.original, e)}
+                onAuxClick={(e) => navigateOnAuxClick(e, contactDetailHref(row.original))}
               >
                 {row.getVisibleCells().map((cell: any) => (
                   <td
                     key={cell.id}
-                    className={cn(
-                      "px-3 align-middle overflow-hidden",
-                      cell.column.id === "select" && "pr-0",
-                      cell.column.id === "actions" && "px-1",
-                      cell.column.id === "nombre" && "pl-2",
-                    )}
-                    style={{ width: cell.column.getSize() }}
+                    className={comercialTableLeadingCellClass(cell.column.id, {
+                      primaryColumnId: "nombre",
+                    })}
+                    style={comercialTableCellStyle(cell.column.id, cell.column.getSize())}
                     onClick={
                       cell.column.id === "select" || cell.column.id === "actions"
                         ? (e) => e.stopPropagation()
@@ -2020,7 +2032,7 @@ function ContactsTable({
 interface ContactsGridProps {
   contacts: Contact[];
   isPendingContactId: (id: string) => boolean;
-  onView: (contact: Contact) => void;
+  onView: (contact: Contact, event?: React.MouseEvent) => void;
   onPreview: (contact: Contact) => void;
   onEdit: (contact: Contact) => void;
   onDelete: (id: string) => void;
@@ -2051,13 +2063,26 @@ function ContactsGrid({
                 ? "gap-0 max-w-full overflow-hidden border-dashed bg-muted/30 py-0"
                 : "cursor-pointer gap-0 max-w-full overflow-hidden py-0 transition-shadow hover:shadow-md"
             }
-            onClick={() => onView(contact)}
+            onClick={(e) => onView(contact, e)}
+            onAuxClick={(e) => navigateOnAuxClick(e, contactDetailHref(contact))}
           >
             <CardContent className="p-4">
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-semibold truncate">{contact.name}</h3>
+                    {pending ? (
+                      <h3 className="truncate font-semibold">{contact.name}</h3>
+                    ) : (
+                      <h3 className="truncate font-semibold">
+                        <Link
+                          to={contactDetailHref(contact)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="hover:text-primary"
+                        >
+                          {contact.name}
+                        </Link>
+                      </h3>
+                    )}
                     {pending && (
                       <Badge
                         variant="secondary"

@@ -9,6 +9,7 @@ import { useAppStore } from '@/store';
 import { canUserReassignCommercialAdvisor, resolveAdvisorAssigneeId } from '@/lib/advisorAssigneeDefaults';
 import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
 import { companyListAll, type ApiCompanyRecord } from '@/lib/companyApi';
+import { fetchClienteEmpresas } from '@/lib/clienteCarteraApi';
 import { opportunityListAll, type ApiOpportunityListRow } from '@/lib/opportunityApi';
 
 import { Button } from '@/components/ui/button';
@@ -73,6 +74,8 @@ interface NewContactWizardProps {
   defaultCompanyId?: string;
   /** IDs de oportunidades preseleccionadas (vista detallada) */
   defaultOpportunityIds?: string[];
+  /** CRM (default) o cartera de clientes (empresas cliente, sin oportunidades). */
+  variant?: 'crm' | 'cliente-cartera';
 }
 
 const WIZARD_STEPS = [
@@ -95,6 +98,7 @@ export function NewContactWizard({
   lockCompanySelection = false,
   defaultCompanyId,
   defaultOpportunityIds = [],
+  variant = 'crm',
 }: NewContactWizardProps) {
   const defaultValuesRef = useRef(defaultValues);
   defaultValuesRef.current = defaultValues;
@@ -104,6 +108,9 @@ export function NewContactWizard({
   defaultOpportunityIdsRef.current = defaultOpportunityIds;
   const lockCompanySelectionRef = useRef(lockCompanySelection);
   lockCompanySelectionRef.current = lockCompanySelection;
+  const variantRef = useRef(variant);
+  variantRef.current = variant;
+  const isClienteCartera = variant === 'cliente-cartera';
 
   const [step, setStep] = useState(0);
   const [name, setName] = useState(defaultValues?.name ?? '');
@@ -163,6 +170,7 @@ export function NewContactWizard({
     const defCo = defaultCompanyIdRef.current;
     const defOpps = defaultOpportunityIdsRef.current ?? [];
     const lockCo = lockCompanySelectionRef.current;
+    const isCartera = variantRef.current === 'cliente-cartera';
     setStep(0);
     setName(d?.name ?? '');
     setCargo(d?.cargo ?? '');
@@ -184,7 +192,7 @@ export function NewContactWizard({
     setCompanyWizardOpen(false);
     setCompanyWizardDefaults({});
     setAssocPanelOpen(false);
-    setAssocCategory(lockCo ? 'oportunidades' : 'empresas');
+    setAssocCategory(isCartera || !lockCo ? 'empresas' : 'oportunidades');
     setAssocSearch('');
     setSelectedCompanyId(lockCo ? (defCo ?? null) : (defCo ?? d?.companyId ?? null));
     setSelectedOpportunityIds([...defOpps]);
@@ -198,7 +206,7 @@ export function NewContactWizard({
     const defOpps = defaultOpportunityIds ?? [];
     if (lockCompanySelection) {
       setSelectedCompanyId(defCo ?? null);
-      setAssocCategory('oportunidades');
+      setAssocCategory(isClienteCartera ? 'empresas' : 'oportunidades');
       if (!company.trim() && d?.company?.trim()) {
         setCompany(d.company);
       }
@@ -207,7 +215,7 @@ export function NewContactWizard({
       setAssocCategory('empresas');
     }
     setSelectedOpportunityIds([...defOpps]);
-  }, [open, defaultCompanyId, lockCompanySelection, (defaultOpportunityIds ?? []).join(',')]);
+  }, [open, defaultCompanyId, lockCompanySelection, isClienteCartera, (defaultOpportunityIds ?? []).join(',')]);
 
   useEffect(() => {
     if (defaultCompanyId && apiCompanies.length > 0 && !company.trim()) {
@@ -220,6 +228,11 @@ export function NewContactWizard({
 
   const assocCompanyCount = apiCompanies.length;
   const assocOppCount = apiOpportunities.length;
+  const associationCategories = isClienteCartera
+    ? (['empresas'] as const)
+    : lockCompanySelection
+      ? (['oportunidades'] as const)
+      : (['empresas', 'oportunidades'] as const);
 
 function handleCompanyWizardSubmit(
     data: NewCompanyData,
@@ -247,8 +260,35 @@ function handleCompanyWizardSubmit(
   }
 
   useEffect(() => {
-    if (!open || lockCompanySelection) return;
+    if (!open) return;
     let cancelled = false;
+    if (isClienteCartera) {
+      fetchClienteEmpresas()
+        .then((list) => {
+          if (!cancelled) {
+            setApiCompanies(
+              list.map(
+                (e) =>
+                  ({
+                    id: e.id,
+                    name: e.empresa,
+                    urlSlug: e.id,
+                  }) as ApiCompanyRecord,
+              ),
+            );
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setApiCompanies([]);
+            toast.error('No se pudieron cargar las empresas cliente.');
+          }
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
+    if (lockCompanySelection) return;
     companyListAll()
       .then((list) => {
         if (!cancelled) setApiCompanies(list);
@@ -262,10 +302,10 @@ function handleCompanyWizardSubmit(
     return () => {
       cancelled = true;
     };
-  }, [open, lockCompanySelection]);
+  }, [open, lockCompanySelection, isClienteCartera]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || isClienteCartera) return;
     let cancelled = false;
     opportunityListAll()
       .then((list) => {
@@ -281,7 +321,16 @@ return () => {
 
   function handleNext() {
     if (step === 0) {
-      if (!name.trim() || !company.trim()) {
+      if (!name.trim()) {
+        toast.error('El nombre es obligatorio');
+        return;
+      }
+      if (isClienteCartera) {
+        if (!selectedCompanyId) {
+          toast.error('Selecciona una empresa cliente en asociaciones');
+          return;
+        }
+      } else if (!company.trim()) {
         toast.error('Nombre y empresa son requeridos');
         return;
       }
@@ -297,6 +346,10 @@ return () => {
     if (submitting) return;
     if (!name.trim() || !company.trim()) {
       toast.error('Nombre y empresa son requeridos');
+      return;
+    }
+    if (isClienteCartera && !selectedCompanyId && !companyId) {
+      toast.error('Selecciona una empresa cliente en asociaciones');
       return;
     }
     if (!email.trim()) {
@@ -383,7 +436,7 @@ return () => {
           ))}
         </div>
 
-        <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+        <form onSubmit={(e) => e.preventDefault()} className="mt-6 space-y-4">
           {step === 0 && (
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -432,6 +485,7 @@ return () => {
         );
       })()}
       {selectedOpportunityIds.map((oppId) => {
+        if (isClienteCartera) return null;
         const opp = apiOpportunities.find((o) => o.id === oppId);
         const label = opp?.title ?? `Oportunidad ${oppId.slice(0, 8)}…`;
         return (
@@ -473,8 +527,9 @@ return () => {
       className={formDialogPopoverContentClass}
       onOpenAutoFocus={(e) => e.preventDefault()}
     >
+      {associationCategories.length > 1 && (
       <div className="flex shrink-0 border-b">
-        {(lockCompanySelection ? (['oportunidades'] as const) : (['empresas', 'oportunidades'] as const)).map((cat) => (
+        {associationCategories.map((cat) => (
           <button
             key={cat}
             type="button"
@@ -489,6 +544,7 @@ return () => {
           </button>
         ))}
       </div>
+      )}
 
       <div className="p-2">
         <div className="relative mb-2 shrink-0">
@@ -502,7 +558,7 @@ return () => {
         </div>
 
         <div className="max-h-52 overflow-y-auto overscroll-contain touch-pan-y space-y-0.5 [scrollbar-gutter:stable]">
-          {!lockCompanySelection && assocCategory === 'empresas' &&
+          {(!lockCompanySelection || isClienteCartera) && assocCategory === 'empresas' &&
             apiCompanies
               .filter((c) => c.name.toLowerCase().includes(assocSearch.toLowerCase()))
               .slice(0, ASSOCIATION_PICKER_PAGE_SIZE)
@@ -531,7 +587,7 @@ return () => {
                 );
               })}
 
-          {(lockCompanySelection || assocCategory === 'oportunidades') &&
+          {!isClienteCartera && (lockCompanySelection || assocCategory === 'oportunidades') &&
             apiOpportunities
               .filter((o) => o.title.toLowerCase().includes(assocSearch.toLowerCase()))
               .slice(0, ASSOCIATION_PICKER_PAGE_SIZE)
@@ -643,6 +699,7 @@ return () => {
 
         </form>
     </FormDialogShell>
+  {!isClienteCartera && (
   <NewCompanyWizard
     open={companyWizardOpen}
     onOpenChange={setCompanyWizardOpen}
@@ -651,6 +708,7 @@ return () => {
     title="Nueva empresa (vinculada al contacto)"
     confirmButtonLabel="Usar estos datos"
   />
+  )}
 </>
   );
 }

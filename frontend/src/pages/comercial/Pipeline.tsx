@@ -15,7 +15,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   Filter,
   Kanban,
@@ -378,19 +378,9 @@ const LeadCard = memo(function LeadCard({
   onCardClick,
   pipelineOpportunity,
 }: LeadCardProps) {
-  const navigate = useNavigate();
   const opportunity = pipelineOpportunity;
   const company = getPrimaryCompany(lead);
-
-  const handleNameClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    if (opportunity) {
-      navigate(opportunityDetailHref(opportunity));
-    } else if (onCardClick) {
-      onCardClick(lead);
-    }
-  };
+  const title = opportunity?.title ?? lead.name;
 
   return (
     <div
@@ -422,19 +412,31 @@ const LeadCard = memo(function LeadCard({
         <div>
           {overlay ? (
             <span className="block w-full truncate text-left text-sm font-semibold text-foreground">
-              {opportunity?.title ?? lead.name}
+              {title}
             </span>
-          ) : (
+          ) : opportunity ? (
+            <Link
+              to={opportunityDetailHref(opportunity)}
+              onClick={(e) => e.stopPropagation()}
+              className="block w-full truncate text-left text-sm font-semibold text-foreground hover:text-primary"
+            >
+              {title}
+            </Link>
+          ) : onCardClick ? (
             <button
               type="button"
-              onClick={handleNameClick}
-              className={cn(
-                "block w-full truncate text-left text-sm font-semibold text-foreground",
-                (opportunity || onCardClick) && "hover:text-primary",
-              )}
+              onClick={(e) => {
+                e.stopPropagation();
+                onCardClick(lead);
+              }}
+              className="block w-full truncate text-left text-sm font-semibold text-foreground hover:text-primary"
             >
-              {opportunity?.title ?? lead.name}
+              {title}
             </button>
+          ) : (
+            <span className="block w-full truncate text-left text-sm font-semibold text-foreground">
+              {title}
+            </span>
           )}
           <p className="flex items-center gap-1 truncate text-[13px] text-muted-foreground mt-1">
             <Building2 className="size-3 shrink-0" />
@@ -496,14 +498,6 @@ const OpportunityCard = memo(function OpportunityCard({
   overlay,
   onCardClick,
 }: OpportunityCardProps) {
-  const navigate = useNavigate();
-
-  const handleNameClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    navigate(opportunityDetailHref(opportunity));
-  };
-
   const handleCardClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
@@ -549,13 +543,13 @@ const OpportunityCard = memo(function OpportunityCard({
               {opportunity.title}
             </span>
           ) : (
-            <button
-              type="button"
-              onClick={handleNameClick}
-              className="block w-full truncate text-left text-[13px] font-semibold text-[#13944C] dark:text-green-400 hover:text-[#0f7a3d] dark:hover:text-green-500"
+            <Link
+              to={opportunityDetailHref(opportunity)}
+              onClick={(e) => e.stopPropagation()}
+              className="block w-full truncate text-left text-[13px] font-semibold text-[#13944C] hover:text-[#0f7a3d] dark:text-green-400 dark:hover:text-green-500"
             >
               {opportunity.title}
-            </button>
+            </Link>
           )}
           <p className="text-sm font-bold text-foreground mt-0.5">
             {formatCurrencyShort(opportunity.amount ?? 0)}

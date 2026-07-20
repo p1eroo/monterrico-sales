@@ -255,7 +255,7 @@ function Sidebar({
             : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
           // Adjust the padding for floating and inset variants.
           variant === "floating" || variant === "inset"
-            ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
+            ? "p-2 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
             : "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l",
           className
         )}
@@ -369,7 +369,10 @@ function SidebarFooter({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="sidebar-footer"
       data-sidebar="footer"
-      className={cn("flex flex-col gap-2 p-2", className)}
+      className={cn(
+        "flex flex-col gap-2 p-2 group-data-[collapsible=icon]:p-0",
+        className
+      )}
       {...props}
     />
   )
@@ -380,7 +383,7 @@ function SidebarSeparator({
   ...props
 }: React.ComponentProps<typeof Separator>) {
   return (
-    <div className="shrink-0 px-2" data-sidebar="separator-wrapper">
+    <div className="shrink-0 px-2 group-data-[collapsible=icon]:px-3" data-sidebar="separator-wrapper">
       <Separator
         data-slot="sidebar-separator"
         data-sidebar="separator"
@@ -410,7 +413,10 @@ function SidebarGroup({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="sidebar-group"
       data-sidebar="group"
-      className={cn("relative flex w-full min-w-0 flex-col p-2", className)}
+      className={cn(
+        "relative flex w-full min-w-0 flex-col p-2 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:pb-0 group-data-[collapsible=icon]:pt-3",
+        className
+      )}
       {...props}
     />
   )
@@ -490,14 +496,16 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
     <li
       data-slot="sidebar-menu-item"
       data-sidebar="menu-item"
-      className={cn("group/menu-item relative", className)}
+      className={cn("group/menu-item relative w-full", className)}
       {...props}
     />
   )
 }
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  [
+    "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:relative group-data-[collapsible=icon]:isolate group-data-[collapsible=icon]:h-10! group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:overflow-visible group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-2! group-data-[collapsible=icon]:hover:!bg-transparent group-data-[collapsible=icon]:active:!bg-transparent group-data-[collapsible=icon]:data-[active=true]:!bg-transparent group-data-[collapsible=icon]:data-[state=open]:!bg-transparent group-data-[collapsible=icon]:data-[state=open]:hover:!bg-transparent group-data-[collapsible=icon]:before:absolute group-data-[collapsible=icon]:before:top-1/2 group-data-[collapsible=icon]:before:left-1/2 group-data-[collapsible=icon]:before:size-10 group-data-[collapsible=icon]:before:-translate-x-1/2 group-data-[collapsible=icon]:before:-translate-y-1/2 group-data-[collapsible=icon]:before:rounded-md group-data-[collapsible=icon]:before:content-[''] group-data-[collapsible=icon]:before:z-0 group-data-[collapsible=icon]:before:pointer-events-none group-data-[collapsible=icon]:hover:before:bg-sidebar-accent group-data-[collapsible=icon]:active:before:bg-sidebar-accent group-data-[collapsible=icon]:data-[active=true]:before:bg-sidebar-accent group-data-[collapsible=icon]:data-[state=open]:before:bg-sidebar-accent group-data-[collapsible=icon]:data-[state=open]:hover:before:bg-sidebar-accent group-data-[collapsible=icon]:[&>span:last-child]:hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>svg]:relative [&>svg]:z-10 [&>svg]:size-4 [&>svg]:shrink-0 group-data-[collapsible=icon]:[&>svg]:size-[18px]",
+  ],
   {
     variants: {
       variant: {
@@ -533,6 +541,14 @@ function SidebarMenuButton({
 } & VariantProps<typeof sidebarMenuButtonVariants>) {
   const Comp = asChild ? Slot.Root : "button"
   const { isMobile, state } = useSidebar()
+  const isCollapsedDesktop = state === "collapsed" && !isMobile
+  const [tooltipOpen, setTooltipOpen] = React.useState(false)
+
+  const {
+    onMouseEnter: onMouseEnterProp,
+    onMouseLeave: onMouseLeaveProp,
+    ...restProps
+  } = props
 
   const button = (
     <Comp
@@ -541,7 +557,15 @@ function SidebarMenuButton({
       data-size={size}
       data-active={isActive}
       className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
-      {...props}
+      onMouseEnter={(event) => {
+        onMouseEnterProp?.(event)
+        if (isCollapsedDesktop) setTooltipOpen(true)
+      }}
+      onMouseLeave={(event) => {
+        onMouseLeaveProp?.(event)
+        if (isCollapsedDesktop) setTooltipOpen(false)
+      }}
+      {...restProps}
     />
   )
 
@@ -549,21 +573,56 @@ function SidebarMenuButton({
     return button
   }
 
-  if (typeof tooltip === "string") {
-    tooltip = {
-      children: tooltip,
-    }
-  }
+  const tooltipLabel = typeof tooltip === "string" ? tooltip : undefined
+  const {
+    className: tooltipClassName,
+    children: tooltipChildren,
+    ...restTooltipProps
+  } = typeof tooltip === "string" ? {} : tooltip
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>{button}</TooltipTrigger>
+    <Tooltip open={isCollapsedDesktop ? tooltipOpen : undefined}>
+      {isCollapsedDesktop ? (
+        <TooltipTrigger asChild>
+          <span
+            aria-hidden
+            className="pointer-events-none absolute top-1/2 right-0 size-px -translate-y-1/2"
+          />
+        </TooltipTrigger>
+      ) : (
+        <TooltipTrigger asChild>{button}</TooltipTrigger>
+      )}
+      {isCollapsedDesktop ? button : null}
       <TooltipContent
         side="right"
         align="center"
+        sideOffset={2}
+        showArrow={false}
         hidden={state !== "collapsed" || isMobile}
-        {...tooltip}
-      />
+        className={cn(
+          "min-w-0 rounded-2xl border-0 bg-popover px-2 py-2 text-sm shadow-[0_4px_24px_rgba(15,23,42,0.1)]",
+          tooltipClassName,
+        )}
+        {...restTooltipProps}
+      >
+        {tooltipChildren ?? (
+          <span
+            className={cn(
+              "flex items-center gap-2.5 px-2 py-1 font-medium whitespace-nowrap",
+              isActive && "text-primary",
+            )}
+          >
+            <span
+              className={cn(
+                "size-1.5 shrink-0 rounded-full",
+                isActive ? "bg-primary" : "bg-foreground/75",
+              )}
+              aria-hidden
+            />
+            {tooltipLabel}
+          </span>
+        )}
+      </TooltipContent>
     </Tooltip>
   )
 }

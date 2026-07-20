@@ -12,19 +12,21 @@ function ruleAllows(hasPermission: (k: PermissionKey) => boolean, rule: PathRule
   return false;
 }
 
+import { APP_PATHS } from '@/lib/detailRoutes';
+
 /** Orden para elegir la primera ruta accesible si la actual no está permitida */
 export const ACCESSIBLE_PATH_ORDER: PathRule[] = [
   { path: '/dashboard', permission: 'dashboard.ver' },
-  { path: '/contactos', permission: 'contactos.ver' },
-  { path: '/empresas', permission: 'empresas.ver' },
+  { path: APP_PATHS.contacts, permission: 'contactos.ver' },
+  { path: APP_PATHS.companies, permission: 'empresas.ver' },
   { path: '/opportunities', permission: 'oportunidades.ver' },
   { path: '/pipeline', permission: 'pipeline.ver' },
   { path: '/tareas', permission: 'actividades.ver' },
   { path: '/calendario', permission: 'actividades.ver' },
   { path: '/inbox', permission: 'correo.ver' },
   { path: '/campaigns', permission: 'campanas.ver' },
-  { path: '/clientes/empresas', permission: 'clientes.ver' },
-  { path: '/clientes/contactos', permission: 'clientes.ver' },
+  { path: APP_PATHS.clientCompanies, permission: 'clientes.ver' },
+  { path: APP_PATHS.clientContacts, permission: 'clientes.ver' },
   { path: '/reports', permission: 'reportes.ver' },
   { path: '/archivos', permission: 'archivos.ver' },
   { path: '/team', permission: 'equipo.ver' },
@@ -51,8 +53,8 @@ export function getRequiredPermissionForPath(
 ): PermissionKey | PermissionKey[] | null {
   if (pathname.startsWith('/profile')) return null;
 
-  if (pathname.startsWith('/contactos')) return 'contactos.ver';
-  if (pathname.startsWith('/empresas')) return 'empresas.ver';
+  if (pathname.startsWith('/contacts') || pathname.startsWith('/contactos')) return 'contactos.ver';
+  if (pathname.startsWith('/companies') || pathname.startsWith('/empresas')) return 'empresas.ver';
   if (pathname.startsWith('/opportunities')) return 'oportunidades.ver';
   if (pathname.startsWith('/pipeline')) return 'pipeline.ver';
   if (pathname.startsWith('/tareas') || pathname.startsWith('/calendario')) {

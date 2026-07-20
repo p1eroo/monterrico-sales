@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom';
 import { Building2, Globe, DollarSign, Target } from 'lucide-react';
 import { etapaLabels, companyRubroLabels, companyTipoLabels } from '@/data/mock';
 import { LinkedEntitiesCard } from './LinkedEntitiesCard';
@@ -26,8 +25,6 @@ export function LinkedCompaniesCard({
   etapa,
   maxItems = 3,
 }: LinkedCompaniesCardProps) {
-  const navigate = useNavigate();
-
   return (
     <LinkedEntitiesCard<LinkedCompany>
       title="Empresas"
@@ -41,10 +38,12 @@ export function LinkedCompaniesCard({
       onRemove={onRemove}
       getUnlinkLabel={(c) => c.name}
       getItemKey={(c, idx) => c.id ?? `${c.name}-${idx ?? 0}`}
-      onItemClick={(c) =>
-        navigate(
-          c.id ? companyDetailHref({ id: c.id, urlSlug: c.urlSlug }) : `/empresas/${encodeURIComponent(c.name)}`,
-        )}
+      getItemPath={(c) =>
+        companyDetailHref({
+          id: c.id ?? '',
+          urlSlug: c.urlSlug,
+          name: c.name,
+        })}
       collapsible
       renderItem={(comp, itemActions) => {
         const rubroLabel = comp.rubro

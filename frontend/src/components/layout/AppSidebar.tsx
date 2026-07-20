@@ -1,4 +1,4 @@
-import { useState, type ComponentType } from 'react';
+import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { UserPlus, Briefcase, CalendarCheck, Calendar, Target, Building2,
   BarChart3,
@@ -40,8 +40,9 @@ import {
 
 import { useAppStore } from '@/store';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverAnchor } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { APP_PATHS } from '@/lib/detailRoutes';
 import logoMark from '@/assets/logo.png';
 import tmWordmark from '@/assets/TM.png';
 import { DashboardSvgIcon } from '@/components/icons/DashboardSvgIcon';
@@ -57,23 +58,26 @@ type NavDef = {
   children?: { to: string; label: string; icon: NavIcon }[];
 };
 
+const collapsedFlyoutClass =
+  'relative w-auto min-w-0 rounded-2xl border-0 bg-popover px-2 py-2 text-sm shadow-[0_4px_24px_rgba(15,23,42,0.1)] before:absolute before:-left-3 before:top-0 before:h-full before:w-3 before:content-[""]';
+
 const navItems: NavDef[] = [
   { to: '/dashboard', label: 'Dashboard', icon: DashboardSvgIcon, permission: 'dashboard.ver' },
-  { to: '/contactos', label: 'Contactos', icon: UserPlus, permission: 'contactos.ver' },
-  { to: '/empresas', label: 'Empresas', icon: Briefcase, permission: 'empresas.ver' },
+  { to: APP_PATHS.contacts, label: 'Contactos', icon: UserPlus, permission: 'contactos.ver' },
+  { to: APP_PATHS.companies, label: 'Empresas', icon: Briefcase, permission: 'empresas.ver' },
   { to: '/opportunities', label: 'Oportunidades', icon: Target, permission: 'oportunidades.ver' },
   { to: '/tareas', label: 'Tareas', icon: CalendarCheck, permission: 'actividades.ver' },
   { to: '/calendario', label: 'Calendario', icon: Calendar, permission: 'actividades.ver' },
   { to: '/inbox', label: 'Correo', icon: Mail, permission: 'correo.ver' },
   { to: '/campaigns', label: 'Masivo', icon: Send, permission: 'campanas.ver' },
   {
-    to: '/clientes',
+    to: '/clients',
     label: 'Clientes',
     icon: Building2,
     permission: 'clientes.ver',
     children: [
-      { to: '/clientes/empresas', label: 'Empresas', icon: Briefcase },
-      { to: '/clientes/contactos', label: 'Contactos', icon: UserPlus },
+      { to: APP_PATHS.clientCompanies, label: 'Empresas', icon: Briefcase },
+      { to: APP_PATHS.clientContacts, label: 'Contactos', icon: UserPlus },
     ],
   },
   { to: '/reports', label: 'Reportes', icon: BarChart3, permission: 'reportes.ver' },
@@ -138,7 +142,30 @@ export function AppSidebar() {
   const { logout, area, currentUser } = useAppStore();
   const { state: sidebarState } = useSidebar();
   const [openPopover, setOpenPopover] = useState<string | null>(null);
+  const popoverCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isCollapsed = sidebarState === 'collapsed';
+
+  const clearPopoverCloseTimer = () => {
+    if (popoverCloseTimerRef.current) {
+      clearTimeout(popoverCloseTimerRef.current);
+      popoverCloseTimerRef.current = null;
+    }
+  };
+
+  const openCollapsedPopover = (key: string) => {
+    clearPopoverCloseTimer();
+    setOpenPopover(key);
+  };
+
+  const scheduleCollapsedPopoverClose = () => {
+    clearPopoverCloseTimer();
+    popoverCloseTimerRef.current = setTimeout(() => {
+      setOpenPopover(null);
+      popoverCloseTimerRef.current = null;
+    }, 120);
+  };
+
+  useEffect(() => () => clearPopoverCloseTimer(), []);
 
   const { hasPermission } = usePermissions();
   const allowedAreas = currentUser.allowedAreas || [];
@@ -152,7 +179,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" variant="inset" className="border-sidebar-border/80">
-      <SidebarHeader className="p-4 group-data-[collapsible=icon]:p-2">
+      <SidebarHeader className="p-4 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-3">
         <NavLink
           to="/dashboard"
           aria-label="CRM Qatuna, ir al inicio"
@@ -162,7 +189,7 @@ export function AppSidebar() {
             src={logoMark}
             alt=""
             role="presentation"
-            className="size-10 shrink-0 rounded-lg object-contain"
+            className="size-10 shrink-0 rounded-lg object-contain group-data-[collapsible=icon]:size-[36px]"
           />
           <div className="flex min-w-0 flex-col gap-1 group-data-[collapsible=icon]:hidden">
             <img
@@ -178,8 +205,6 @@ export function AppSidebar() {
         </NavLink>
       </SidebarHeader>
 
-      <SidebarSeparator />
-
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
@@ -190,26 +215,44 @@ export function AppSidebar() {
 
                 if (item.children) {
                   return isCollapsed ? (
-                    <SidebarMenuItem key={item.to}>
-                      <div
-                        onMouseEnter={() => setOpenPopover(item.to)}
-                        onMouseLeave={() => setOpenPopover(null)}
-                      >
-                        <Popover open={openPopover === item.to} onOpenChange={(open) => setOpenPopover(open ? item.to : null)}>
-                          <PopoverTrigger asChild>
-                            <SidebarMenuButton className={cn('outline-none focus-visible:outline-none focus-visible:ring-0', hasActiveChild && 'text-sidebar-accent-foreground')}>
-                              <item.icon />
-                              <span>{item.label}</span>
-                            </SidebarMenuButton>
-                          </PopoverTrigger>
+                    <SidebarMenuItem
+                      key={item.to}
+                      className="relative"
+                      onMouseEnter={() => openCollapsedPopover(item.to)}
+                      onMouseLeave={scheduleCollapsedPopoverClose}
+                    >
+                        <Popover
+                          open={openPopover === item.to}
+                          onOpenChange={(open) => {
+                            if (open) openCollapsedPopover(item.to);
+                            else {
+                              clearPopoverCloseTimer();
+                              setOpenPopover(null);
+                            }
+                          }}
+                        >
+                          <PopoverAnchor asChild>
+                            <span
+                              aria-hidden
+                              className="pointer-events-none absolute top-1/2 right-0 size-px -translate-y-1/2"
+                            />
+                          </PopoverAnchor>
+                          <SidebarMenuButton
+                            isActive={hasActiveChild}
+                            className={cn('w-full outline-none focus-visible:outline-none focus-visible:ring-0', hasActiveChild && 'text-sidebar-accent-foreground')}
+                          >
+                            <item.icon />
+                            <span>{item.label}</span>
+                          </SidebarMenuButton>
                           <PopoverContent
                             side="right"
-                            align="start"
-                            sideOffset={12}
-                            className="w-auto p-1 min-w-40"
-                            onMouseEnter={() => setOpenPopover(item.to)}
-                            onMouseLeave={() => setOpenPopover(null)}
+                            align="center"
+                            sideOffset={0}
+                            className={cn('border-0 p-0', collapsedFlyoutClass)}
+                            onMouseEnter={() => openCollapsedPopover(item.to)}
+                            onMouseLeave={scheduleCollapsedPopoverClose}
                           >
+                          <div className="flex flex-col gap-0.5">
                           {item.children.map((child) => {
                             const isChildActive = location.pathname.startsWith(child.to);
                             return (
@@ -217,18 +260,24 @@ export function AppSidebar() {
                                 key={child.to}
                                 to={child.to}
                                 className={cn(
-                                  'flex items-center gap-2 rounded-sm px-3 py-1.5 text-sm hover:bg-muted transition-colors',
+                                  'flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm whitespace-nowrap transition-colors hover:bg-muted/60',
                                   isChildActive && 'font-medium text-primary',
                                 )}
                               >
-                                <child.icon className="size-4" />
+                                <span
+                                  className={cn(
+                                    'size-1.5 shrink-0 rounded-full',
+                                    isChildActive ? 'bg-primary' : 'bg-foreground/75',
+                                  )}
+                                  aria-hidden
+                                />
                                 {child.label}
                               </NavLink>
                             );
                           })}
+                          </div>
                         </PopoverContent>
                       </Popover>
-                    </div>
                     </SidebarMenuItem>
                   ) : (
                     <Collapsible key={item.to} defaultOpen={hasActiveChild} className="group/collapsible">
@@ -284,7 +333,7 @@ export function AppSidebar() {
 
       <SidebarSeparator />
 
-      <SidebarFooter className="p-3">
+      <SidebarFooter className="p-3 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton

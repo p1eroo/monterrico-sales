@@ -114,6 +114,7 @@ interface TasksTabProps {
   contactId?: string;
   companyId?: string;
   opportunityId?: string;
+  clienteEmpresaId?: string;
 }
 
 function isTaskActivity(a: Activity): boolean {
@@ -166,6 +167,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
   contactId,
   companyId,
   opportunityId,
+  clienteEmpresaId,
 }, ref) {
   const { users, activeAdvisors } = useUsers();
   const currentUser = useAppStore((s) => s.currentUser);
@@ -178,23 +180,26 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
       if (!isTaskActivity(a)) return false;
       if (contactId && a.contactId === contactId) return true;
       if (companyId && a.companyId === companyId) return true;
+      if (clienteEmpresaId && a.clienteEmpresaId === clienteEmpresaId) return true;
       if (opportunityId && a.opportunityId === opportunityId) return true;
       return false;
     });
     return filtered.map(activityToMockTask);
-  }, [activities, contactId, companyId, opportunityId]);
+  }, [activities, contactId, companyId, opportunityId, clienteEmpresaId]);
 
   useImperativeHandle(ref, () => ({
     addTask: async (task) => {
       const contactAssoc = task.associations?.find((a) => a.type === 'contacto');
       const empresaAssoc = task.associations?.find((a) => a.type === 'empresa');
+      const clienteEmpresaAssoc = task.associations?.find((a) => a.type === 'cliente_empresa');
       const negocioAssoc = task.associations?.find((a) => a.type === 'negocio');
       const userId = users.find((u) => u.name === task.assignee)?.id ?? defaultAssigneeId ?? activeAdvisors[0]?.id;
       if (!userId) return;
       const contactIdToUse = contactAssoc?.id ?? contactId;
       const companyIdToUse = empresaAssoc?.id && /^c[a-z0-9]+$/i.test(empresaAssoc.id) ? empresaAssoc.id : companyId;
+      const clienteEmpresaIdToUse = clienteEmpresaAssoc?.id ?? clienteEmpresaId;
       const opportunityIdToUse = negocioAssoc?.id ?? opportunityId;
-      if (!contactIdToUse && !companyIdToUse && !opportunityIdToUse) return;
+      if (!contactIdToUse && !companyIdToUse && !clienteEmpresaIdToUse && !opportunityIdToUse) return;
       try {
         await createActivity({
           type: 'tarea',
@@ -210,6 +215,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
           startTime: task.startTime,
           contactId: contactIdToUse,
           companyId: companyIdToUse,
+          clienteEmpresaId: clienteEmpresaIdToUse,
           opportunityId: opportunityIdToUse,
         });
         toast.success('Tarea creada');
@@ -574,8 +580,8 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
             <Button className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={async () => {
               if (!linkedTaskTitle.trim()) { toast.error('El título es requerido'); return; }
               const dueDate = linkedTaskDueDate || new Date().toISOString().slice(0, 10);
-              if (!contactId && !companyId && !opportunityId) {
-                toast.error('No hay contacto, empresa u oportunidad vinculada');
+              if (!contactId && !companyId && !opportunityId && !clienteEmpresaId) {
+                toast.error('No hay entidad vinculada para la tarea');
                 return;
               }
               try {
@@ -593,6 +599,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
                   startTime: linkedTaskTime || undefined,
                   contactId: contactId || undefined,
                   companyId: companyId || undefined,
+                  clienteEmpresaId: clienteEmpresaId || undefined,
                   opportunityId: opportunityId || undefined,
                 });
                 toast.success(`Tarea "${linkedTaskTitle}" creada`);

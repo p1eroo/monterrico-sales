@@ -47,6 +47,7 @@ function buildOptimisticTask(
     contactId: payload.contactId,
     contactName: display.contactNameLine,
     companyId: payload.companyId,
+    clienteEmpresaId: payload.clienteEmpresaId,
     opportunityId: payload.opportunityId,
     assignedTo: payload.assignedTo,
     assignedToName: display.assigneeName,

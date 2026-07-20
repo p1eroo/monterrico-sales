@@ -30,6 +30,7 @@ export type ApiActivity = {
   contacts?: { contact: { id: string; name: string; telefono?: string | null } }[];
   companies?: { company: { id: string; name: string } }[];
   opportunities?: { opportunity: { id: string; title: string } }[];
+  clienteEmpresas?: { clienteEmpresa: { id: string; empresa: string } }[];
 };
 
 const VALID_TYPES: ActivityType[] = [
@@ -77,6 +78,7 @@ export function mapApiActivityToActivity(row: ApiActivity): Activity {
   const contact = row.contacts?.[0]?.contact;
   const company = row.companies?.[0]?.company;
   const opportunity = row.opportunities?.[0]?.opportunity;
+  const clienteEmpresa = row.clienteEmpresas?.[0]?.clienteEmpresa;
   return {
     id: row.id,
     type: parseType(row.type),
@@ -88,6 +90,8 @@ export function mapApiActivityToActivity(row: ApiActivity): Activity {
     contactPhone: contact?.telefono ?? undefined,
     companyId: company?.id,
     companyName: company?.name,
+    clienteEmpresaId: clienteEmpresa?.id,
+    clienteEmpresaName: clienteEmpresa?.empresa,
     opportunityId: opportunity?.id,
     opportunityTitle: opportunity?.title,
     assignedTo: row.user?.id ?? row.assignedTo ?? '',
@@ -117,6 +121,7 @@ export type CreateActivityPayload = {
   contactId?: string;
   companyId?: string;
   opportunityId?: string;
+  clienteEmpresaId?: string;
 };
 
 export type UpdateActivityPayload = {

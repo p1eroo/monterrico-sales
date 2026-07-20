@@ -18,7 +18,7 @@ import { RequirePermissions } from '../auth/decorators/require-permissions.decor
 import { CrmDataScopeService } from '../auth/crm-data-scope.service';
 
 type AuthedReq = {
-  user: { userId: string; roleId?: string; name: string };
+  user: { userId: string; roleId?: string; name: string; username: string };
 };
 
 @Controller('activities')
@@ -42,6 +42,7 @@ export class ActivitiesController {
     return this.activitiesService.create(createActivityDto, scope, {
       userId: req.user.userId,
       userName: req.user.name,
+      username: req.user.username,
     });
   }
 
@@ -56,6 +57,7 @@ export class ActivitiesController {
     @Query('assignedTo') assignedTo?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('linkedToClienteEmpresa') linkedToClienteEmpresa?: string,
   ) {
     const scope = await this.crmDataScope.buildScope(
       req.user.userId,
@@ -74,6 +76,7 @@ export class ActivitiesController {
         assignedTo: assignedTo?.trim() || undefined,
         from: from?.trim() || undefined,
         to: to?.trim() || undefined,
+        linkedToClienteEmpresa: linkedToClienteEmpresa?.trim() || undefined,
       },
       scope,
     );
@@ -100,6 +103,7 @@ export class ActivitiesController {
         this.activitiesService.update(id, updateActivityDto, scope, {
           userId: req.user.userId,
           userName: req.user.name,
+          username: req.user.username,
         }),
       );
   }
@@ -113,6 +117,7 @@ export class ActivitiesController {
         this.activitiesService.remove(id, scope, {
           userId: req.user.userId,
           userName: req.user.name,
+          username: req.user.username,
         }),
       );
   }

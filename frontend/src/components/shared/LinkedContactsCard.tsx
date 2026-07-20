@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom';
 import { Users, Mail, Phone, Target } from 'lucide-react';
 import { etapaLabels } from '@/data/mock';
 import { LinkedEntitiesCard } from './LinkedEntitiesCard';
@@ -25,7 +24,7 @@ interface LinkedContactsCardProps {
   onAddExisting?: () => void;
   onRemove?: (contact: LinkedContact) => void;
   /** Si se define, sustituye la navegación por defecto al detalle (p. ej. contacto optimista aún guardándose). */
-  onContactNavigate?: (contact: LinkedContact) => void;
+  onContactNavigate?: (contact: LinkedContact, event: React.MouseEvent) => void;
   maxItems?: number;
   variant?: 'full' | 'compact';
 }
@@ -40,8 +39,6 @@ export function LinkedContactsCard({
   maxItems = 3,
   variant = 'full',
 }: LinkedContactsCardProps) {
-  const navigate = useNavigate();
-
   return (
     <LinkedEntitiesCard<LinkedContact>
       title={title}
@@ -55,7 +52,8 @@ export function LinkedContactsCard({
       onRemove={onRemove}
       getUnlinkLabel={(c) => c.name}
       getItemKey={(c) => c.id}
-      onItemClick={(c) => (onContactNavigate ? onContactNavigate(c) : navigate(contactDetailHref(c)))}
+      getItemPath={onContactNavigate ? undefined : (c) => contactDetailHref(c)}
+      onItemClick={onContactNavigate ? (c, e) => onContactNavigate(c, e) : undefined}
       collapsible
       renderItem={(contact, itemActions) => {
         const cargoLine = optionalContactCargoFromApi(contact.cargo);

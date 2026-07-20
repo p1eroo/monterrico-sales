@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef, type DragEvent, type ChangeEvent } from 'react';
 import type { Editor } from '@tiptap/core';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { notify } from '@/lib/notify';
 import {
   Search,
@@ -1349,23 +1349,32 @@ export default function InboxPage() {
                   const Icon = getEntityIcon(
                     selectedThread.relatedEntityType ?? 'contact'
                   );
+                  const entityType = selectedThread.relatedEntityType;
+                  const entityId = selectedThread.relatedEntityId;
+                  const entityPath =
+                    entityId && entityType === 'contact'
+                      ? contactDetailHref({ id: entityId })
+                      : entityId && entityType === 'opportunity'
+                        ? opportunityDetailHref({ id: entityId })
+                        : entityId && entityType === 'company'
+                          ? companyDetailHref({ id: entityId })
+                          : null;
                   return (
                     <>
                       <Icon className="size-4 text-[#13944C]" />
                       <span className="text-sm font-medium">Vinculado a:</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const t = selectedThread.relatedEntityType;
-                          const id = selectedThread.relatedEntityId;
-                          if (t === 'contact' && id) navigate(contactDetailHref({ id }));
-                          if (t === 'opportunity' && id) navigate(opportunityDetailHref({ id }));
-                          if (t === 'company' && id) navigate(companyDetailHref({ id }));
-                        }}
-                        className="text-sm text-[#13944C] hover:underline"
-                      >
-                        {selectedThread.relatedEntityName}
-                      </button>
+                      {entityPath ? (
+                        <Link
+                          to={entityPath}
+                          className="text-sm text-[#13944C] hover:underline"
+                        >
+                          {selectedThread.relatedEntityName}
+                        </Link>
+                      ) : (
+                        <span className="text-sm text-[#13944C]">
+                          {selectedThread.relatedEntityName}
+                        </span>
+                      )}
                       <Badge variant="secondary" className="text-[10px]">
                         {entityTypeLabels[selectedThread.relatedEntityType ?? 'contact']}
                       </Badge>

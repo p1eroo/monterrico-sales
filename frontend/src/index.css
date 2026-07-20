@@ -521,3 +521,28 @@
 @utility text-message {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Android Emoji", EmojiSymbols;
 }
+
+/* Columnas fijas de tablas comerciales (checkbox + menú ⋮) — mismas medidas en todas las páginas */
+@layer components {
+    .comercial-table-col-select {
+        box-sizing: border-box !important;
+        width: 44px !important;
+        min-width: 44px !important;
+        max-width: 44px !important;
+        padding-left: 0.75rem !important;
+        padding-right: 0 !important;
+    }
+
+    .comercial-table-col-actions {
+        box-sizing: border-box !important;
+        width: 40px !important;
+        min-width: 40px !important;
+        max-width: 40px !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    .comercial-table-col-primary {
+        padding-left: 0.25rem !important;
+    }
+}

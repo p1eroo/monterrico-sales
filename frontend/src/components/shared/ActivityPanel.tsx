@@ -81,7 +81,6 @@ interface ActivityPanelProps {
 
 export function ActivityPanel({
   activities,
-  onRegisterActivity,
   onUpdateActivity,
   onDeleteActivity,
 }: ActivityPanelProps) {
@@ -150,8 +149,6 @@ export function ActivityPanel({
             icon={ClipboardList}
             title="Sin actividades"
             description="No hay actividades que coincidan con el filtro."
-            actionLabel={onRegisterActivity ? 'Registrar actividad' : undefined}
-            onAction={onRegisterActivity}
           />
         ) : (
           <div className="min-w-0 overflow-x-auto">

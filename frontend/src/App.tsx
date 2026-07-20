@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, Outlet, useParams } from 'react-router-dom';
 import { lazy, Suspense, useEffect } from 'react';
 import { useAppStore } from '@/store';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
@@ -22,6 +22,7 @@ const Opportunities = lazy(() => import('@/pages/comercial/Opportunities'));
 const OportunidadDetail = lazy(() => import('@/pages/comercial/OportunidadDetail'));
 // const Clients = lazy(() => import('@/pages/comercial/Clients'));
 const ClienteEmpresas = lazy(() => import('@/pages/comercial/ClienteEmpresas'));
+const ClienteEmpresaDetail = lazy(() => import('@/pages/comercial/ClienteEmpresaDetail'));
 const ClienteContactos = lazy(() => import('@/pages/comercial/ClienteContactos'));
 const Reports = lazy(() => import('@/pages/comercial/Reports'));
 const Team = lazy(() => import('@/pages/comercial/Team'));
@@ -78,6 +79,12 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAppStore((s) => s.isAuthenticated);
   if (isAuthenticated) return <Navigate to="/area-select" replace />;
   return <>{children}</>;
+}
+
+function LegacyDetailRedirect({ basePath }: { basePath: string }) {
+  const { id } = useParams();
+  if (!id) return <Navigate to={basePath} replace />;
+  return <Navigate to={`${basePath}/${id}`} replace />;
 }
 
 function MainRoutes() {
@@ -137,18 +144,27 @@ function MainRoutes() {
       <Route element={<ProtectedRoute><AreaGate /></ProtectedRoute>}>
         <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/contactos" element={<Contactos />} />
-        <Route path="/contactos/:id" element={<ContactoDetail />} />
-        <Route path="/empresas" element={<Empresas />} />
-        <Route path="/empresas/:id" element={<EmpresaDetail />} />
+        <Route path="/contacts" element={<Contactos />} />
+        <Route path="/contacts/:id" element={<ContactoDetail />} />
+        <Route path="/contactos" element={<Navigate to="/contacts" replace />} />
+        <Route path="/contactos/:id" element={<LegacyDetailRedirect basePath="/contacts" />} />
+        <Route path="/companies" element={<Empresas />} />
+        <Route path="/companies/:id" element={<EmpresaDetail />} />
+        <Route path="/empresas" element={<Navigate to="/companies" replace />} />
+        <Route path="/empresas/:id" element={<LegacyDetailRedirect basePath="/companies" />} />
         <Route path="/pipeline" element={<Pipeline />} />
         <Route path="/tareas" element={<Tareas />} />
         <Route path="/calendario" element={<Calendario />} />
         <Route path="/opportunities" element={<Opportunities />} />
         <Route path="/opportunities/:id" element={<OportunidadDetail />} />
-        <Route path="/clients" element={<Navigate to="/clientes/empresas" replace />} />
-        <Route path="/clientes/empresas" element={<ClienteEmpresas />} />
-        <Route path="/clientes/contactos" element={<ClienteContactos />} />
+        <Route path="/clients" element={<Navigate to="/clients/companies" replace />} />
+        <Route path="/clients/companies" element={<ClienteEmpresas />} />
+        <Route path="/clients/companies/:id" element={<ClienteEmpresaDetail />} />
+        <Route path="/clients/contacts" element={<ClienteContactos />} />
+        <Route path="/clientes" element={<Navigate to="/clients/companies" replace />} />
+        <Route path="/clientes/empresas" element={<Navigate to="/clients/companies" replace />} />
+        <Route path="/clientes/empresas/:id" element={<LegacyDetailRedirect basePath="/clients/companies" />} />
+        <Route path="/clientes/contactos" element={<Navigate to="/clients/contacts" replace />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/team" element={<Team />} />
         

@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Briefcase, CalendarDays, DollarSign, Target, TrendingUp } from 'lucide-react';
 import { etapaLabels, priorityLabels } from '@/data/mock';
 import { formatCurrency, formatDate } from '@/lib/formatters';
@@ -29,7 +28,6 @@ export function LinkedOpportunitiesCard({
   onRemove,
   maxItems = 3,
 }: LinkedOpportunitiesCardProps) {
-  const navigate = useNavigate();
   const primaryOpportunityId = useMemo(
     () => resolvePrimaryOpportunityId(opportunities),
     [opportunities],
@@ -48,7 +46,7 @@ export function LinkedOpportunitiesCard({
       onRemove={onRemove}
       getUnlinkLabel={(o) => o.title}
       getItemKey={(o) => o.id}
-      onItemClick={(o) => navigate(opportunityDetailHref(o))}
+      getItemPath={(o) => opportunityDetailHref(o)}
       collapsible
       renderItem={(opp, itemActions) => {
         const prioritySubtitle =

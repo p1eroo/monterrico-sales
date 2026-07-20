@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { navigateOnAuxClick, navigateOnClick } from '@/lib/navigateOnClick';
 import {
   flexRender,
   getCoreRowModel,
@@ -27,6 +28,14 @@ import { BusinessGraphBoardSvgIcon } from '@/components/icons/BusinessGraphBoard
 import type { Etapa, Opportunity } from '@/types';
 import { etapaLabels, contactSourceLabels } from '@/data/mock';
 import { cn } from '@/lib/utils';
+import { ComercialTableColgroup } from '@/components/shared/ComercialTableColgroup';
+import {
+  comercialTableActionsColumnSizing,
+  comercialTableCellStyle,
+  comercialTableLeadingCellClass,
+  comercialTableSelectColumnSizing,
+  comercialTableCheckboxWrapClass,
+} from '@/lib/comercialTableLayout';
 import {
   comercialProPopoverClass,
   comercialProCommandClass,
@@ -193,12 +202,17 @@ export default function OpportunitiesPage() {
 
   const navigate = useNavigate();
 
-  function openOpportunityDetail(opp: Opportunity) {
+  function openOpportunityDetail(opp: Opportunity, event?: React.MouseEvent) {
     if (isPendingOpportunityId(opp.id)) {
       toast.info('Guardando oportunidad…');
       return;
     }
-    navigate(opportunityDetailHref(opp));
+    const path = opportunityDetailHref(opp);
+    if (event) {
+      navigateOnClick(event, path, navigate);
+      return;
+    }
+    navigate(path);
   }
 
   const [search, setSearch] = useState('');
@@ -471,28 +485,20 @@ export default function OpportunitiesPage() {
         id: 'select',
         meta: { responsive: '' } as any,
         header: () => (
-          <div className="inline-flex items-center justify-center rounded-full p-1.5 transition-colors hover:bg-primary/10 pl-2">
+          <div className={comercialTableCheckboxWrapClass}>
             <Checkbox className="h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded" />
           </div>
         ),
         cell: () => (
-          <div className="inline-flex items-center justify-center rounded-full p-1.5 transition-colors hover:bg-primary/10 pl-2">
+          <div className={comercialTableCheckboxWrapClass}>
             <Checkbox className="h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded" />
           </div>
         ),
-        size: 44,
-        maxSize: 44,
-        enableSorting: false,
-        enableResizing: false,
+        ...comercialTableSelectColumnSizing,
       },
       {
         id: 'actions',
         header: '',
-        enableResizing: false,
-        enableSorting: false,
-        enableHiding: false,
-        size: 40,
-        maxSize: 40,
         cell: ({ row }) => {
           const opp = row.original;
           const pending = isPendingOpportunityId(opp.id);
@@ -522,6 +528,7 @@ export default function OpportunitiesPage() {
             </DropdownMenu>
           );
         },
+        ...comercialTableActionsColumnSizing,
       },
       {
         accessorKey: 'title',
@@ -536,9 +543,20 @@ export default function OpportunitiesPage() {
           return (
             <div className="min-w-0 max-w-[20rem]">
               <div className="flex items-center gap-2">
-                <p className="truncate text-[13px] font-semibold text-[#0F172A] dark:text-gray-100" title={opp.title}>
-                  {opp.title}
-                </p>
+                {pending ? (
+                  <p className="truncate text-[13px] font-semibold text-[#0F172A] dark:text-gray-100" title={opp.title}>
+                    {opp.title}
+                  </p>
+                ) : (
+                  <Link
+                    to={opportunityDetailHref(opp)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="truncate text-[13px] font-semibold text-[#0F172A] hover:text-primary dark:text-gray-100"
+                    title={opp.title}
+                  >
+                    {opp.title}
+                  </Link>
+                )}
                 {pending && (
                   <Badge variant="secondary" className="shrink-0 gap-1 font-normal">
                     <Loader2 className="size-3 animate-spin" />
@@ -979,14 +997,12 @@ export default function OpportunitiesPage() {
               <p className="mt-1 text-sm text-muted-foreground">
                 Intenta ajustar los filtros o crea una nueva oportunidad.
               </p>
-              <Button className="mt-4" onClick={() => setNewDialogOpen(true)}>
-          <Plus /> Nueva
-              </Button>
             </CardContent>
           </Card>
         ) : viewMode === 'table' ? (
           <div className="border-t border-border/40 overflow-auto scrollbar-thin max-h-[calc(100vh-460px)]">
             <table className="w-full table-fixed" style={{ minWidth: table.getTotalSize() }}>
+              <ComercialTableColgroup columns={table.getVisibleLeafColumns()} />
               <thead>
                 {table.getHeaderGroups().map((hg) => (
                   <tr key={hg.id} className="h-[36px] bg-[#eef1f5] dark:bg-gray-800 text-left text-[11px] font-bold text-[#647789] dark:text-gray-400">
@@ -994,14 +1010,11 @@ export default function OpportunitiesPage() {
                       <th
                         key={header.id}
                         colSpan={header.colSpan}
-                        className={cn(
-                          'relative px-3 align-middle overflow-hidden',
-                          header.column.getCanSort() && 'cursor-pointer select-none hover:text-[#1f2933] dark:hover:text-gray-100',
-                          header.column.id === 'select' && 'pr-0',
-                          header.column.id === 'actions' && 'px-1',
-                          header.column.id === 'title' && 'pl-2',
-                        )}
-                        style={{ width: header.getSize() }}
+                        className={comercialTableLeadingCellClass(header.column.id, {
+                          primaryColumnId: 'title',
+                          sortable: header.column.getCanSort(),
+                        })}
+                        style={comercialTableCellStyle(header.column.id, header.getSize())}
                         onClick={header.column.getToggleSortingHandler()}
                       >
                         <div className="flex items-center gap-1">
@@ -1043,18 +1056,16 @@ export default function OpportunitiesPage() {
                         'h-[48px] border-b border-dashed border-[#e8ecf0] dark:border-gray-700 bg-card/30 transition-colors cursor-pointer last:border-b-0',
                         pending ? 'bg-muted/40' : 'hover:bg-[#fafbfc] dark:hover:bg-gray-800',
                       )}
-                      onClick={() => openOpportunityDetail(row.original)}
+                      onClick={(e) => openOpportunityDetail(row.original, e)}
+                      onAuxClick={(e) => navigateOnAuxClick(e, opportunityDetailHref(row.original))}
                     >
                       {row.getVisibleCells().map((cell: any) => (
                         <td
                           key={cell.id}
-                          className={cn(
-                            'px-3 align-middle overflow-hidden',
-                            cell.column.id === 'select' && 'pr-0',
-                            cell.column.id === 'actions' && 'px-1',
-                            cell.column.id === 'title' && 'pl-2',
-                          )}
-                          style={{ width: cell.column.getSize() }}
+                          className={comercialTableLeadingCellClass(cell.column.id, {
+                            primaryColumnId: 'title',
+                          })}
+                          style={comercialTableCellStyle(cell.column.id, cell.column.getSize())}
                           onClick={
                             cell.column.id === 'select' || cell.column.id === 'actions'
                               ? (e) => e.stopPropagation()

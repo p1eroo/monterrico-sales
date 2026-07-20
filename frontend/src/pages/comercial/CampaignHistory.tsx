@@ -303,13 +303,6 @@ export default function CampaignHistoryPage() {
               <p className="mt-2 text-sm text-muted-foreground">
                 No hay campañas. Crea una nueva para comenzar.
               </p>
-              <Button
-                className="mt-4 bg-[#13944C] hover:bg-[#0f7a3d]"
-                onClick={() => navigate('/campaigns/new')}
-              >
-                <Plus className="size-4" />
-                Nueva campaña
-              </Button>
             </div>
           )}
         </CardContent>

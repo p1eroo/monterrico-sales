@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { APP_PATHS } from '@/lib/detailRoutes';
 import { toast } from '@/lib/notify';
 import {
   ArrowLeft,
@@ -289,7 +290,7 @@ export default function UserDetailPage() {
               <Button
                 variant="link"
                 className="h-auto p-0 text-sm"
-                onClick={() => navigate('/contactos')}
+                onClick={() => navigate(APP_PATHS.contacts)}
               >
                 Ver contactos
               </Button>

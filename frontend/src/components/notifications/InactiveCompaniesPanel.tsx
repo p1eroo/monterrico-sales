@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { companyDetailPath } from '@/lib/detailRoutes';
 import { useState, useEffect } from 'react';
 import { Building2, ChevronLeft, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -52,7 +53,7 @@ export function InactiveCompaniesPanel({ onBack, onClose }: InactiveCompaniesPan
   }, []);
 
   const handleCompanyClick = (row: CompanySinCambioEtapaAlertItem) => {
-    navigate(`/empresas/${encodeURIComponent(row.urlSlug)}`);
+    navigate(companyDetailPath({ urlSlug: row.urlSlug, name: row.name }));
     onBack();
   };
 

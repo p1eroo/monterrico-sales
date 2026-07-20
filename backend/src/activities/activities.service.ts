@@ -24,6 +24,11 @@ const activityInclude = {
       opportunity: { select: { id: true, title: true } },
     },
   },
+  clienteEmpresas: {
+    include: {
+      clienteEmpresa: { select: { id: true, empresa: true } },
+    },
+  },
 } as const;
 
 /** Select slim para listado: omite assignedTo (=user.id) */
@@ -46,6 +51,9 @@ const activitySelectListSlim = {
   opportunities: {
     include: { opportunity: { select: { id: true, title: true } } },
   },
+  clienteEmpresas: {
+    include: { clienteEmpresa: { select: { id: true, empresa: true } } },
+  },
 } as const;
 
 type ActivityRowForHistoryLog = {
@@ -55,6 +63,7 @@ type ActivityRowForHistoryLog = {
   contacts: { contact: { id: string } }[];
   companies: { company: { id: string } }[];
   opportunities: { opportunity: { id: string } }[];
+  clienteEmpresas: { clienteEmpresa: { id: string } }[];
 };
 
 @Injectable()
@@ -147,10 +156,14 @@ export class ActivitiesService {
     const opportunityIds = [
       ...new Set(row.opportunities.map((o) => o.opportunity.id)),
     ];
+    const clienteEmpresaIds = [
+      ...new Set(row.clienteEmpresas.map((c) => c.clienteEmpresa.id)),
+    ];
     if (
       contactIds.length === 0 &&
       companyIds.length === 0 &&
-      opportunityIds.length === 0
+      opportunityIds.length === 0 &&
+      clienteEmpresaIds.length === 0
     ) {
       return;
     }
@@ -192,7 +205,39 @@ export class ActivitiesService {
         }),
       );
     }
+    for (const entityId of clienteEmpresaIds) {
+      tasks.push(
+        this.activityLogs.record(actor, {
+          action,
+          module: 'actividades',
+          entityType: 'ClienteEmpresa',
+          entityId,
+          entityName: row.title,
+          description,
+        }),
+      );
+    }
     await Promise.all(tasks);
+  }
+
+  private async assertClienteEmpresaAccess(
+    clienteEmpresaId: string,
+    scope?: CrmDataScope,
+    username?: string,
+  ) {
+    const row = await this.prisma.clienteEmpresa.findUnique({
+      where: { id: clienteEmpresaId },
+    });
+    if (!row) {
+      throw new BadRequestException('La empresa cliente indicada no existe');
+    }
+    if (scope && !scope.unrestricted) {
+      const agente = username?.trim().toLowerCase() ?? '';
+      if (!agente || row.agenteSync !== agente) {
+        throw new BadRequestException('La empresa cliente indicada no existe');
+      }
+    }
+    return row;
   }
 
   async create(
@@ -232,6 +277,7 @@ export class ActivitiesService {
     const contactId = dto.contactId?.trim();
     const companyId = dto.companyId?.trim();
     const opportunityId = dto.opportunityId?.trim();
+    const clienteEmpresaId = dto.clienteEmpresaId?.trim();
 
     // Auto-vincular compañía/contacto si solo se vinculó una oportunidad
     let resolvedContactId = contactId;
@@ -264,9 +310,14 @@ export class ActivitiesService {
       if (co) resolvedOpportunityId = co.opportunityId;
     }
 
-    if (!resolvedContactId && !resolvedCompanyId && !resolvedOpportunityId) {
+    if (
+      !resolvedContactId &&
+      !resolvedCompanyId &&
+      !resolvedOpportunityId &&
+      !clienteEmpresaId
+    ) {
       throw new BadRequestException(
-        'Debe vincularse a al menos un contacto, empresa u oportunidad',
+        'Debe vincularse a al menos un contacto, empresa, oportunidad o empresa cliente',
       );
     }
     if (contactId) {
@@ -306,6 +357,13 @@ export class ActivitiesService {
       ) {
         throw new BadRequestException('La oportunidad indicada no existe');
       }
+    }
+    if (clienteEmpresaId) {
+      await this.assertClienteEmpresaAccess(
+        clienteEmpresaId,
+        scope,
+        actor?.username,
+      );
     }
 
     const row = await this.prisma.$transaction(async (tx) => {
@@ -351,6 +409,11 @@ export class ActivitiesService {
           data: { opportunityId: resolvedOpportunityId, activityId: activity.id },
         });
       }
+      if (clienteEmpresaId) {
+        await tx.clienteEmpresaActivity.create({
+          data: { clienteEmpresaId, activityId: activity.id },
+        });
+      }
       return tx.activity.findUniqueOrThrow({
         where: { id: activity.id },
         include: activityInclude,
@@ -371,6 +434,7 @@ export class ActivitiesService {
       assignedTo?: string;
       from?: string;
       to?: string;
+      linkedToClienteEmpresa?: string;
     },
     scope?: CrmDataScope,
   ) {
@@ -390,6 +454,11 @@ export class ActivitiesService {
       where.assignedTo = scope.viewerUserId;
     } else if (opts?.assignedTo?.trim()) {
       where.assignedTo = opts.assignedTo.trim();
+    }
+    if (opts?.linkedToClienteEmpresa?.trim()) {
+      where.clienteEmpresas = {
+        some: { clienteEmpresaId: opts.linkedToClienteEmpresa.trim() },
+      };
     }
 
     const [rows, total] = await Promise.all([

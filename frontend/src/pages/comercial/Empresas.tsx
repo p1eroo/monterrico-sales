@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { navigateOnAuxClick, navigateOnClick } from '@/lib/navigateOnClick';
 import { toast, notify } from '@/lib/notify';
 import * as XLSX from 'xlsx';
 import {
@@ -66,6 +67,14 @@ import { GitForkIcon } from '@/components/icons/GitForkIcon';
 import { PaletteIcon } from '@/components/icons/PaletteIcon';
 import { addCalendarDaysLocalIso } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import { ComercialTableColgroup } from '@/components/shared/ComercialTableColgroup';
+import {
+  comercialTableActionsColumnSizing,
+  comercialTableCellStyle,
+  comercialTableLeadingCellClass,
+  comercialTableSelectColumnSizing,
+  comercialTableCheckboxWrapClass,
+} from '@/lib/comercialTableLayout';
 import { formatDateShort } from '@/lib/formatters';
 import {
   comercialProPopoverClass,
@@ -130,15 +139,8 @@ import { ExportSvgIcon } from '@/components/icons/ExportSvgIcon';
 
 type EmpresaSummaryRow = CompanySummaryRow & { isLocalOnly?: boolean };
 
-function slugifyCompany(company: string): string {
-  return encodeURIComponent(company.trim());
-}
-
 function empresaDetailPath(row: EmpresaSummaryRow): string {
-  if (row.isLocalOnly || !isLikelyCompanyCuid(row.id)) {
-    return `/empresas/${slugifyCompany(row.name)}`;
-  }
-  return companyDetailHref({ id: row.id, urlSlug: row.urlSlug });
+  return companyDetailHref({ id: row.id, urlSlug: row.urlSlug, name: row.name });
 }
 
 function localCompanyToSummary(c: Company): EmpresaSummaryRow {
@@ -611,7 +613,7 @@ export default function EmpresasPage() {
         id: 'select',
         meta: { responsive: '' } as any,
         header: () => (
-          <div className="inline-flex items-center justify-center rounded-full p-1.5 transition-colors hover:bg-primary/10 pl-2">
+          <div className={comercialTableCheckboxWrapClass}>
             <Checkbox
               checked={selectedCompanies.length === displayRows.length && displayRows.length > 0}
               onCheckedChange={toggleSelectAll}
@@ -620,7 +622,7 @@ export default function EmpresasPage() {
           </div>
         ),
         cell: ({ row }) => (
-          <div className="inline-flex items-center justify-center rounded-full p-1.5 transition-colors hover:bg-primary/10 pl-2">
+          <div className={comercialTableCheckboxWrapClass}>
             <Checkbox
               checked={selectedCompanies.includes(row.original.id)}
               onCheckedChange={() => toggleSelectCompany(row.original.id)}
@@ -628,19 +630,11 @@ export default function EmpresasPage() {
             />
           </div>
         ),
-        size: 44,
-        maxSize: 44,
-        enableSorting: false,
-        enableResizing: false,
+        ...comercialTableSelectColumnSizing,
       },
       {
         id: 'actions',
         header: '',
-        enableResizing: false,
-        enableSorting: false,
-        enableHiding: false,
-        size: 40,
-        maxSize: 40,
         cell: ({ row }) => {
           const emp = row.original;
           return (
@@ -672,6 +666,7 @@ export default function EmpresasPage() {
             </DropdownMenu>
           );
         },
+        ...comercialTableActionsColumnSizing,
       },
       {
         accessorKey: 'name',
@@ -688,7 +683,15 @@ export default function EmpresasPage() {
               <CompanyLogoImg companyId={companyId} isLocal={isLocal} />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-[13px] font-semibold text-[#0F172A] dark:text-gray-100" title={row.original.name}>{row.original.name}</p>
+              <p className="truncate text-[13px] font-semibold text-[#0F172A] dark:text-gray-100" title={row.original.name}>
+                <Link
+                  to={empresaDetailPath(row.original)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="hover:text-primary"
+                >
+                  {row.original.name}
+                </Link>
+              </p>
               {row.original.domain && (
                 <a
                   href={row.original.domain.startsWith('http') ? row.original.domain : `https://${row.original.domain}`}
@@ -1023,8 +1026,13 @@ export default function EmpresasPage() {
     }
   }
 
-  function openCompanyDetail(emp: EmpresaSummaryRow) {
-    navigate(empresaDetailPath(emp));
+  function openCompanyDetail(emp: EmpresaSummaryRow, event?: React.MouseEvent) {
+    const path = empresaDetailPath(emp);
+    if (event) {
+      navigateOnClick(event, path, navigate);
+      return;
+    }
+    navigate(path);
   }
 
   function openCompanyPreview(emp: EmpresaSummaryRow) {
@@ -2002,12 +2010,11 @@ export default function EmpresasPage() {
           icon={Briefcase}
           title="No se encontraron empresas"
           description="Intenta ajustar los filtros o crea una nueva empresa."
-          actionLabel="Nueva empresa"
-          onAction={() => setNewEmpresaOpen(true)}
         />
       ) : viewMode === 'table' ? (
         <div className="border-t border-border/40 overflow-auto scrollbar-thin max-h-[calc(100vh-330px)]">
           <table className="w-full table-fixed" style={{ minWidth: table.getTotalSize() }}>
+            <ComercialTableColgroup columns={table.getVisibleLeafColumns()} />
             <thead>
               {table.getHeaderGroups().map((hg) => (
                 <tr key={hg.id} className="h-[36px] bg-[#eef1f5] dark:bg-gray-800 text-left text-[11px] font-bold text-[#647789] dark:text-gray-400">
@@ -2016,14 +2023,13 @@ export default function EmpresasPage() {
                       key={header.id}
                       colSpan={header.colSpan}
                       className={cn(
-                        "relative px-3 align-middle overflow-hidden",
-                        header.column.getCanSort() && "cursor-pointer select-none hover:text-[#1f2933] dark:hover:text-gray-100",
-                        header.column.id === "select" && "pr-0",
-                        header.column.id === "actions" && "px-1",
-                        header.column.id === "empresa" && "pl-1",
+                        comercialTableLeadingCellClass(header.column.id, {
+                          primaryColumnId: 'empresa',
+                          sortable: header.column.getCanSort(),
+                        }),
                         getResponsiveClass(header.column.id),
                       )}
-                      style={{ width: header.getSize() }}
+                      style={comercialTableCellStyle(header.column.id, header.getSize())}
                       onClick={header.column.getToggleSortingHandler()}
                     >
                       <div className="flex items-center gap-1">
@@ -2060,19 +2066,19 @@ export default function EmpresasPage() {
                 <tr
                   key={row.id}
                   className="h-[48px] border-b border-dashed border-[#e8ecf0] dark:border-gray-700 bg-card/30 transition-colors cursor-pointer last:border-b-0 hover:bg-[#fafbfc] dark:hover:bg-gray-800"
-                  onClick={() => openCompanyDetail(row.original)}
+                  onClick={(e) => openCompanyDetail(row.original, e)}
+                  onAuxClick={(e) => navigateOnAuxClick(e, empresaDetailPath(row.original))}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <td
                       key={cell.id}
                       className={cn(
-                        "px-3 align-middle overflow-hidden",
-                        cell.column.id === "select" && "pr-0",
-                        cell.column.id === "actions" && "px-1",
-                        cell.column.id === "empresa" && "pl-1",
+                        comercialTableLeadingCellClass(cell.column.id, {
+                          primaryColumnId: 'empresa',
+                        }),
                         getResponsiveClass(cell.column.id),
                       )}
-                      style={{ width: cell.column.getSize() }}
+                      style={comercialTableCellStyle(cell.column.id, cell.column.getSize())}
                       onClick={
                         cell.column.id === "actions" || cell.column.id === "select"
                           ? (e) => e.stopPropagation()
@@ -2098,7 +2104,8 @@ export default function EmpresasPage() {
 <Card
               key={rowKey}
               className="cursor-pointer gap-0 max-w-full overflow-hidden py-0 transition-shadow hover:shadow-md"
-              onClick={() => openCompanyDetail(emp)}
+              onClick={(e) => openCompanyDetail(emp, e)}
+              onAuxClick={(e) => navigateOnAuxClick(e, empresaDetailPath(emp))}
             >
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
@@ -2106,7 +2113,15 @@ export default function EmpresasPage() {
                       <Building2 className="size-5 text-muted-foreground" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold truncate">{emp.name}</h3>
+                      <h3 className="truncate font-semibold">
+                        <Link
+                          to={empresaDetailPath(emp)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="hover:text-primary"
+                        >
+                          {emp.name}
+                        </Link>
+                      </h3>
                       {emp.domain && (
                         <p className="text-xs text-muted-foreground truncate">{emp.domain}</p>
                       )}

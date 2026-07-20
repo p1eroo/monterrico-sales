@@ -15,4 +15,5 @@ export class CreateActivityDto {
   contactId?: string;
   companyId?: string;
   opportunityId?: string;
+  clienteEmpresaId?: string;
 }

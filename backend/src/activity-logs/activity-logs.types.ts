@@ -1,4 +1,4 @@
-export type ActivityActor = { userId: string; userName: string };
+export type ActivityActor = { userId: string; userName: string; username?: string };
 
 export type RecordActivityInput = {
   action: string;

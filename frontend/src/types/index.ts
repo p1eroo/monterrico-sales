@@ -64,7 +64,7 @@ export type ActivityStatus = 'pendiente' | 'completada' | 'en_progreso' | 'venci
 
 /** Asociación de tarea con contacto, empresa u oportunidad */
 export interface TaskAssociation {
-  type: 'contacto' | 'empresa' | 'negocio';
+  type: 'contacto' | 'empresa' | 'negocio' | 'cliente_empresa';
   id: string;
   name: string;
 }
@@ -225,6 +225,8 @@ export interface Activity {
   contactPhone?: string;
   companyId?: string;
   companyName?: string;
+  clienteEmpresaId?: string;
+  clienteEmpresaName?: string;
   opportunityId?: string;
   opportunityTitle?: string;
   assignedTo: string;

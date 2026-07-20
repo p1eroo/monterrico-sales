@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { APP_PATHS, contactDetailHref } from '@/lib/detailRoutes';
 import { useState, useEffect } from 'react';
 import {
   Building2,
@@ -120,7 +121,7 @@ export function DailyBriefingPanel({
   };
 
   const handleVerEmpresas = () => {
-    navigate('/empresas');
+    navigate(APP_PATHS.companies);
     handleClose();
   };
 
@@ -131,9 +132,16 @@ export function DailyBriefingPanel({
 
   const handleTaskClick = (item: TaskItem) => {
     if (item.activity?.contactId) {
-      navigate(`/contactos/${item.activity.contactId}`);
+      navigate(contactDetailHref({
+        id: item.activity.contactId,
+        name: item.activity.contactName,
+      }));
     } else if (item.event?.relatedEntityType === 'contact' && item.event?.relatedEntityId) {
-      navigate(`/contactos/${item.event.relatedEntityId}`);
+      const links = resolveCalendarEventLinks(item.event);
+      navigate(contactDetailHref({
+        id: item.event.relatedEntityId,
+        name: links.contactName,
+      }));
     } else {
       navigate('/tareas');
     }

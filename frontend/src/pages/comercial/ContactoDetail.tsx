@@ -63,7 +63,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { api } from '@/lib/api';
-import { isEntityDetailApiParam } from '@/lib/detailRoutes';
+import { APP_PATHS, contactDetailHref, isEntityDetailApiParam } from '@/lib/detailRoutes';
 import {
   type ApiContactDetail,
   contactAddCompany,
@@ -593,7 +593,7 @@ export default function ContactoDetailPage() {
   if (fromApi && (apiError || !apiRecord)) {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" onClick={() => navigate('/contactos')}>
+        <Button variant="ghost" onClick={() => navigate(APP_PATHS.contacts)}>
           <ArrowLeft /> Volver a Contactos
         </Button>
         <EmptyState
@@ -601,7 +601,7 @@ export default function ContactoDetailPage() {
           title="Contacto no encontrado"
           description={apiError ?? 'El contacto no existe.'}
           actionLabel="Volver a Contactos"
-          onAction={() => navigate('/contactos')}
+          onAction={() => navigate(APP_PATHS.contacts)}
         />
       </div>
     );
@@ -610,7 +610,7 @@ export default function ContactoDetailPage() {
   if (!contact) {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" onClick={() => navigate('/contactos')}>
+        <Button variant="ghost" onClick={() => navigate(APP_PATHS.contacts)}>
           <ArrowLeft /> Volver a Contactos
         </Button>
         <EmptyState
@@ -618,7 +618,7 @@ export default function ContactoDetailPage() {
           title="Contacto no encontrado"
           description="El contacto que buscas no existe o fue eliminado."
           actionLabel="Volver a Contactos"
-          onAction={() => navigate('/contactos')}
+          onAction={() => navigate(APP_PATHS.contacts)}
         />
       </div>
     );
@@ -924,12 +924,12 @@ export default function ContactoDetailPage() {
   return (
     <>
     <DetailLayout
-      backPath="/contactos"
+      backPath={APP_PATHS.contacts}
       title={contact.name}
       subtitle={contact.cargo}
       header={(
         <ContactHeader
-          backPath="/contactos"
+          backPath={APP_PATHS.contacts}
           name={contact.name}
           subtitle={contact.cargo}
           stageLabel={getStageLabelFromCatalog(derivedEtapa ?? '', crmBundle, etapaLabels as Record<string, string>)}

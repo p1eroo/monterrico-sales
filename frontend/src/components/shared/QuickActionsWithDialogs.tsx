@@ -128,6 +128,8 @@ interface QuickActionsWithDialogsProps {
   followUpAssociations?: TaskAssociation[];
   excludeActions?: string[];
   inline?: boolean;
+  clienteEmpresaId?: string;
+  clienteEmpresaName?: string;
 }
 
 export function QuickActionsWithDialogs({
@@ -140,6 +142,8 @@ export function QuickActionsWithDialogs({
   followUpAssociations = [],
   excludeActions = [],
   inline = false,
+  clienteEmpresaId,
+  clienteEmpresaName,
 }: QuickActionsWithDialogsProps) {
   const [activeDialog, setActiveDialog] = useState<string | null>(null);
   const [noteContent, setNoteContent] = useState('');
@@ -150,6 +154,13 @@ export function QuickActionsWithDialogs({
   const [linkedTaskFormOpen, setLinkedTaskFormOpen] = useState(false);
 
   const visibleOptions = MENU_OPTIONS.filter((opt) => !excludeActions.includes(opt.type));
+  const lockedClienteAssociations: TaskAssociation[] | undefined =
+    clienteEmpresaId && clienteEmpresaName
+      ? [{ type: 'cliente_empresa', id: clienteEmpresaId, name: clienteEmpresaName }]
+      : undefined;
+  const taskDefaultAssociations =
+    lockedClienteAssociations ??
+    (followUpAssociations.length > 0 ? followUpAssociations : undefined);
 
   function handleMenuSelect(type: QuickMenuType) {
     if (type === 'llamada' || type === 'reunion' || type === 'correo') {
@@ -379,6 +390,7 @@ export function QuickActionsWithDialogs({
         contacts={contacts}
         companies={companies}
         opportunities={opportunities}
+        defaultAssociations={taskDefaultAssociations}
         onSave={handleTaskFormSave}
       />
 
@@ -390,7 +402,7 @@ export function QuickActionsWithDialogs({
         contacts={contacts}
         companies={companies}
         opportunities={opportunities}
-        defaultAssociations={followUpAssociations.length > 0 ? followUpAssociations : undefined}
+        defaultAssociations={taskDefaultAssociations}
         onSave={handleTaskFormSave}
       />
     </>

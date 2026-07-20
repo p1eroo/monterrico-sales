@@ -949,12 +949,6 @@ export default function TareasPage() {
                 icon={Grid3X3}
                 title="No hay tareas para el tablero"
                 description="Ajusta los filtros o crea una nueva tarea."
-                actionLabel="Nueva Tarea"
-                onAction={() => {
-                  setNewTaskColumnStatus(undefined);
-                  setNewTaskDefaultAssociations(undefined);
-                  setNewTaskOpen(true);
-                }}
               />
             )
           ) : (
@@ -986,11 +980,6 @@ export default function TareasPage() {
                   icon={CalendarDays}
                   title="No se encontraron tareas"
                   description="Intenta ajustar los filtros o crea una nueva tarea."
-                  actionLabel="Nueva Tarea"
-                  onAction={() => {
-                    setNewTaskDefaultAssociations(undefined);
-                    setNewTaskOpen(true);
-                  }}
                 />
               ) : (
                 <>

@@ -17,7 +17,9 @@ interface CompanyHeaderProps {
   onEtapaChange?: (slug: string) => void;
   estimatedValueLabel: string;
   quickActions?: React.ReactNode;
-  onEdit: () => void;
+  onEdit?: () => void;
+  /** Si es false, no muestra el badge/dropdown de etapa (p. ej. cartera de clientes). */
+  showStage?: boolean;
 }
 
 export function CompanyHeader({
@@ -32,6 +34,7 @@ export function CompanyHeader({
   estimatedValueLabel,
   quickActions,
   onEdit,
+  showStage = true,
 }: CompanyHeaderProps) {
   const navigate = useNavigate();
 
@@ -82,24 +85,28 @@ export function CompanyHeader({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <EtapaDropdownButton
-            stageLabel={stageLabel}
-            stageClassName={stageClassName}
-            stageStyle={stageStyle}
-            currentEtapaSlug={currentEtapaSlug}
-            onEtapaChange={onEtapaChange}
-          />
+          {showStage ? (
+            <EtapaDropdownButton
+              stageLabel={stageLabel}
+              stageClassName={stageClassName}
+              stageStyle={stageStyle}
+              currentEtapaSlug={currentEtapaSlug}
+              onEtapaChange={onEtapaChange}
+            />
+          ) : null}
           {quickActions}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 shrink-0 rounded-lg text-text-secondary hover:bg-accent hover:text-accent-foreground"
-            onClick={onEdit}
-            aria-label="Editar"
-            title="Editar"
-          >
-            <Edit className="size-4" />
-          </Button>
+          {onEdit ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 shrink-0 rounded-lg text-text-secondary hover:bg-accent hover:text-accent-foreground"
+              onClick={onEdit}
+              aria-label="Editar"
+              title="Editar"
+            >
+              <Edit className="size-4" />
+            </Button>
+          ) : null}
         </div>
       </div>
     </header>

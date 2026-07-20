@@ -31,6 +31,13 @@ export function taskAssociationsFromActivity(a: Activity): TaskAssociation[] {
     }
     out.push({ type: 'empresa', id: a.companyId, name });
   }
+  if (a.clienteEmpresaId) {
+    out.push({
+      type: 'cliente_empresa',
+      id: a.clienteEmpresaId,
+      name: a.clienteEmpresaName?.trim() || 'Empresa cliente',
+    });
+  }
   if (a.opportunityId) {
     out.push({
       type: 'negocio',
@@ -47,10 +54,12 @@ export function taskAssociationsFromEntityCtx(
     contactId?: string;
     companyId?: string;
     opportunityId?: string;
+    clienteEmpresaId?: string;
   } | null | undefined,
   contacts: Contact[],
   companies: { name: string; id?: string }[],
   opportunities: Opportunity[],
+  clienteEmpresas: { name: string; id?: string }[] = [],
 ): TaskAssociation[] {
   if (!ctx) return [];
   const out: TaskAssociation[] = [];
@@ -78,12 +87,20 @@ export function taskAssociationsFromEntityCtx(
       name: o?.title ?? 'Oportunidad',
     });
   }
+  if (ctx.clienteEmpresaId) {
+    const c = clienteEmpresas.find((x) => x.id === ctx.clienteEmpresaId);
+    out.push({
+      type: 'cliente_empresa',
+      id: ctx.clienteEmpresaId,
+      name: c?.name ?? 'Empresa cliente',
+    });
+  }
   return out;
 }
 
 export function taskLinkBadgesFromActivity(
   a: Activity,
-): { type: 'contacto' | 'empresa' | 'negocio'; name: string }[] {
+): { type: 'contacto' | 'empresa' | 'negocio' | 'cliente_empresa'; name: string }[] {
   return taskAssociationsFromActivity(a).map((x) => ({ type: x.type, name: x.name }));
 }
 
@@ -92,10 +109,13 @@ export function contactLineFromTaskAssociations(assocs: TaskAssociation[] | unde
   if (!assocs?.length) return undefined;
   const c = assocs.find((a) => a.type === 'contacto');
   const e = assocs.find((a) => a.type === 'empresa');
+  const ce = assocs.find((a) => a.type === 'cliente_empresa');
   const n = assocs.find((a) => a.type === 'negocio');
   if (c && e) return `${c.name} - ${e.name}`.trim();
+  if (c && ce) return `${c.name} - ${ce.name}`.trim();
   if (c) return c.name;
   if (e) return e.name;
+  if (ce) return ce.name;
   if (n) return n.name;
   return undefined;
 }

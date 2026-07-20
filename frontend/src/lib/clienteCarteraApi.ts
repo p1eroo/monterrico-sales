@@ -32,22 +32,71 @@ export type ClienteEmpresaRow = {
   monto5?: number;
 };
 
-export type ContactoEmpresaRow = {
+export type ClienteEmpresaLinkedContacto = {
   id: string;
-  externalId: number;
   nombre: string;
   nombres: string;
   apellidos?: string;
-  empresa: string;
-  empresaLogoUrl?: string;
   telefono?: string;
   email?: string;
   cargo?: string;
-  asesor?: string;
+  assignedTo?: string;
+  assignedToName: string;
+  isPrimary: boolean;
+};
+
+export type ClienteEmpresaDetail = ClienteEmpresaRow & {
+  contactos: ClienteEmpresaLinkedContacto[];
+};
+
+export type ContactoClienteEmpresaLink = {
+  id: string;
+  empresa: string;
+  logoUrl?: string;
+  isPrimary: boolean;
+};
+
+export type ContactoClienteRow = {
+  id: string;
+  nombre: string;
+  nombres: string;
+  apellidos?: string;
+  telefono?: string;
+  email?: string;
+  cargo?: string;
+  etapa?: string;
+  source?: string;
+  clienteRecuperado?: string;
+  departamento?: string;
+  provincia?: string;
+  distrito?: string;
+  direccion?: string;
   assignedTo: string;
   assignedToName: string;
-  clienteEmpresaId: string;
+  createdAt: string;
+  lastInteractionAt: string;
+  empresas: ContactoClienteEmpresaLink[];
 };
+
+export type CreateContactoClienteBody = {
+  nombres: string;
+  apellidos?: string;
+  telefono?: string;
+  email?: string;
+  cargo?: string;
+  etapa?: string;
+  source?: string;
+  clienteRecuperado?: string;
+  departamento?: string;
+  provincia?: string;
+  distrito?: string;
+  direccion?: string;
+  assignedTo?: string;
+  clienteEmpresaId?: string;
+  isPrimary?: boolean;
+};
+
+export type UpdateContactoClienteBody = Partial<CreateContactoClienteBody>;
 
 export type RefreshEmpresasResponse = {
   ok: boolean;
@@ -92,7 +141,6 @@ export function mapClienteEmpresaToClient(row: ClienteEmpresaRow): Client {
   } as Client;
 }
 
-/** Lista WClientes, guarda en BD y devuelve el listado (como Clients.tsx + persistencia). */
 export async function refreshClienteEmpresas(
   all = false,
 ): Promise<RefreshEmpresasResponse> {
@@ -106,6 +154,81 @@ export async function fetchClienteEmpresas(): Promise<ClienteEmpresaRow[]> {
   return api<ClienteEmpresaRow[]>('/cliente-cartera/empresas');
 }
 
-export async function fetchContactosEmpresa(): Promise<ContactoEmpresaRow[]> {
-  return api<ContactoEmpresaRow[]>('/cliente-cartera/contactos');
+export async function fetchClienteEmpresaById(
+  id: string,
+): Promise<ClienteEmpresaDetail> {
+  return api<ClienteEmpresaDetail>(`/cliente-cartera/empresas/${encodeURIComponent(id)}`);
 }
+
+export async function fetchContactosCliente(): Promise<ContactoClienteRow[]> {
+  return api<ContactoClienteRow[]>('/cliente-cartera/contactos');
+}
+
+export async function fetchContactoClienteById(
+  id: string,
+): Promise<ContactoClienteRow> {
+  return api<ContactoClienteRow>(
+    `/cliente-cartera/contactos/${encodeURIComponent(id)}`,
+  );
+}
+
+export async function createContactoCliente(
+  body: CreateContactoClienteBody,
+): Promise<ContactoClienteRow> {
+  return api<ContactoClienteRow>('/cliente-cartera/contactos', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function updateContactoCliente(
+  id: string,
+  body: UpdateContactoClienteBody,
+): Promise<ContactoClienteRow> {
+  return api<ContactoClienteRow>(
+    `/cliente-cartera/contactos/${encodeURIComponent(id)}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export async function deleteContactoCliente(id: string): Promise<{ ok: boolean }> {
+  return api<{ ok: boolean }>(
+    `/cliente-cartera/contactos/${encodeURIComponent(id)}`,
+    { method: 'DELETE' },
+  );
+}
+
+export async function linkContactoToClienteEmpresa(
+  empresaId: string,
+  contactoClienteId: string,
+  isPrimary = false,
+): Promise<ClienteEmpresaDetail> {
+  return api<ClienteEmpresaDetail>(
+    `/cliente-cartera/empresas/${encodeURIComponent(empresaId)}/contactos`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ contactoClienteId, isPrimary }),
+    },
+  );
+}
+
+export async function unlinkContactoFromClienteEmpresa(
+  empresaId: string,
+  contactoClienteId: string,
+): Promise<ClienteEmpresaDetail> {
+  return api<ClienteEmpresaDetail>(
+    `/cliente-cartera/empresas/${encodeURIComponent(empresaId)}/contactos/${encodeURIComponent(contactoClienteId)}`,
+    { method: 'DELETE' },
+  );
+}
+
+/** @deprecated usar fetchContactosCliente */
+export async function fetchContactosEmpresa(): Promise<ContactoClienteRow[]> {
+  return fetchContactosCliente();
+}
+
+/** @deprecated usar ContactoClienteRow */
+export type ContactoEmpresaRow = ContactoClienteRow;

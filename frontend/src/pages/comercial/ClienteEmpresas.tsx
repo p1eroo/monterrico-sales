@@ -1,4 +1,7 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { navigateOnAuxClick, navigateOnClick } from '@/lib/navigateOnClick';
+import { clienteEmpresaDetailHref } from '@/lib/detailRoutes';
 import {
   flexRender,
   getCoreRowModel,
@@ -6,8 +9,6 @@ import {
   type ColumnDef,
 } from '@tanstack/react-table';
 import type { Client, ClientStatus } from '@/types';
-import { companyRubroLabels } from '@/data/mock';
-import { useUsers } from '@/hooks/useUsers';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Pagination } from '@/components/shared/Pagination';
 import { GlassCard } from '@/components/shared/GlassCard';
@@ -39,34 +40,34 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Building2, Users, UserX, Search,
-  Phone, Mail, FileText, Clock, User,
-  ChevronDown, MoreVertical, X, RefreshCw,
+  Building2, Search,
+  ChevronDown, MoreVertical, X, Eye,
 } from 'lucide-react';
-import {
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
-} from '@/components/ui/sheet';
-import { Separator } from '@/components/ui/separator';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { cn } from '@/lib/utils';
-import { comercialProPopoverClass, comercialProCommandClass } from '@/lib/comercialFilterSurface';
-import { rightDrawerSheetContentClass } from '@/lib/rightPanelShell';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { toast } from '@/lib/notify';
+import { cn } from '@/lib/utils';
+import { ComercialTableColgroup } from '@/components/shared/ComercialTableColgroup';
+import {
+  comercialTableActionsColumnSizing,
+  comercialTableCellStyle,
+  comercialTableLeadingCellClass,
+  comercialTableSelectColumnSizing,
+  comercialTableCheckboxWrapClass,
+} from '@/lib/comercialTableLayout';
+import { comercialProPopoverClass, comercialProCommandClass } from '@/lib/comercialFilterSurface';
 import { usePermissions } from '@/hooks/usePermissions';
 import {
   refreshClienteEmpresas,
   fetchClienteEmpresas,
   mapClienteEmpresaToClient,
 } from '@/lib/clienteCarteraApi';
-import { MoneySackSvgIcon } from '@/components/icons/MoneySackSvgIcon';
 import { ChartSquareIcon } from '@/components/icons/ChartSquareIcon';
 import { ColumnsSvgIcon } from '@/components/icons/ColumnsSvgIcon';
 import { ExportSvgIcon } from '@/components/icons/ExportSvgIcon';
-import { Skeleton } from '@/components/ui/skeleton';
 
 const CLIENTS_TABLE_SKELETON_COLUMNS = [
+  { label: '', width: 44 },
+  { label: '', width: 40 },
   { label: 'Empresa', width: 280 },
   { label: 'RUC', width: 120, className: 'hidden md:table-cell' },
   { label: 'Teléfono', width: 120, className: 'hidden md:table-cell' },
@@ -96,41 +97,6 @@ function ClientStatusBadge({ status }: { status: ClientStatus }) {
       {config.label}
     </Badge>
   );
-}
-
-function ClientsStatsSkeleton() {
-  return (
-    <Card
-      className="flex-row flex-nowrap overflow-x-auto overflow-y-hidden py-0 scrollbar-thin [-webkit-overflow-scrolling:touch] sm:overflow-hidden"
-      aria-hidden
-    >
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div
-          key={i}
-          className="relative flex w-[min(260px,82vw)] shrink-0 items-center gap-3 px-5 py-4 sm:w-auto sm:min-w-0 sm:flex-1 sm:justify-center"
-        >
-          <Skeleton className="size-16 shrink-0 rounded-full" />
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-28" />
-            <Skeleton className="h-7 w-16" />
-            <Skeleton className="h-3 w-20" />
-          </div>
-          {i < 3 && (
-            <div className="absolute right-0 top-4 bottom-4 border-r border-dashed border-border sm:w-px sm:border-0 sm:bg-border" />
-          )}
-        </div>
-      ))}
-    </Card>
-  );
-}
-
-function getInitials(name: string) {
-  return name
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
 }
 
 function getDomainFromEmail(email: string): string | null {
@@ -167,7 +133,7 @@ function exportClientsToCSV(clients: Client[]) {
 }
 
 export default function ClienteEmpresas() {
-  const { users } = useUsers();
+  const navigate = useNavigate();
   const { hasPermission } = usePermissions();
   const {
     selectedIds: assigneeFilter,
@@ -194,24 +160,7 @@ export default function ClienteEmpresas() {
     asesor: true,
     createdAt: true,
   });
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-
-  const [syncing, setSyncing] = useState(false);
-
-  /** Igual que Clients.tsx: listar Taxi Monterrico, guardar y mostrar. */
-  const refreshFromApi = useCallback(async (all = false) => {
-    setLoadError(null);
-    try {
-      const result = await refreshClienteEmpresas(all);
-      setClientList(result.data.map(mapClienteEmpresaToClient));
-      return result;
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'No se pudieron cargar los clientes';
-      setLoadError(msg);
-      toast.error(msg);
-      throw e;
-    }
-  }, []);
+  const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -242,35 +191,9 @@ export default function ClienteEmpresas() {
     return () => { cancelled = true; };
   }, []);
 
-  const handleSync = useCallback(async () => {
-    setSyncing(true);
-    setLoadError(null);
-    try {
-      const result = await refreshFromApi(false);
-      toast.success('Sincronización completada', {
-        description: `${result.empresas} empresa${result.empresas !== 1 ? 's' : ''} actualizada${result.empresas !== 1 ? 's' : ''}.`,
-      });
-    } catch {
-      // toast ya mostrado en refreshFromApi
-    } finally {
-      setSyncing(false);
-    }
-  }, [refreshFromApi]);
-
   useEffect(() => {
     setPage(1);
   }, [searchTerm, statusFilter, assigneeFilter, pageSize]);
-
-  const stats = useMemo(() => {
-    const total = clientList.length;
-    const activos = clientList.filter((c) => c.status === 'activo').length;
-    const inactivos = clientList.filter((c) => c.status === 'inactivo').length;
-    const ingresos = clientList.reduce((sum, c) => {
-      const rev = c.externalYearTotal || c.externalMonthAmount || 0;
-      return sum + rev;
-    }, 0);
-    return { total, activos, inactivos, ingresos };
-  }, [clientList]);
 
   const filteredClients = useMemo(() => {
     const rucQuery = searchTerm.replace(/\D/g, '');
@@ -308,6 +231,23 @@ export default function ClienteEmpresas() {
     [filteredClients, start, pageSize],
   );
 
+  const allSelected =
+    displayedClients.length > 0 && selectedClientIds.length === displayedClients.length;
+
+  function toggleSelectAll() {
+    if (allSelected) {
+      setSelectedClientIds([]);
+    } else {
+      setSelectedClientIds(displayedClients.map((client) => client.id));
+    }
+  }
+
+  function toggleSelectClient(id: string) {
+    setSelectedClientIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+    );
+  }
+
   const hasActiveFilters =
     searchTerm !== '' ||
     statusFilter.length > 0 ||
@@ -320,20 +260,69 @@ export default function ClienteEmpresas() {
     setPage(1);
   }
 
-  function openClientDetail(client: Client) {
-    setSelectedClient(client);
+  function openClientDetail(client: Client, event?: React.MouseEvent) {
+    const path = clienteEmpresaDetailHref({ empresa: client.company });
+    if (event) {
+      navigateOnClick(event, path, navigate);
+      return;
+    }
+    navigate(path);
   }
-
-  const selectedAssigneeUser = useMemo(
-    () =>
-      selectedClient
-        ? users.find((u) => u.id === selectedClient.assignedTo)
-        : undefined,
-    [selectedClient, users],
-  );
 
   const columns = useMemo<ColumnDef<Client>[]>(
     () => [
+      {
+        id: 'select',
+        header: () => (
+          <div className={comercialTableCheckboxWrapClass}>
+            <Checkbox
+              checked={allSelected}
+              onCheckedChange={toggleSelectAll}
+              className="h-4 w-4 rounded border border-gray-400 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
+            />
+          </div>
+        ),
+        cell: ({ row }) => (
+          <div className={comercialTableCheckboxWrapClass}>
+            <Checkbox
+              checked={selectedClientIds.includes(row.original.id)}
+              onCheckedChange={() => toggleSelectClient(row.original.id)}
+              onClick={(e) => e.stopPropagation()}
+              className="h-4 w-4 rounded border border-gray-400 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
+            />
+          </div>
+        ),
+        ...comercialTableSelectColumnSizing,
+      },
+      {
+        id: 'actions',
+        header: '',
+        cell: ({ row }) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Acciones"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreVertical className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openClientDetail(row.original);
+                }}
+              >
+                <Eye /> Ver detalle
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+        ...comercialTableActionsColumnSizing,
+      },
       {
         accessorKey: 'company',
         id: 'company',
@@ -344,7 +333,7 @@ export default function ClienteEmpresas() {
           const client = row.original;
           const emailDomain = getDomainFromEmail(client.email);
           return (
-            <div className="flex min-w-0 max-w-[20rem] items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <CompanyLogoBox
                 companyId={client.companyId}
                 domain={emailDomain}
@@ -355,7 +344,13 @@ export default function ClienteEmpresas() {
                   className="truncate text-[13px] font-semibold text-[#0F172A] dark:text-gray-100"
                   title={client.company}
                 >
-                  {truncateCompanyName(client.company)}
+                  <Link
+                    to={clienteEmpresaDetailHref({ empresa: client.company })}
+                    onClick={(e) => e.stopPropagation()}
+                    className="hover:text-primary"
+                  >
+                    {truncateCompanyName(client.company)}
+                  </Link>
                 </p>
                 {emailDomain ? (
                   <a
@@ -473,7 +468,7 @@ export default function ClienteEmpresas() {
         },
       },
     ],
-    [],
+    [allSelected, selectedClientIds],
   );
 
   const table = useReactTable({
@@ -493,74 +488,19 @@ export default function ClienteEmpresas() {
       : statusFilter.map((k) => clientStatusConfig[k].label).join(', ');
 
   return (
-    <div className="space-y-6">
+    <div>
       <PageHeader
-        title="Clientes"
+        title="Empresas - Clientes"
         description="Gestiona y da seguimiento a tu cartera de clientes activos"
+        className="mb-4"
       />
 
       {loadError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {loadError}
         </div>
       )}
 
-      {/* Fase 1: Stats unificados */}
-      {loading ? (
-        <ClientsStatsSkeleton />
-      ) : (
-        <Card className="flex-row flex-nowrap overflow-x-auto overflow-y-hidden py-0 scrollbar-thin [-webkit-overflow-scrolling:touch] sm:overflow-hidden">
-          <div className="relative flex w-[min(260px,82vw)] shrink-0 items-center gap-3 px-5 py-4 sm:w-auto sm:min-w-0 sm:flex-1 sm:justify-center">
-            <div className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-emerald-500 bg-transparent text-emerald-600">
-              <Building2 className="size-7" />
-            </div>
-            <div className="min-w-0 space-y-0.5">
-              <p className="text-sm font-medium text-[#647789] dark:text-gray-400">Total clientes</p>
-              <p className="text-[22px] font-bold tracking-tight text-[#0F172A] dark:text-gray-100">{stats.total}</p>
-              <p className="text-xs text-[#8a9aab] dark:text-gray-400">en cartera</p>
-            </div>
-            <div className="absolute right-0 top-4 bottom-4 border-r border-dashed border-border sm:w-px sm:border-0 sm:bg-border" />
-          </div>
-          <div className="relative flex w-[min(260px,82vw)] shrink-0 items-center gap-3 px-5 py-4 sm:w-auto sm:min-w-0 sm:flex-1 sm:justify-center">
-            <div className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-emerald-500 bg-transparent text-emerald-600">
-              <Users className="size-7" />
-            </div>
-            <div className="min-w-0 space-y-0.5">
-              <p className="text-sm font-medium text-[#647789] dark:text-gray-400">Activos</p>
-              <p className="text-[22px] font-bold tracking-tight text-[#0F172A] dark:text-gray-100">{stats.activos}</p>
-              <p className="text-xs text-[#8a9aab] dark:text-gray-400">
-                {stats.total > 0 ? `${Math.round((stats.activos / stats.total) * 100)}% del total` : '—'}
-              </p>
-            </div>
-            <div className="absolute right-0 top-4 bottom-4 border-r border-dashed border-border sm:w-px sm:border-0 sm:bg-border" />
-          </div>
-          <div className="relative flex w-[min(260px,82vw)] shrink-0 items-center gap-3 px-5 py-4 sm:w-auto sm:min-w-0 sm:flex-1 sm:justify-center">
-            <div className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-red-500 bg-transparent text-red-600">
-              <UserX className="size-7" />
-            </div>
-            <div className="min-w-0 space-y-0.5">
-              <p className="text-sm font-medium text-[#647789] dark:text-gray-400">Inactivos</p>
-              <p className="text-[22px] font-bold tracking-tight text-[#0F172A] dark:text-gray-100">{stats.inactivos}</p>
-              <p className="text-xs text-[#8a9aab] dark:text-gray-400">
-                {stats.inactivos === 0 ? 'ninguno registrado' : 'requieren seguimiento'}
-              </p>
-            </div>
-            <div className="absolute right-0 top-4 bottom-4 border-r border-dashed border-border sm:w-px sm:border-0 sm:bg-border" />
-          </div>
-          <div className="relative flex w-[min(260px,82vw)] shrink-0 items-center gap-3 px-5 py-4 sm:w-auto sm:min-w-0 sm:flex-1 sm:justify-center">
-            <div className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-blue-500 bg-transparent text-blue-600">
-              <MoneySackSvgIcon className="size-7" />
-            </div>
-            <div className="min-w-0 space-y-0.5">
-              <p className="text-sm font-medium text-[#647789] dark:text-gray-400">Ingresos totales</p>
-              <p className="text-[22px] font-bold tracking-tight text-[#0F172A] dark:text-gray-100">{formatCurrency(stats.ingresos)}</p>
-              <p className="text-xs text-[#8a9aab] dark:text-gray-400">acumulado del año</p>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* Fases 2–4: GlassCard con filtros, tabla tanstack y paginación */}
       <GlassCard>
         <div className="flex min-w-0 flex-col gap-2 px-5 py-3 lg:flex-row lg:items-center">
           <div className="relative w-full min-w-0 max-w-[400px]">
@@ -660,18 +600,7 @@ export default function ClienteEmpresas() {
             </Button>
           )}
 
-          <Button
-            variant="outline"
-            size="sm"
-            className="ml-auto shrink-0"
-            onClick={() => void handleSync()}
-            disabled={syncing || loading}
-          >
-            <RefreshCw className={cn('size-4', syncing && 'animate-spin')} />
-            Sincronizar
-          </Button>
-
-          <div className="hidden items-center gap-5 sm:flex">
+          <div className="ml-auto hidden items-center gap-5 sm:flex">
             <Popover>
               <PopoverTrigger asChild>
                 <button
@@ -769,8 +698,9 @@ export default function ClienteEmpresas() {
             </CardContent>
           </Card>
         ) : (
-          <div className="scrollbar-thin max-h-[calc(100vh-460px)] overflow-auto border-t border-border/40 bg-card/30">
+          <div className="border-t border-border/40 overflow-auto scrollbar-thin max-h-[calc(100vh-330px)]">
             <table className="w-full table-fixed bg-transparent" style={{ minWidth: table.getTotalSize() }}>
+              <ComercialTableColgroup columns={table.getVisibleLeafColumns()} />
               <thead>
                 {table.getHeaderGroups().map((hg) => (
                   <tr
@@ -781,11 +711,11 @@ export default function ClienteEmpresas() {
                       <th
                         key={header.id}
                         colSpan={header.colSpan}
-                        className={cn(
-                          'relative overflow-hidden px-3 align-middle',
-                          header.column.id === 'ingresos' && 'text-right',
-                        )}
-                        style={{ width: header.getSize() }}
+                        className={comercialTableLeadingCellClass(header.column.id, {
+                          primaryColumnId: 'company',
+                          alignRight: header.column.id === 'ingresos',
+                        })}
+                        style={comercialTableCellStyle(header.column.id, header.getSize())}
                       >
                         {flexRender(header.column.columnDef.header, header.getContext())}
                         {header.column.getCanResize() && (
@@ -815,17 +745,23 @@ export default function ClienteEmpresas() {
                 {table.getRowModel().rows.map((row) => (
                     <tr
                       key={row.id}
-                      className="h-[48px] cursor-pointer border-b border-dashed border-[#e8ecf0] bg-transparent transition-colors last:border-b-0 hover:bg-[#fafbfc] dark:border-gray-700 dark:hover:bg-gray-800"
-                      onClick={() => openClientDetail(row.original)}
+                      className="h-[48px] cursor-pointer border-b border-dashed border-[#e8ecf0] bg-card/30 transition-colors last:border-b-0 hover:bg-[#fafbfc] dark:border-gray-700 dark:hover:bg-gray-800"
+                      onClick={(e) => openClientDetail(row.original, e)}
+                      onAuxClick={(e) => navigateOnAuxClick(e, clienteEmpresaDetailHref({ empresa: row.original.company }))}
                     >
                       {row.getVisibleCells().map((cell) => (
                         <td
                           key={cell.id}
-                          className={cn(
-                            'overflow-hidden px-3 align-middle',
-                            cell.column.id === 'ingresos' && 'text-right',
-                          )}
-                          style={{ width: cell.column.getSize() }}
+                          className={comercialTableLeadingCellClass(cell.column.id, {
+                            primaryColumnId: 'company',
+                            alignRight: cell.column.id === 'ingresos',
+                          })}
+                          style={comercialTableCellStyle(cell.column.id, cell.column.getSize())}
+                          onClick={
+                            cell.column.id === 'select' || cell.column.id === 'actions'
+                              ? (e) => e.stopPropagation()
+                              : undefined
+                          }
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>
@@ -838,7 +774,7 @@ export default function ClienteEmpresas() {
         )}
 
         {!loading && totalFiltered > 0 && (
-          <div className="flex h-14 items-center border-t border-dashed border-[#e8ecf0] bg-transparent px-5 dark:border-gray-700">
+          <div className="flex h-14 items-center border-t border-dashed border-[#e8ecf0] bg-card/30 px-5 dark:border-gray-700">
             <Pagination
               page={page}
               totalPages={totalPages}
@@ -853,148 +789,6 @@ export default function ClienteEmpresas() {
           </div>
         )}
       </GlassCard>
-
-      <Sheet open={!!selectedClient} onOpenChange={(open) => !open && setSelectedClient(null)}>
-        <SheetContent
-          side="right"
-          className={rightDrawerSheetContentClass('lg', 'overflow-y-auto')}
-        >
-          {selectedClient && (
-            <>
-              <SheetHeader className="pb-2">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-12 items-center justify-center rounded-lg bg-[#13944C]/10">
-                    <Building2 className="size-6 text-[#13944C]" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <SheetTitle className="truncate">{selectedClient.company}</SheetTitle>
-                    <SheetDescription className="flex flex-wrap items-center gap-2 pt-1">
-                      <ClientStatusBadge status={selectedClient.status} />
-                      {selectedClient.companyRubro && (
-                        <Badge variant="outline" className="text-xs">{companyRubroLabels[selectedClient.companyRubro]}</Badge>
-                      )}
-                      {selectedClient.companyTipo && (
-                        <Badge variant="secondary" className="text-xs">Tipo {selectedClient.companyTipo}</Badge>
-                      )}
-                    </SheetDescription>
-                  </div>
-                </div>
-              </SheetHeader>
-
-              <ScrollArea className="h-[calc(100vh-130px)]">
-                <div className="space-y-6 px-4">
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                      Contacto vinculado
-                    </h4>
-                    <p className="text-xs text-muted-foreground">
-                      Referencia del contacto asociado al mayor monto en negocios de esta empresa.
-                    </p>
-                    <div className="space-y-2.5">
-                      <div className="flex items-center gap-3">
-                        <User className="size-4 shrink-0 text-muted-foreground" />
-                        <span className="text-sm">{selectedClient.contactName || '—'}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Phone className="size-4 shrink-0 text-muted-foreground" />
-                        <span className="text-sm">{selectedClient.phone || '—'}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Mail className="size-4 shrink-0 text-muted-foreground" />
-                        <span className="text-sm">{selectedClient.email || '—'}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-4">
-                    <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                      Métricas
-                    </h4>
-
-                    {selectedClient.id && (
-                      <div className="space-y-4">
-                        <div className="rounded-xl border border-primary/10 bg-primary/5 p-4">
-                          <p className="text-xs font-medium uppercase text-muted-foreground">Acumulado Año 2026</p>
-                          <p className="mt-1 text-2xl font-bold text-primary">
-                            S/ {(selectedClient.externalYearTotal || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </p>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-2">
-                          {[1, 2, 3, 4, 5].map((i) => {
-                            const ext = selectedClient as Client & Record<string, unknown>;
-                            const mName = ext[`mes${i}`] as string | undefined;
-                            const mAmount = ext[`monto${i}`] as number | undefined;
-                            if (!mName) return null;
-
-                            return (
-                              <div key={i} className="flex flex-col items-center justify-center rounded-lg border bg-card p-2 text-center shadow-sm">
-                                <span className="text-[10px] font-bold uppercase text-muted-foreground">
-                                  {mName.substring(0, 3)}
-                                </span>
-                                <span className="mt-1 text-sm font-bold text-blue-600">
-                                  {(mAmount || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </span>
-                                <span className="mt-0.5 text-[9px] text-muted-foreground">Soles</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                    {selectedClient.lastActivity && (
-                      <div className="flex items-center gap-3 pt-2 text-sm text-muted-foreground">
-                        <Clock className="size-4 shrink-0" />
-                        Última actividad: {formatDate(selectedClient.lastActivity)}
-                      </div>
-                    )}
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                      Asesor asignado
-                    </h4>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="size-9">
-                        <AvatarFallback className="bg-[#13944C]/10 text-xs text-[#13944C]">
-                          {getInitials(selectedClient.assignedToName)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="text-sm font-medium">{selectedClient.assignedToName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {selectedAssigneeUser?.username ??
-                            selectedAssigneeUser?.email ??
-                            '—'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {selectedClient.notes && (
-                    <>
-                      <Separator />
-                      <div className="space-y-3">
-                        <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                          Notas
-                        </h4>
-                        <div className="flex items-start gap-3">
-                          <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                          <p className="text-sm">{selectedClient.notes}</p>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </ScrollArea>
-            </>
-          )}
-        </SheetContent>
-      </Sheet>
     </div>
   );
 }

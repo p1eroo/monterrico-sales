@@ -15,9 +15,10 @@ export type ResolvedCalendarEventLinks = {
   opportunityTitle?: string;
 };
 
-export function companyHrefByIdOrName(id?: string, name?: string): string | null {
-  if (id) return companyDetailHref({ id });
-  if (name?.trim()) return `/empresas/${encodeURIComponent(name.trim())}`;
+export function companyHrefByIdOrName(id?: string, name?: string, urlSlug?: string): string | null {
+  if (id || urlSlug || name) {
+    return companyDetailHref({ id: id ?? '', urlSlug, name });
+  }
   return null;
 }
 
@@ -69,10 +70,12 @@ export function resolveCalendarEventLinks(event: CalendarEvent): ResolvedCalenda
 /** Rutas listas para `navigate()` a partir del evento del calendario. */
 export function getCalendarEventNavPaths(event: CalendarEvent): CalendarEventNavLinks {
   const resolved = resolveCalendarEventLinks(event);
-  const contactPath = resolved.contactId ? contactDetailHref({ id: resolved.contactId }) : null;
+  const contactPath = resolved.contactId
+    ? contactDetailHref({ id: resolved.contactId, name: resolved.contactName })
+    : null;
   const companyPath = companyHrefByIdOrName(resolved.companyId, resolved.companyName);
   const opportunityPath = resolved.opportunityId
-    ? opportunityDetailHref({ id: resolved.opportunityId })
+    ? opportunityDetailHref({ id: resolved.opportunityId, title: resolved.opportunityTitle })
     : null;
   return { ...resolved, contactPath, companyPath, opportunityPath };
 }
