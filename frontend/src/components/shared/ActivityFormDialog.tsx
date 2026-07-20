@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Phone, Users, Mail, MessageCircle, User, Building2, Briefcase } from 'lucide-react';
 import { toast } from '@/lib/notify';
-import type { ActivityType, ActivityStatus } from '@/types';
+import type { ActivityType, ActivityStatus, TaskAssociation } from '@/types';
 import { formatNowPeruTimeHHmm, formatTodayPeruYmd } from '@/lib/formatters';
 
 import { Badge } from '@/components/ui/badge';
@@ -63,7 +63,7 @@ interface TaskSummary {
   assignee: string;
   dueDate?: string;
   startTime?: string;
-  linkBadges?: { type: 'contacto' | 'empresa' | 'negocio'; name: string }[];
+  linkBadges?: Pick<TaskAssociation, 'type' | 'name'>[];
 }
 
 interface ActivityFormDialogProps {
@@ -176,7 +176,7 @@ export function ActivityFormDialog({
                   {taskSummary.linkBadges.map((row, idx) => (
                     <Badge key={`${row.type}-${idx}-${row.name}`} variant="secondary" className="gap-1 rounded-md border border-border/60 bg-muted/40 pr-1.5 text-xs">
                       {row.type === 'contacto' && <User className="size-3" />}
-                      {row.type === 'empresa' && <Building2 className="size-3" />}
+                      {(row.type === 'empresa' || row.type === 'cliente_empresa') && <Building2 className="size-3" />}
                       {row.type === 'negocio' && <Briefcase className="size-3" />}
                       <span className="max-w-[12rem] truncate">{row.name}</span>
                     </Badge>

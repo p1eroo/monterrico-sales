@@ -100,7 +100,7 @@ export function taskAssociationsFromEntityCtx(
 
 export function taskLinkBadgesFromActivity(
   a: Activity,
-): { type: 'contacto' | 'empresa' | 'negocio' | 'cliente_empresa'; name: string }[] {
+): Pick<TaskAssociation, 'type' | 'name'>[] {
   return taskAssociationsFromActivity(a).map((x) => ({ type: x.type, name: x.name }));
 }
 
