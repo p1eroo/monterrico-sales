@@ -154,7 +154,19 @@ const defaultInitialComments: TaskComment[] = [
 ];
 
 export interface TasksTabHandle {
-  addTask: (task: { id: string; title: string; status: string; type?: string; priority: string; company?: string; startDate?: string; dueDate: string; startTime?: string; assignee: string; associations?: { type: 'contacto' | 'empresa' | 'negocio'; id: string; name: string }[] }) => void;
+  addTask: (task: {
+    id: string;
+    title: string;
+    status: string;
+    type?: string;
+    priority: string;
+    company?: string;
+    startDate?: string;
+    dueDate: string;
+    startTime?: string;
+    assignee: string;
+    associations?: TaskAssociation[];
+  }) => void;
 }
 
 export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function TasksTab({
