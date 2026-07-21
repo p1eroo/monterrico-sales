@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { create } from 'zustand';
 import type { CrmConfigBundle } from '@/lib/crmConfigApi';
-import { companyRubroLabels, contactSourceLabels } from '@/data/mock';
+import { contactSourceLabels } from '@/data/mock';
 
 type CrmConfigState = {
   bundle: CrmConfigBundle | null;
@@ -41,27 +41,23 @@ export function getSourceLabelFromCatalog(
 export function getRubroLabelFromCatalog(
   slug: string,
   bundle: CrmConfigBundle | null,
-  fallback: Record<string, string> = companyRubroLabels,
 ): string {
   const r = bundle?.catalog.rubros.find((x) => x.slug === slug);
   if (r) return r.name;
-  return fallback[slug] ?? slug;
+  return slug;
 }
 
 /** Mapa slug → etiqueta para filtros (incluye rubros desactivados del catálogo). */
 export function getRubroLabelsMapFromCatalog(
   bundle: CrmConfigBundle | null,
-  fallback: Record<string, string> = companyRubroLabels,
 ): Record<string, string> {
   const fromCatalog = bundle?.catalog.rubros;
-  if (fromCatalog?.length) {
-    const map: Record<string, string> = {};
-    for (const r of [...fromCatalog].sort((a, b) => a.sortOrder - b.sortOrder)) {
-      map[r.slug] = r.name;
-    }
-    return map;
+  if (!fromCatalog?.length) return {};
+  const map: Record<string, string> = {};
+  for (const r of [...fromCatalog].sort((a, b) => a.sortOrder - b.sortOrder)) {
+    map[r.slug] = r.name;
   }
-  return { ...fallback };
+  return map;
 }
 
 /** Opciones de fuente para selects y filtros (catálogo CRM → fallback mock). */
@@ -80,17 +76,14 @@ export function getLeadSourceOptionsFromCatalog(
 
 export function getRubroOptionsFromCatalog(
   bundle: CrmConfigBundle | null,
-  fallback: Record<string, string> = companyRubroLabels,
   opts?: { includeDisabled?: boolean },
 ): RubroOption[] {
   const includeDisabled = opts?.includeDisabled ?? false;
   const fromCatalog = bundle?.catalog.rubros
-    .filter((x) => includeDisabled || x.enabled)
+    ?.filter((x) => includeDisabled || x.enabled)
     .sort((a, b) => a.sortOrder - b.sortOrder);
-  if (fromCatalog?.length) {
-    return fromCatalog.map((r) => ({ value: r.slug, label: r.name }));
-  }
-  return Object.entries(fallback).map(([value, label]) => ({ value, label }));
+  if (!fromCatalog?.length) return [];
+  return fromCatalog.map((r) => ({ value: r.slug, label: r.name }));
 }
 
 export function useLeadSourceOptions(
@@ -104,23 +97,20 @@ export function useLeadSourceOptions(
 }
 
 export function useRubroOptions(
-  fallback: Record<string, string> = companyRubroLabels,
   opts?: { includeDisabled?: boolean },
 ): RubroOption[] {
   const bundle = useCrmConfigStore((s) => s.bundle);
   return useMemo(
-    () => getRubroOptionsFromCatalog(bundle, fallback, opts),
-    [bundle, fallback, opts?.includeDisabled],
+    () => getRubroOptionsFromCatalog(bundle, opts),
+    [bundle, opts?.includeDisabled],
   );
 }
 
-export function useRubroLabelsMap(
-  fallback: Record<string, string> = companyRubroLabels,
-): Record<string, string> {
+export function useRubroLabelsMap(): Record<string, string> {
   const bundle = useCrmConfigStore((s) => s.bundle);
   return useMemo(
-    () => getRubroLabelsMapFromCatalog(bundle, fallback),
-    [bundle, fallback],
+    () => getRubroLabelsMapFromCatalog(bundle),
+    [bundle],
   );
 }
 
@@ -138,12 +128,11 @@ export function useSourceLabel(
 
 export function useRubroLabel(
   slug: string | null | undefined,
-  fallback: Record<string, string> = companyRubroLabels,
 ): string {
   const bundle = useCrmConfigStore((s) => s.bundle);
   return useMemo(() => {
     const s = slug?.trim();
     if (!s) return '—';
-    return getRubroLabelFromCatalog(s, bundle, fallback);
-  }, [slug, bundle, fallback]);
+    return getRubroLabelFromCatalog(s, bundle);
+  }, [slug, bundle]);
 }

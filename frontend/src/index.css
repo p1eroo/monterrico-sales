@@ -366,6 +366,19 @@
         margin: 0 !important;
         align-self: flex-start;
         flex-shrink: 0;
+        position: relative;
+    }
+
+    /* Sonner centra .sonner-loader en todo el toast; mantenerlo en la columna del icono */
+    [data-sonner-toast] [data-icon] .sonner-loader {
+        position: static !important;
+        top: auto !important;
+        left: auto !important;
+        transform: none !important;
+    }
+
+    [data-sonner-toast] [data-icon] .sonner-loader[data-visible='false'] {
+        transform: none !important;
     }
 
     [data-sonner-toast] .crm-toast__icon-badge {

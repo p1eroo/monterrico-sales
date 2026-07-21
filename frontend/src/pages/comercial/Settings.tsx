@@ -768,28 +768,31 @@ export default function Settings() {
 
   async function saveLeadSources() {
     if (!canEdit) return;
+    toast.loading('Guardando fuentes…', { id: 'settings-save-lead-sources' });
     try {
       const b = await putCrmLeadSources(leadSources);
       setBundle(b);
-      toast.success('Fuentes guardadas');
+      toast.success('Fuentes guardadas', { id: 'settings-save-lead-sources' });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al guardar fuentes');
+      toast.error(e instanceof Error ? e.message : 'Error al guardar fuentes', { id: 'settings-save-lead-sources' });
     }
   }
 
   async function saveRubros() {
     if (!canEdit) return;
+    toast.loading('Guardando rubros…', { id: 'settings-save-rubros' });
     try {
       const b = await putCrmRubros(rubros);
       setBundle(b);
-      toast.success('Rubros guardados');
+      toast.success('Rubros guardados', { id: 'settings-save-rubros' });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al guardar rubros');
+      toast.error(e instanceof Error ? e.message : 'Error al guardar rubros', { id: 'settings-save-rubros' });
     }
   }
 
   async function savePipeline() {
     if (!canEdit) return;
+    toast.loading('Guardando etapas…', { id: 'settings-save-pipeline' });
     try {
       const b = await putCrmStages(
         pipelineStages.map((s) => ({
@@ -802,31 +805,33 @@ export default function Settings() {
         })),
       );
       setBundle(b);
-      toast.success('Etapas guardadas');
+      toast.success('Etapas guardadas', { id: 'settings-save-pipeline' });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al guardar etapas');
+      toast.error(e instanceof Error ? e.message : 'Error al guardar etapas', { id: 'settings-save-pipeline' });
     }
   }
 
   async function savePriorities() {
     if (!canEdit) return;
+    toast.loading('Guardando prioridades…', { id: 'settings-save-priorities' });
     try {
       const b = await putCrmPriorities(priorities);
       setBundle(b);
-      toast.success('Prioridades guardadas');
+      toast.success('Prioridades guardadas', { id: 'settings-save-priorities' });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al guardar prioridades');
+      toast.error(e instanceof Error ? e.message : 'Error al guardar prioridades', { id: 'settings-save-priorities' });
     }
   }
 
   async function saveActivityTypes() {
     if (!canEdit) return;
+    toast.loading('Guardando tipos de actividad…', { id: 'settings-save-activity-types' });
     try {
       const b = await putCrmActivityTypes(activityTypes);
       setBundle(b);
-      toast.success('Tipos de actividad guardados');
+      toast.success('Tipos de actividad guardados', { id: 'settings-save-activity-types' });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al guardar');
+      toast.error(e instanceof Error ? e.message : 'Error al guardar', { id: 'settings-save-activity-types' });
     }
   }
 

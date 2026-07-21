@@ -206,26 +206,6 @@ export const contactSourceLabels: Record<string, string> = {
   apollo: 'Apollo',
 };
 
-export const companyRubroLabels: Record<string, string> = {
-  energia_mineria: 'Energía y Minería',
-  pesquero_industrial: 'Pesquero e Industrial',
-  logistica_comercio_exterior: 'Logística y Comercio Exterior',
-  construccion_infraestructura: 'Construcción e Infraestructura',
-  manufactura_alimentos_bebidas: 'Manufactura y Alimentos/Bebidas',
-  retail_centros_comerciales: 'Retail y Centros Comerciales',
-  farmaceutico_cosmetico: 'Farmacéutico y Cosmético',
-  agroindustria: 'Agroindustria',
-  tecnologia_telecomunicaciones: 'Tecnología y Telecomunicaciones',
-  servicios_financieros_seguros: 'Servicios Financieros y Seguros',
-  consultorias_auditoras: 'Consultorías y Auditoras',
-  educacion_privada_universidades: 'Educación Privada y Universidades',
-  salud_clinicas_privadas: 'Salud y Clínicas Privadas',
-  horeca: 'HORECA',
-  startups_ecommerce: 'Startups y E-commerce',
-  ongs_organismos_internacionales: 'ONGs y Organismos Internacionales',
-  licitaciones_estado: 'Licitaciones con el estado',
-};
-
 export const companyTipoLabels: Record<string, string> = {
   A: 'A',
   B: 'B',
