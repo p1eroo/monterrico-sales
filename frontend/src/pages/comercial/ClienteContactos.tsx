@@ -34,6 +34,7 @@ import { contactSourceLabels, etapaLabels } from '@/data/mock';
 import { getSourceLabelFromCatalog, useCrmConfigStore, useLeadSourceOptions } from '@/store/crmConfigStore';
 import { formatDateShort } from '@/lib/formatters';
 import {
+  comercialFilterIconClass,
   comercialProPopoverClass,
   comercialProCommandClass,
   dateRangeToQueryBounds,
@@ -658,7 +659,7 @@ export default function ClienteContactos() {
                     : 'text-[#8a9aab] dark:text-gray-400',
                 )}
               >
-                <ChartSquareIcon className="size-4 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+                <ChartSquareIcon className={comercialFilterIconClass} />
                 <span className="flex-1 truncate">
                   {formatInclusiveMultiFilterLabel(
                     etapaFilter,
@@ -796,7 +797,7 @@ export default function ClienteContactos() {
                             : 'text-[#8a9aab] dark:text-gray-400',
                         )}
                       >
-                        <PaletteIcon className="size-4 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+                        <PaletteIcon className={comercialFilterIconClass} />
                         <span className="flex-1 truncate">
                           {formatInclusiveMultiSourceFilterLabel(
                             sourceFilter,

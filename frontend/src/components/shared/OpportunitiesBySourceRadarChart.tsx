@@ -4,7 +4,7 @@ import type { ApexOptions } from 'apexcharts';
 import { cn } from '@/lib/utils';
 import { GOALS_ROW_CHART_MIN_HEIGHT } from '@/components/shared/GoalGroupedBarChart';
 
-const PIE_COLORS = ['#00A76F', '#FFD666', '#006C9C', '#FF5630', '#8b5cf6', '#06b6d4'];
+const PIE_COLORS = ['#1DB954', '#2ECC87', '#064E31', '#52D68A', '#0E6B40', '#7AD9AE'];
 const PIE_CHART_HEIGHT = 300;
 const MAX_SLICES = 5;
 

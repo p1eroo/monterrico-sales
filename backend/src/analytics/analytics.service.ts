@@ -359,9 +359,10 @@ function taskKindKeyFromRaw(
 }
 
 const COMPANY_WEEKLY_CHART_WEEKS = 6;
+/** Tope de semanas en gráficos semanales (empresas, actividades, tareas) cuando el rango es largo. */
+const WEEKLY_CHART_MAX_WEEKS = 20;
 const SOURCES_WEEKLY_CHART_WEEKS = 6;
 const SOURCES_DETAIL_WEEKLY_COUNT = 5;
-const ACTIVITIES_HEATMAP_WEEK_COUNT = 6;
 const ADVISOR_FUNNEL_MOVEMENT_WEEK_OFFSETS = [1, 3, 5, 7] as const;
 const UNASSIGNED_ADVISOR_ID = '__unassigned__';
 const UNASSIGNED_SOURCE_SLUG = '__sin_fuente__';
@@ -475,6 +476,34 @@ const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 function addLimaWeeks(monday: Date, weeks: number): Date {
   return new Date(monday.getTime() + weeks * WEEK_MS);
+}
+
+type WeekTarget = {
+  name: string;
+  weekStart: Date;
+  weekEnd: Date;
+};
+
+/** Semanas ISO (Lima) dentro del rango del filtro. Si hay más que `maxWeeks`, toma las más recientes. */
+function weekTargetsForChartRange(
+  from: Date,
+  to: Date,
+  maxWeeks: number = WEEKLY_CHART_MAX_WEEKS,
+): WeekTarget[] {
+  const targets: WeekTarget[] = [];
+  let weekStart = startOfWeekMondayLima(from);
+  while (weekStart <= to) {
+    targets.push({
+      name: formatIsoWeekLabel(isoWeekNumberLima(weekStart)),
+      weekStart,
+      weekEnd: minInstant(endOfWeekSundayLima(weekStart), to),
+    });
+    weekStart = addLimaWeeks(weekStart, 1);
+  }
+  if (targets.length > maxWeeks) {
+    return targets.slice(-maxWeeks);
+  }
+  return targets;
 }
 
 function monthRangeLima(ym: string): { start: Date; end: Date } {
@@ -3025,29 +3054,20 @@ export class AnalyticsService {
 
   /**
    * Actividades de interacción completadas por tipo y semana ISO (Lima),
-   * últimas {@link ACTIVITIES_HEATMAP_WEEK_COUNT} semanas. Respeta filtro de asesor.
+   * dentro del rango del filtro de fechas. Respeta filtro de asesor.
    */
   private async buildActivitiesByTypeWeekly(
-    referenceTo: Date,
+    from: Date,
+    to: Date,
     filters: AnalyticsScopeFilters,
     unrestricted: boolean,
   ): Promise<ActivitiesByTypeWeeklySnapshot> {
-    const anchorMonday = startOfWeekMondayLima(referenceTo);
-    const weekTargets = Array.from({ length: ACTIVITIES_HEATMAP_WEEK_COUNT }, (_, i) => {
-      const offset = ACTIVITIES_HEATMAP_WEEK_COUNT - 1 - i;
-      const monday = addLimaWeeks(anchorMonday, -offset);
-      return {
-        name: formatIsoWeekLabel(isoWeekNumberLima(monday)),
-        weekStart: monday,
-        weekEnd: minInstant(endOfWeekSundayLima(monday), referenceTo),
-      };
-    });
+    const weekTargets = weekTargetsForChartRange(from, to);
 
-    const rangeStart = weekTargets[0]?.weekStart ?? anchorMonday;
     const acts = await this.prisma.activity.findMany({
       where: this.activityWhereForAnalytics(
         {
-          completedAt: { gte: rangeStart, lte: referenceTo },
+          completedAt: { gte: from, lte: to },
         },
         filters,
         unrestricted,
@@ -3119,31 +3139,21 @@ export class AnalyticsService {
   }
 
   /**
-   * Actividades completadas por asesor y tipo, últimas
-   * {@link ACTIVITIES_HEATMAP_WEEK_COUNT} semanas ISO (Lima).
+   * Actividades completadas por asesor y tipo, dentro del rango del filtro (Lima).
    */
   private async buildActivitiesByAdvisorWeekly(
-    referenceTo: Date,
+    from: Date,
+    to: Date,
     filters: AnalyticsScopeFilters,
     unrestricted: boolean,
     userRows: { id: string; name: string }[],
   ): Promise<ActivitiesByAdvisorWeeklySnapshot> {
-    const anchorMonday = startOfWeekMondayLima(referenceTo);
-    const weekTargets = Array.from({ length: ACTIVITIES_HEATMAP_WEEK_COUNT }, (_, i) => {
-      const offset = ACTIVITIES_HEATMAP_WEEK_COUNT - 1 - i;
-      const monday = addLimaWeeks(anchorMonday, -offset);
-      return {
-        name: formatIsoWeekLabel(isoWeekNumberLima(monday)),
-        weekStart: monday,
-        weekEnd: minInstant(endOfWeekSundayLima(monday), referenceTo),
-      };
-    });
+    const weekTargets = weekTargetsForChartRange(from, to);
 
-    const rangeStart = weekTargets[0]?.weekStart ?? anchorMonday;
     const acts = await this.prisma.activity.findMany({
       where: this.activityWhereForAnalytics(
         {
-          completedAt: { gte: rangeStart, lte: referenceTo },
+          completedAt: { gte: from, lte: to },
         },
         filters,
         unrestricted,
@@ -3273,30 +3283,21 @@ export class AnalyticsService {
 
   /**
    * Tareas completadas por tipo (taskKind) y semana ISO (Lima),
-   * últimas {@link ACTIVITIES_HEATMAP_WEEK_COUNT} semanas.
+   * dentro del rango del filtro de fechas.
    */
   private async buildTasksByKindWeekly(
-    referenceTo: Date,
+    from: Date,
+    to: Date,
     filters: AnalyticsScopeFilters,
     unrestricted: boolean,
   ): Promise<TasksByKindWeeklySnapshot> {
-    const anchorMonday = startOfWeekMondayLima(referenceTo);
-    const weekTargets = Array.from({ length: ACTIVITIES_HEATMAP_WEEK_COUNT }, (_, i) => {
-      const offset = ACTIVITIES_HEATMAP_WEEK_COUNT - 1 - i;
-      const monday = addLimaWeeks(anchorMonday, -offset);
-      return {
-        name: formatIsoWeekLabel(isoWeekNumberLima(monday)),
-        weekStart: monday,
-        weekEnd: minInstant(endOfWeekSundayLima(monday), referenceTo),
-      };
-    });
+    const weekTargets = weekTargetsForChartRange(from, to);
 
-    const rangeStart = weekTargets[0]?.weekStart ?? anchorMonday;
     const tasks = await this.prisma.activity.findMany({
       where: this.activityWhereForAnalytics(
         {
           ...TASK_ACTIVITY_FILTER,
-          completedAt: { gte: rangeStart, lte: referenceTo },
+          completedAt: { gte: from, lte: to },
         },
         filters,
         unrestricted,
@@ -3363,32 +3364,22 @@ export class AnalyticsService {
   }
 
   /**
-   * Tareas completadas por asesor y tipo, últimas
-   * {@link ACTIVITIES_HEATMAP_WEEK_COUNT} semanas ISO (Lima).
+   * Tareas completadas por asesor y tipo, dentro del rango del filtro (Lima).
    */
   private async buildTasksByAdvisorWeekly(
-    referenceTo: Date,
+    from: Date,
+    to: Date,
     filters: AnalyticsScopeFilters,
     unrestricted: boolean,
     userRows: { id: string; name: string }[],
   ): Promise<TasksByAdvisorWeeklySnapshot> {
-    const anchorMonday = startOfWeekMondayLima(referenceTo);
-    const weekTargets = Array.from({ length: ACTIVITIES_HEATMAP_WEEK_COUNT }, (_, i) => {
-      const offset = ACTIVITIES_HEATMAP_WEEK_COUNT - 1 - i;
-      const monday = addLimaWeeks(anchorMonday, -offset);
-      return {
-        name: formatIsoWeekLabel(isoWeekNumberLima(monday)),
-        weekStart: monday,
-        weekEnd: minInstant(endOfWeekSundayLima(monday), referenceTo),
-      };
-    });
+    const weekTargets = weekTargetsForChartRange(from, to);
 
-    const rangeStart = weekTargets[0]?.weekStart ?? anchorMonday;
     const tasks = await this.prisma.activity.findMany({
       where: this.activityWhereForAnalytics(
         {
           ...TASK_ACTIVITY_FILTER,
-          completedAt: { gte: rangeStart, lte: referenceTo },
+          completedAt: { gte: from, lte: to },
         },
         filters,
         unrestricted,
@@ -3880,6 +3871,7 @@ export class AnalyticsService {
       where: (() => {
         const w: Prisma.OpportunityWhereInput = {
           createdAt: { gte: from, lte: to },
+          etapa: activeStageEtapaFilter,
         };
         applyAdvisorFilter(w, filters);
         return w;
@@ -4063,10 +4055,13 @@ export class AnalyticsService {
       ...activitiesByTypeMonth[ym],
     }));
 
-    /** Oportunidades abiertas por etapa (conteo + suma de montos) */
+    /** Oportunidades abiertas por etapa (10%–100%), conteo + suma de montos */
     const oppsByStage = await this.prisma.opportunity.groupBy({
       by: ['etapa'],
-      where: this.opportunityWhereOpen(filters, unrestricted, from, to),
+      where: {
+        ...this.opportunityWhereOpen(filters, unrestricted, from, to),
+        etapa: activeStageEtapaFilter,
+      },
       _count: { id: true },
       _sum: { amount: true },
     });
@@ -4187,10 +4182,10 @@ export class AnalyticsService {
         unrestricted,
         opts.crmScope,
       ),
-      this.buildActivitiesByTypeWeekly(to, filters, unrestricted),
-      this.buildActivitiesByAdvisorWeekly(to, filters, unrestricted, userRows),
-      this.buildTasksByKindWeekly(to, filters, unrestricted),
-      this.buildTasksByAdvisorWeekly(to, filters, unrestricted, userRows),
+      this.buildActivitiesByTypeWeekly(from, to, filters, unrestricted),
+      this.buildActivitiesByAdvisorWeekly(from, to, filters, unrestricted, userRows),
+      this.buildTasksByKindWeekly(from, to, filters, unrestricted),
+      this.buildTasksByAdvisorWeekly(from, to, filters, unrestricted, userRows),
     ]);
 
     const sourcesDetail: SourcesDetailSnapshot = sourcesDetailWeekly.weeks[0]

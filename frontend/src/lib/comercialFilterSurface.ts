@@ -17,6 +17,14 @@ export const comercialFilterActionClass = cn(
   comercialCardSurfaceClass,
 );
 
+/** Icono izquierdo en botones de filtro estándar (!h-10). Solo tamaño y color del SVG. */
+export const comercialFilterIconClass =
+  'size-5 shrink-0 text-[#72808f] dark:text-gray-500';
+
+/** Icono izquierdo en botones de filtro altos (!h-12). */
+export const comercialFilterIconLgClass =
+  'size-6 shrink-0 text-[#72808f] dark:text-gray-500';
+
 /** Popovers de filtros / columnas / switcher: look pro (gradiente, sombra, radio amplio). */
 export const comercialProPopoverClass = cn(
   'overflow-hidden rounded-2xl border border-border/60 p-0',

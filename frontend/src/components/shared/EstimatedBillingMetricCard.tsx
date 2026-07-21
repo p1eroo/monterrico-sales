@@ -1,4 +1,6 @@
-import { TrendingDown, TrendingUp, Maximize2 } from 'lucide-react';
+import { TrendingDown, TrendingUp } from 'lucide-react';
+import { SquareBottomUpSvgIcon } from '@/components/icons/SquareBottomUpSvgIcon';
+import { chartExpandIconClass } from '@/components/shared/ChartExpandToggleIcon';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -52,7 +54,7 @@ export function EstimatedBillingMetricCard({
   return (
     <Card className={cn('min-h-[320px]', className)}>
       <CardContent className="flex min-h-[320px] flex-col p-5">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex min-h-8 items-center justify-between gap-2">
           <p className="text-sm font-semibold text-[#0f172a] dark:text-gray-100">
             Facturación estimada total
           </p>
@@ -65,7 +67,7 @@ export function EstimatedBillingMetricCard({
             disabled={maximizeDisabled || isEmpty}
             aria-label="Ampliar facturación estimada"
           >
-            <Maximize2 className="h-4 w-4" />
+            <SquareBottomUpSvgIcon className={chartExpandIconClass} />
           </Button>
         </div>
 

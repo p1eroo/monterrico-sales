@@ -14,6 +14,7 @@ import {
 import { PaletteIcon } from '@/components/icons/PaletteIcon';
 import { MultiCheckboxFilterActions } from '@/components/shared/MultiCheckboxFilterActions';
 import {
+  comercialFilterIconLgClass,
   comercialProCommandClass,
   comercialProPopoverClass,
   INCLUSIVE_MULTI_NONE,
@@ -62,7 +63,7 @@ export function MultiSourceFilter({
             className,
           )}
         >
-          <PaletteIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+          <PaletteIcon className={comercialFilterIconLgClass} />
           <span className="truncate flex-1">{label}</span>
           <ChevronDown className="size-3.5 shrink-0 opacity-50" />
         </button>

@@ -12,9 +12,10 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command';
-import { UserHandIcon } from '@/components/icons/UserHandIcon';
+import { UsersGroupRoundedSvgIcon } from '@/components/icons/UsersGroupRoundedSvgIcon';
 import { MultiCheckboxFilterActions } from '@/components/shared/MultiCheckboxFilterActions';
 import {
+  comercialFilterIconClass,
   comercialProCommandClass,
   comercialProPopoverClass,
 } from '@/lib/comercialFilterSurface';
@@ -57,11 +58,15 @@ export function MultiAdvisorFilter({
   className,
   onInteraction,
 }: MultiAdvisorFilterProps) {
-  const label = !isActive
-    ? 'Asesor'
-    : value.length === 0
-      ? 'Ninguno'
-      : value.map((id) => optionLabel(id, advisors)).join(', ');
+  const showsOwnPortfolio = disabled && value.length === 1;
+
+  const label = showsOwnPortfolio
+    ? optionLabel(value[0]!, advisors)
+    : !isActive
+      ? 'Asesor'
+      : value.length === 0
+        ? 'Ninguno'
+        : value.map((id) => optionLabel(id, advisors)).join(', ');
 
   const toggle = (id: string) => {
     onChange(
@@ -104,13 +109,13 @@ export function MultiAdvisorFilter({
           disabled={disabled}
           className={cn(
             '!h-10 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-[13px] hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate disabled:opacity-50 disabled:cursor-not-allowed',
-            isActive
+            isActive || showsOwnPortfolio
               ? 'text-black dark:text-gray-100'
               : 'text-[#8a9aab] dark:text-gray-400',
             className,
           )}
         >
-          <UserHandIcon className="size-4 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+          <UsersGroupRoundedSvgIcon className={comercialFilterIconClass} />
           <span className="truncate flex-1">{label}</span>
           <ChevronDown className="size-3.5 shrink-0 opacity-50" />
         </button>

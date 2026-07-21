@@ -54,7 +54,7 @@ import {
   comercialTableSelectColumnSizing,
   comercialTableCheckboxWrapClass,
 } from '@/lib/comercialTableLayout';
-import { comercialProPopoverClass, comercialProCommandClass } from '@/lib/comercialFilterSurface';
+import { comercialFilterIconClass, comercialProPopoverClass, comercialProCommandClass } from '@/lib/comercialFilterSurface';
 import { usePermissions } from '@/hooks/usePermissions';
 import {
   refreshClienteEmpresas,
@@ -527,7 +527,7 @@ export default function ClienteEmpresas() {
                     : 'text-[#8a9aab] dark:text-gray-400',
                 )}
               >
-                <ChartSquareIcon className="size-4 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+                <ChartSquareIcon className={comercialFilterIconClass} />
                 <span className="flex-1 truncate">{statusFilterLabel}</span>
                 <ChevronDown className="size-3.5 shrink-0 opacity-50" />
               </button>

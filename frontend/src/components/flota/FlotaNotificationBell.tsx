@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
-import { MessageCircle, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { topbarActionButtonClass } from '@/lib/topbarIconStyles';
+import { ChatRoundLineSvgIcon } from '@/components/icons/ChatRoundLineSvgIcon';
 import { API_BASE } from '@/lib/api';
 import { fetchUnreadSummary, CHATWOOT_MESSAGE_TYPE } from '@/lib/chatwootApi';
 import { CHATWOOT_UNREAD_CHANGED } from '@/lib/chatwootUnreadEvents';
@@ -86,14 +89,14 @@ export default function FlotaNotificationBell() {
       <Button
         variant="ghost"
         size="icon"
-        className="relative"
+        className={cn('relative', topbarActionButtonClass)}
         title="Mensajes Chatwoot"
         onClick={() => setPanelOpen(true)}
       >
         {loading ? (
-          <Loader2 className="size-4 animate-spin" />
+          <Loader2 className="size-7 animate-spin" />
         ) : (
-          <MessageCircle className="size-4" />
+          <ChatRoundLineSvgIcon className="size-7" />
         )}
         {unreadCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">

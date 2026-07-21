@@ -109,7 +109,7 @@ import { UserHandUpIcon } from "@/components/icons/UserHandUpIcon";
 import { ChangeEtapaDialog } from "@/components/shared/ChangeEtapaDialog";
 import { AssignDialog } from "@/components/shared/AssignDialog";
 import { cn } from "@/lib/utils";
-import { comercialProPopoverClass, comercialProCommandClass } from "@/lib/comercialFilterSurface";
+import { comercialFilterIconClass, comercialFilterIconLgClass, comercialProPopoverClass, comercialProCommandClass } from "@/lib/comercialFilterSurface";
 import { formatCurrencyShort, formatDateShortLocal } from "@/lib/formatters";
 import type { ActivityType } from "@/types";
 
@@ -570,7 +570,7 @@ const OpportunityCard = memo(function OpportunityCard({
             </p>
           )}
           <div className="inline-flex items-center gap-1 rounded-md border border-[#d0d5dd]/50 dark:border-gray-600/50 bg-white/60 dark:bg-gray-800/60 px-2 py-0.5 text-[13px] text-muted-foreground">
-            <UserHandUpIcon className="size-3.5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+            <UserHandUpIcon className={comercialFilterIconClass} />
             <span className="truncate">
               {(opportunity.assignedToName ?? "").split(" ")[0] || "—"}
             </span>
@@ -1586,7 +1586,7 @@ export default function Pipeline() {
             <button
               className={`!h-11 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${filters.etapas.length > 0 ? "text-black dark:text-gray-100" : "text-[#8a9aab] dark:text-gray-400"}`}
             >
-              <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+              <ChartSquareIcon className={comercialFilterIconLgClass} />
               <span className="truncate flex-1">
                 {filters.etapas.length === 0
                   ? "Etapa"

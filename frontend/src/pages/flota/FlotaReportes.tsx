@@ -8,7 +8,6 @@ import {
   AlertTriangle,
   Hash,
   CheckCircle2,
-  Maximize2,
   XCircle,
 } from "lucide-react";
 import {
@@ -42,6 +41,8 @@ import {
 } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { MultiOperadorFilter } from "@/components/shared/MultiOperadorFilter";
+import { SquareBottomUpSvgIcon } from '@/components/icons/SquareBottomUpSvgIcon';
+import { chartExpandIconClass, chartCardHeaderClass } from '@/components/shared/ChartExpandToggleIcon';
 import { DateRangeFilterButton } from "@/components/ui/date-range-filter-button";
 import { PdfSvgIcon } from "@/components/icons/PdfSvgIcon";
 import { XlsSvgIcon } from "@/components/icons/XlsSvgIcon";
@@ -928,7 +929,7 @@ export default function FlotaReportes() {
             isActive={operadorFilterActive}
             isInitialized={operadorFilterInitialized}
             className={cn(
-              "!h-12 w-full min-[400px]:w-[190px] sm:w-[190px]",
+              "!h-10 !text-[13px] w-full min-[400px]:w-[190px] sm:w-[190px] [&_svg]:!size-4",
               comercialFilterSurfaceClass,
             )}
           />
@@ -960,7 +961,7 @@ export default function FlotaReportes() {
         {/* Conversión & Nuevos Conductores */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card id="chart-conversion">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 px-5 pt-4 pb-1">
+            <CardHeader className={cn(chartCardHeaderClass, 'px-5 pt-4 pb-1')}>
               <div className="min-w-0 space-y-1">
                 <CardTitle className="text-base font-medium">Conversión</CardTitle>
                 <p className="text-xs text-muted-foreground capitalize">
@@ -978,7 +979,7 @@ export default function FlotaReportes() {
                 }
                 aria-label="Ampliar conversión"
               >
-                <Maximize2 className="h-4 w-4" />
+                <SquareBottomUpSvgIcon className={chartExpandIconClass} />
               </Button>
             </CardHeader>
             <CardContent>
@@ -998,7 +999,7 @@ export default function FlotaReportes() {
           </Card>
 
           <Card id="chart-operador">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 px-5 pt-4 pb-1">
+            <CardHeader className={cn(chartCardHeaderClass, 'px-5 pt-4 pb-1')}>
               <div className="min-w-0 space-y-1">
                 <CardTitle className="text-base font-medium">
                   Actividad por Operador
@@ -1018,7 +1019,7 @@ export default function FlotaReportes() {
                 }
                 aria-label="Ampliar actividad por operador"
               >
-                <Maximize2 className="h-4 w-4" />
+                <SquareBottomUpSvgIcon className={chartExpandIconClass} />
               </Button>
             </CardHeader>
             <CardContent>
@@ -1041,7 +1042,7 @@ export default function FlotaReportes() {
         {/* Row 1: Fuente & Zona */}
         <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
           <Card id="chart-fuente" className="h-full w-full">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 px-5 pt-4 pb-1">
+            <CardHeader className={cn(chartCardHeaderClass, 'px-5 pt-4 pb-1')}>
               <div className="min-w-0 space-y-1">
                 <CardTitle className="text-base font-medium">
                   Prospectos por Fuente
@@ -1061,7 +1062,7 @@ export default function FlotaReportes() {
                 }
                 aria-label="Ampliar prospectos por fuente"
               >
-                <Maximize2 className="h-4 w-4" />
+                <SquareBottomUpSvgIcon className={chartExpandIconClass} />
               </Button>
             </CardHeader>
             <CardContent className="px-5 pb-4 pt-0">
@@ -1081,7 +1082,7 @@ export default function FlotaReportes() {
           </Card>
 
           <Card id="chart-zona" className="h-full w-full">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 px-5 pt-4 pb-1">
+            <CardHeader className={cn(chartCardHeaderClass, 'px-5 pt-4 pb-1')}>
               <div className="min-w-0 space-y-1">
                 <CardTitle className="text-base font-medium">Prospectos por Distrito</CardTitle>
                 <p className="text-xs text-muted-foreground">
@@ -1097,7 +1098,7 @@ export default function FlotaReportes() {
                 disabled={loadingProspectos || !prospectosByZonaModalHasData}
                 aria-label="Ampliar prospectos por zona"
               >
-                <Maximize2 className="h-4 w-4" />
+                <SquareBottomUpSvgIcon className={chartExpandIconClass} />
               </Button>
             </CardHeader>
             <CardContent className="px-5 pb-4 pt-0">
@@ -1145,7 +1146,7 @@ export default function FlotaReportes() {
                     disabled={loadingConductores || filteredWeeklyData.length === 0}
                     aria-label="Ampliar nuevos conductores"
                   >
-                    <Maximize2 className="h-4 w-4" />
+                    <SquareBottomUpSvgIcon className={chartExpandIconClass} />
                   </Button>
                 </div>
               </div>
@@ -1191,7 +1192,7 @@ export default function FlotaReportes() {
                     disabled={loadingSunatReal || sunatChartData.length === 0}
                     aria-label="Ampliar SUNAT"
                   >
-                    <Maximize2 className="h-4 w-4" />
+                    <SquareBottomUpSvgIcon className={chartExpandIconClass} />
                   </Button>
                 </div>
               </div>
@@ -1319,6 +1320,7 @@ export default function FlotaReportes() {
         <DialogContent
           className="flex max-h-[min(calc(100dvh-1.5rem),900px)] w-full max-w-[min(100vw-1rem,56rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(100vw-2rem,56rem)]"
           showCloseButton
+          closeButtonIcon="chart-reduce"
         >
           <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
             <DialogTitle className="pr-8 text-base">
@@ -1343,6 +1345,7 @@ export default function FlotaReportes() {
         <DialogContent
           className="flex max-h-[min(calc(100dvh-1.5rem),900px)] w-full max-w-[min(100vw-1rem,56rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(100vw-2rem,56rem)]"
           showCloseButton
+          closeButtonIcon="chart-reduce"
         >
           <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
             <DialogTitle className="pr-8 text-base">
@@ -1364,6 +1367,7 @@ export default function FlotaReportes() {
         <DialogContent
           className="flex max-h-[min(calc(100dvh-1.5rem),900px)] w-full max-w-[min(100vw-1rem,56rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(100vw-2rem,56rem)]"
           showCloseButton
+          closeButtonIcon="chart-reduce"
         >
           <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
             <DialogTitle className="pr-8 text-base">
@@ -1410,6 +1414,7 @@ export default function FlotaReportes() {
         <DialogContent
           className="flex max-h-[min(calc(100dvh-1.5rem),900px)] w-full max-w-[min(100vw-1rem,56rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(100vw-2rem,56rem)]"
           showCloseButton
+          closeButtonIcon="chart-reduce"
         >
           <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
             <DialogTitle className="pr-8 text-base">
@@ -1465,6 +1470,7 @@ export default function FlotaReportes() {
         <DialogContent
           className="flex max-h-[min(calc(100dvh-1.5rem),960px)] w-full max-w-[min(100vw-1rem,80rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(100vw-2rem,80rem)]"
           showCloseButton
+          closeButtonIcon="chart-reduce"
         >
           <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
             <DialogTitle className="pr-8 text-base">
@@ -1554,6 +1560,7 @@ export default function FlotaReportes() {
         <DialogContent
           className="flex max-h-[min(calc(100dvh-1.5rem),900px)] w-full max-w-[min(100vw-1rem,56rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(100vw-2rem,56rem)]"
           showCloseButton
+          closeButtonIcon="chart-reduce"
         >
           <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
             <DialogTitle className="pr-8 text-base">

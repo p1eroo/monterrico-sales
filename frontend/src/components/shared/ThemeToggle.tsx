@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { SunSvgIcon } from '@/components/icons/SunSvgIcon';
-import { MoonStarsSvgIcon } from '@/components/icons/MoonStarsSvgIcon';
+import { topbarActionButtonClass } from '@/lib/topbarIconStyles';
+import { SunFogSvgIcon } from '@/components/icons/SunFogSvgIcon';
+import { MoonFogSvgIcon } from '@/components/icons/MoonFogSvgIcon';
 
 export function ThemeToggle() {
   const { setTheme, resolvedTheme } = useTheme();
@@ -20,15 +21,13 @@ export function ThemeToggle() {
       variant="ghost"
       size="icon"
       onClick={toggle}
-      className={cn(
-        'text-muted-foreground hover:text-[#13944C]'
-      )}
+      className={cn(topbarActionButtonClass)}
       aria-label="Cambiar tema"
     >
       {mounted && resolvedTheme === 'dark' ? (
-        <SunSvgIcon className="size-8" />
+        <MoonFogSvgIcon className="size-8" />
       ) : (
-        <MoonStarsSvgIcon className="size-8" />
+        <SunFogSvgIcon className="size-8" />
       )}
     </Button>
   );

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { NotificationBingSvgIcon } from '@/components/icons/NotificationBingSvgIcon';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { topbarActionButtonClass } from '@/lib/topbarIconStyles';
 import { NotificationDropdown } from './NotificationDropdown';
 import { NotificationDrawer, type DrawerView } from './NotificationDrawer';
 import { useNotificationStore } from '@/store/notificationStore';
@@ -35,9 +37,9 @@ export function NotificationCenter() {
     <Button
       variant="ghost"
       size="icon"
-      className="relative hover:text-[#13944C]"
+      className={cn('relative', topbarActionButtonClass)}
     >
-      <NotificationBingSvgIcon className="size-8" />
+      <NotificationBingSvgIcon className="size-[30px]" />
       {unreadCount > 0 && (
         <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-[#13944C] text-[10px] font-bold text-white">
           {unreadCount > 9 ? '9+' : unreadCount}

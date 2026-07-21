@@ -43,6 +43,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { topbarActionButtonClassName } from '@/lib/topbarIconStyles';
 import { buildAssistantContext } from '@/lib/assistantContext';
 import {
   createAiConversation,
@@ -1033,11 +1034,7 @@ export function AssistantLauncherButton({
           type="button"
           variant="ghost"
           size="icon"
-          className={cn(
-            'text-[#0d9488] hover:text-[#0f766e]',
-            isOpen && 'text-[#0f766e]',
-            className,
-          )}
+          className={topbarActionButtonClassName(isOpen, className)}
           onClick={() => {
             if (isOpen) {
               setOpen(false);

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { UserPlus, Briefcase, Calendar, BarChart3, Users, Shield, Settings,
-  FileSearch, Bot, Car, UserCheck, ArrowRightLeft, MessageCircle, Search, ChevronDown,
+import { UserPlus, Briefcase, Users, Shield, Settings,
+  FileSearch, Bot, ArrowRightLeft, Search, ChevronDown,
 } from 'lucide-react';
 import type { PermissionKey } from '@/types';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -42,6 +42,8 @@ import { ChatSquare2SvgIcon } from '@/components/icons/ChatSquare2SvgIcon';
 import { SsdSquareSvgIcon } from '@/components/icons/SsdSquareSvgIcon';
 import { CpuSvgIcon } from '@/components/icons/CpuSvgIcon';
 import { Widget5SvgIcon } from '@/components/icons/Widget5SvgIcon';
+import { WheelSvgIcon } from '@/components/icons/WheelSvgIcon';
+import { ChatUnreadSvgIcon } from '@/components/icons/ChatUnreadSvgIcon';
 import { SettingsSvgIcon } from '@/components/icons/SettingsSvgIcon';
 import { PaletteRoundSvgIcon } from '@/components/icons/PaletteRoundSvgIcon';
 import { SquareDoubleAltArrowLeftSvgIcon } from '@/components/icons/SquareDoubleAltArrowLeftSvgIcon';
@@ -109,11 +111,11 @@ function navItemVisible(
 
 const navItemsFlota: NavDef[] = [
   { to: '/flota/dashboard', label: 'Dashboard', icon: DashboardSvgIcon, permission: 'flota_dashboard.ver' },
-  { to: '/flota/prospectos', label: 'Prospectos', icon: UserCheck, permission: 'flota_prospectos.ver' },
-  { to: '/flota/conductores', label: 'Conductores', icon: Car, permission: 'flota_conductores.ver' },
-  { to: '/flota/calendario', label: 'Calendario', icon: Calendar, permission: 'flota_prospectos.ver' },
-  { to: '/flota/reportes', label: 'Reportes', icon: BarChart3, permission: 'flota_reportes.ver' },
-  { to: '/flota/mensajes', label: 'Mensajes', icon: MessageCircle, permission: 'flota_mensajes.ver' },
+  { to: '/flota/prospectos', label: 'Prospectos', icon: UsersGroupTwoRoundedSvgIcon, permission: 'flota_prospectos.ver' },
+  { to: '/flota/conductores', label: 'Conductores', icon: WheelSvgIcon, permission: 'flota_conductores.ver' },
+  { to: '/flota/calendario', label: 'Calendario', icon: CalendarSvgIcon, permission: 'flota_prospectos.ver' },
+  { to: '/flota/reportes', label: 'Reportes', icon: Widget5SvgIcon, permission: 'flota_reportes.ver' },
+  { to: '/flota/mensajes', label: 'Mensajes', icon: ChatUnreadSvgIcon, permission: 'flota_mensajes.ver' },
 ];
 
 const navItemsAdmin: NavDef[] = [

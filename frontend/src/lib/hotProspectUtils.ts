@@ -7,14 +7,15 @@ export type HotProspectSparkline = {
   variant?: 'bar' | 'area';
 };
 
+/** Verdes medios: ni muy oscuros ni muy claros. */
 const SPARKLINE_STYLES: Record<
   'total' | 'pipeline' | 'cierre' | 'activos',
   Pick<HotProspectSparkline, 'color' | 'variant'>
 > = {
-  total: { color: '#f97316', variant: 'area' },
-  pipeline: { color: '#ef4444', variant: 'area' },
-  cierre: { color: '#22c55e', variant: 'bar' },
-  activos: { color: '#15803d', variant: 'bar' },
+  total: { color: '#2ECC87', variant: 'area' },
+  pipeline: { color: '#1DB954', variant: 'area' },
+  cierre: { color: '#52D68A', variant: 'bar' },
+  activos: { color: '#22B573', variant: 'bar' },
 };
 
 export function mapHotProspectsSparklines(

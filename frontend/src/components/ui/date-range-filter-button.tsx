@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarSvgIcon } from '@/components/icons/CalendarSvgIcon';
 import {
+  comercialFilterIconClass,
   comercialProPopoverClass,
 } from '@/lib/comercialFilterSurface';
 import {
@@ -112,7 +113,7 @@ export function DateRangeFilterButton({
             className,
           )}
         >
-          <CalendarSvgIcon className="size-4 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+          <CalendarSvgIcon className={cn(comercialFilterIconClass, '-translate-y-px')} />
           <span className="min-w-0 flex-1 truncate">
             {displayText || placeholder}
           </span>

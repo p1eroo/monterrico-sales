@@ -4,6 +4,7 @@ import { UpArrowSvgIcon } from '@/components/icons/UpArrowSvgIcon';
 import { DownArrowSvgIcon } from '@/components/icons/DownArrowSvgIcon';
 import { MetricBarSparkline } from '@/components/shared/MetricBarSparkline';
 import { MetricLineSparkline } from '@/components/shared/MetricLineSparkline';
+import { ChartInfoTooltip } from '@/components/shared/ChartInfoTooltip';
 import { cn } from '@/lib/utils';
 
 interface MetricCardProps {
@@ -17,6 +18,7 @@ interface MetricCardProps {
   sparklineVariant?: 'bar' | 'line';
   sparklineLoading?: boolean;
   description?: string;
+  info?: string;
   loading?: boolean;
 }
 
@@ -31,6 +33,7 @@ export function MetricCard({
   sparklineVariant = 'bar',
   sparklineLoading,
   description,
+  info,
   loading,
 }: MetricCardProps) {
   if (loading) {
@@ -55,7 +58,10 @@ export function MetricCard({
       <CardContent className="px-5 py-5">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0 flex-1 space-y-4">
-            <p className="text-sm font-medium text-muted-foreground">{title}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-medium text-muted-foreground">{title}</p>
+              {info ? <ChartInfoTooltip description={info} /> : null}
+            </div>
             <p className="text-3xl font-bold tracking-tight">{value}</p>
             <div className="flex min-h-5 flex-wrap items-center gap-1.5 text-sm">
               {change ? (

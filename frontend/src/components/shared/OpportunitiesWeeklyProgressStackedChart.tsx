@@ -14,11 +14,12 @@ export type WeeklyOpportunityProgressPoint = {
 
 export type WeeklyPortfolioProgressPoint = WeeklyOpportunityProgressPoint;
 
+/** Tonos verdes medios para las 4 series del avance semanal. */
 const SERIES_COLORS = {
-  avance: '#13944C',
-  nuevoIngreso: '#34d399',
-  atraso: '#f59e0b',
-  sinCambios: '#94a3b8',
+  avance: '#22B573',
+  nuevoIngreso: '#2ECC87',
+  atraso: '#1DB954',
+  sinCambios: '#CBD5E1',
 } as const;
 
 import { formatIsoWeekLabel, parseIsoWeekNumberFromLabel } from '@/lib/crmTimezone';

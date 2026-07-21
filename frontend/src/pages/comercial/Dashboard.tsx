@@ -2,23 +2,11 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 
 import { subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
-import {
-  Percent,
-  UserPlus,
-  AlertTriangle,
-  DollarSign,
-  Phone,
-  Mail,
-  Clock,
-  FileText,
-  MessageSquare,
-  CalendarDays,
-  Maximize2,
-} from 'lucide-react';
+import { SquareBottomUpSvgIcon } from '@/components/icons/SquareBottomUpSvgIcon';
+import { chartExpandIconClass, chartCardHeaderClass } from '@/components/shared/ChartExpandToggleIcon';
 import { toast } from '@/lib/notify';
 import { buildOpportunitiesStageFunnelStages } from '@/lib/companyStageFunnelData';
-import { AdvisorPerformanceBarChart } from '@/components/shared/AdvisorPerformanceBarChart';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -34,17 +22,20 @@ import {
   comercialFilterSurfaceClass,
 } from '@/lib/comercialFilterSurface';
 import { MetricCard } from '@/components/shared/MetricCard';
-import { StatusBadge } from '@/components/shared/StatusBadge';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { contactSourceLabels } from '@/data/mock';
-import type { Contact } from '@/types';
-import { contactListAll, mapApiContactRowToContact } from '@/lib/contactApi';
 import { FunnelChart, type FunnelStage } from '@/components/crm/FunnelChart';
 import { GoalsStatisticsCard } from '@/components/shared/GoalsStatisticsCard';
 import { OpportunitiesBySourceRadarCard } from '@/components/shared/OpportunitiesBySourceRadarCard';
-import { formatCurrency, formatDateShort } from '@/lib/formatters';
+import { formatCurrency } from '@/lib/formatters';
 import { usePermissions } from '@/hooks/usePermissions';
+import {
+  ADVISOR_OTHERS,
+  ADVISOR_UNASSIGNED,
+  useMultiAdvisorFilter,
+} from '@/hooks/useMultiAdvisorFilter';
+import { MultiAdvisorFilter } from '@/components/shared/MultiAdvisorFilter';
 import {
   fetchAnalyticsSummary,
   fetchAnalyticsKPIs,
@@ -58,16 +49,28 @@ import {
   type ReportsExportInput,
 } from '@/lib/reportsExport';
 import { useCrmConfigStore, getStageLabelFromCatalog, getSourceLabelFromCatalog } from '@/store/crmConfigStore';
+import { OpportunitiesWeeklyProgressStackedChart } from '@/components/shared/OpportunitiesWeeklyProgressStackedChart';
+import {
+  buildCompaniesWeeklyProgressChartData,
+  companiesWeeklyProgressChartHasData,
+} from '@/lib/companiesWeeklyProgressChartUtils';
+import { ActivitiesByTypeWeeklyStackedChart } from '@/components/shared/ActivitiesByTypeWeeklyStackedChart';
+import {
+  buildActivitiesByTypeHeatmapData,
+  activitiesByTypeHeatmapHasData,
+} from '@/lib/activitiesByTypeHeatmapUtils';
+import { TasksByKindWeeklyStackedChart } from '@/components/shared/TasksByKindWeeklyStackedChart';
+import {
+  buildTasksByKindHeatmapData,
+  tasksByKindHeatmapHasData,
+} from '@/lib/tasksByKindHeatmapUtils';
 import { ChartCardBody } from '@/components/shared/ChartCardBody';
+import { ChartCardTitle } from '@/components/shared/ChartCardTitle';
 import { chartHasAnyValue } from '@/lib/chartEmpty';
-
-const activityIconMap: Record<string, typeof Phone> = {
-  llamada: Phone,
-  correo: Mail,
-  reunion: CalendarDays,
-  tarea: FileText,
-  whatsapp: MessageSquare,
-};
+import {
+  dashboardChartDescriptions,
+  dashboardKpiDescriptions,
+} from '@/lib/dashboardChartDescriptions';
 
 function changeTone(s: string): 'positive' | 'negative' | 'neutral' {
   const t = s.trim();
@@ -79,31 +82,27 @@ function changeTone(s: string): 'positive' | 'negative' | 'neutral' {
 export default function Dashboard() {
   const { hasPermission } = usePermissions();
   const bundle = useCrmConfigStore((s) => s.bundle);
+  const {
+    selectedIds: advisorFilter,
+    setSelectedIds: setAdvisorFilter,
+    canSeeAllAdvisors,
+    activeAdvisors,
+    isInitialized: advisorFilterInitialized,
+    isActive: advisorFilterIsActive,
+    queryParams: advisorListParams,
+  } = useMultiAdvisorFilter();
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfMonth(subMonths(new Date(), 1)),
     to: endOfMonth(new Date()),
   });
-  const [contacts, setContacts] = useState<Contact[]>([]);
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [kpis, setKpis] = useState<AnalyticsKPIs | null>(null);
   const [kpisLoading, setKpisLoading] = useState(false);
   const [funnelChartModalOpen, setFunnelChartModalOpen] = useState(false);
-  const [advisorChartModalOpen, setAdvisorChartModalOpen] = useState(false);
-
-  useEffect(() => {
-    let c = true;
-    void contactListAll()
-      .then((rows) => {
-        if (c) setContacts(rows.map(mapApiContactRowToContact));
-      })
-      .catch(() => {
-        if (c) setContacts([]);
-      });
-    return () => {
-      c = false;
-    };
-  }, []);
+  const [weeklyCompaniesModalOpen, setWeeklyCompaniesModalOpen] = useState(false);
+  const [activitiesChartModalOpen, setActivitiesChartModalOpen] = useState(false);
+  const [tasksChartModalOpen, setTasksChartModalOpen] = useState(false);
 
   useEffect(() => {
     if (!dateRange?.from || !dateRange?.to) {
@@ -117,7 +116,14 @@ export default function Dashboard() {
 
     // Cargar KPIs primero (rápido)
     setKpisLoading(true);
-    void fetchAnalyticsKPIs({ from, to, area: 'comercial' })
+    void fetchAnalyticsKPIs({
+      from,
+      to,
+      assignedTo: advisorListParams.assignedTo,
+      excludeAssignedTo: advisorListParams.excludeAssignedTo,
+      advisorPool: advisorListParams.advisorPool,
+      area: 'comercial',
+    })
       .then((data) => {
         if (!cancelled) setKpis(data);
       })
@@ -130,7 +136,14 @@ export default function Dashboard() {
 
     // Cargar charts después (más pesado)
     setSummaryLoading(true);
-    void fetchAnalyticsSummary({ from, to, area: 'comercial' })
+    void fetchAnalyticsSummary({
+      from,
+      to,
+      assignedTo: advisorListParams.assignedTo,
+      excludeAssignedTo: advisorListParams.excludeAssignedTo,
+      advisorPool: advisorListParams.advisorPool,
+      area: 'comercial',
+    })
       .then((data) => {
         if (!cancelled) setSummary(data);
       })
@@ -144,20 +157,13 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
-
-  const latestContacts = useMemo(() => {
-    return [...contacts]
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      )
-      .slice(0, 5);
-  }, [contacts]);
-
-  const pendingActivities = useMemo(() => {
-    return (summary?.pendingActivities ?? []).slice(0, 5);
-  }, [summary]);
+  }, [
+    dateRange?.from?.getTime(),
+    dateRange?.to?.getTime(),
+    advisorListParams.assignedTo,
+    advisorListParams.excludeAssignedTo,
+    advisorListParams.advisorPool,
+  ]);
 
   const contactsSparkline = useMemo(
     () => summary?.contactsWeekly.map((x) => x.value) ?? [],
@@ -239,9 +245,52 @@ export default function Dashboard() {
   const funnelChartEmpty =
     !summaryLoading &&
     (!summary || !chartHasAnyValue(funnelData, ['value']));
-  const advisorChartEmpty =
+
+  const weeklyCompaniesChartData = useMemo(
+    () => buildCompaniesWeeklyProgressChartData(summary),
+    [summary],
+  );
+  const weeklyCompaniesChartEmpty =
     !summaryLoading &&
-    (!summary || !chartHasAnyValue(performanceByAdvisor, ['oportunidades', 'contactos', 'empresas']));
+    (!summary || !companiesWeeklyProgressChartHasData(weeklyCompaniesChartData));
+
+  const activitiesByTypeHeatmap = useMemo(
+    () => buildActivitiesByTypeHeatmapData(summary?.activitiesByTypeWeekly),
+    [summary?.activitiesByTypeWeekly],
+  );
+  const activitiesChartEmpty =
+    !summaryLoading &&
+    (!summary || !activitiesByTypeHeatmapHasData(activitiesByTypeHeatmap));
+
+  const tasksByKindHeatmap = useMemo(
+    () => buildTasksByKindHeatmapData(summary?.tasksByKindWeekly),
+    [summary?.tasksByKindWeekly],
+  );
+  const tasksChartEmpty =
+    !summaryLoading &&
+    (!summary || !tasksByKindHeatmapHasData(tasksByKindHeatmap));
+
+  const weeklyChartHeight = 420;
+
+  const advisorExportLabel = useMemo(() => {
+    if (!canSeeAllAdvisors) {
+      return activeAdvisors.find((u) => u.id === advisorFilter[0])?.name ?? 'Mi cartera';
+    }
+    if (!advisorFilterIsActive) return 'Todos los asesores';
+    if (advisorFilter.length === 0) return 'Sin asesores seleccionados';
+    return advisorFilter
+      .map((id) => {
+        if (id === ADVISOR_UNASSIGNED) return 'Sin asignar';
+        if (id === ADVISOR_OTHERS) return 'Otros';
+        return activeAdvisors.find((u) => u.id === id)?.name ?? id;
+      })
+      .join(', ');
+  }, [
+    canSeeAllAdvisors,
+    advisorFilterIsActive,
+    advisorFilter,
+    activeAdvisors,
+  ]);
 
   const handleExport = useCallback(
     (format: 'PDF' | 'Excel') => {
@@ -253,7 +302,7 @@ export default function Dashboard() {
         documentTitle: 'Resumen dashboard',
         range: summary.range,
         meta: {
-          advisorLabel: 'Todos los asesores',
+          advisorLabel: advisorExportLabel,
           sourceLabel: 'Todas las fuentes',
         },
         kpis: summary.kpis,
@@ -276,6 +325,7 @@ export default function Dashboard() {
     [
       summaryLoading,
       summary,
+      advisorExportLabel,
       contactsVsOpportunitiesData,
       leadsBySourceData,
       conversionData,
@@ -302,6 +352,15 @@ export default function Dashboard() {
             onChange={setDateRange}
             placeholder="Seleccionar periodo"
             className={cn('w-full min-[400px]:w-[260px] sm:w-[260px]', comercialFilterSurfaceClass)}
+          />
+          <MultiAdvisorFilter
+            value={advisorFilter}
+            onChange={setAdvisorFilter}
+            advisors={activeAdvisors}
+            disabled={!canSeeAllAdvisors}
+            isActive={advisorFilterIsActive}
+            isInitialized={advisorFilterInitialized}
+            className={cn('!h-10 w-full min-[400px]:w-[190px] sm:w-[190px]', comercialFilterSurfaceClass)}
           />
         </div>
         {hasPermission('dashboard.exportar') && (
@@ -332,6 +391,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <MetricCard
           title="Total Contactos"
+          info={dashboardKpiDescriptions.totalContacts}
           value={kpis?.totalContacts ?? '—'}
           change={kpis ? kpis.changes.contacts : undefined}
           changeType={kpis ? changeTone(kpis.changes.contacts) : 'neutral'}
@@ -344,25 +404,27 @@ export default function Dashboard() {
         />
         <MetricCard
           title="Oportunidades Activas"
+          info={dashboardKpiDescriptions.activeOpportunities}
           value={kpis?.activeOpportunities ?? '—'}
           change={kpis ? kpis.changes.opportunities : undefined}
           changeType={kpis ? changeTone(kpis.changes.opportunities) : 'neutral'}
           description="últimos 7 días"
           sparklineData={opportunitiesSparkline}
           sparklineLabels={opportunitiesSparklineLabels}
-          sparklineColor="#06b6d4"
+          sparklineColor="#2ECC87"
           sparklineLoading={summaryLoading}
           loading={kpisLoading}
         />
         <MetricCard
           title="Ventas Cerradas"
+          info={dashboardKpiDescriptions.closedSales}
           value={kpis ? formatCurrency(kpis.closedSalesAmount) : '—'}
           change={kpis ? kpis.changes.sales : undefined}
           changeType={kpis ? changeTone(kpis.changes.sales) : 'neutral'}
           description="últimos 7 días"
           sparklineData={salesSparkline}
           sparklineLabels={salesSparklineLabels}
-          sparklineColor="#f97316"
+          sparklineColor="#1DB954"
           sparklineLoading={summaryLoading}
           loading={kpisLoading}
         />
@@ -377,7 +439,10 @@ export default function Dashboard() {
           {opportunitiesBySourceEmpty && !summaryLoading ? (
             <Card className="relative flex h-full w-full flex-col overflow-hidden py-0">
               <CardHeader className="shrink-0 pb-2">
-                <CardTitle className="text-base font-medium">Oportunidades por fuente</CardTitle>
+                <ChartCardTitle
+                  title="Oportunidades por fuente"
+                  info={dashboardChartDescriptions.opportunitiesBySource}
+                />
               </CardHeader>
               <CardContent className="flex min-h-0 flex-1 flex-col items-center justify-center pb-4 pt-0 text-sm text-muted-foreground">
                 Sin oportunidades por fuente en este periodo.
@@ -392,12 +457,14 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Funnel + Rendimiento */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[45fr_55fr]">
-        {/* Funnel de Ventas */}
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 pb-2 max-md:pb-1.5">
-            <CardTitle className="text-base font-medium">Funnel de Ventas</CardTitle>
+      {/* Funnel + Empresas */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[45fr_55fr] lg:items-stretch">
+        <Card className="flex h-full flex-col">
+          <CardHeader className={cn(chartCardHeaderClass, 'pb-2 max-md:pb-1.5')}>
+            <ChartCardTitle
+              title="Funnel de Ventas"
+              info={dashboardChartDescriptions.salesFunnel}
+            />
             <Button
               type="button"
               variant="ghost"
@@ -407,54 +474,136 @@ export default function Dashboard() {
               disabled={summaryLoading || funnelChartEmpty}
               aria-label="Ampliar funnel de ventas"
             >
-              <Maximize2 className="h-4 w-4" />
+              <SquareBottomUpSvgIcon className={chartExpandIconClass} />
             </Button>
           </CardHeader>
-          <CardContent className="max-md:px-3 max-md:pb-2 max-md:pt-0">
+          <CardContent className="flex flex-1 flex-col max-md:px-3 max-md:pb-2 max-md:pt-0">
             <ChartCardBody
               loading={summaryLoading}
               isEmpty={funnelChartEmpty}
               variant="bar"
               emptyMessage="Sin datos de embudo en este periodo."
-              className="min-h-[min(56vh,460px)] py-3 max-md:min-h-0 max-md:py-1"
+              chartHeight={weeklyChartHeight}
+              className="flex-1 py-3 max-md:py-1"
             >
-              <FunnelChart stages={funnelStages} height={420} singularLabel="oportunidad" />
+              <FunnelChart stages={funnelStages} height={weeklyChartHeight} singularLabel="oportunidad" />
             </ChartCardBody>
           </CardContent>
         </Card>
 
-        {/* Rendimiento por Asesor */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-base font-medium">Rendimiento por Asesor</CardTitle>
+        <Card className="flex h-full flex-col">
+          <CardHeader className={cn(chartCardHeaderClass, 'px-5 pb-0 pt-5')}>
+            <ChartCardTitle
+              title="Empresas"
+              info={dashboardChartDescriptions.companies}
+            />
             <Button
               type="button"
               variant="ghost"
               size="icon"
               className="h-8 w-8 shrink-0 text-muted-foreground"
-              onClick={() => setAdvisorChartModalOpen(true)}
-              disabled={summaryLoading || advisorChartEmpty}
-              aria-label="Ampliar gráfico de rendimiento por asesor"
+              onClick={() => setWeeklyCompaniesModalOpen(true)}
+              disabled={summaryLoading || weeklyCompaniesChartEmpty}
+              aria-label="Ampliar empresas"
             >
-              <Maximize2 className="h-4 w-4" />
+              <SquareBottomUpSvgIcon className={chartExpandIconClass} />
             </Button>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-1 flex-col px-5 pt-4 pb-5">
             <ChartCardBody
               loading={summaryLoading}
-              isEmpty={advisorChartEmpty}
-              variant="bar"
-              emptyMessage="Sin rendimiento por asesor en este periodo."
-              className="h-[min(52vh,420px)] py-3"
+              isEmpty={weeklyCompaniesChartEmpty || weeklyCompaniesChartData.length === 0}
+              variant="stackedBar"
+              emptyMessage="No hay datos de empresas en este periodo."
+              chartHeight={weeklyChartHeight}
+              className="flex-1"
             >
-              <AdvisorPerformanceBarChart data={performanceByAdvisor} height={400} />
+              <OpportunitiesWeeklyProgressStackedChart
+                data={weeklyCompaniesChartData}
+                height={weeklyChartHeight}
+              />
+            </ChartCardBody>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Actividades + Tareas */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch">
+        <Card className="flex h-full flex-col">
+          <CardHeader className={cn(chartCardHeaderClass, 'px-5 pb-0 pt-5')}>
+            <ChartCardTitle
+              title="Actividades"
+              info={dashboardChartDescriptions.activities}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-muted-foreground"
+              onClick={() => setActivitiesChartModalOpen(true)}
+              disabled={summaryLoading || activitiesChartEmpty}
+              aria-label="Ampliar actividades"
+            >
+              <SquareBottomUpSvgIcon className={chartExpandIconClass} />
+            </Button>
+          </CardHeader>
+          <CardContent className="flex flex-1 flex-col px-5 pt-2 pb-5">
+            <ChartCardBody
+              loading={summaryLoading}
+              isEmpty={activitiesChartEmpty}
+              variant="stackedBar"
+              emptyMessage="Sin actividades registradas en las últimas 6 semanas."
+              chartHeight={weeklyChartHeight}
+              className="flex-1"
+            >
+              <ActivitiesByTypeWeeklyStackedChart
+                data={activitiesByTypeHeatmap}
+                scopeLabel="Equipo completo"
+                chartHeight={weeklyChartHeight}
+              />
+            </ChartCardBody>
+          </CardContent>
+        </Card>
+
+        <Card className="flex h-full flex-col">
+          <CardHeader className={cn(chartCardHeaderClass, 'px-5 pb-0 pt-5')}>
+            <ChartCardTitle
+              title="Tareas"
+              info={dashboardChartDescriptions.tasks}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-muted-foreground"
+              onClick={() => setTasksChartModalOpen(true)}
+              disabled={summaryLoading || tasksChartEmpty}
+              aria-label="Ampliar tareas"
+            >
+              <SquareBottomUpSvgIcon className={chartExpandIconClass} />
+            </Button>
+          </CardHeader>
+          <CardContent className="flex flex-1 flex-col px-5 pt-2 pb-5">
+            <ChartCardBody
+              loading={summaryLoading}
+              isEmpty={tasksChartEmpty}
+              variant="stackedBar"
+              emptyMessage="Sin tareas registradas en las últimas 6 semanas."
+              chartHeight={weeklyChartHeight}
+              className="flex-1"
+            >
+              <TasksByKindWeeklyStackedChart
+                data={tasksByKindHeatmap}
+                scopeLabel="Equipo completo"
+                chartHeight={weeklyChartHeight}
+              />
             </ChartCardBody>
           </CardContent>
         </Card>
       </div>
 
       <Dialog open={funnelChartModalOpen} onOpenChange={setFunnelChartModalOpen}>
-        <DialogContent className={dashboardChartModalClass} showCloseButton>
+        <DialogContent className={dashboardChartModalClass} showCloseButton closeButtonIcon="chart-reduce">
           <DialogHeader className="px-6 pt-6 pb-0">
             <DialogTitle className="text-base">Funnel de Ventas</DialogTitle>
           </DialogHeader>
@@ -471,108 +620,55 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={advisorChartModalOpen} onOpenChange={setAdvisorChartModalOpen}>
-        <DialogContent className={dashboardChartModalClass} showCloseButton>
+      <Dialog open={weeklyCompaniesModalOpen} onOpenChange={setWeeklyCompaniesModalOpen}>
+        <DialogContent className={dashboardChartModalClass} showCloseButton closeButtonIcon="chart-reduce">
           <DialogHeader className="px-6 pt-6 pb-0">
-            <DialogTitle className="text-base">Rendimiento por Asesor</DialogTitle>
+            <DialogTitle className="text-base">Empresas</DialogTitle>
           </DialogHeader>
           <div className="w-full px-6 pb-6 pt-4">
-            {!advisorChartEmpty ? (
-              <AdvisorPerformanceBarChart data={performanceByAdvisor} height={520} />
+            {!weeklyCompaniesChartEmpty ? (
+              <OpportunitiesWeeklyProgressStackedChart
+                data={weeklyCompaniesChartData}
+                height={520}
+              />
             ) : null}
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Bottom Sections */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Últimos Contactos */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base font-medium">Últimos Contactos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {latestContacts.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">
-                  Aún no hay contactos registrados.
-                </p>
-              ) : null}
-              {latestContacts.map((contact) => (
-                <div
-                  key={contact.id}
-                  className="flex items-center justify-between rounded-lg border border-border/40 bg-card/30 p-3"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{contact.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {contact.companies?.find((c) => c.isPrimary)?.name ?? contact.companies?.[0]?.name ?? '—'}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-3 pl-4">
-                    <StatusBadge status={contact.etapa} />
-                    <span className="text-xs text-muted-foreground">
-                      {formatDateShort(contact.createdAt)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      <Dialog open={activitiesChartModalOpen} onOpenChange={setActivitiesChartModalOpen}>
+        <DialogContent className={dashboardChartModalClass} showCloseButton closeButtonIcon="chart-reduce">
+          <DialogHeader className="px-6 pt-6 pb-0">
+            <DialogTitle className="text-base">Actividades</DialogTitle>
+          </DialogHeader>
+          <div className="w-full px-6 pb-6 pt-4">
+            {!activitiesChartEmpty ? (
+              <ActivitiesByTypeWeeklyStackedChart
+                data={activitiesByTypeHeatmap}
+                scopeLabel="Equipo completo"
+                chartHeight={520}
+              />
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
 
-        {/* Tareas pendientes / vencidas */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base font-medium">Tareas pendientes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {!summaryLoading && pendingActivities.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">
-                  No hay tareas pendientes.
-                </p>
-              ) : null}
-              {pendingActivities.map((activity) => {
-                const t = (
-                  activity.taskKind ?? activity.type ?? ''
-                ).toLowerCase();
-                const IconComp = activityIconMap[t] ?? Clock;
-                return (
-                  <div
-                    key={activity.id}
-                    className="flex items-start gap-3 rounded-lg border border-border/40 bg-card/30 p-3"
-                  >
-                    <div className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg ${
-                      activity.status === 'vencida'
-                        ? 'bg-red-100 text-red-600'
-                        : 'bg-emerald-100 text-emerald-600'
-                    }`}>
-                      <IconComp className="size-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="truncate text-sm font-medium">
-                          {activity.title}
-                        </p>
-                        {activity.status === 'vencida' && (
-                          <StatusBadge status="vencida" />
-                        )}
-                      </div>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {activity.contactName}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {formatDateShort(activity.dueDate)}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Dialog open={tasksChartModalOpen} onOpenChange={setTasksChartModalOpen}>
+        <DialogContent className={dashboardChartModalClass} showCloseButton closeButtonIcon="chart-reduce">
+          <DialogHeader className="px-6 pt-6 pb-0">
+            <DialogTitle className="text-base">Tareas</DialogTitle>
+          </DialogHeader>
+          <div className="w-full px-6 pb-6 pt-4">
+            {!tasksChartEmpty ? (
+              <TasksByKindWeeklyStackedChart
+                data={tasksByKindHeatmap}
+                scopeLabel="Equipo completo"
+                chartHeight={520}
+              />
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

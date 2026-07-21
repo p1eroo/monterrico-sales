@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -17,6 +17,10 @@ import {
 } from '@/components/shared/GoalGroupedBarChart';
 import { useAnalyticsGoalStore } from '@/store/analyticsGoalStore';
 import { usePermissions } from '@/hooks/usePermissions';
+import { ChartCardTitle } from '@/components/shared/ChartCardTitle';
+import { chartCardHeaderClass } from '@/components/shared/ChartExpandToggleIcon';
+import { dashboardChartDescriptions } from '@/lib/dashboardChartDescriptions';
+import { cn } from '@/lib/utils';
 
 type GoalPeriodView = 'week' | 'month';
 
@@ -72,8 +76,15 @@ export function GoalsStatisticsCard() {
 
   return (
     <Card className="relative flex h-full w-full flex-col overflow-hidden py-0">
-      <CardHeader className="flex shrink-0 flex-row items-start justify-between space-y-0 pb-2">
-        <CardTitle className="text-base font-medium">{title}</CardTitle>
+      <CardHeader className={cn(chartCardHeaderClass, 'shrink-0 pb-2')}>
+        <ChartCardTitle
+          title={title}
+          info={
+            showTeam
+              ? dashboardChartDescriptions.teamGoals
+              : dashboardChartDescriptions.myGoals
+          }
+        />
         <Select value={period} onValueChange={(v) => setPeriod(v as GoalPeriodView)}>
           <SelectTrigger
             size="sm"

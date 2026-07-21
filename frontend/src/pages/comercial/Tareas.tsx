@@ -71,7 +71,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { comercialProPopoverClass, comercialProCommandClass } from '@/lib/comercialFilterSurface';
+import { comercialFilterIconLgClass, comercialProPopoverClass, comercialProCommandClass } from '@/lib/comercialFilterSurface';
 import {
   activityTypeIconCircleClass,
   ACTIVITY_ICON_INHERIT,
@@ -672,7 +672,7 @@ export default function TareasPage() {
                   <Popover>
                     <PopoverTrigger asChild>
                       <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${statusFilter !== 'todos' ? 'text-black' : 'text-[#8a9aab] dark:text-gray-400'}`}>
-                        <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+                        <ChartSquareIcon className={comercialFilterIconLgClass} />
                         <span className="truncate flex-1">
                           {statusFilter === 'todos'
                             ? 'Estado'
@@ -707,7 +707,7 @@ export default function TareasPage() {
                   <Popover>
                     <PopoverTrigger asChild>
                       <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${priorityFilter !== 'todas' ? 'text-black' : 'text-[#8a9aab] dark:text-gray-400'}`}>
-                        <ChartSquareIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+                        <ChartSquareIcon className={comercialFilterIconLgClass} />
                         <span className="truncate flex-1">
                           {priorityFilter === 'todas'
                             ? 'Prioridad'
@@ -742,7 +742,7 @@ export default function TareasPage() {
                   <Popover>
                     <PopoverTrigger asChild>
                       <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate disabled:opacity-50 disabled:cursor-not-allowed ${advisorFilter !== 'todos' ? 'text-black' : 'text-[#8a9aab] dark:text-gray-400'}`} disabled={!canSeeAllAdvisors}>
-                        <UserCircle className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+                        <UserCircle className={comercialFilterIconLgClass} />
                         <span className="truncate flex-1">
                           {advisorFilter === 'todos'
                             ? 'Asesor'

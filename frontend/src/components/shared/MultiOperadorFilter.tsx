@@ -11,9 +11,10 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { UserHandIcon } from '@/components/icons/UserHandIcon';
+import { UsersGroupRoundedSvgIcon } from '@/components/icons/UsersGroupRoundedSvgIcon';
 import { MultiCheckboxFilterActions } from '@/components/shared/MultiCheckboxFilterActions';
 import {
+  comercialFilterIconLgClass,
   comercialProCommandClass,
   comercialProPopoverClass,
 } from '@/lib/comercialFilterSurface';
@@ -68,7 +69,7 @@ export function MultiOperadorFilter({
             className,
           )}
         >
-          <UserHandIcon className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+          <UsersGroupRoundedSvgIcon className={comercialFilterIconLgClass} />
           <span className="min-w-0 flex-1 truncate">{label}</span>
           <ChevronDown className="size-3.5 shrink-0 opacity-50" />
         </button>

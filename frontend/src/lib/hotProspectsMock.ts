@@ -13,22 +13,22 @@ export const MOCK_HOT_PROSPECTS_SPARKLINES: Record<
 > = {
   total: {
     data: [28, 31, 33, 35, 38, 40, 42],
-    color: '#f97316',
+    color: '#2ECC87',
     variant: 'area',
   },
   pipeline: {
     data: [820, 910, 980, 1050, 1120, 1180, 1245],
-    color: '#ef4444',
+    color: '#1DB954',
     variant: 'area',
   },
   cierre: {
     data: [4, 5, 5, 6, 7, 7, 8],
-    color: '#22c55e',
+    color: '#52D68A',
     variant: 'bar',
   },
   activos: {
     data: [5, 6, 6, 7, 8, 8, 9],
-    color: '#15803d',
+    color: '#22B573',
     variant: 'bar',
   },
 };

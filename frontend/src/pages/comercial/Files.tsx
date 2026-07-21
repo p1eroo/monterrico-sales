@@ -53,6 +53,8 @@ import {
   type FilesSortKey,
 } from '@/lib/fileUtils';
 import {
+  comercialFilterIconClass,
+  comercialFilterIconLgClass,
   comercialProCommandClass,
   comercialProPopoverClass,
 } from '@/lib/comercialFilterSurface';
@@ -247,7 +249,7 @@ export default function FilesPage() {
                 type="button"
                 className={filterBtnClass(typeFilter !== 'all')}
               >
-                <FileType2 className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+                <FileType2 className={comercialFilterIconLgClass} />
                 <span className="truncate flex-1">{typeFilterLabel}</span>
                 <ChevronDown className="size-3.5 shrink-0 opacity-50" />
               </button>
@@ -283,7 +285,7 @@ export default function FilesPage() {
                 type="button"
                 className={filterBtnClass(entityFilter !== 'all')}
               >
-                <Building2 className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+                <Building2 className={comercialFilterIconLgClass} />
                 <span className="truncate flex-1">{entityFilterLabel}</span>
                 <ChevronDown className="size-3.5 shrink-0 opacity-50" />
               </button>
@@ -330,7 +332,7 @@ export default function FilesPage() {
                 type="button"
                 className={filterBtnClass(userFilter !== 'all')}
               >
-                <UserCircle className="size-5 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+                <UserCircle className={comercialFilterIconLgClass} />
                 <span className="truncate flex-1">{userFilterLabel}</span>
                 <ChevronDown className="size-3.5 shrink-0 opacity-50" />
               </button>

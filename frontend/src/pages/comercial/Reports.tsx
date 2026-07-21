@@ -28,8 +28,10 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import {
-  Maximize2, Loader2,
+  Loader2,
 } from 'lucide-react';
+import { SquareBottomUpSvgIcon } from '@/components/icons/SquareBottomUpSvgIcon';
+import { chartExpandIconClass, chartCardHeaderClass } from '@/components/shared/ChartExpandToggleIcon';
 import { toast } from '@/lib/notify';
 import { useChartTheme } from '@/hooks/useChartTheme';
 import { formatCurrency } from '@/lib/formatters';
@@ -74,7 +76,7 @@ import {
   buildCompaniesStagePanelData,
 } from '@/lib/companyStageFunnelData';
 import { ContactsOpportunitiesAreaChart } from '@/components/shared/ContactsOpportunitiesAreaChart';
-import { ActivitiesByTypeHeatmapChart } from '@/components/shared/ActivitiesByTypeHeatmapChart';
+import { ActivitiesByTypeWeeklyStackedChart } from '@/components/shared/ActivitiesByTypeWeeklyStackedChart';
 import {
   buildActivitiesByTypeHeatmapData,
   activitiesByTypeHeatmapHasData,
@@ -96,7 +98,7 @@ import {
   flattenSourcesByWeekForExport,
   sourcesByWeekChartHasData,
 } from '@/lib/sourcesByWeekChartUtils';
-import { TasksByKindHeatmapChart } from '@/components/shared/TasksByKindHeatmapChart';
+import { TasksByKindWeeklyStackedChart } from '@/components/shared/TasksByKindWeeklyStackedChart';
 import {
   buildTasksByKindHeatmapData,
   tasksByKindHeatmapHasData,
@@ -133,10 +135,10 @@ import {
 } from '@/lib/crmTimezone';
 
 const WEEKLY_COMPANY_COLORS = {
-  avance: '#13944C',
-  nuevoIngreso: '#34d399',
-  atraso: '#f59e0b',
-  sinCambios: '#94a3b8',
+  avance: '#22B573',
+  nuevoIngreso: '#2ECC87',
+  atraso: '#1DB954',
+  sinCambios: '#CBD5E1',
 } as const;
 
 /** Si el periodo tiene más semanas, solo se dibujan las más recientes (las iniciales se omiten). */
@@ -996,7 +998,7 @@ export default function Reports() {
           description="En el periodo seleccionado"
           sparklineData={wonSparkline}
           sparklineLabels={wonSparklineLabels}
-          sparklineColor="#3b82f6"
+          sparklineColor="#2ECC87"
           sparklineVariant="line"
           sparklineLoading={loading}
           loading={kpisLoading}
@@ -1009,7 +1011,7 @@ export default function Reports() {
           description="últimos 7 días"
           sparklineData={salesSparkline}
           sparklineLabels={salesSparklineLabels}
-          sparklineColor="#f97316"
+          sparklineColor="#1DB954"
           sparklineVariant="line"
           sparklineLoading={loading}
           loading={kpisLoading}
@@ -1020,7 +1022,7 @@ export default function Reports() {
           description="En el periodo seleccionado"
           sparklineData={tasksSparkline}
           sparklineLabels={tasksSparklineLabels}
-          sparklineColor="#8b5cf6"
+          sparklineColor="#52D68A"
           sparklineVariant="line"
           sparklineLoading={loading}
           loading={kpisLoading}
@@ -1052,8 +1054,8 @@ export default function Reports() {
       {/* Fila 2: embudo empresas (izq) + avance semanal oportunidades (der) */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.45fr)] lg:items-start">
         <Card id="chart-companies-funnel" className="h-fit">
-          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 px-5 pb-0 pt-5">
-            <CardTitle className="text-base font-medium">Empresas por etapa</CardTitle>
+          <CardHeader className={cn(chartCardHeaderClass, 'px-5 pb-0 pt-5')}>
+            <CardTitle className="flex min-h-8 items-center text-base font-medium">Empresas por etapa</CardTitle>
             <Button
               type="button"
               variant="ghost"
@@ -1063,7 +1065,7 @@ export default function Reports() {
               disabled={loading || companiesStageFunnelEmpty}
               aria-label="Ampliar empresas por etapa"
             >
-              <Maximize2 className="h-4 w-4" />
+              <SquareBottomUpSvgIcon className={chartExpandIconClass} />
             </Button>
           </CardHeader>
           <CardContent className="px-5 pt-6 pb-5">
@@ -1084,8 +1086,8 @@ export default function Reports() {
         </Card>
 
         <Card id="chart-weekly-opps" className="h-fit">
-          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 px-5 pb-0 pt-5">
-            <CardTitle className="text-base font-medium">Empresas</CardTitle>
+          <CardHeader className={cn(chartCardHeaderClass, 'px-5 pb-0 pt-5')}>
+            <CardTitle className="flex min-h-8 items-center text-base font-medium">Empresas</CardTitle>
             <Button
               type="button"
               variant="ghost"
@@ -1095,7 +1097,7 @@ export default function Reports() {
               disabled={loading || weeklyOppsProgressChartEmpty}
               aria-label="Ampliar empresas"
             >
-              <Maximize2 className="h-4 w-4" />
+              <SquareBottomUpSvgIcon className={chartExpandIconClass} />
             </Button>
           </CardHeader>
           <CardContent className="px-5 pt-4 pb-5">
@@ -1118,8 +1120,8 @@ export default function Reports() {
       {/* Fila 3: contactos + fuentes */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1.15fr)] lg:items-start">
         <Card id="chart-contacts" className="h-fit">
-          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 px-5 pb-0 pt-5">
-            <CardTitle className="text-base font-medium">Contactos y Oportunidades</CardTitle>
+          <CardHeader className={cn(chartCardHeaderClass, 'px-5 pb-0 pt-5')}>
+            <CardTitle className="flex min-h-8 items-center text-base font-medium">Contactos y Oportunidades</CardTitle>
             <Button
               type="button"
               variant="ghost"
@@ -1129,7 +1131,7 @@ export default function Reports() {
               disabled={loading || periodChartEmpty}
               aria-label="Ampliar contactos y oportunidades"
             >
-              <Maximize2 className="h-4 w-4" />
+              <SquareBottomUpSvgIcon className={chartExpandIconClass} />
             </Button>
           </CardHeader>
           <CardContent className="px-5 pt-4 pb-5">
@@ -1149,8 +1151,8 @@ export default function Reports() {
         </Card>
 
         <Card id="chart-sources-by-entity" className="h-fit">
-          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 px-5 pb-0 pt-5">
-            <CardTitle className="text-base font-medium">Fuentes: Empresas</CardTitle>
+          <CardHeader className={cn(chartCardHeaderClass, 'px-5 pb-0 pt-5')}>
+            <CardTitle className="flex min-h-8 items-center text-base font-medium">Fuentes: Empresas</CardTitle>
             <Button
               type="button"
               variant="ghost"
@@ -1160,7 +1162,7 @@ export default function Reports() {
               disabled={loading || sourcesByEntityChartEmpty}
               aria-label="Ampliar distribución por fuente"
             >
-              <Maximize2 className="h-4 w-4" />
+              <SquareBottomUpSvgIcon className={chartExpandIconClass} />
             </Button>
           </CardHeader>
           <CardContent className="px-5 pt-4 pb-5">
@@ -1188,8 +1190,8 @@ export default function Reports() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-stretch">
         <Card id="chart-activities-donut" className="flex h-full flex-col">
-          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 px-5 pb-0 pt-5">
-            <CardTitle className="text-base font-medium">Actividades</CardTitle>
+          <CardHeader className={cn(chartCardHeaderClass, 'px-5 pb-0 pt-5')}>
+            <CardTitle className="flex min-h-8 items-center text-base font-medium">Actividades</CardTitle>
             <Button
               type="button"
               variant="ghost"
@@ -1199,7 +1201,7 @@ export default function Reports() {
               disabled={loading || activitiesBarChartEmpty}
               aria-label="Ampliar actividades"
             >
-              <Maximize2 className="h-4 w-4" />
+              <SquareBottomUpSvgIcon className={chartExpandIconClass} />
             </Button>
           </CardHeader>
           <CardContent className="flex flex-1 flex-col px-5 pt-2 pb-5">
@@ -1209,12 +1211,12 @@ export default function Reports() {
                 !loading &&
                 (!summary || !activitiesByTypeHeatmapHasData(activitiesByTypeHeatmap))
               }
-              variant="bar"
+              variant="stackedBar"
               emptyMessage="Sin actividades registradas en las últimas 6 semanas."
               chartHeight={tasksByMonthChartHeight}
               className="flex-1"
             >
-              <ActivitiesByTypeHeatmapChart
+              <ActivitiesByTypeWeeklyStackedChart
                 data={activitiesByTypeHeatmap}
                 scopeLabel={activitiesHeatmapScopeLabel}
                 chartHeight={tasksByMonthChartHeight}
@@ -1224,8 +1226,8 @@ export default function Reports() {
         </Card>
 
         <Card id="chart-tasks" className="flex h-full flex-col">
-          <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-2 px-5 pb-0 pt-5">
-            <CardTitle className="text-base font-medium">Tareas</CardTitle>
+          <CardHeader className={cn(chartCardHeaderClass, 'px-5 pb-0 pt-5')}>
+            <CardTitle className="flex min-h-8 items-center text-base font-medium">Tareas</CardTitle>
             <Button
               type="button"
               variant="ghost"
@@ -1235,7 +1237,7 @@ export default function Reports() {
               disabled={loading || tasksChartEmpty}
               aria-label="Ampliar tareas"
             >
-              <Maximize2 className="h-4 w-4" />
+              <SquareBottomUpSvgIcon className={chartExpandIconClass} />
             </Button>
           </CardHeader>
           <CardContent className="flex flex-1 flex-col px-5 pt-2 pb-5">
@@ -1245,12 +1247,12 @@ export default function Reports() {
                 !loading &&
                 (!summary || !tasksByKindHeatmapHasData(tasksByKindHeatmap))
               }
-              variant="bar"
+              variant="stackedBar"
               emptyMessage="Sin tareas registradas en las últimas 6 semanas."
               chartHeight={tasksByMonthChartHeight}
               className="flex-1"
             >
-              <TasksByKindHeatmapChart
+              <TasksByKindWeeklyStackedChart
                 data={tasksByKindHeatmap}
                 scopeLabel={tasksHeatmapScopeLabel}
                 chartHeight={tasksByMonthChartHeight}
@@ -1262,7 +1264,7 @@ export default function Reports() {
 
       <div className="grid gap-6 md:grid-cols-2">
         <Dialog open={estimatedBillingModalOpen} onOpenChange={setEstimatedBillingModalOpen}>
-          <DialogContent className={dialogContentClass} showCloseButton>
+          <DialogContent className={dialogContentClass} showCloseButton closeButtonIcon="chart-reduce">
             <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
               <DialogTitle className="pr-8 text-base">Facturación estimada total</DialogTitle>
             </DialogHeader>
@@ -1280,7 +1282,7 @@ export default function Reports() {
         </Dialog>
 
         <Dialog open={advancedContactsModalOpen} onOpenChange={setAdvancedContactsModalOpen}>
-          <DialogContent className={dialogContentClass} showCloseButton>
+          <DialogContent className={dialogContentClass} showCloseButton closeButtonIcon="chart-reduce">
             <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
               <DialogTitle className="pr-8 text-base">Contactos avanzados</DialogTitle>
             </DialogHeader>
@@ -1298,7 +1300,7 @@ export default function Reports() {
         </Dialog>
 
         <Dialog open={activeProspectsModalOpen} onOpenChange={setActiveProspectsModalOpen}>
-          <DialogContent className={dialogContentClass} showCloseButton>
+          <DialogContent className={dialogContentClass} showCloseButton closeButtonIcon="chart-reduce">
             <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
               <DialogTitle className="pr-8 text-base">Prospectos Activos</DialogTitle>
             </DialogHeader>
@@ -1316,7 +1318,7 @@ export default function Reports() {
         </Dialog>
 
         <Dialog open={periodModalOpen} onOpenChange={setPeriodModalOpen}>
-          <DialogContent className={dialogContentClass} showCloseButton>
+          <DialogContent className={dialogContentClass} showCloseButton closeButtonIcon="chart-reduce">
             <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
               <DialogTitle className="pr-8 text-base">Contactos y Oportunidades</DialogTitle>
             </DialogHeader>
@@ -1332,7 +1334,7 @@ export default function Reports() {
         </Dialog>
 
         <Dialog open={sourcesByEntityModalOpen} onOpenChange={setSourcesByEntityModalOpen}>
-          <DialogContent className={sourcesDetailDialogClass} showCloseButton>
+          <DialogContent className={sourcesDetailDialogClass} showCloseButton closeButtonIcon="chart-reduce">
             <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
               <DialogTitle className="pr-8 text-base">Fuentes: Empresas</DialogTitle>
             </DialogHeader>
@@ -1359,7 +1361,7 @@ export default function Reports() {
             }
           }}
         >
-          <DialogContent className={dialogContentClass} showCloseButton>
+          <DialogContent className={dialogContentClass} showCloseButton closeButtonIcon="chart-reduce">
             <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
               <DialogTitle className="pr-8 text-base">Actividades</DialogTitle>
               <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pr-8 pt-3">
@@ -1402,10 +1404,10 @@ export default function Reports() {
             <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
               {!activitiesChartEmptyForView ? (
                 activitiesChartView === 'type' ? (
-                  <ActivitiesByTypeHeatmapChart
+                  <ActivitiesByTypeWeeklyStackedChart
                     data={activitiesByTypeHeatmap}
                     scopeLabel={activitiesHeatmapScopeLabel}
-                    chartHeight={280}
+                    chartHeight={320}
                   />
                 ) : activitiesByAdvisorStackedHasData(activitiesByAdvisorStackedModal) ? (
                   <ActivitiesByAdvisorStackedBarChart
@@ -1427,7 +1429,7 @@ export default function Reports() {
         </Dialog>
 
         <Dialog open={weeklyCompaniesModalOpen} onOpenChange={setWeeklyCompaniesModalOpen}>
-          <DialogContent className={dialogContentClass} showCloseButton>
+          <DialogContent className={dialogContentClass} showCloseButton closeButtonIcon="chart-reduce">
             <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
               <DialogTitle className="pr-8 text-base">Avance semanal · Empresas</DialogTitle>
             </DialogHeader>
@@ -1514,7 +1516,7 @@ export default function Reports() {
             }
           }}
         >
-          <DialogContent className={dialogContentClass} showCloseButton>
+          <DialogContent className={dialogContentClass} showCloseButton closeButtonIcon="chart-reduce">
             <DialogHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
               <DialogTitle className="pr-8 text-base">Tareas</DialogTitle>
               <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pr-8 pt-3">
@@ -1557,10 +1559,10 @@ export default function Reports() {
             <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden px-4 pb-5 pt-0 sm:px-6 sm:pb-6">
               {!tasksChartEmptyForView ? (
                 tasksChartView === 'type' ? (
-                  <TasksByKindHeatmapChart
+                  <TasksByKindWeeklyStackedChart
                     data={tasksByKindHeatmap}
                     scopeLabel={tasksHeatmapScopeLabel}
-                    chartHeight={280}
+                    chartHeight={320}
                   />
                 ) : tasksByAdvisorStackedHasData(tasksByAdvisorStackedModal) ? (
                   <TasksByAdvisorStackedBarChart
@@ -1583,7 +1585,7 @@ export default function Reports() {
         {/*<Card>
           <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 space-y-2">
-              <CardTitle className="text-base font-medium">Avance semanal · Empresas</CardTitle>
+              <CardTitle className="flex min-h-8 items-center text-base font-medium">Avance semanal · Empresas</CardTitle>
               <CardDescription className="text-sm leading-tight">
                 Cambios de etapa por semana
                 {weeklyProgressChartSlice.truncated && (
@@ -1631,7 +1633,7 @@ export default function Reports() {
                     disabled={loading || weeklyCompaniesChartEmpty}
                     aria-label="Ampliar avance semanal de empresas"
                   >
-                    <Maximize2 className="h-4 w-4" />
+                    <SquareBottomUpSvgIcon className={chartExpandIconClass} />
                   </Button>
                 </>
               )}
@@ -1716,7 +1718,7 @@ export default function Reports() {
             if (!open) setCompaniesStageWeekView('compare');
           }}
         >
-          <DialogContent className={companiesFunnelDialogClass} showCloseButton>
+          <DialogContent className={companiesFunnelDialogClass} showCloseButton closeButtonIcon="chart-reduce">
             <DialogHeader className="shrink-0 items-start space-y-2 px-4 pb-2 pt-5 text-left sm:px-6 sm:pt-6">
               <DialogTitle className="pr-8 text-base">Empresas por etapa</DialogTitle>
               {companiesWeeklyComparison ? (
@@ -1756,7 +1758,7 @@ export default function Reports() {
             if (!open) setCompaniesWeeklyModalView('chart');
           }}
         >
-          <DialogContent className={companiesWeeklyDialogClass} showCloseButton>
+          <DialogContent className={companiesWeeklyDialogClass} showCloseButton closeButtonIcon="chart-reduce">
             <DialogHeader className="shrink-0 items-start space-y-2 px-4 pb-2 pt-5 text-left sm:px-6 sm:pt-6">
               <DialogTitle className="pr-8 text-base">Empresas</DialogTitle>
             </DialogHeader>

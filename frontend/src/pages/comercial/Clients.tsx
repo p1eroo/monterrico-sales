@@ -50,7 +50,7 @@ import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { comercialProPopoverClass, comercialProCommandClass } from '@/lib/comercialFilterSurface';
+import { comercialFilterIconClass, comercialProPopoverClass, comercialProCommandClass } from '@/lib/comercialFilterSurface';
 import { rightDrawerSheetContentClass } from '@/lib/rightPanelShell';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { toast } from '@/lib/notify';
@@ -607,7 +607,7 @@ export default function Clients() {
                     : 'text-[#8a9aab] dark:text-gray-400',
                 )}
               >
-                <ChartSquareIcon className="size-4 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+                <ChartSquareIcon className={comercialFilterIconClass} />
                 <span className="flex-1 truncate">{statusFilterLabel}</span>
                 <ChevronDown className="size-3.5 shrink-0 opacity-50" />
               </button>

@@ -9,8 +9,8 @@ export const GOALS_ROW_CHART_MIN_HEIGHT = 320;
 /** Altura del bloque Meta/Avance (h-14 + mb-4) para alinear el pie con el bar chart. */
 export const GOALS_SUMMARY_BLOCK_CLASS = 'mb-4 h-14 shrink-0';
 
-const META_COLOR = '#0f766e';
-const AVANCE_COLOR = '#fb923c';
+const META_COLOR = '#1DB954';
+const AVANCE_COLOR = '#2ECC87';
 
 function formatAxisValue(value: number): string {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;

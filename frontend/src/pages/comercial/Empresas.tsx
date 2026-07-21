@@ -77,6 +77,7 @@ import {
 } from '@/lib/comercialTableLayout';
 import { formatDateShort } from '@/lib/formatters';
 import {
+  comercialFilterIconClass,
   comercialProPopoverClass,
   comercialProCommandClass,
   dateRangeToQueryBounds,
@@ -1647,7 +1648,7 @@ export default function EmpresasPage() {
         <Popover>
           <PopoverTrigger asChild>
             <button className={`!h-10 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-[13px] hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left ${etapaFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
-              <ChartSquareIcon className="size-4 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+              <ChartSquareIcon className={comercialFilterIconClass} />
               <span className="truncate flex-1">
                 {formatInclusiveMultiFilterLabel(
                   etapaFilter,
@@ -1710,7 +1711,7 @@ export default function EmpresasPage() {
         <Popover>
           <PopoverTrigger asChild>
             <button className={`!h-10 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-[13px] hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${rubroFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
-              <CategorySolidIcon className="size-4 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+              <CategorySolidIcon className={comercialFilterIconClass} />
               <span className="truncate flex-1">
                 {formatInclusiveMultiFilterLabel(
                   rubroFilter,
@@ -1839,7 +1840,7 @@ export default function EmpresasPage() {
                 <Popover>
                   <PopoverTrigger asChild>
                     <button className={`!h-10 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-[13px] hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate flex items-center gap-1.5 ${sourceFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
-                      <PaletteIcon className="size-4 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+                      <PaletteIcon className={comercialFilterIconClass} />
                       <span className="truncate flex-1">
                         {formatInclusiveMultiSourceFilterLabel(
                           sourceFilter,
@@ -1908,7 +1909,7 @@ export default function EmpresasPage() {
                 <Popover>
                   <PopoverTrigger asChild>
                     <button className={`!h-10 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-[13px] hover:border-primary transition-colors shadow-none cursor-pointer text-left truncate flex items-center gap-1.5 ${tipoFilter.length > 0 ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400'}`}>
-                      <GitForkIcon className="size-4 shrink-0 text-[#8a9aab] dark:text-gray-400" />
+                      <GitForkIcon className={comercialFilterIconClass} />
                       <span className="truncate flex-1">
                         {formatInclusiveMultiFilterLabel(
                           tipoFilter,
