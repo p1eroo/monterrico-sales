@@ -95,6 +95,7 @@ import { api } from '@/lib/api';
 import { opportunityDetailHref } from '@/lib/detailRoutes';
 import {
   type ApiOpportunityDetail,
+  bulkDeleteOpportunities,
   isLikelyOpportunityCuid,
   mapApiOpportunityToOpportunity,
 } from '@/lib/opportunityApi';
@@ -235,6 +236,10 @@ export default function OpportunitiesPage() {
   const [editOpportunity, setEditOpportunity] = useState<Opportunity | null>(null);
   const [oppToDelete, setOppToDelete] = useState<Opportunity | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedOpportunities, setSelectedOpportunities] = useState<string[]>([]);
+  const [selectAllMode, setSelectAllMode] = useState(false);
+  const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
+  const [batchDeleting, setBatchDeleting] = useState(false);
   const { hasPermission } = usePermissions();
   const importInputRef = useRef<HTMLInputElement>(null);
   const [importBusy, setImportBusy] = useState(false);
@@ -306,11 +311,93 @@ export default function OpportunitiesPage() {
     sourceFilter.length > 0 ||
     search !== '';
 
+  const listFilterParams = useMemo(() => ({
+    search: search || undefined,
+    etapa: etapaFilter.length > 0 ? etapaFilter.join(',') : undefined,
+    fuente: inclusiveMultiSourceFilterToApiParam(sourceFilter),
+    assignedTo: advisorListParams.assignedTo,
+    excludeAssignedTo: advisorListParams.excludeAssignedTo,
+    advisorPool: advisorListParams.advisorPool,
+  }), [search, etapaFilter, sourceFilter, advisorListParams]);
+
+  useEffect(() => {
+    setSelectedOpportunities([]);
+    setSelectAllMode(false);
+  }, [listFilterParams]);
+
   function clearFilters() {
     setSearch('');
     setEtapaFilter([]);
     setSourceFilter([]);
     resetAdvisorFilter();
+    setPage(1);
+    setSelectedOpportunities([]);
+    setSelectAllMode(false);
+  }
+
+  function toggleSelectAll() {
+    if (selectAllMode) {
+      setSelectAllMode(false);
+      setSelectedOpportunities([]);
+      return;
+    }
+    if (
+      selectedOpportunities.length === displayedOpportunities.length &&
+      displayedOpportunities.length > 0
+    ) {
+      setSelectedOpportunities([]);
+      return;
+    }
+    setSelectedOpportunities(displayedOpportunities.map((o) => o.id));
+  }
+
+  function handleSelectAllMatchingFilter() {
+    setSelectAllMode(true);
+    setSelectedOpportunities(displayedOpportunities.map((o) => o.id));
+  }
+
+  function toggleSelectOpportunity(id: string) {
+    if (selectAllMode) return;
+    setSelectedOpportunities((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
+    );
+  }
+
+  const selectedDeleteCount = selectAllMode ? totalFiltered : selectedOpportunities.length;
+  const allPageSelected =
+    !selectAllMode &&
+    displayedOpportunities.length > 0 &&
+    selectedOpportunities.length === displayedOpportunities.length;
+
+  async function handleBatchDelete() {
+    if (selectedDeleteCount === 0) return;
+    setBatchDeleting(true);
+    toast.loading('Eliminando…', { id: 'batch-delete-opportunities' });
+    try {
+      const result = await bulkDeleteOpportunities(
+        selectAllMode
+          ? { selectAll: true, ...listFilterParams }
+          : {
+              ids: selectedOpportunities.filter(
+                (id) => !isPendingOpportunityId(id) && isLikelyOpportunityCuid(id),
+              ),
+            },
+      );
+      setBatchDeleteDialogOpen(false);
+      setSelectedOpportunities([]);
+      setSelectAllMode(false);
+      await cacheLoad();
+      toast.success(`${result.deleted} oportunidad(es) eliminada(s)`, {
+        id: 'batch-delete-opportunities',
+      });
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : 'No se pudo eliminar',
+        { id: 'batch-delete-opportunities' },
+      );
+    } finally {
+      setBatchDeleting(false);
+    }
   }
 
   async function handleCreateOpportunity(data: NewOpportunityFormValues) {
@@ -486,12 +573,25 @@ export default function OpportunitiesPage() {
         meta: { responsive: '' } as any,
         header: () => (
           <div className={comercialTableCheckboxWrapClass}>
-            <Checkbox className="h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded" />
+            <Checkbox
+              checked={
+                selectAllMode ||
+                (selectedOpportunities.length === displayedOpportunities.length &&
+                  displayedOpportunities.length > 0)
+              }
+              onCheckedChange={toggleSelectAll}
+              className="h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+            />
           </div>
         ),
-        cell: () => (
+        cell: ({ row }) => (
           <div className={comercialTableCheckboxWrapClass}>
-            <Checkbox className="h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded" />
+            <Checkbox
+              checked={selectAllMode || selectedOpportunities.includes(row.original.id)}
+              disabled={selectAllMode}
+              onCheckedChange={() => toggleSelectOpportunity(row.original.id)}
+              className="h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+            />
           </div>
         ),
         ...comercialTableSelectColumnSizing,
@@ -655,7 +755,7 @@ export default function OpportunitiesPage() {
         enableSorting: false,
       },
     ],
-    [isPendingOpportunityId, openOpportunityPreview, openOpportunityEdit, requestDeleteOpportunity, hasPermission, bundle],
+    [isPendingOpportunityId, openOpportunityPreview, openOpportunityEdit, requestDeleteOpportunity, hasPermission, bundle, selectAllMode, selectedOpportunities, displayedOpportunities, toggleSelectAll, toggleSelectOpportunity],
   );
 
   const table = useReactTable({
@@ -697,7 +797,58 @@ export default function OpportunitiesPage() {
         <Button onClick={() => setNewDialogOpen(true)} className="h-9 w-[110px] text-sm font-normal shadow-md">
           <Plus /> Nueva
         </Button>
+        {hasPermission('oportunidades.eliminar') && selectedDeleteCount > 0 && (
+          <Button
+            variant="destructive"
+            onClick={() => setBatchDeleteDialogOpen(true)}
+            disabled={batchDeleting}
+          >
+            {batchDeleting ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Trash2 className="size-4" />
+            )}{' '}
+            Eliminar ({selectedDeleteCount})
+          </Button>
+        )}
       </PageHeader>
+
+      {selectedDeleteCount > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/50 px-4 py-2.5">
+          {selectAllMode ? (
+            <span className="text-sm font-medium">
+              Todas las {totalFiltered} oportunidades del filtro están seleccionadas
+            </span>
+          ) : (
+            <span className="text-sm font-medium">
+              {selectedOpportunities.length} de {totalFiltered} seleccionadas
+            </span>
+          )}
+          {allPageSelected && totalFiltered > displayedOpportunities.length && (
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto px-1 text-xs"
+              onClick={handleSelectAllMatchingFilter}
+            >
+              Seleccionar las {totalFiltered} oportunidades del filtro
+            </Button>
+          )}
+          {selectAllMode && (
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto px-1 text-xs"
+              onClick={() => {
+                setSelectAllMode(false);
+                setSelectedOpportunities([]);
+              }}
+            >
+              Deseleccionar todo
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Stats — móvil: fila horizontal con scroll; desktop: 3 columnas iguales */}
       <Card className="flex-row flex-nowrap overflow-x-auto overflow-y-hidden py-0 scrollbar-thin [-webkit-overflow-scrolling:touch] sm:overflow-hidden">
@@ -1104,6 +1255,16 @@ export default function OpportunitiesPage() {
         open={newDialogOpen}
         onOpenChange={setNewDialogOpen}
         onCreate={handleCreateOpportunity}
+      />
+
+      <ConfirmDialog
+        open={batchDeleteDialogOpen}
+        onOpenChange={setBatchDeleteDialogOpen}
+        title="Eliminar oportunidades"
+        description={`¿Estás seguro que deseas eliminar ${selectedDeleteCount} oportunidad(es)? Esta acción no se puede deshacer.`}
+        onConfirm={handleBatchDelete}
+        variant="destructive"
+        confirmLabel={batchDeleting ? 'Eliminando...' : `Eliminar ${selectedDeleteCount}`}
       />
 
       <ConfirmDialog

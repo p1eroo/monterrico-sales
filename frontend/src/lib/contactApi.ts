@@ -6,7 +6,7 @@ import type {
   Etapa,
   LinkedCompany,
 } from '@/types';
-import { companyRubroLabels, etapaLabels } from '@/data/mock';
+import { etapaLabels } from '@/data/mock';
 import { api } from '@/lib/api';
 import { useUsersStore } from '@/store/usersStore';
 import { isLikelyCompanyCuid } from './companyApi';
@@ -89,8 +89,9 @@ export type ApiContactDetail = ApiContactListRow & {
 };
 
 function parseRubro(s: string | null | undefined): CompanyRubro | undefined {
-  if (!s) return undefined;
-  return s in companyRubroLabels ? (s as CompanyRubro) : undefined;
+  const t = s?.trim();
+  if (!t) return undefined;
+  return t;
 }
 
 function parseTipo(s: string | null | undefined): CompanyTipo | undefined {
@@ -395,6 +396,31 @@ export async function contactListPaginated(params?: {
   const qs = sp.toString();
   const url = qs ? `/contacts?${qs}` : '/contacts';
   return api<ContactListPaginatedResponse>(url);
+}
+
+export type ContactListFilters = {
+  search?: string;
+  etapa?: string;
+  fuente?: string;
+  assignedTo?: string;
+  excludeAssignedTo?: string;
+  advisorPool?: string;
+  lastInteraction?: string;
+  lastInteractionFrom?: string;
+  lastInteractionTo?: string;
+  createdFrom?: string;
+  createdTo?: string;
+};
+
+export async function bulkDeleteContacts(
+  params:
+    | ({ ids: string[]; selectAll?: false } & ContactListFilters)
+    | ({ selectAll: true; ids?: undefined } & ContactListFilters),
+): Promise<{ deleted: number }> {
+  return api<{ deleted: number }>('/contacts/bulk-delete', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
 }
 
 /** Conteos por etapa para pestañas del listado (mismos filtros que GET /contacts salvo etapa). */

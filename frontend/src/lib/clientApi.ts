@@ -1,8 +1,5 @@
 import type { Client, ClientStatus, CompanyRubro, CompanyTipo } from '@/types';
-import { companyRubroLabels } from '@/data/mock';
 import { api } from './api';
-
-const RUBRO_KEYS = new Set<string>(Object.keys(companyRubroLabels));
 
 export type ApiClientRow = {
   id: string;
@@ -43,8 +40,7 @@ export function mapApiClientRow(row: ApiClientRow): Client {
     companyUrlSlug: row.companyUrlSlug,
     company: row.company,
     ruc: row.ruc?.trim() || undefined,
-    companyRubro:
-      rubro && RUBRO_KEYS.has(rubro) ? (rubro as CompanyRubro) : undefined,
+    companyRubro: rubro ? (rubro as CompanyRubro) : undefined,
     companyTipo: parseTipo(row.companyTipo?.trim()),
     contactName: row.contactName ?? '',
     phone: row.phone ?? '',

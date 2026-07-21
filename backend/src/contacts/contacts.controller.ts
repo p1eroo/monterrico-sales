@@ -15,6 +15,7 @@ import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
 import { LinkCompanyDto } from './dto/link-company.dto';
 import { LinkContactDto } from './dto/link-contact.dto';
+import { BulkDeleteContactsDto } from './dto/bulk-delete-contacts.dto';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { RequireAnyPermission } from '../auth/decorators/require-any-permission.decorator';
@@ -234,6 +235,43 @@ export class ContactsController {
           userName: req.user.name,
         }, scope),
       );
+  }
+
+  @Post('bulk-delete')
+  @RequirePermissions('contactos.eliminar')
+  async bulkRemove(
+    @Body() body: BulkDeleteContactsDto,
+    @Req() req: AuthedReq,
+  ) {
+    const scope = await this.crmDataScope.buildScope(
+      req.user.userId,
+      req.user.roleId,
+    );
+    return this.contactsService.bulkRemove(
+      {
+        ids: body.ids,
+        selectAll: body.selectAll,
+        search: body.search?.trim() || undefined,
+        etapa: body.etapa?.trim() || undefined,
+        fuente: body.fuente?.trim() || undefined,
+        assignedTo: body.assignedTo?.trim() || undefined,
+        excludeAssignedTo: body.excludeAssignedTo?.trim() || undefined,
+        advisorPool: body.advisorPool?.trim() || undefined,
+        linkedToCompanyId: body.linkedToCompany?.trim() || undefined,
+        excludeCompanyLinkId: body.excludeCompanyLink?.trim() || undefined,
+        excludeOpportunityLinkId: body.excludeOpportunityLink?.trim() || undefined,
+        lastInteraction: body.lastInteraction?.trim() || undefined,
+        lastInteractionFrom: body.lastInteractionFrom?.trim() || undefined,
+        lastInteractionTo: body.lastInteractionTo?.trim() || undefined,
+        createdFrom: body.createdFrom?.trim() || undefined,
+        createdTo: body.createdTo?.trim() || undefined,
+      },
+      {
+        userId: req.user.userId,
+        userName: req.user.name,
+      },
+      scope,
+    );
   }
 
   @Delete(':id')

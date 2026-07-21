@@ -189,6 +189,27 @@ export async function opportunityListAll(opts?: {
   return res.data;
 }
 
+export type OpportunityListFilters = {
+  search?: string;
+  etapa?: string;
+  status?: string;
+  fuente?: string;
+  assignedTo?: string;
+  excludeAssignedTo?: string;
+  advisorPool?: string;
+};
+
+export async function bulkDeleteOpportunities(
+  params:
+    | ({ ids: string[]; selectAll?: false } & OpportunityListFilters)
+    | ({ selectAll: true; ids?: undefined } & OpportunityListFilters),
+): Promise<{ deleted: number }> {
+  return api<{ deleted: number }>('/opportunities/bulk-delete', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
 /** Quita el vínculo empresa–oportunidad (`CompanyOpportunity`). */
 export async function opportunityUnlinkCompany(
   opportunityId: string,

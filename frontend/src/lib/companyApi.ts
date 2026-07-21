@@ -168,6 +168,33 @@ export async function companyListSummaryPaginated(params?: {
   );
 }
 
+export type CompanyListSummaryFilters = {
+  search?: string;
+  rubro?: string;
+  tipo?: string;
+  etapa?: string;
+  fuente?: string;
+  assignedTo?: string;
+  excludeAssignedTo?: string;
+  advisorPool?: string;
+  lastInteraction?: string;
+  lastInteractionFrom?: string;
+  lastInteractionTo?: string;
+  createdFrom?: string;
+  createdTo?: string;
+};
+
+export async function bulkDeleteCompanies(
+  params:
+    | ({ ids: string[]; selectAll?: false } & CompanyListSummaryFilters)
+    | ({ selectAll: true; ids?: undefined } & CompanyListSummaryFilters),
+): Promise<{ deleted: number }> {
+  return api<{ deleted: number }>('/companies/bulk-delete', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
 /** Conteos por etapa para pestañas del listado (mismos filtros que summary salvo etapa). */
 export async function companySummaryEtapaCounts(params?: {
   search?: string;

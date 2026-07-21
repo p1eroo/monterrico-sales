@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { toast } from '@/lib/notify';
 import type { CompanyRubro, CompanyTipo } from '@/types';
-import { companyRubroLabels, companyTipoLabels } from '@/data/mock';
+import { companyTipoLabels } from '@/data/mock';
+import { useRubroOptions } from '@/store/crmConfigStore';
 import { useCompaniesStore } from '@/store/companiesStore';
 
 import { Input } from '@/components/ui/input';
@@ -29,6 +30,7 @@ export function CreateCompanyDialog({
   onSuccess,
 }: CreateCompanyDialogProps) {
   const addCompany = useCompaniesStore((s) => s.addCompany);
+  const rubroOptions = useRubroOptions();
   const [name, setName] = useState('');
   const [domain, setDomain] = useState('');
   const [rubro, setRubro] = useState<CompanyRubro | ''>('');
@@ -102,8 +104,8 @@ export function CreateCompanyDialog({
                 <SelectValue placeholder="Seleccionar" />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(companyRubroLabels).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
+                {rubroOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

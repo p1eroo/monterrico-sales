@@ -1,6 +1,5 @@
 import type { CompanyRubro, CompanyTipo, Etapa } from '@/types';
 import {
-  companyRubroLabels,
   companyTipoLabels,
   etapaLabels,
 } from '@/data/mock';
@@ -42,7 +41,7 @@ export function newCompanyDataToPatchBody(
 }
 
 function isRubroKey(k: string): k is CompanyRubro {
-  return Object.prototype.hasOwnProperty.call(companyRubroLabels, k);
+  return k.trim().length > 0;
 }
 
 function isTipoKey(k: string): k is CompanyTipo {

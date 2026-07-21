@@ -4,24 +4,8 @@ export type Etapa = string;
 export type ContactPriority = 'alta' | 'media' | 'baja';
 /** Slug de fuente (catálogo en BD). */
 export type ContactSource = string;
-export type CompanyRubro =
-  | 'energia_mineria'
-  | 'pesquero_industrial'
-  | 'logistica_comercio_exterior'
-  | 'construccion_infraestructura'
-  | 'manufactura_alimentos_bebidas'
-  | 'retail_centros_comerciales'
-  | 'farmaceutico_cosmetico'
-  | 'agroindustria'
-  | 'tecnologia_telecomunicaciones'
-  | 'servicios_financieros_seguros'
-  | 'consultorias_auditoras'
-  | 'educacion_privada_universidades'
-  | 'salud_clinicas_privadas'
-  | 'horeca'
-  | 'startups_ecommerce'
-  | 'ongs_organismos_internacionales'
-  | 'licitaciones_estado';
+/** Slug de rubro de empresa (catálogo en BD vía /crm-config). */
+export type CompanyRubro = string;
 export type CompanyTipo = 'A' | 'B' | 'C';
 
 export interface LinkedCompany {

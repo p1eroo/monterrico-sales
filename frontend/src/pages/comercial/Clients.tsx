@@ -6,7 +6,7 @@ import {
   type ColumnDef,
 } from '@tanstack/react-table';
 import type { Client, ClientStatus } from '@/types';
-import { companyRubroLabels } from '@/data/mock';
+import { useRubroLabel } from '@/store/crmConfigStore';
 import { useUsers } from '@/hooks/useUsers';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Pagination } from '@/components/shared/Pagination';
@@ -192,6 +192,7 @@ export default function Clients() {
     createdAt: true,
   });
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const selectedClientRubroLabel = useRubroLabel(selectedClient?.companyRubro);
 
   const { currentUser } = useAppStore();
 
@@ -879,7 +880,7 @@ export default function Clients() {
                     <SheetDescription className="flex flex-wrap items-center gap-2 pt-1">
                       <ClientStatusBadge status={selectedClient.status} />
                       {selectedClient.companyRubro && (
-                        <Badge variant="outline" className="text-xs">{companyRubroLabels[selectedClient.companyRubro]}</Badge>
+                        <Badge variant="outline" className="text-xs">{selectedClientRubroLabel}</Badge>
                       )}
                       {selectedClient.companyTipo && (
                         <Badge variant="secondary" className="text-xs">Tipo {selectedClient.companyTipo}</Badge>

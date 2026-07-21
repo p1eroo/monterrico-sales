@@ -132,6 +132,7 @@ import {
   mapApiContactRowToContact,
   contactListPaginated,
   contactListEtapaCounts,
+  bulkDeleteContacts,
   primaryCompanyIdFromApiContact,
   apiContactDetailToListRow,
 } from "@/lib/contactApi";
@@ -271,6 +272,7 @@ export default function ContactosPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_ITEMS_PER_PAGE);
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+  const [selectAllMode, setSelectAllMode] = useState(false);
   const [newContactOpen, setNewContactOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contactToDelete, setContactToDelete] = useState<string | null>(null);
@@ -307,27 +309,44 @@ export default function ContactosPage() {
     return () => clearTimeout(t);
   }, [search]);
 
+  const listFilterParams = useMemo(() => {
+    const { from: interactionFromIso, to: interactionToIso } =
+      dateRangeToQueryBounds(interactionRange);
+    const { from: createdFromIso, to: createdToIso } =
+      dateRangeToQueryBounds(creationRange);
+    return {
+      search: searchDebounced || undefined,
+      etapa: etapaFilter.length > 0 ? etapaFilter.join(',') : undefined,
+      fuente: inclusiveMultiSourceFilterToApiParam(sourceFilter),
+      assignedTo: advisorListParams.assignedTo,
+      excludeAssignedTo: advisorListParams.excludeAssignedTo,
+      advisorPool: advisorListParams.advisorPool,
+      lastInteractionFrom: interactionFromIso,
+      lastInteractionTo: interactionToIso,
+      createdFrom: createdFromIso,
+      createdTo: createdToIso,
+    };
+  }, [
+    searchDebounced,
+    etapaFilter,
+    sourceFilter,
+    advisorListParams,
+    interactionRange,
+    creationRange,
+  ]);
+
+  useEffect(() => {
+    setSelectedContacts([]);
+    setSelectAllMode(false);
+  }, [listFilterParams]);
+
   const loadApiContacts = useCallback(async () => {
     setLoading(true);
     try {
-      const { from: interactionFromIso, to: interactionToIso } =
-        dateRangeToQueryBounds(interactionRange);
-      const { from: createdFromIso, to: createdToIso } =
-        dateRangeToQueryBounds(creationRange);
-
       const res = await contactListPaginated({
         page,
         limit: pageSize,
-        search: searchDebounced || undefined,
-        etapa: etapaFilter.length > 0 ? etapaFilter.join(',') : undefined,
-        fuente: inclusiveMultiSourceFilterToApiParam(sourceFilter),
-        assignedTo: advisorListParams.assignedTo,
-        excludeAssignedTo: advisorListParams.excludeAssignedTo,
-        advisorPool: advisorListParams.advisorPool,
-        lastInteractionFrom: interactionFromIso,
-        lastInteractionTo: interactionToIso,
-        createdFrom: createdFromIso,
-        createdTo: createdToIso,
+        ...listFilterParams,
       });
       setApiRows(res.data);
       setTotalContacts(res.total);
@@ -339,7 +358,7 @@ export default function ContactosPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, searchDebounced, etapaFilter, sourceFilter, advisorListParams, interactionRange, creationRange]);
+  }, [page, pageSize, listFilterParams]);
 
   useEffect(() => {
     void loadApiContacts();
@@ -347,26 +366,12 @@ export default function ContactosPage() {
 
   const loadEtapaTabCounts = useCallback(async () => {
     try {
-      const { from: interactionFromIso, to: interactionToIso } =
-        dateRangeToQueryBounds(interactionRange);
-      const { from: createdFromIso, to: createdToIso } =
-        dateRangeToQueryBounds(creationRange);
-      const { counts } = await contactListEtapaCounts({
-        search: searchDebounced || undefined,
-        fuente: inclusiveMultiSourceFilterToApiParam(sourceFilter),
-        assignedTo: advisorListParams.assignedTo,
-        excludeAssignedTo: advisorListParams.excludeAssignedTo,
-        advisorPool: advisorListParams.advisorPool,
-        lastInteractionFrom: interactionFromIso,
-        lastInteractionTo: interactionToIso,
-        createdFrom: createdFromIso,
-        createdTo: createdToIso,
-      });
+      const { counts } = await contactListEtapaCounts(listFilterParams);
       setEtapaTabCounts(counts);
     } catch {
       setEtapaTabCounts({});
     }
-  }, [searchDebounced, sourceFilter, advisorListParams, interactionRange, creationRange]);
+  }, [listFilterParams]);
 
   useEffect(() => {
     void loadEtapaTabCounts();
@@ -522,20 +527,74 @@ export default function ContactosPage() {
     setCreationRange(undefined);
     resetAdvisorFilter();
     setPage(1);
+    setSelectedContacts([]);
+    setSelectAllMode(false);
   }
 
   function toggleSelectAll() {
-    if (selectedContacts.length === displayedContacts.length) {
+    if (selectAllMode) {
+      setSelectAllMode(false);
       setSelectedContacts([]);
-    } else {
-      setSelectedContacts(displayedContacts.map((l) => l.id));
+      return;
     }
+    if (
+      selectedContacts.length === displayedContacts.length &&
+      displayedContacts.length > 0
+    ) {
+      setSelectedContacts([]);
+      return;
+    }
+    setSelectedContacts(displayedContacts.map((l) => l.id));
+  }
+
+  function handleSelectAllMatchingFilter() {
+    setSelectAllMode(true);
+    setSelectedContacts(displayedContacts.map((l) => l.id));
   }
 
   function toggleSelectContact(id: string) {
+    if (selectAllMode) return;
     setSelectedContacts((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
     );
+  }
+
+  const selectedDeleteCount = selectAllMode ? totalContacts : selectedContacts.length;
+  const allPageSelected =
+    !selectAllMode &&
+    displayedContacts.length > 0 &&
+    selectedContacts.length === displayedContacts.length;
+
+  async function handleBatchDelete() {
+    if (selectedDeleteCount === 0) return;
+    setBatchDeleting(true);
+    toast.loading('Eliminando…', { id: 'batch-delete-contacts' });
+    try {
+      const result = await bulkDeleteContacts(
+        selectAllMode
+          ? { selectAll: true, ...listFilterParams }
+          : {
+              ids: selectedContacts.filter(
+                (id) => !isPendingContactId(id) && isLikelyContactCuid(id),
+              ),
+            },
+      );
+      setBatchDeleteDialogOpen(false);
+      setSelectedContacts([]);
+      setSelectAllMode(false);
+      await loadApiContacts();
+      await loadEtapaTabCounts();
+      toast.success(`${result.deleted} contacto(s) eliminado(s)`, {
+        id: 'batch-delete-contacts',
+      });
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : 'No se pudo eliminar',
+        { id: 'batch-delete-contacts' },
+      );
+    } finally {
+      setBatchDeleting(false);
+    }
   }
 
   async function handleDelete() {
@@ -562,43 +621,6 @@ export default function ContactosPage() {
       );
     }
     setContactToDelete(null);
-  }
-
-  async function handleBatchDelete() {
-    if (selectedContacts.length === 0) return;
-    setBatchDeleting(true);
-    toast.loading('Eliminando…', { id: 'batch-delete-contacts' });
-    let deleted = 0;
-    let failed = 0;
-
-    for (const id of selectedContacts) {
-      if (isPendingContactId(id) || !isLikelyContactCuid(id)) {
-        failed++;
-        continue;
-      }
-      try {
-        await api(`/contacts/${id}`, { method: "DELETE" });
-        deleted++;
-      } catch {
-        failed++;
-      }
-    }
-
-    setBatchDeleting(false);
-    setBatchDeleteDialogOpen(false);
-    setSelectedContacts([]);
-    await loadApiContacts();
-
-    if (failed === 0) {
-      toast.success(`${deleted} contacto(s) eliminado(s) correctamente`, { id: 'batch-delete-contacts' });
-    } else if (deleted === 0) {
-      toast.error("No se pudo eliminar ningún contacto", { id: 'batch-delete-contacts' });
-    } else {
-      toast.warning(
-        `${deleted} eliminado(s), ${failed} no se pudieron eliminar`,
-        { id: 'batch-delete-contacts' },
-      );
-    }
   }
 
   async function onSubmitNewContact(data: NewContactData) {
@@ -1215,7 +1237,7 @@ export default function ContactosPage() {
         description="Gestiona y da seguimiento a tus prospectos de venta"
         className="mb-4"
       >
-        {hasPermission("contactos.eliminar") && selectedContacts.length > 0 && (
+        {hasPermission("contactos.eliminar") && selectedDeleteCount > 0 && (
           <Button
             variant="destructive"
             onClick={() => setBatchDeleteDialogOpen(true)}
@@ -1226,13 +1248,50 @@ export default function ContactosPage() {
             ) : (
               <Trash2 className="size-4" />
             )}{" "}
-            Eliminar ({selectedContacts.length})
+            Eliminar ({selectedDeleteCount})
           </Button>
         )}
         <Button onClick={() => setNewContactOpen(true)} className="h-9 w-[110px] text-sm font-normal shadow-md">
           <Plus /> Nuevo
         </Button>
       </PageHeader>
+
+      {selectedDeleteCount > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border bg-muted/50 px-4 py-2.5">
+          {selectAllMode ? (
+            <span className="text-sm font-medium">
+              Todos los {totalContacts} contactos del filtro están seleccionados
+            </span>
+          ) : (
+            <span className="text-sm font-medium">
+              {selectedContacts.length} de {totalContacts} seleccionados
+            </span>
+          )}
+          {allPageSelected && totalContacts > displayedContacts.length && (
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto px-1 text-xs"
+              onClick={handleSelectAllMatchingFilter}
+            >
+              Seleccionar los {totalContacts} contactos del filtro
+            </Button>
+          )}
+          {selectAllMode && (
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto px-1 text-xs"
+              onClick={() => {
+                setSelectAllMode(false);
+                setSelectedContacts([]);
+              }}
+            >
+              Deseleccionar todo
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Filter bar + Table + Pagination en una sola tarjeta */}
       <GlassCard>
@@ -1549,11 +1608,13 @@ export default function ContactosPage() {
             <ContactsTable
               contacts={displayedContacts}
               selectedContacts={selectedContacts}
+              selectAllMode={selectAllMode}
               onToggleSelectAll={toggleSelectAll}
               onToggleSelect={toggleSelectContact}
               allSelected={
-                selectedContacts.length === displayedContacts.length &&
-                displayedContacts.length > 0
+                selectAllMode ||
+                (selectedContacts.length === displayedContacts.length &&
+                  displayedContacts.length > 0)
               }
               isPendingContactId={isPendingContactId}
               onView={openContactDetail}
@@ -1621,10 +1682,10 @@ export default function ContactosPage() {
         open={batchDeleteDialogOpen}
         onOpenChange={setBatchDeleteDialogOpen}
         title="Eliminar Contactos Seleccionados"
-        description={`¿Estás seguro que deseas eliminar ${selectedContacts.length} contacto(s)? Esta acción no se puede deshacer.`}
+        description={`¿Estás seguro que deseas eliminar ${selectedDeleteCount} contacto(s)? Esta acción no se puede deshacer.`}
         onConfirm={handleBatchDelete}
         variant="destructive"
-        confirmLabel={batchDeleting ? "Eliminando..." : `Eliminar ${selectedContacts.length}`}
+        confirmLabel={batchDeleting ? "Eliminando..." : `Eliminar ${selectedDeleteCount}`}
       />
 
       <ContactPreviewSheet
@@ -1663,6 +1724,7 @@ export default function ContactosPage() {
 interface ContactsTableProps {
   contacts: Contact[];
   selectedContacts: string[];
+  selectAllMode: boolean;
   allSelected: boolean;
   onToggleSelectAll: () => void;
   onToggleSelect: (id: string) => void;
@@ -1678,6 +1740,7 @@ interface ContactsTableProps {
 function ContactsTable({
   contacts: data,
   selectedContacts,
+  selectAllMode,
   allSelected,
   onToggleSelectAll,
   onToggleSelect,
@@ -1706,7 +1769,8 @@ function ContactsTable({
         cell: ({ row }) => (
           <div className={comercialTableCheckboxWrapClass}>
             <Checkbox
-              checked={selectedContacts.includes(row.original.id)}
+              checked={selectAllMode || selectedContacts.includes(row.original.id)}
+              disabled={selectAllMode}
               onCheckedChange={() => onToggleSelect(row.original.id)}
               className="h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
             />

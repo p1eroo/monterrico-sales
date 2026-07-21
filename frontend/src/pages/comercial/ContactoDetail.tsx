@@ -13,7 +13,6 @@ import {
 import type { Contact, Etapa, CompanyRubro, CompanyTipo, TimelineEvent, Activity } from '@/types';
 import {
   contactSourceLabels, etapaLabels,
-  companyRubroLabels,
   activities,
 } from '@/data/mock';
 import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLogsApi';
@@ -79,7 +78,7 @@ import {
 import { type ApiCompanyRecord } from '@/lib/companyApi';
 import { usePaginatedCompanyPicker, type PaginatedCompanyPickerOptions } from '@/hooks/usePaginatedCompanyPicker';
 import { useStageBadgeTone } from '@/hooks/useStageBadgeTone';
-import { useCrmConfigStore, getStageLabelFromCatalog, getSourceLabelFromCatalog } from '@/store/crmConfigStore';
+import { useCrmConfigStore, getStageLabelFromCatalog, getSourceLabelFromCatalog, getRubroLabelFromCatalog } from '@/store/crmConfigStore';
 import { getHighestPriorityOpportunityEtapa } from '@/lib/opportunityUtils';
 import {
   usePaginatedOpportunityPicker,
@@ -90,8 +89,9 @@ import { ENTITY_DETAIL_SECTION_TAB_OPTIONS } from '@/lib/entityDetailSectionTabs
 const TIMELINE_PAGE_SIZE = 8;
 
 function parseRubroFromApi(s: string | null | undefined): CompanyRubro | undefined {
-  if (!s) return undefined;
-  return s in companyRubroLabels ? (s as CompanyRubro) : undefined;
+  const t = s?.trim();
+  if (!t) return undefined;
+  return t;
 }
 
 function ContactoInformacionAside({ contact }: { contact: Contact }) {
@@ -542,7 +542,7 @@ export default function ContactoDetailPage() {
         return {
           id: c.id,
           title: c.name,
-          subtitle: c.ruc ?? (rubro ? companyRubroLabels[rubro] : undefined),
+          subtitle: c.ruc ?? (rubro ? getRubroLabelFromCatalog(rubro, crmBundle) : undefined),
           status: 'Activo',
           icon: <Building2 className="size-4" />,
         };
@@ -554,7 +554,7 @@ export default function ContactoDetailPage() {
         : undefined;
       const fallback = 'contactName' in c && typeof c.contactName === 'string'
         ? c.contactName
-        : (c.rubro ? companyRubroLabels[c.rubro] : undefined);
+        : (c.rubro ? getRubroLabelFromCatalog(c.rubro, crmBundle) : undefined);
       const subtitle: string | undefined = contactInfo ?? fallback;
       return {
         id: c.id,
@@ -569,6 +569,7 @@ export default function ContactoDetailPage() {
     linkCompanyPickerOpts,
     linkCompanyPickerRows,
     availableCompaniesToLink,
+    crmBundle,
   ]);
 
   const followUpAssociations = useMemo(() => {

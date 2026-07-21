@@ -315,6 +315,15 @@ model CrmLeadSource {
   sortOrder Int      @default(0)
 }
 
+/** Rubros de empresa (sector / industria) */
+model CrmRubro {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  enabled   Boolean  @default(true)
+  sortOrder Int      @default(0)
+}
+
 /** Etapas del CRM (contactos, empresas, oportunidades): un solo catálogo por slug */
 model CrmStage {
   id          String   @id @default(cuid())
@@ -440,7 +449,7 @@ model Company {
   urlSlug      String   @unique
   name         String
   razonSocial  String?
-  ruc          String?  @unique
+  ruc          String?
   telefono    String?
   domain       String?
   rubro       String?
@@ -470,6 +479,7 @@ model Company {
 
   @@index([assignedTo])
   @@index([etapa])
+  @@index([ruc])
 }
 
 model Client {

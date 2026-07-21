@@ -29,6 +29,10 @@ import {
 import { formatImportedCompanyName } from '../common/import-display-name.util';
 import { FactilizaService } from '../factiliza/factiliza.service';
 import { normalizeClienteRecuperado } from '../common/normalize-cliente-recuperado';
+import {
+  companyRucDigits,
+  storeCompanyRucValue,
+} from '../common/company-ruc.util';
 
 /** Select slim para listado: excluye linkedin, correo, direcciones */
 const companySelectListSlim = {
@@ -265,11 +269,9 @@ export class CompaniesService {
       data.assignedTo = a;
     }
 
-    const rucStore = dto.ruc?.trim() || undefined;
+    const rucStore = storeCompanyRucValue(dto.ruc);
     if (rucStore) {
-      const normalizedDigits = rucStore.replace(/\D/g, '');
-      data.ruc =
-        normalizedDigits.length === 11 ? normalizedDigits : rucStore;
+      data.ruc = rucStore;
     }
 
     if (typeof data.name === 'string' && data.name.length > 0) {
@@ -371,19 +373,13 @@ export class CompaniesService {
     }
     await this.crmConfig.assertEtapaAssignable(etapa);
 
-    const rucStore = dto.ruc?.trim() || null;
-    const rucForDb =
-      rucStore && rucStore.replace(/\D/g, '').length === 11
-        ? rucStore.replace(/\D/g, '')
-        : rucStore;
-
     const urlSlug = await this.allocateCompanyUrlSlug(name);
     const company = await this.prisma.company.create({
       data: {
         urlSlug,
         name,
         razonSocial: dto.razonSocial?.trim() || null,
-        ruc: rucForDb,
+        ruc: storeCompanyRucValue(dto.ruc),
         telefono: dto.telefono?.trim() || null,
         domain: domainLower,
         rubro: dto.rubro?.trim() || null,
@@ -818,6 +814,33 @@ export class CompaniesService {
     return { counts };
   }
 
+  private async buildSummaryWhere(
+    opts?: {
+      search?: string;
+      rubro?: string;
+      tipo?: string;
+      etapa?: string;
+      fuente?: string;
+      assignedTo?: string;
+      excludeAssignedTo?: string;
+      advisorPool?: string;
+      lastInteraction?: string;
+      lastInteractionFrom?: string;
+      lastInteractionTo?: string;
+      createdFrom?: string;
+      createdTo?: string;
+    },
+    scope?: CrmDataScope,
+  ): Promise<Prisma.CompanyWhereInput> {
+    const andParts = await this.buildCompanySummaryAndParts(opts, scope);
+    const etapaWhere = this.buildCompanyEtapaWhere(opts?.etapa);
+    if (etapaWhere) andParts.push(etapaWhere);
+
+    const inner: Prisma.CompanyWhereInput =
+      andParts.length > 0 ? { AND: andParts } : {};
+    return mergeCompanyScope(inner, scope);
+  }
+
   /**
    * Listado paginado con agregados por empresa (sin cargar todos los contactos en el cliente).
    * Filtro por etapa: solo `company.etapa` (coincide con la columna `displayEtapa`).
@@ -846,13 +869,7 @@ export class CompaniesService {
     const limit = Math.min(5000, Math.max(1, opts?.limit ?? 25));
     const skip = (page - 1) * limit;
 
-    const andParts = await this.buildCompanySummaryAndParts(opts, scope);
-    const etapaWhere = this.buildCompanyEtapaWhere(opts?.etapa);
-    if (etapaWhere) andParts.push(etapaWhere);
-
-    const inner: Prisma.CompanyWhereInput =
-      andParts.length > 0 ? { AND: andParts } : {};
-    const where = mergeCompanyScope(inner, scope);
+    const where = await this.buildSummaryWhere(opts, scope);
 
     const [rows, total] = await Promise.all([
       this.prisma.company.findMany({
@@ -950,31 +967,40 @@ export class CompaniesService {
    * Busca empresa por RUC (11 dígitos), tolerando distintos formatos guardados en BD.
    */
   async findOneByRucParam(rucParam: string, scope?: CrmDataScope) {
-    const raw = rucParam?.trim() ?? '';
-    const digits = raw.replace(/\D/g, '');
-    if (digits.length !== 11) {
-      throw new BadRequestException('El RUC debe tener 11 dígitos');
+    const stored = storeCompanyRucValue(rucParam);
+    if (!stored) {
+      throw new BadRequestException('Indica un RUC para buscar');
     }
+    const digits = companyRucDigits(stored);
 
     let row = await this.prisma.company.findFirst({
-      where: {
-        OR: [{ ruc: digits }, { ruc: raw }],
-      },
+      where: { ruc: stored },
       select: { id: true },
+      orderBy: { id: 'asc' },
     });
 
-    if (!row) {
-      const candidates = await this.prisma.company.findMany({
+    if (!row && digits.length === 11) {
+      row = await this.prisma.company.findFirst({
         where: {
-          ruc: { contains: digits },
+          OR: [{ ruc: digits }, { ruc: stored }],
         },
-        take: 40,
-        select: { id: true, ruc: true },
+        select: { id: true },
+        orderBy: { id: 'asc' },
       });
-      const match = candidates.find(
-        (c) => (c.ruc ?? '').replace(/\D/g, '') === digits,
-      );
-      if (match) row = { id: match.id };
+
+      if (!row) {
+        const candidates = await this.prisma.company.findMany({
+          where: {
+            ruc: { contains: digits },
+          },
+          take: 40,
+          select: { id: true, ruc: true },
+        });
+        const match = candidates.find(
+          (c) => companyRucDigits(c.ruc) === digits,
+        );
+        if (match) row = { id: match.id };
+      }
     }
 
     if (!row) {
@@ -1071,7 +1097,7 @@ export class CompaniesService {
     if (dto.razonSocial !== undefined) {
       data.razonSocial = dto.razonSocial?.trim() || null;
     }
-    if (dto.ruc !== undefined) data.ruc = dto.ruc?.trim() || null;
+    if (dto.ruc !== undefined) data.ruc = storeCompanyRucValue(dto.ruc);
     if (dto.telefono !== undefined) data.telefono = dto.telefono?.trim() || null;
     if (dto.domain !== undefined) data.domain = dto.domain?.trim() || null;
     if (dto.rubro !== undefined) data.rubro = dto.rubro?.trim() || null;
@@ -1176,6 +1202,89 @@ export class CompaniesService {
     });
 
     return this.findOne(id, scope);
+  }
+
+  async bulkRemove(
+    params: {
+      ids?: string[];
+      selectAll?: boolean;
+      search?: string;
+      rubro?: string;
+      tipo?: string;
+      etapa?: string;
+      fuente?: string;
+      assignedTo?: string;
+      excludeAssignedTo?: string;
+      advisorPool?: string;
+      lastInteraction?: string;
+      lastInteractionFrom?: string;
+      lastInteractionTo?: string;
+      createdFrom?: string;
+      createdTo?: string;
+    },
+    actor: ActivityActor,
+    scope?: CrmDataScope,
+  ): Promise<{ deleted: number }> {
+    const { ids, selectAll, ...filterOpts } = params;
+
+    let where: Prisma.CompanyWhereInput;
+    if (selectAll) {
+      where = await this.buildSummaryWhere(filterOpts, scope);
+    } else if (ids?.length) {
+      where = mergeCompanyScope({ id: { in: ids } }, scope);
+    } else {
+      throw new BadRequestException(
+        'Debes proporcionar ids o selectAll=true',
+      );
+    }
+
+    const toDelete = await this.prisma.company.findMany({
+      where,
+      select: { id: true, name: true },
+    });
+
+    if (toDelete.length === 0) {
+      return { deleted: 0 };
+    }
+
+    await this.prisma.company.deleteMany({
+      where: { id: { in: toDelete.map((c) => c.id) } },
+    });
+
+    const sampleNames = toDelete
+      .slice(0, 5)
+      .map((c) => c.name)
+      .join(', ');
+    const namesSuffix =
+      toDelete.length > 5 ? `, … (+${toDelete.length - 5} más)` : '';
+
+    await this.auditDetail.record(actor, {
+      action: 'eliminar',
+      module: 'empresas',
+      entityType: 'Empresa',
+      entityId: toDelete[0]!.id,
+      entityName: `${toDelete.length} empresas`,
+      entries: [
+        {
+          fieldKey: '_registro',
+          fieldLabel: 'Registro',
+          oldValue: `${sampleNames}${namesSuffix}`,
+          newValue: '(eliminado)',
+        },
+      ],
+    });
+
+    await this.activityLogs.record(actor, {
+      action: 'eliminar',
+      module: 'empresas',
+      entityType: 'Empresa',
+      entityId: toDelete[0]!.id,
+      entityName: `${toDelete.length} empresas`,
+      description: `Eliminación masiva: ${toDelete.length} empresa(s)`,
+      isCritical: true,
+    });
+
+    return { deleted: toDelete.length };
   }
 
   async remove(

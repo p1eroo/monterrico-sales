@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import type { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 import { FacebookGraphApiService } from './facebook-graph-api.service';
+import { storeCompanyRucValue } from '../common/company-ruc.util';
 
 interface LeadFieldMap {
   fullName?: string;
@@ -328,7 +329,14 @@ export class FacebookLeadsService {
 
     let companyId: string | undefined;
     if (empresa || ruc) {
-      const existing = ruc ? await this.prisma.company.findUnique({ where: { ruc } }) : null;
+      const rucStored = storeCompanyRucValue(ruc);
+      const existing = rucStored
+        ? await this.prisma.company.findFirst({
+            where: { ruc: rucStored },
+            select: { id: true },
+            orderBy: { id: 'asc' },
+          })
+        : null;
       if (existing) {
         companyId = existing.id;
       } else {
@@ -336,7 +344,7 @@ export class FacebookLeadsService {
           data: {
             name: empresa || `Cliente ${name}`,
             urlSlug: `fb-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-            ruc: ruc || undefined,
+            ruc: rucStored || undefined,
             telefono,
             correo,
             fuente: 'facebook',

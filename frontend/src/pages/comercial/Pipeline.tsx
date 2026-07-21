@@ -42,7 +42,6 @@ import {
 import { toast } from '@/lib/notify';
 import type { Contact, Etapa, Opportunity, PipelineColumn } from "@/types";
 import {
-  companyRubroLabels,
   etapaLabels,
   activities,
   activityTypeLabels,
@@ -50,7 +49,7 @@ import {
 import { api } from "@/lib/api";
 import { fetchCrmConfig } from "@/lib/crmConfigApi";
 import type { CrmCatalogDto } from "@/lib/crmConfigApi";
-import { useCrmConfigStore } from "@/store/crmConfigStore";
+import { useCrmConfigStore, getRubroLabelFromCatalog } from "@/store/crmConfigStore";
 import { contactDetailHref, opportunityDetailHref } from "@/lib/detailRoutes";
 import { getPrimaryCompany } from "@/lib/utils";
 import {
@@ -378,6 +377,7 @@ const LeadCard = memo(function LeadCard({
   onCardClick,
   pipelineOpportunity,
 }: LeadCardProps) {
+  const bundle = useCrmConfigStore((s) => s.bundle);
   const opportunity = pipelineOpportunity;
   const company = getPrimaryCompany(lead);
   const title = opportunity?.title ?? lead.name;
@@ -450,7 +450,7 @@ const LeadCard = memo(function LeadCard({
             <p className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
               {company?.rubro && (
                 <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                  {companyRubroLabels[company.rubro]}
+                  {getRubroLabelFromCatalog(company.rubro, bundle)}
                 </span>
               )}
               {company?.tipo && (

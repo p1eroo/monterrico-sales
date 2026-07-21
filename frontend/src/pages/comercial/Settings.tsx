@@ -8,7 +8,7 @@ import {
   MapPin, Save, Video, FileText,
   MessageCircle, Bell, Moon, Link2, CheckCircle2,
   Target, CalendarDays, Calendar, ChevronUp, ChevronDown,
-  Loader2,
+  Loader2, Layers,
 } from 'lucide-react';
 import { useAppStore } from '@/store';
 import { useGoalsStore, hydrateGoalsFromBundle } from '@/store/goalsStore';
@@ -19,6 +19,7 @@ import {
   fetchCrmConfig,
   patchCrmOrganization,
   putCrmLeadSources,
+  putCrmRubros,
   putCrmStages,
   putCrmPriorities,
   putCrmActivityTypes,
@@ -140,6 +141,7 @@ const NAV_SECTIONS = [
   { id: 'metas', label: 'Metas', icon: Target },
   { id: 'integraciones', label: 'Integraciones', icon: Link2 },
   { id: 'fuentes', label: 'Fuentes de Contactos', icon: Globe },
+  { id: 'rubros', label: 'Rubros', icon: Layers },
   { id: 'pipeline', label: 'Etapas', icon: GitBranch },
   { id: 'prioridades', label: 'Prioridades', icon: Flag },
   { id: 'actividades', label: 'Tipos de Actividad', icon: Activity },
@@ -478,6 +480,7 @@ function GoalsSettingsCard() {
 }
 
 type LeadRow = { slug: string; name: string; enabled: boolean };
+type RubroRow = { slug: string; name: string; enabled: boolean };
 type StageRow = {
   slug: string;
   name: string;
@@ -521,6 +524,9 @@ export default function Settings() {
 
   const [leadSources, setLeadSources] = useState<LeadRow[]>([]);
   const [newSourceName, setNewSourceName] = useState('');
+
+  const [rubros, setRubros] = useState<RubroRow[]>([]);
+  const [newRubroName, setNewRubroName] = useState('');
 
   const [pipelineStages, setPipelineStages] = useState<StageRow[]>([]);
   const [addStageOpen, setAddStageOpen] = useState(false);
@@ -567,6 +573,13 @@ export default function Settings() {
     const c = bundle.catalog;
     setLeadSources(
       [...c.leadSources].sort((a, b) => a.sortOrder - b.sortOrder).map((r) => ({
+        slug: r.slug,
+        name: r.name,
+        enabled: r.enabled,
+      })),
+    );
+    setRubros(
+      [...(c.rubros ?? [])].sort((a, b) => a.sortOrder - b.sortOrder).map((r) => ({
         slug: r.slug,
         name: r.name,
         enabled: r.enabled,
@@ -631,6 +644,31 @@ export default function Settings() {
 
   function toggleLeadSource(slug: string) {
     setLeadSources((prev) =>
+      prev.map((s) => (s.slug === slug ? { ...s, enabled: !s.enabled } : s)),
+    );
+  }
+
+  function addRubro() {
+    const trimmed = newRubroName.trim();
+    if (!trimmed) return;
+    const base = slugify(trimmed);
+    const used = new Set(rubros.map((s) => s.slug));
+    let slug = base;
+    let n = 1;
+    while (used.has(slug)) {
+      slug = `${base}_${n}`;
+      n++;
+    }
+    setRubros((prev) => [...prev, { slug, name: trimmed, enabled: true }]);
+    setNewRubroName('');
+  }
+
+  function removeRubro(slug: string) {
+    setRubros((prev) => prev.filter((s) => s.slug !== slug));
+  }
+
+  function toggleRubro(slug: string) {
+    setRubros((prev) =>
       prev.map((s) => (s.slug === slug ? { ...s, enabled: !s.enabled } : s)),
     );
   }
@@ -736,6 +774,17 @@ export default function Settings() {
       toast.success('Fuentes guardadas');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al guardar fuentes');
+    }
+  }
+
+  async function saveRubros() {
+    if (!canEdit) return;
+    try {
+      const b = await putCrmRubros(rubros);
+      setBundle(b);
+      toast.success('Rubros guardados');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al guardar rubros');
     }
   }
 
@@ -1028,6 +1077,80 @@ export default function Settings() {
                     <Button className="bg-[#13944C] text-white hover:bg-[#0f7a3d]" onClick={() => void saveLeadSources()}>
                       <Save className="size-4" />
                       Guardar fuentes
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {activeTab === 'rubros' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Rubros de empresa</CardTitle>
+                <CardDescription>
+                  Sectores o industrias para clasificar empresas (persistidos en base de datos).
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Nuevo rubro..."
+                    value={newRubroName}
+                    disabled={!canEdit}
+                    onChange={(e) => setNewRubroName(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && addRubro()}
+                  />
+                  <Button
+                    type="button"
+                    onClick={addRubro}
+                    disabled={!canEdit}
+                    className="shrink-0 bg-[#13944C] text-white hover:bg-[#0f7a3d]"
+                  >
+                    <Plus className="size-4" />
+                    Agregar
+                  </Button>
+                </div>
+
+                <div className="space-y-2">
+                  {rubros.map((rubro) => (
+                    <div
+                      key={rubro.slug}
+                      className="flex items-center justify-between rounded-lg border px-4 py-3"
+                    >
+                      <span
+                        className={cn(
+                          'text-sm font-medium',
+                          !rubro.enabled && 'text-muted-foreground line-through',
+                        )}
+                      >
+                        {rubro.name}
+                      </span>
+                      <div className="flex items-center gap-3">
+                        <Switch
+                          checked={rubro.enabled}
+                          disabled={!canEdit}
+                          onCheckedChange={() => toggleRubro(rubro.slug)}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={!canEdit}
+                          className="text-muted-foreground hover:text-red-600"
+                          onClick={() => removeRubro(rubro.slug)}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {canEdit && (
+                  <div className="flex justify-end">
+                    <Button className="bg-[#13944C] text-white hover:bg-[#0f7a3d]" onClick={() => void saveRubros()}>
+                      <Save className="size-4" />
+                      Guardar rubros
                     </Button>
                   </div>
                 )}

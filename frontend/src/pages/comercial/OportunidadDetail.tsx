@@ -7,7 +7,7 @@ import {
 import { useCRMStore } from '@/store/crmStore';
 import { useAppStore } from '@/store';
 import { canReassignCommercialAdvisor } from '@/data/rbac';
-import { etapaLabels, companyRubroLabels, activities, contactSourceLabels } from '@/data/mock';
+import { etapaLabels, activities, contactSourceLabels } from '@/data/mock';
 import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLogsApi';
 import { useActivities } from '@/hooks/useActivities';
 import { useUsers } from '@/hooks/useUsers';
@@ -65,7 +65,7 @@ import {
 import { usePaginatedContactPicker, type PaginatedContactPickerOptions } from '@/hooks/usePaginatedContactPicker';
 import { usePaginatedCompanyPicker, type PaginatedCompanyPickerOptions } from '@/hooks/usePaginatedCompanyPicker';
 import { useStageBadgeTone } from '@/hooks/useStageBadgeTone';
-import { useCrmConfigStore, getStageLabelFromCatalog, getSourceLabelFromCatalog } from '@/store/crmConfigStore';
+import { useCrmConfigStore, getStageLabelFromCatalog, getSourceLabelFromCatalog, getRubroLabelFromCatalog } from '@/store/crmConfigStore';
 
 const TIMELINE_PAGE_SIZE = 8;
 
@@ -870,7 +870,7 @@ async function handleCreateNewContact(data: NewContactData) {
       : availableCompanies.map((c) => ({
           id: c.name,
           title: c.name,
-          subtitle: c.rubro ? companyRubroLabels[c.rubro] : undefined,
+          subtitle: c.rubro ? getRubroLabelFromCatalog(c.rubro, crmBundle) : undefined,
           status: 'Activo',
           icon: <Building2 className="size-4" />,
         }));

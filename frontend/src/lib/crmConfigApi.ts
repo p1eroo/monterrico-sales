@@ -44,6 +44,13 @@ export type CrmCatalogDto = {
     enabled: boolean;
     sortOrder: number;
   }[];
+  rubros: {
+    id: string;
+    slug: string;
+    name: string;
+    enabled: boolean;
+    sortOrder: number;
+  }[];
 };
 
 export type CrmSalesGoalsDto = {
@@ -89,6 +96,15 @@ export async function putCrmLeadSources(
   items: { slug: string; name: string; enabled: boolean }[],
 ): Promise<CrmConfigBundle> {
   return api<CrmConfigBundle>('/crm-config/lead-sources', {
+    method: 'PUT',
+    body: JSON.stringify({ items }),
+  });
+}
+
+export async function putCrmRubros(
+  items: { slug: string; name: string; enabled: boolean }[],
+): Promise<CrmConfigBundle> {
+  return api<CrmConfigBundle>('/crm-config/rubros', {
     method: 'PUT',
     body: JSON.stringify({ items }),
   });

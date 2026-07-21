@@ -23,6 +23,7 @@ import {
   applySimpleAdvisorFilter,
   parseAdvisorFilterQuery,
 } from '../common/advisor-filter.util';
+import { storeCompanyRucValue } from '../common/company-ruc.util';
 import { resolveLimaDayRange } from '../common/crm-timezone.util';
 import { isUnassignedSourceSlug } from '../crm-config/lead-source-normalize.util';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -259,34 +260,9 @@ export class ContactsService {
     const assignedTo = dto.assignedTo?.trim() || null;
     await this.crmConfig.assertEtapaAssignable(etapa);
 
-    const rucTrim = dto.ruc?.trim();
-    if (rucTrim) {
-      const digits = rucTrim.replace(/\D/g, '');
-      if (digits.length === 11) {
-        const byDigits = await tx.$queryRaw<{ id: string; name: string }[]>(
-          Prisma.sql`
-            SELECT id, name FROM "Company"
-            WHERE "ruc" IS NOT NULL
-              AND regexp_replace("ruc", '[^0-9]', '', 'g') = ${digits}
-            ORDER BY id ASC
-            LIMIT 1
-          `,
-        );
-        const row = byDigits[0];
-        if (row) {
-          return { id: row.id, name: row.name };
-        }
-      }
-      const dupRuc = await tx.company.findFirst({
-        where: { ruc: rucTrim },
-        select: { id: true, name: true },
-      });
-      if (dupRuc) {
-        return { id: dupRuc.id, name: dupRuc.name };
-      }
-    }
+    const rucTrim = storeCompanyRucValue(dto.ruc);
 
-    // Verificar por dominio (case-insensitive) — evita duplicados por dominio
+    // Verificar por dominio (case-insensitive) — identidad de la empresa
     const domainTrim = dto.domain?.trim();
     if (domainTrim) {
       const dupDomain = await tx.company.findFirst({
@@ -1033,6 +1009,93 @@ export class ContactsService {
     });
 
     return this.findOne(id, scope);
+  }
+
+  async bulkRemove(
+    params: {
+      ids?: string[];
+      selectAll?: boolean;
+      search?: string;
+      etapa?: string;
+      fuente?: string;
+      assignedTo?: string;
+      excludeAssignedTo?: string;
+      advisorPool?: string;
+      linkedToCompanyId?: string;
+      excludeCompanyLinkId?: string;
+      excludeOpportunityLinkId?: string;
+      lastInteraction?: string;
+      lastInteractionFrom?: string;
+      lastInteractionTo?: string;
+      createdFrom?: string;
+      createdTo?: string;
+    },
+    actor: ActivityActor,
+    scope?: CrmDataScope,
+  ): Promise<{ deleted: number }> {
+    const { ids, selectAll, ...filterOpts } = params;
+
+    let where: Prisma.ContactWhereInput;
+    if (selectAll) {
+      where = await this.contactListWhere(filterOpts, scope);
+    } else if (ids?.length) {
+      where = { id: { in: ids } };
+      if (scope && !scope.unrestricted) {
+        where.assignedTo = scope.viewerUserId;
+      }
+    } else {
+      throw new BadRequestException(
+        'Debes proporcionar ids o selectAll=true',
+      );
+    }
+
+    const toDelete = await this.prisma.contact.findMany({
+      where,
+      select: { id: true, name: true },
+    });
+
+    if (toDelete.length === 0) {
+      return { deleted: 0 };
+    }
+
+    await this.prisma.contact.deleteMany({
+      where: { id: { in: toDelete.map((c) => c.id) } },
+    });
+
+    const sampleNames = toDelete
+      .slice(0, 5)
+      .map((c) => c.name)
+      .join(', ');
+    const namesSuffix =
+      toDelete.length > 5 ? `, … (+${toDelete.length - 5} más)` : '';
+
+    await this.auditDetail.record(actor, {
+      action: 'eliminar',
+      module: 'contactos',
+      entityType: 'Contacto',
+      entityId: toDelete[0]!.id,
+      entityName: `${toDelete.length} contactos`,
+      entries: [
+        {
+          fieldKey: '_registro',
+          fieldLabel: 'Registro',
+          oldValue: `${sampleNames}${namesSuffix}`,
+          newValue: '(eliminado)',
+        },
+      ],
+    });
+
+    await this.activityLogs.record(actor, {
+      action: 'eliminar',
+      module: 'contactos',
+      entityType: 'Contacto',
+      entityId: toDelete[0]!.id,
+      entityName: `${toDelete.length} contactos`,
+      description: `Eliminación masiva: ${toDelete.length} contacto(s)`,
+      isCritical: true,
+    });
+
+    return { deleted: toDelete.length };
   }
 
   async remove(

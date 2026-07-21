@@ -17,6 +17,7 @@ import { CompanyLogoService } from './company-logo.service';
 import { CompanyStaleEtapaService } from './company-stale-etapa.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
+import { BulkDeleteCompaniesDto } from './dto/bulk-delete-companies.dto';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { Public } from '../auth/decorators/public.decorator';
@@ -241,6 +242,42 @@ export class CompaniesController {
           userName: req.user.name,
         }, scope),
       );
+  }
+
+  @Post('bulk-delete')
+  @RequirePermissions('empresas.eliminar')
+  async bulkRemove(
+    @Body() body: BulkDeleteCompaniesDto,
+    @Req() req: AuthedReq,
+  ) {
+    const scope = await this.crmDataScope.buildScope(
+      req.user.userId,
+      req.user.roleId,
+    );
+    return this.companiesService.bulkRemove(
+      {
+        ids: body.ids,
+        selectAll: body.selectAll,
+        search: body.search?.trim() || undefined,
+        rubro: body.rubro?.trim() || undefined,
+        tipo: body.tipo?.trim() || undefined,
+        etapa: body.etapa?.trim() || undefined,
+        fuente: body.fuente?.trim() || undefined,
+        assignedTo: body.assignedTo?.trim() || undefined,
+        excludeAssignedTo: body.excludeAssignedTo?.trim() || undefined,
+        advisorPool: body.advisorPool?.trim() || undefined,
+        lastInteraction: body.lastInteraction?.trim() || undefined,
+        lastInteractionFrom: body.lastInteractionFrom?.trim() || undefined,
+        lastInteractionTo: body.lastInteractionTo?.trim() || undefined,
+        createdFrom: body.createdFrom?.trim() || undefined,
+        createdTo: body.createdTo?.trim() || undefined,
+      },
+      {
+        userId: req.user.userId,
+        userName: req.user.name,
+      },
+      scope,
+    );
   }
 
   @Delete(':id')

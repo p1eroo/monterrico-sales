@@ -1,5 +1,6 @@
 import { Building2, Globe, DollarSign, Target } from 'lucide-react';
-import { etapaLabels, companyRubroLabels, companyTipoLabels } from '@/data/mock';
+import { etapaLabels, companyTipoLabels } from '@/data/mock';
+import { getRubroLabelFromCatalog, useCrmConfigStore } from '@/store/crmConfigStore';
 import { LinkedEntitiesCard } from './LinkedEntitiesCard';
 import { LinkedEntityItemHeader } from './LinkedEntityItemHeader';
 import { cn } from '@/lib/utils';
@@ -25,6 +26,7 @@ export function LinkedCompaniesCard({
   etapa,
   maxItems = 3,
 }: LinkedCompaniesCardProps) {
+  const bundle = useCrmConfigStore((s) => s.bundle);
   return (
     <LinkedEntitiesCard<LinkedCompany>
       title="Empresas"
@@ -47,7 +49,7 @@ export function LinkedCompaniesCard({
       collapsible
       renderItem={(comp, itemActions) => {
         const rubroLabel = comp.rubro
-          ? (companyRubroLabels[comp.rubro] ?? comp.rubro)
+          ? getRubroLabelFromCatalog(comp.rubro, bundle)
           : null;
         const multiple = companies.length > 1;
         const showPrincipal = Boolean(comp.isPrimary && multiple);

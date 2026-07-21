@@ -12,7 +12,7 @@ import { useAppStore } from '@/store';
 import { canReassignCommercialAdvisor } from '@/data/rbac';
 import { useCompaniesStore } from '@/store/companiesStore';
 import {
-  companyRubroLabels, companyTipoLabels, etapaLabels, contactSourceLabels, activities,
+  companyTipoLabels, etapaLabels, contactSourceLabels, activities,
 } from '@/data/mock';
 import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLogsApi';
 import { useUsers } from '@/hooks/useUsers';
@@ -81,14 +81,15 @@ import {
 import { buildOptimisticContact } from '@/lib/optimisticEntities';
 import { generateOptimisticId, useOptimisticCrmStore } from '@/store/optimisticCrmStore';
 import { useStageBadgeTone } from '@/hooks/useStageBadgeTone';
-import { useCrmConfigStore, getStageLabelFromCatalog, getSourceLabelFromCatalog } from '@/store/crmConfigStore';
+import { useCrmConfigStore, getStageLabelFromCatalog, getSourceLabelFromCatalog, getRubroLabelFromCatalog } from '@/store/crmConfigStore';
 import { getHighestPriorityOpportunityEtapa } from '@/lib/opportunityUtils';
 
 const TIMELINE_PAGE_SIZE = 8;
 
 function parseRubroField(s: string | null | undefined): CompanyRubro | undefined {
-  if (!s) return undefined;
-  return s in companyRubroLabels ? (s as CompanyRubro) : undefined;
+  const t = s?.trim();
+  if (!t) return undefined;
+  return t;
 }
 
 function parseTipoField(s: string | null | undefined): CompanyTipo | undefined {
@@ -1275,7 +1276,7 @@ async function handleCreateNewContact(data: NewContactData) {
 
 const subtitle = [
   companyData?.domain,
-  companyData?.rubro ? companyRubroLabels[companyData.rubro] : null,
+  companyData?.rubro ? getRubroLabelFromCatalog(companyData.rubro, crmBundle) : null,
   companyData?.tipo ? `Tipo ${companyData.tipo}` : null,
 ].filter(Boolean).join(' · ');
 
@@ -1391,7 +1392,7 @@ return (
     ? [
         {
           icon: Briefcase as typeof Building2,
-          value: companyRubroLabels[companyData.rubro],
+          value: getRubroLabelFromCatalog(companyData.rubro, crmBundle),
         },
       ]
     : []),

@@ -301,13 +301,16 @@ export class ChatwootClient {
   async createConversation(
     sourceId: string,
     inboxId: number,
-    message?: {
-      content: string;
-      template_params?: {
-        name: string;
-        category: string;
-        language: string;
-        processed_params: Record<string, unknown>;
+    options?: {
+      contactId?: number;
+      message?: {
+        content: string;
+        template_params?: {
+          name: string;
+          category: string;
+          language: string;
+          processed_params: Record<string, unknown>;
+        };
       };
     },
   ): Promise<ChatwootConversation> {
@@ -315,8 +318,11 @@ export class ChatwootClient {
       source_id: sourceId,
       inbox_id: inboxId,
     };
-    if (message) {
-      body.message = message;
+    if (options?.contactId) {
+      body.contact_id = options.contactId;
+    }
+    if (options?.message) {
+      body.message = options.message;
     }
     return this.request('POST', '/conversations', body);
   }

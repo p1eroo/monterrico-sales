@@ -14,6 +14,11 @@ import {
   formatImportedPersonName,
 } from '../common/import-display-name.util';
 import { inferCompanyDomainFromContactEmail } from '../common/email-domain.util';
+import {
+  companyRucDigits,
+  storeCompanyRucValue,
+} from '../common/company-ruc.util';
+import { prismaErrorToSpanishMessage } from '../common/prisma-error-message.util';
 import { Prisma } from '../generated/prisma';
 import type { CreateContactDto } from '../contacts/dto/create-contact.dto';
 import type { CreateCompanyDto } from '../companies/dto/create-company.dto';
@@ -328,6 +333,146 @@ export class ImportExportService {
     return this.foldContactImportKey(displayName);
   }
 
+  private readCompanyImportEtapaRaw(
+    row: string[],
+    headerIndex: Map<string, number>,
+  ): string {
+    return (
+      this.rowGetImportText(row, headerIndex, ['etapa', 'stage']) ||
+      this.rowGetImportText(row, headerIndex, [
+        'probabilidad',
+        'probability',
+        'porcentaje',
+        'porcentaje_etapa',
+      ])
+    );
+  }
+
+  private resolveCompanyImportDomain(
+    row: string[],
+    headerIndex: Map<string, number>,
+  ): string {
+    const explicit = this.rowGetImportText(row, headerIndex, [
+      'domain',
+      'dominio',
+    ])
+      .trim()
+      .toLowerCase();
+    if (explicit) return explicit;
+
+    const companyEmail = this.rowGetImportText(row, headerIndex, [
+      'correo',
+      'email',
+    ]);
+    const fromCompany = inferCompanyDomainFromContactEmail(companyEmail);
+    if (fromCompany) return fromCompany;
+
+    const contactEmail = this.rowGetImportText(row, headerIndex, [
+      'contacto_correo',
+      'contacto_email',
+    ]);
+    return inferCompanyDomainFromContactEmail(contactEmail) ?? '';
+  }
+
+  /** Oportunidad ya vinculada a la misma empresa y el mismo contacto. */
+  private async findCompanyContactOpportunityId(
+    companyId: string,
+    contactId: string,
+  ): Promise<string | null> {
+    const row = await this.prisma.opportunity.findFirst({
+      where: {
+        AND: [
+          { contacts: { some: { contactId } } },
+          { companies: { some: { companyId } } },
+        ],
+      },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true },
+    });
+    return row?.id ?? null;
+  }
+
+  /**
+   * Fila de import sin contacto: reutiliza la primera oportunidad de la empresa o crea una.
+   */
+  private async resolveCompanyImportOpportunityWithoutContact(params: {
+    companyId: string;
+    companyName: string;
+    rowTitle: string;
+    facturacionEstimada: number;
+    etapaSlug: string;
+    assignedTo: string | undefined;
+  }): Promise<{ opportunityId: string; isNewOpportunity: boolean }> {
+    const existing = await this.prisma.companyOpportunity.findFirst({
+      where: { companyId: params.companyId },
+      orderBy: { opportunity: { createdAt: 'asc' } },
+      select: { opportunityId: true },
+    });
+    if (existing) {
+      return {
+        opportunityId: existing.opportunityId,
+        isNewOpportunity: false,
+      };
+    }
+    const title = params.rowTitle.trim()
+      ? formatImportedCompanyName(params.rowTitle.trim())
+      : params.companyName.trim() || 'Oportunidad';
+    const opportunityId = await this.entitySync.ensureOpportunityForCompany(
+      params.companyId,
+      {
+        title,
+        amount: params.facturacionEstimada,
+        etapa: params.etapaSlug,
+        assignedTo: params.assignedTo ?? null,
+        expectedCloseDate: null,
+      },
+    );
+    return { opportunityId, isNewOpportunity: true };
+  }
+
+  /**
+   * Fila con contacto: una oportunidad por pareja empresa+contacto.
+   * Mismo dominio y contactos distintos → varias oportunidades en la misma empresa.
+   */
+  private async resolveCompanyImportOpportunityForContact(params: {
+    companyId: string;
+    contactId: string;
+    companyName: string;
+    rowTitle: string;
+    facturacionEstimada: number;
+    etapaSlug: string;
+    assignedTo: string | undefined;
+    fuente: string;
+    scope?: CrmDataScope;
+  }): Promise<{ opportunityId: string; isNewOpportunity: boolean }> {
+    const hadPair = !!(await this.findCompanyContactOpportunityId(
+      params.companyId,
+      params.contactId,
+    ));
+    const title = params.rowTitle.trim()
+      ? formatImportedCompanyName(params.rowTitle.trim())
+      : params.companyName.trim() || 'Oportunidad';
+    const amount =
+      params.facturacionEstimada > 0 ? params.facturacionEstimada : 1;
+    const opp = await this.opportunitiesService.create(
+      {
+        title,
+        amount,
+        etapa: params.etapaSlug,
+        assignedTo: params.assignedTo,
+        companyId: params.companyId,
+        contactId: params.contactId,
+        fuente: params.fuente,
+      },
+      undefined,
+      params.scope,
+    );
+    return {
+      opportunityId: opp.id,
+      isNewOpportunity: !hadPair,
+    };
+  }
+
   private pickCsvOrApiField(csv?: string, api?: string): string | undefined {
     const c = csv?.trim();
     if (c) return c;
@@ -537,6 +682,7 @@ export class ImportExportService {
       clienteRecuperado?: 'si' | 'no';
       etapa?: string;
       assignedTo?: string;
+      ruc?: string;
     },
   ): Promise<boolean> {
     const current = await this.prisma.company.findUnique({
@@ -557,6 +703,7 @@ export class ImportExportService {
         clienteRecuperado: true,
         etapa: true,
         assignedTo: true,
+        ruc: true,
       },
     });
     if (!current) return false;
@@ -625,6 +772,11 @@ export class ImportExportService {
     const nextAssignedTo = params.assignedTo?.trim();
     if (nextAssignedTo && current.assignedTo !== nextAssignedTo) {
       data.assignedTo = nextAssignedTo;
+    }
+
+    const nextRuc = storeCompanyRucValue(params.ruc);
+    if (nextRuc && nextRuc !== (current.ruc?.trim() || '')) {
+      data.ruc = nextRuc;
     }
 
     if (Object.keys(data).length === 0) return false;
@@ -730,22 +882,23 @@ export class ImportExportService {
   private async enrichCompanyDtoFromRuc(
     dto: CreateCompanyDto,
   ): Promise<CreateCompanyDto> {
-    const ruc = dto.ruc?.replace(/\D/g, '').trim();
-    if (!ruc || ruc.length !== 11) {
-      return dto;
+    const rucStored = storeCompanyRucValue(dto.ruc);
+    const digits = companyRucDigits(dto.ruc);
+    if (!digits || digits.length !== 11) {
+      return { ...dto, ruc: rucStored ?? undefined };
     }
     if (this.companyImportHasUsableIdentity(dto)) {
       const n = this.companyImportEffectiveName(dto.name, dto.razonSocial);
       const rz = dto.razonSocial?.trim();
       return {
         ...dto,
-        ruc,
+        ruc: rucStored ?? digits,
         name: n ? formatImportedCompanyName(n) : dto.name,
         razonSocial: rz ? formatImportedCompanyName(rz) : dto.razonSocial,
       };
     }
     try {
-      const data = await this.factiliza.consultarRuc(ruc);
+      const data = await this.factiliza.consultarRuc(digits);
       const rs = data.nombre_o_razon_social?.trim();
       const placeholderName = this.isCompanyImportPlaceholderName(dto.name);
       const nameRaw =
@@ -755,7 +908,7 @@ export class ImportExportService {
       const razonRaw = dto.razonSocial?.trim() || rs || undefined;
       return {
         ...dto,
-        ruc,
+        ruc: rucStored ?? digits,
         name: nameRaw ? formatImportedCompanyName(nameRaw) : nameRaw,
         razonSocial: razonRaw
           ? formatImportedCompanyName(razonRaw)
@@ -774,7 +927,7 @@ export class ImportExportService {
       const rz = dto.razonSocial?.trim();
       return {
         ...dto,
-        ruc,
+        ruc: rucStored ?? digits,
         name: n ? formatImportedCompanyName(n) : dto.name,
         razonSocial: rz ? formatImportedCompanyName(rz) : dto.razonSocial,
       };
@@ -1203,9 +1356,9 @@ export class ImportExportService {
   }
 
   private buildNewCompanyDedupeKey(dto: CreateCompanyDto): string {
-    const d = (dto.ruc ?? '').replace(/\D/g, '');
+    const domain = (dto.domain ?? '').trim().toLowerCase();
     const name = this.foldContactImportKey(dto.name ?? '');
-    return `__new__:${d || 'sin-ruc'}:${name || 'sin-nombre'}`;
+    return `__new__:${domain || 'sin-dominio'}:${name || 'sin-nombre'}`;
   }
 
   /**
@@ -1281,11 +1434,8 @@ export class ImportExportService {
   }
 
   /**
-   * Resuelve vínculo de empresa para import de contactos (por `empresa_nombre` / `empresa_ruc`).
-   * - RUC: si existe en BD, reutiliza la misma empresa; un nombre distinto en el CSV no renombra la empresa (mismo RUC).
-   * - RUC del CSV no registrado pero nombre coincide con una empresa: vincula el contacto a esa empresa (no crea duplicado).
-   * - Tras consultar SUNAT (solo import real): si el nombre definitivo ya existe, vincula en lugar de crear.
-   * - Sin RUC: igual que antes (por nombre o nueva empresa).
+   * Resuelve vínculo de empresa para import de contactos.
+   * La identidad de negocio es el dominio; el RUC es solo informativo.
    */
   private async resolveContactImportCompany(params: {
     empresaNombre: string;
@@ -1308,134 +1458,16 @@ export class ImportExportService {
     | { ok: false; message: string }
   > {
     const nombre = params.empresaNombre.trim();
-    const rucRaw = params.empresaRuc.trim();
+    const rucStored = storeCompanyRucValue(params.empresaRuc);
     const domain = params.empresaDomain?.trim().toLowerCase() || '';
     const dryRun = params.dryRun === true;
     const cr = params.contactClienteRecuperado;
 
-    if (!nombre && !rucRaw && !domain) {
+    if (!nombre && !rucStored && !domain) {
       return {
         ok: true,
         empresaResumen: 'Sin empresa',
         dedupeCompanyKey: null,
-      };
-    }
-
-    if (rucRaw) {
-      const found = await this.findCompanyByRucInput(rucRaw);
-      if (found) {
-        let resumen = `Existente: ${found.name}`;
-        if (
-          nombre &&
-          nombre.toLowerCase() !== found.name.toLowerCase()
-        ) {
-          resumen += dryRun
-            ? ` · mismo RUC: no se renombra la empresa; el nombre «${nombre}» queda como referencia de la fila`
-            : ` · mismo RUC: empresa sin renombrar (nombre CSV «${nombre}»)`;
-        }
-        return {
-          ok: true,
-          companyId: found.id,
-          empresaResumen: resumen,
-          dedupeCompanyKey: found.id,
-        };
-      }
-
-      if (nombre) {
-        const byNameRucMismatch = await this.findCompanyByNameInsensitive(
-          nombre,
-        );
-        if (byNameRucMismatch) {
-          return {
-            ok: true,
-            companyId: byNameRucMismatch.id,
-            empresaResumen: `Existente por nombre: «${byNameRucMismatch.name}» (el RUC del CSV no está registrado; se vincula el contacto a esta empresa)`,
-            dedupeCompanyKey: byNameRucMismatch.id,
-          };
-        }
-      }
-
-      if (domain) {
-        const byDomain = await this.prisma.company.findFirst({
-          where: { domain: { equals: domain, mode: 'insensitive' } },
-          select: { id: true, name: true },
-        });
-        if (byDomain) {
-          return {
-            ok: true,
-            companyId: byDomain.id,
-            empresaResumen: `Existente por dominio: ${byDomain.name}`,
-            dedupeCompanyKey: byDomain.id,
-          };
-        }
-      }
-
-      const digits = rucRaw.replace(/\D/g, '');
-      const newName = nombre || `Empresa RUC ${digits || rucRaw}`;
-      const dupPlaceholder = await this.findCompanyByNameInsensitive(newName);
-      if (dupPlaceholder) {
-        return {
-          ok: true,
-          companyId: dupPlaceholder.id,
-          empresaResumen: `Existente por nombre: «${dupPlaceholder.name}» (se vincula el contacto)`,
-          dedupeCompanyKey: dupPlaceholder.id,
-        };
-      }
-
-      const draft: CreateCompanyDto = {
-        name: formatImportedCompanyName(newName),
-        ruc: digits || rucRaw,
-        domain: domain || undefined,
-        facturacionEstimada: params.contactEstimatedValue,
-        fuente: params.contactFuente,
-        etapa: params.contactEtapa,
-        assignedTo: params.contactAssignedTo,
-        ...(cr ? { clienteRecuperado: cr } : {}),
-      };
-      if (dryRun) {
-        return {
-          ok: true,
-          newCompany: draft,
-          empresaResumen: this.previewEmpresaLabel(
-            params.empresaNombre,
-            params.empresaRuc,
-          ),
-          dedupeCompanyKey: this.buildNewCompanyDedupeKey(draft),
-        };
-      }
-
-      let newCompany = await this.enrichCompanyDtoFromRuc(draft);
-      const finalName = newCompany.name?.trim();
-      if (finalName) {
-        const dupAfterEnrich =
-          await this.findCompanyByNameInsensitive(finalName);
-        if (dupAfterEnrich) {
-          return {
-            ok: true,
-            companyId: dupAfterEnrich.id,
-            empresaResumen: `Existente por nombre: «${dupAfterEnrich.name}» (coincide con el nombre obtenido del RUC; se vincula el contacto)`,
-            dedupeCompanyKey: dupAfterEnrich.id,
-          };
-        }
-      }
-      const rucForDedup = newCompany.ruc?.trim();
-      if (rucForDedup) {
-        const dupRucAfter = await this.findCompanyByRucInput(rucForDedup);
-        if (dupRucAfter) {
-          return {
-            ok: true,
-            companyId: dupRucAfter.id,
-            empresaResumen: `Existente: ${dupRucAfter.name}`,
-            dedupeCompanyKey: dupRucAfter.id,
-          };
-        }
-      }
-
-      return {
-        ok: true,
-        newCompany,
-        empresaResumen: `Nueva empresa · ${newCompany.name}`,
-        dedupeCompanyKey: this.buildNewCompanyDedupeKey(newCompany),
       };
     }
 
@@ -1454,17 +1486,24 @@ export class ImportExportService {
       }
     }
 
-    const byName = await this.findCompanyByNameInsensitive(nombre);
-    if (byName) {
-      return {
-        ok: true,
-        companyId: byName.id,
-        empresaResumen: `Existente por nombre: ${byName.name}`,
-        dedupeCompanyKey: byName.id,
-      };
+    if (nombre) {
+      const byName = await this.findCompanyByNameInsensitive(nombre);
+      if (byName) {
+        return {
+          ok: true,
+          companyId: byName.id,
+          empresaResumen: `Existente por nombre: ${byName.name}`,
+          dedupeCompanyKey: byName.id,
+        };
+      }
     }
-    const onlyNameCo: CreateCompanyDto = {
-      name: formatImportedCompanyName(nombre || domain),
+
+    const newName =
+      nombre ||
+      (domain ? domain : rucStored ? `Empresa RUC ${rucStored}` : 'Empresa');
+    const draft: CreateCompanyDto = {
+      name: formatImportedCompanyName(newName),
+      ruc: rucStored || undefined,
       domain: domain || undefined,
       facturacionEstimada: params.contactEstimatedValue,
       fuente: params.contactFuente,
@@ -1472,11 +1511,55 @@ export class ImportExportService {
       assignedTo: params.contactAssignedTo,
       ...(cr ? { clienteRecuperado: cr } : {}),
     };
+
+    if (dryRun) {
+      return {
+        ok: true,
+        newCompany: draft,
+        empresaResumen: this.previewEmpresaLabel(
+          params.empresaNombre,
+          params.empresaRuc,
+        ),
+        dedupeCompanyKey: this.buildNewCompanyDedupeKey(draft),
+      };
+    }
+
+    let newCompany = await this.enrichCompanyDtoFromRuc(draft);
+    const finalName = newCompany.name?.trim();
+    if (finalName) {
+      const dupAfterEnrich =
+        await this.findCompanyByNameInsensitive(finalName);
+      if (dupAfterEnrich) {
+        return {
+          ok: true,
+          companyId: dupAfterEnrich.id,
+          empresaResumen: `Existente por nombre: «${dupAfterEnrich.name}» (coincide con el nombre obtenido del RUC; se vincula el contacto)`,
+          dedupeCompanyKey: dupAfterEnrich.id,
+        };
+      }
+    }
+
+    const domainAfter = newCompany.domain?.trim().toLowerCase();
+    if (domainAfter) {
+      const dupDomain = await this.prisma.company.findFirst({
+        where: { domain: { equals: domainAfter, mode: 'insensitive' } },
+        select: { id: true, name: true },
+      });
+      if (dupDomain) {
+        return {
+          ok: true,
+          companyId: dupDomain.id,
+          empresaResumen: `Existente por dominio: ${dupDomain.name}`,
+          dedupeCompanyKey: dupDomain.id,
+        };
+      }
+    }
+
     return {
       ok: true,
-      newCompany: onlyNameCo,
-      empresaResumen: `Nueva empresa · ${onlyNameCo.name}`,
-      dedupeCompanyKey: this.buildNewCompanyDedupeKey(onlyNameCo),
+      newCompany,
+      empresaResumen: `Nueva empresa · ${newCompany.name}`,
+      dedupeCompanyKey: this.buildNewCompanyDedupeKey(newCompany),
     };
   }
 
@@ -2001,8 +2084,7 @@ export class ImportExportService {
           await this.contactsService.create(dto, undefined, scope);
           created += 1;
         } catch (e: unknown) {
-          const msg =
-            e instanceof Error ? e.message : 'Error al crear el contacto';
+          const msg = prismaErrorToSpanishMessage(e, 'Error al crear el contacto');
           errors.push(importRowErr(excelRow, msg, nombre));
         }
       } finally {
@@ -2308,7 +2390,7 @@ export class ImportExportService {
           : 0;
       const rucRaw = this.rowGetImportText(row, headerIndex, ['ruc']).trim();
       const rucDigits = rucRaw.replace(/\D/g, '');
-      const domain = this.rowGetImportText(row, headerIndex, ['domain', 'dominio']).trim().toLowerCase();
+      const domain = this.resolveCompanyImportDomain(row, headerIndex);
       const nombreEmpresaTrim = nombreEmpresa.trim();
       const effectiveCompanyName = this.companyImportEffectiveName(
         nombreEmpresaTrim,
@@ -2333,18 +2415,13 @@ export class ImportExportService {
         });
       };
       if (!domain) {
-        pushErr('El dominio es obligatorio');
+        pushErr(
+          'El dominio es obligatorio (columna domain o inferible desde correo de empresa/contacto)',
+        );
         continue;
       }
 
-      const etapaRaw =
-        this.rowGetImportText(row, headerIndex, ['etapa', 'stage']) ||
-        this.rowGetImportText(row, headerIndex, [
-          'probabilidad',
-          'probability',
-          'porcentaje',
-          'porcentaje_etapa',
-        ]);
+      const etapaRaw = this.readCompanyImportEtapaRaw(row, headerIndex);
       const etapaResolved = this.crmConfig.resolveEtapaSlugFromCsvCell(
         stagesCompanies,
         etapaRaw,
@@ -2520,7 +2597,7 @@ export class ImportExportService {
           out[s.at]
         ) {
           out[s.at]!.empresaResumen +=
-            ' · contacto ya vinculado: se reforzará vínculo/oportunidad al importar';
+            ' · contacto ya vinculado: se actualizará su oportunidad (empresa+contacto)';
         }
       }
     }
@@ -2618,7 +2695,7 @@ export class ImportExportService {
       const fuente = this.rowGetImportText(row, headerIndex, ['fuente', 'source']);
       const normalizedFuente = fuente.trim() || 'base';
       const rucRaw = this.rowGetImportText(row, headerIndex, ['ruc']).trim();
-      const domain = this.rowGetImportText(row, headerIndex, ['domain', 'dominio']).trim().toLowerCase();
+      const domain = this.resolveCompanyImportDomain(row, headerIndex);
       const nombreEmpresaTrim = nombreEmpresa.trim();
       const effectiveCompanyName = this.companyImportEffectiveName(
         nombreEmpresaTrim,
@@ -2638,7 +2715,11 @@ export class ImportExportService {
           : 0;
       if (!domain) {
         errors.push(
-          importRowErr(excelRow, 'El dominio es obligatorio', undefined),
+          importRowErr(
+            excelRow,
+            'El dominio es obligatorio (columna domain o inferible desde correo de empresa/contacto)',
+            undefined,
+          ),
         );
         continue;
       }
@@ -2647,14 +2728,7 @@ export class ImportExportService {
         [effectiveCompanyName, razonRow, rucRaw].filter((s) => (s ?? '').trim()).join(' · ') ||
         undefined;
 
-      const etapaRaw =
-        this.rowGetImportText(row, headerIndex, ['etapa', 'stage']) ||
-        this.rowGetImportText(row, headerIndex, [
-          'probabilidad',
-          'probability',
-          'porcentaje',
-          'porcentaje_etapa',
-        ]);
+      const etapaRaw = this.readCompanyImportEtapaRaw(row, headerIndex);
       const etapaResolved = this.crmConfig.resolveEtapaSlugFromCsvCell(
         stagesCompanies,
         etapaRaw,
@@ -2689,7 +2763,7 @@ export class ImportExportService {
         this.readCompanyPhoneImportField(row, headerIndex) || undefined;
       const companyImportUpdate = {
         telefono: companyTelefono,
-        domain: this.rowGetImportText(row, headerIndex, ['domain', 'dominio']) || undefined,
+        domain: domain || undefined,
         rubro: this.rowGetImportText(row, headerIndex, ['rubro']) || undefined,
         tipo: this.rowGetImportText(row, headerIndex, ['tipo']) || undefined,
         correo: this.rowGetImportText(row, headerIndex, ['correo', 'email']) || undefined,
@@ -2709,6 +2783,7 @@ export class ImportExportService {
         ...(clienteRecNorm ? { clienteRecuperado: clienteRecNorm } : {}),
         etapa: etapaSlug,
         assignedTo,
+        ruc: storeCompanyRucValue(rucRaw) || undefined,
       } satisfies Parameters<
         ImportExportService['updateExistingCompanyFromImport']
       >[1];
@@ -2735,7 +2810,7 @@ export class ImportExportService {
             razonSocial: razonRow
               ? formatImportedCompanyName(razonRow)
               : undefined,
-            ruc: rucRaw || undefined,
+            ruc: storeCompanyRucValue(rucRaw) || undefined,
             telefono: companyImportUpdate.telefono,
             domain,
             rubro: companyImportUpdate.rubro,
@@ -2765,7 +2840,7 @@ export class ImportExportService {
         errors.push(
           importRowErr(
             excelRow,
-            e instanceof Error ? e.message : 'Error al crear o resolver empresa',
+            prismaErrorToSpanishMessage(e, 'Error al crear o resolver empresa'),
             companyImportRowLabel,
           ),
         );
@@ -2794,25 +2869,7 @@ export class ImportExportService {
         where: { id: companyId },
         select: { name: true },
       });
-      const existingOpportunityId = await this.prisma.companyOpportunity.findFirst({
-        where: { companyId },
-        orderBy: { opportunity: { createdAt: 'asc' } },
-        select: { opportunityId: true },
-      });
-      const opportunityId = existingOpportunityId
-        ? existingOpportunityId.opportunityId
-        : await this.entitySync.ensureOpportunityForCompany(
-            companyId,
-            {
-              title: effectiveCompanyName.trim()
-                ? formatImportedCompanyName(effectiveCompanyName.trim())
-                : companyForOpportunity?.name?.trim() || 'Oportunidad',
-              amount: facturacionEstimada,
-              etapa: etapaSlug,
-              assignedTo,
-              expectedCloseDate: null,
-            },
-          );
+      const companyDisplayName = companyForOpportunity?.name?.trim() || '';
 
       const contactoNombreCsv = this.rowGetImportText(row, headerIndex, [
         'contacto_nombre',
@@ -2838,6 +2895,14 @@ export class ImportExportService {
         !!contactoNombreEfectivo || puedeContactoDesdeCorreoSolo;
 
       if (!puedeNombreDoc) {
+        await this.resolveCompanyImportOpportunityWithoutContact({
+            companyId,
+            companyName: companyDisplayName,
+            rowTitle: effectiveCompanyName,
+            facturacionEstimada,
+            etapaSlug,
+            assignedTo,
+          });
         created += 1;
         continue;
       }
@@ -2865,7 +2930,7 @@ export class ImportExportService {
           importRowErr(
             excelRow,
             'Contacto: falta nombre',
-            companyForOpportunity?.name?.trim() || companyImportRowLabel,
+            companyDisplayName || companyImportRowLabel,
           ),
         );
         continue;
@@ -2881,14 +2946,12 @@ export class ImportExportService {
       );
 
       try {
+        let contactId: string | undefined;
         if (existingContactId) {
+          contactId = existingContactId;
           await this.ensureCompanyContactLinkForImport(
             existingContactId,
             companyId,
-          );
-          await this.entitySync.ensureContactLinkedToOpportunity(
-            existingContactId,
-            opportunityId,
           );
           await this.entitySync.propagateFromContact(
             companyId,
@@ -2917,20 +2980,30 @@ export class ImportExportService {
             undefined,
             scope,
           );
-          await this.entitySync.ensureContactLinkedToOpportunity(
-            createdContact.id,
-            opportunityId,
-          );
+          contactId = createdContact.id;
         }
+
+        await this.resolveCompanyImportOpportunityForContact({
+            companyId,
+            contactId,
+            companyName: companyDisplayName,
+            rowTitle: effectiveCompanyName,
+            facturacionEstimada,
+            etapaSlug,
+            assignedTo,
+            fuente: normalizedFuente,
+            scope,
+          });
+
         created += 1;
       } catch (e: unknown) {
         errors.push(
           importRowErr(
             excelRow,
-            e instanceof Error ? e.message : 'Error al crear o vincular contacto',
+            prismaErrorToSpanishMessage(e, 'Error al crear o vincular contacto'),
             [
               contactName.trim(),
-              companyForOpportunity?.name?.trim(),
+              companyDisplayName,
             ]
               .filter(Boolean)
               .join(' · ') || companyImportRowLabel,
@@ -3272,7 +3345,7 @@ export class ImportExportService {
         created += 1;
       } catch (e: unknown) {
         const msg =
-          e instanceof Error ? e.message : 'Error al crear la oportunidad';
+          prismaErrorToSpanishMessage(e, 'Error al crear la oportunidad');
         errors.push(importRowErr(excelRow, msg, titulo));
       }
       } finally {

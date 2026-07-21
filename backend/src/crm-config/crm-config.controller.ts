@@ -55,6 +55,18 @@ export class CrmConfigController {
     return this.crmConfig.putLeadSources(req.user.userId, body.items);
   }
 
+  @Put('rubros')
+  @RequirePermissions('configuracion.editar')
+  putRubros(
+    @Req() req: AuthedReq,
+    @Body() body: { items: { slug: string; name: string; enabled: boolean }[] },
+  ) {
+    if (!Array.isArray(body?.items)) {
+      throw new BadRequestException('items debe ser un array');
+    }
+    return this.crmConfig.putRubros(req.user.userId, body.items);
+  }
+
   @Put('stages')
   @RequirePermissions('configuracion.editar')
   putStages(

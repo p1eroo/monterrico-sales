@@ -17,6 +17,11 @@ import { buildChangeEntries } from '../common/audit-diff.util';
 import { OPPORTUNITY_FIELD_LABELS } from '../audit-detail/audit-field-labels';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
+import {
+  applySimpleAdvisorFilter,
+  parseAdvisorFilterQuery,
+} from '../common/advisor-filter.util';
+import { isUnassignedSourceSlug } from '../crm-config/lead-source-normalize.util';
 import { NotificationsService } from '../notifications/notifications.service';
 import { parseDateOnlyToUtcNoon } from '../common/parse-date-input.util';
 
@@ -423,6 +428,107 @@ export class OpportunitiesService {
     return created;
   }
 
+  private async opportunityListWhere(
+    opts?: {
+      search?: string;
+      etapa?: string;
+      status?: string;
+      fuente?: string;
+      assignedTo?: string;
+      excludeAssignedTo?: string;
+      advisorPool?: string;
+      linkedToCompanyId?: string;
+      excludeCompanyLinkId?: string;
+      excludeContactLinkId?: string;
+    },
+    scope?: CrmDataScope,
+  ): Promise<Prisma.OpportunityWhereInput> {
+    const where: Prisma.OpportunityWhereInput = {};
+    const linkedCo = opts?.linkedToCompanyId?.trim();
+    const excludeCo = opts?.excludeCompanyLinkId?.trim();
+    if (linkedCo) {
+      where.companies = { some: { companyId: linkedCo } };
+    } else if (excludeCo) {
+      where.companies = { none: { companyId: excludeCo } };
+    }
+    const excludeCt = opts?.excludeContactLinkId?.trim();
+    if (excludeCt) {
+      where.contacts = { none: { contactId: excludeCt } };
+    }
+    if (opts?.search?.trim()) {
+      const q = opts.search.trim();
+      where.OR = [
+        { title: { contains: q, mode: 'insensitive' } },
+        {
+          companies: {
+            some: {
+              company: { name: { contains: q, mode: 'insensitive' } },
+            },
+          },
+        },
+        {
+          contacts: {
+            some: {
+              contact: { name: { contains: q, mode: 'insensitive' } },
+            },
+          },
+        },
+      ];
+    }
+    if (opts?.etapa?.trim()) {
+      const etapas = opts.etapa.split(',').map((s) => s.trim()).filter(Boolean);
+      if (etapas.length > 1) where.etapa = { in: etapas };
+      else if (etapas.length === 1) where.etapa = etapas[0];
+    }
+    if (opts?.status?.trim()) where.status = opts.status.trim();
+    if (opts?.fuente?.trim()) {
+      const fuentes = opts.fuente.split(',').map((s) => s.trim()).filter(Boolean);
+      const wantsUnassigned = fuentes.some(isUnassignedSourceSlug);
+      const catalogFuentes = fuentes.filter((f) => !isUnassignedSourceSlug(f));
+      const orParts: Prisma.OpportunityWhereInput[] = [];
+
+      if (wantsUnassigned) {
+        orParts.push({ fuente: '' });
+      }
+
+      if (catalogFuentes.length > 0) {
+        const normalized = await Promise.all(
+          catalogFuentes.map((f) => this.crmConfig.normalizeLeadSource(f)),
+        );
+        const unique = [...new Set(normalized.filter(Boolean))];
+        if (unique.length > 1) {
+          orParts.push({ fuente: { in: unique, mode: 'insensitive' } });
+        } else if (unique.length === 1) {
+          orParts.push({ fuente: { equals: unique[0], mode: 'insensitive' } });
+        }
+      }
+
+      if (orParts.length > 0) {
+        const clause = orParts.length === 1 ? orParts[0]! : { OR: orParts };
+        if (where.AND) {
+          where.AND = Array.isArray(where.AND)
+            ? [...where.AND, clause]
+            : [where.AND, clause];
+        } else {
+          where.AND = [clause];
+        }
+      }
+    }
+    if (scope && !scope.unrestricted) {
+      where.assignedTo = scope.viewerUserId;
+    } else {
+      applySimpleAdvisorFilter(
+        where,
+        parseAdvisorFilterQuery({
+          assignedTo: opts?.assignedTo,
+          excludeAssignedTo: opts?.excludeAssignedTo,
+          advisorPool: opts?.advisorPool,
+        }),
+      );
+    }
+    return where;
+  }
+
   async findAll(
     opts?: {
       page?: number;
@@ -444,29 +550,7 @@ export class OpportunitiesService {
     const limit = Math.min(5000, Math.max(1, opts?.limit ?? 25));
     const skip = (page - 1) * limit;
 
-    const where: Prisma.OpportunityWhereInput = {};
-    const linkedCo = opts?.linkedToCompanyId?.trim();
-    const excludeCo = opts?.excludeCompanyLinkId?.trim();
-    if (linkedCo) {
-      where.companies = { some: { companyId: linkedCo } };
-    } else if (excludeCo) {
-      where.companies = { none: { companyId: excludeCo } };
-    }
-    const excludeCt = opts?.excludeContactLinkId?.trim();
-    if (excludeCt) {
-      where.contacts = { none: { contactId: excludeCt } };
-    }
-    if (opts?.search?.trim()) {
-      const q = opts.search.trim();
-      where.title = { contains: q, mode: 'insensitive' };
-    }
-    if (opts?.etapa?.trim()) where.etapa = opts.etapa.trim();
-    if (opts?.status?.trim()) where.status = opts.status.trim();
-    if (scope && !scope.unrestricted) {
-      where.assignedTo = scope.viewerUserId;
-    } else if (opts?.assignedTo?.trim()) {
-      where.assignedTo = opts.assignedTo.trim();
-    }
+    const where = await this.opportunityListWhere(opts, scope);
 
     const [rows, total] = await Promise.all([
       this.prisma.opportunity.findMany({
@@ -992,6 +1076,89 @@ export class OpportunitiesService {
       throw new NotFoundException('Oportunidad no encontrada');
     }
     return fresh;
+  }
+
+  async bulkRemove(
+    params: {
+      ids?: string[];
+      selectAll?: boolean;
+      search?: string;
+      etapa?: string;
+      status?: string;
+      fuente?: string;
+      assignedTo?: string;
+      excludeAssignedTo?: string;
+      advisorPool?: string;
+      linkedToCompanyId?: string;
+      excludeCompanyLinkId?: string;
+      excludeContactLinkId?: string;
+    },
+    actor: ActivityActor,
+    scope?: CrmDataScope,
+  ): Promise<{ deleted: number }> {
+    const { ids, selectAll, ...filterOpts } = params;
+
+    let where: Prisma.OpportunityWhereInput;
+    if (selectAll) {
+      where = await this.opportunityListWhere(filterOpts, scope);
+    } else if (ids?.length) {
+      where = { id: { in: ids } };
+      if (scope && !scope.unrestricted) {
+        where.assignedTo = scope.viewerUserId;
+      }
+    } else {
+      throw new BadRequestException(
+        'Debes proporcionar ids o selectAll=true',
+      );
+    }
+
+    const toDelete = await this.prisma.opportunity.findMany({
+      where,
+      select: { id: true, title: true },
+    });
+
+    if (toDelete.length === 0) {
+      return { deleted: 0 };
+    }
+
+    await this.prisma.opportunity.deleteMany({
+      where: { id: { in: toDelete.map((o) => o.id) } },
+    });
+
+    const sampleTitles = toDelete
+      .slice(0, 5)
+      .map((o) => o.title)
+      .join(', ');
+    const titlesSuffix =
+      toDelete.length > 5 ? `, … (+${toDelete.length - 5} más)` : '';
+
+    await this.auditDetail.record(actor, {
+      action: 'eliminar',
+      module: 'oportunidades',
+      entityType: 'Oportunidad',
+      entityId: toDelete[0]!.id,
+      entityName: `${toDelete.length} oportunidades`,
+      entries: [
+        {
+          fieldKey: '_registro',
+          fieldLabel: 'Registro',
+          oldValue: `${sampleTitles}${titlesSuffix}`,
+          newValue: '(eliminado)',
+        },
+      ],
+    });
+
+    await this.activityLogs.record(actor, {
+      action: 'eliminar',
+      module: 'oportunidades',
+      entityType: 'Oportunidad',
+      entityId: toDelete[0]!.id,
+      entityName: `${toDelete.length} oportunidades`,
+      description: `Eliminación masiva: ${toDelete.length} oportunidad(es)`,
+      isCritical: true,
+    });
+
+    return { deleted: toDelete.length };
   }
 
   async remove(

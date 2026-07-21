@@ -115,5 +115,25 @@ export const SEED_ACTIVITY_TYPES: { slug: string; name: string }[] = [
   { slug: 'whatsapp', name: 'WhatsApp' },
 ];
 
+export const SEED_RUBROS: { slug: string; name: string }[] = [
+  { slug: 'energia_mineria', name: 'Energía y Minería' },
+  { slug: 'pesquero_industrial', name: 'Pesquero e Industrial' },
+  { slug: 'logistica_comercio_exterior', name: 'Logística y Comercio Exterior' },
+  { slug: 'construccion_infraestructura', name: 'Construcción e Infraestructura' },
+  { slug: 'manufactura_alimentos_bebidas', name: 'Manufactura y Alimentos/Bebidas' },
+  { slug: 'retail_centros_comerciales', name: 'Retail y Centros Comerciales' },
+  { slug: 'farmaceutico_cosmetico', name: 'Farmacéutico y Cosmético' },
+  { slug: 'agroindustria', name: 'Agroindustria' },
+  { slug: 'tecnologia_telecomunicaciones', name: 'Tecnología y Telecomunicaciones' },
+  { slug: 'servicios_financieros_seguros', name: 'Servicios Financieros y Seguros' },
+  { slug: 'consultorias_auditoras', name: 'Consultorías y Auditoras' },
+  { slug: 'educacion_privada_universidades', name: 'Educación Privada y Universidades' },
+  { slug: 'salud_clinicas_privadas', name: 'Salud y Clínicas Privadas' },
+  { slug: 'horeca', name: 'HORECA' },
+  { slug: 'startups_ecommerce', name: 'Startups y E-commerce' },
+  { slug: 'ongs_organismos_internacionales', name: 'ONGs y Organismos Internacionales' },
+  { slug: 'licitaciones_estado', name: 'Licitaciones con el estado' },
+];
+
 export const SYSTEM_PRIORITY_SLUGS = new Set(SEED_PRIORITIES.map((p) => p.slug));
 export const SYSTEM_ACTIVITY_SLUGS = new Set(SEED_ACTIVITY_TYPES.map((a) => a.slug));

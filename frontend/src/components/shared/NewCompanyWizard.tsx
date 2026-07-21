@@ -5,7 +5,8 @@ import { Check, ChevronLeft, ChevronRight, Loader2, Search } from 'lucide-react'
 import { toast } from '@/lib/notify';
 import { factilizaApi } from '@/lib/factilizaApi';
 import type { CompanyRubro, CompanyTipo, ContactSource, Etapa } from '@/types';
-import { companyRubroLabels, companyTipoLabels, etapaLabels, contactSourceLabels } from '@/data/mock';
+import { companyTipoLabels, etapaLabels, contactSourceLabels } from '@/data/mock';
+import { useRubroOptions } from '@/store/crmConfigStore';
 import { useAppStore } from '@/store';
 import { canUserReassignCommercialAdvisor, resolveAdvisorAssigneeId } from '@/lib/advisorAssigneeDefaults';
 import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
@@ -102,6 +103,7 @@ export function NewCompanyWizard({
   const [domainLookupLoading, setDomainLookupLoading] = useState(false);
   const [domainMatches, setDomainMatches] = useState<ApiCompanyRecord[]>([]);
   const bundle = useCrmConfigStore((s) => s.bundle);
+  const rubroOptions = useRubroOptions();
 
   const stageOptions = useMemo(() => {
     const stages = bundle?.catalog?.stages
@@ -668,8 +670,8 @@ export function NewCompanyWizard({
                 <Select value={form.rubro} onValueChange={(v) => set('rubro', v as CompanyRubro)}>
                   <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue placeholder="Seleccionar rubro" /></SelectTrigger>
                   <SelectContent>
-                    {Object.entries(companyRubroLabels).map(([key, label]) => (
-                      <SelectItem key={key} value={key}>{label}</SelectItem>
+                    {rubroOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

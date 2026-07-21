@@ -17,8 +17,8 @@ import {
   UserCheck,
   Users,
 } from 'lucide-react';
-import { contactSourceLabels, etapaLabels, companyRubroLabels, companyTipoLabels } from '@/data/mock';
-import { useCrmConfigStore, getSourceLabelFromCatalog } from '@/store/crmConfigStore';
+import { contactSourceLabels, etapaLabels, companyTipoLabels } from '@/data/mock';
+import { getRubroLabelFromCatalog, getSourceLabelFromCatalog, useCrmConfigStore } from '@/store/crmConfigStore';
 import type { CompanySummaryRow } from '@/lib/companyApi';
 import { isLikelyCompanyCuid } from '@/lib/companyApi';
 import { formatCurrency, formatDate } from '@/lib/formatters';
@@ -197,9 +197,9 @@ export function CompanyPreviewSheet({
   const domain = canLoadServer && apiRecord?.domain ? apiRecord.domain : null;
   const rubro =
     canLoadServer && apiRecord?.rubro
-      ? companyRubroLabels[apiRecord.rubro as CompanyRubro] ?? apiRecord.rubro
+      ? getRubroLabelFromCatalog(apiRecord.rubro, bundle)
       : row.rubro
-        ? companyRubroLabels[row.rubro as CompanyRubro] ?? row.rubro
+        ? getRubroLabelFromCatalog(row.rubro, bundle)
         : '—';
   const tipo =
     canLoadServer && apiRecord?.tipo

@@ -310,12 +310,7 @@ export class ChatwootService {
     if (linkedContactId) {
       try {
         const convs = await this.getContactConversations(linkedContactId);
-        const pool = phoneSuffix
-          ? convs.filter((c) =>
-              this.phonesMatch(c.meta?.sender?.phone_number, phoneSuffix),
-            )
-          : convs;
-        pool.forEach(addFromContact);
+        convs.forEach(addFromContact);
       } catch { /* ignorar */ }
     }
 
@@ -710,16 +705,23 @@ export class ChatwootService {
     return this.client.getConfig();
   }
 
-  async createConversation(sourceId: string, message?: {
-    content: string;
-    template_params?: {
-      name: string;
-      category: string;
-      language: string;
-      processed_params: Record<string, unknown>;
-    };
-  }) {
-    return this.client.createConversation(sourceId, this.client.getConfig().inboxId, message);
+  async createConversation(
+    sourceId: string,
+    message?: {
+      content: string;
+      template_params?: {
+        name: string;
+        category: string;
+        language: string;
+        processed_params: Record<string, unknown>;
+      };
+    },
+    contactId?: number,
+  ) {
+    return this.client.createConversation(sourceId, this.client.getConfig().inboxId, {
+      contactId,
+      message,
+    });
   }
 
   async sendTemplateMessage(
@@ -826,6 +828,21 @@ export class ChatwootService {
     }
   }
 
+  /**
+   * Busca conversación existente en inbox Flota antes de crear una nueva.
+   * Con contactId conocido confía en el historial del contacto (ya filtrado por inbox).
+   */
+  private async findExistingConversationForInitiate(
+    phone: string,
+    contactId: number | null,
+  ): Promise<ChatwootConversationListItem | ChatwootConversation | null> {
+    if (contactId) {
+      const fromContact = this.pickBestConversation(await this.getContactConversations(contactId));
+      if (fromContact) return fromContact;
+    }
+    return this.findConversationForPhoneQuick(phone, contactId);
+  }
+
   private async createConversationForPhone(
     cleanPhone: string,
     contactId: number | null,
@@ -835,15 +852,17 @@ export class ChatwootService {
     let resolvedContactId = contactId;
     let sourceId = cleanPhone;
 
-    const tryCreate = async (sid: string) =>
-      this.client.createConversation(sid, inboxId);
+    const tryCreate = async (sid: string, cid: number | null) =>
+      this.client.createConversation(sid, inboxId, {
+        contactId: cid ?? undefined,
+      });
 
     if (resolvedContactId) {
       sourceId = await this.ensureContactInboxForFlota(resolvedContactId, cleanPhone);
     }
 
     try {
-      const conversation = await tryCreate(sourceId);
+      const conversation = await tryCreate(sourceId, resolvedContactId);
       return { conversation, contactId: resolvedContactId };
     } catch (err) {
       if (!resolvedContactId) {
@@ -856,7 +875,7 @@ export class ChatwootService {
           `asegurando contact_inbox contactId=${resolvedContactId}`,
       );
       sourceId = await this.ensureContactInboxForFlota(resolvedContactId, cleanPhone);
-      const conversation = await tryCreate(sourceId);
+      const conversation = await tryCreate(sourceId, resolvedContactId);
       return { conversation, contactId: resolvedContactId };
     }
   }
@@ -904,16 +923,10 @@ export class ChatwootService {
       }
     }
 
-    // 2. Buscar conversación existente (solo historial del contacto si se conoce su ID)
+    // 2. Buscar conversación existente en inbox Flota (historial del contacto / prospecto / teléfono)
     let conversation: ChatwootConversation | null = null;
     let foundExisting = false;
-    const existingConv = contactId
-      ? this.pickBestConversation(
-          (await this.getContactConversations(contactId)).filter((c) =>
-            this.phonesMatch(c.meta?.sender?.phone_number, cleanPhone.slice(-9)),
-          ),
-        )
-      : await this.findConversationForPhoneQuick(data.phone, null);
+    const existingConv = await this.findExistingConversationForInitiate(data.phone, contactId);
     if (existingConv) {
       conversation = existingConv as ChatwootConversation;
       foundExisting = true;

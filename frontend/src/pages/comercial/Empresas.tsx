@@ -19,8 +19,8 @@ import {
 } from '@tanstack/react-table';
 import type { DateRange } from 'react-day-picker';
 import type { Etapa, CompanyRubro, CompanyTipo, Company, ContactSource } from '@/types';
-import { companyRubroLabels, companyTipoLabels, etapaLabels, contactSourceLabels } from '@/data/mock';
-import { useCrmConfigStore, getSourceLabelFromCatalog, useLeadSourceOptions } from '@/store/crmConfigStore';
+import { companyTipoLabels, etapaLabels, contactSourceLabels } from '@/data/mock';
+import { useCrmConfigStore, getSourceLabelFromCatalog, getRubroLabelFromCatalog, useLeadSourceOptions, useRubroLabelsMap } from '@/store/crmConfigStore';
 import { useCompaniesStore } from '@/store/companiesStore';
 
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -101,6 +101,7 @@ import { IMPORT_SPREADSHEET_ACCEPT } from '@/lib/importSpreadsheet';
 import {
   type ApiCompanyRecord,
   type CompanySummaryRow,
+  bulkDeleteCompanies,
   companyListSummaryPaginated,
   companySummaryEtapaCounts,
   isLikelyCompanyCuid,
@@ -274,8 +275,9 @@ function EmpresaContactsPopover({
 }
 
 function parseRubroFromApi(s: string | null | undefined): CompanyRubro | undefined {
-  if (!s) return undefined;
-  return s in companyRubroLabels ? (s as CompanyRubro) : undefined;
+  const t = s?.trim();
+  if (!t) return undefined;
+  return t;
 }
 
 function parseTipoFromApi(s: string | null | undefined): CompanyTipo | undefined {
@@ -345,6 +347,7 @@ export default function EmpresasPage() {
   const [loading, setLoading] = useState(true);
   const bundle = useCrmConfigStore((s) => s.bundle);
   const leadSourceOptions = useLeadSourceOptions();
+  const rubroLabelsMap = useRubroLabelsMap();
 
   const [search, setSearch] = useState('');
   const [searchDebounced, setSearchDebounced] = useState('');
@@ -365,6 +368,7 @@ export default function EmpresasPage() {
     ultimaInteraccion: true,
   });
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
+  const [selectAllMode, setSelectAllMode] = useState(false);
   const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
   const [batchDeleting, setBatchDeleting] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>(() => {
@@ -409,30 +413,48 @@ export default function EmpresasPage() {
     setPage(1);
   }, [searchDebounced, pageSize]);
 
+  const listFilterParams = useMemo(() => {
+    const { from: interactionFromIso, to: interactionToIso } =
+      dateRangeToQueryBounds(interactionRange);
+    const { from: createdFromIso, to: createdToIso } =
+      dateRangeToQueryBounds(creationRange);
+    return {
+      search: searchDebounced || undefined,
+      etapa: etapaFilter.length > 0 ? etapaFilter.join(',') : undefined,
+      fuente: inclusiveMultiSourceFilterToApiParam(sourceFilter),
+      assignedTo: advisorListParams.assignedTo,
+      excludeAssignedTo: advisorListParams.excludeAssignedTo,
+      advisorPool: advisorListParams.advisorPool,
+      rubro: rubroFilter.length > 0 ? rubroFilter.join(',') : undefined,
+      tipo: tipoFilter.length > 0 ? tipoFilter.join(',') : undefined,
+      lastInteractionFrom: interactionFromIso,
+      lastInteractionTo: interactionToIso,
+      createdFrom: createdFromIso,
+      createdTo: createdToIso,
+    };
+  }, [
+    searchDebounced,
+    etapaFilter,
+    sourceFilter,
+    advisorListParams,
+    rubroFilter,
+    tipoFilter,
+    interactionRange,
+    creationRange,
+  ]);
+
+  useEffect(() => {
+    setSelectedCompanies([]);
+    setSelectAllMode(false);
+  }, [listFilterParams]);
+
   const loadSummary = useCallback(async () => {
     setLoading(true);
     try {
-      const { from: interactionFromIso, to: interactionToIso } =
-        dateRangeToQueryBounds(interactionRange);
-      const { from: createdFromIso, to: createdToIso } =
-        dateRangeToQueryBounds(creationRange);
-
       const res = await companyListSummaryPaginated({
         page,
         limit: pageSize,
-        search: searchDebounced || undefined,
-        etapa: etapaFilter.length > 0 ? etapaFilter.join(',') : undefined,
-        fuente: inclusiveMultiSourceFilterToApiParam(sourceFilter),
-        assignedTo: advisorListParams.assignedTo,
-        excludeAssignedTo: advisorListParams.excludeAssignedTo,
-        advisorPool: advisorListParams.advisorPool,
-        rubro: rubroFilter.length > 0 ? rubroFilter.join(',') : undefined,
-        tipo: tipoFilter.length > 0 ? tipoFilter.join(',') : undefined,
-        lastInteraction: undefined,
-        lastInteractionFrom: interactionFromIso,
-        lastInteractionTo: interactionToIso,
-        createdFrom: createdFromIso,
-        createdTo: createdToIso,
+        ...listFilterParams,
       });
       setSummaryRows(res.data);
       setTotal(res.total);
@@ -447,14 +469,7 @@ export default function EmpresasPage() {
   }, [
     page,
     pageSize,
-    searchDebounced,
-    etapaFilter,
-    sourceFilter,
-    advisorListParams,
-    rubroFilter,
-    tipoFilter,
-    interactionRange,
-    creationRange,
+    listFilterParams,
   ]);
 
   useEffect(() => {
@@ -463,37 +478,12 @@ export default function EmpresasPage() {
 
   const loadEtapaTabCounts = useCallback(async () => {
     try {
-      const { from: interactionFromIso, to: interactionToIso } =
-        dateRangeToQueryBounds(interactionRange);
-      const { from: createdFromIso, to: createdToIso } =
-        dateRangeToQueryBounds(creationRange);
-      const { counts } = await companySummaryEtapaCounts({
-        search: searchDebounced || undefined,
-        fuente: inclusiveMultiSourceFilterToApiParam(sourceFilter),
-        assignedTo: advisorListParams.assignedTo,
-        excludeAssignedTo: advisorListParams.excludeAssignedTo,
-        advisorPool: advisorListParams.advisorPool,
-        rubro: rubroFilter.length > 0 ? rubroFilter.join(',') : undefined,
-        tipo: tipoFilter.length > 0 ? tipoFilter.join(',') : undefined,
-        lastInteraction: undefined,
-        lastInteractionFrom: interactionFromIso,
-        lastInteractionTo: interactionToIso,
-        createdFrom: createdFromIso,
-        createdTo: createdToIso,
-      });
+      const { counts } = await companySummaryEtapaCounts(listFilterParams);
       setEtapaTabCounts(counts);
     } catch {
       setEtapaTabCounts({});
     }
-  }, [
-    searchDebounced,
-    sourceFilter,
-    advisorListParams,
-    rubroFilter,
-    tipoFilter,
-    interactionRange,
-    creationRange,
-  ]);
+  }, [listFilterParams]);
 
   useEffect(() => {
     void loadEtapaTabCounts();
@@ -517,71 +507,6 @@ export default function EmpresasPage() {
 
   const filtersDefault = !hasActiveFilters;
 
-  function clearFilters() {
-    setSearch('');
-    setSearchDebounced('');
-    setSourceFilter([]);
-    setEtapaFilter([]);
-    setRubroFilter([]);
-    setTipoFilter([]);
-    resetAdvisorFilter();
-    setInteractionRange(undefined);
-    setCreationRange(undefined);
-    setPage(1);
-  }
-
-  function toggleSelectAll() {
-    if (selectedCompanies.length === displayRows.length) {
-      setSelectedCompanies([]);
-    } else {
-      setSelectedCompanies(displayRows.map((r) => r.id));
-    }
-  }
-
-  function toggleSelectCompany(id: string) {
-    setSelectedCompanies((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
-    );
-  }
-
-  async function handleBatchDelete() {
-    if (selectedCompanies.length === 0) return;
-    setBatchDeleting(true);
-    toast.loading('Eliminando…', { id: 'batch-delete-empresas' });
-    let deleted = 0;
-    let failed = 0;
-
-    for (const id of selectedCompanies) {
-      if (!isLikelyCompanyCuid(id)) {
-        failed++;
-        continue;
-      }
-      try {
-        await api(`/companies/${id}`, { method: 'DELETE' });
-        deleted++;
-      } catch {
-        failed++;
-      }
-    }
-
-    setBatchDeleting(false);
-    setBatchDeleteDialogOpen(false);
-    setSelectedCompanies([]);
-    await loadSummary();
-
-    const msg = [];
-    if (deleted > 0) msg.push(`${deleted} eliminada(s)`);
-    if (failed > 0) msg.push(`${failed} fallaron`);
-    toast.success(msg.join(', '), { id: 'batch-delete-empresas' });
-  }
-
-  const companyImportPreviewCsvKeys = useMemo(() => {
-    const withCols = importPreviewData?.rows.find(
-      (r) => r.csvColumns && Object.keys(r.csvColumns).length > 0,
-    );
-    return withCols ? Object.keys(withCols.csvColumns) : [];
-  }, [importPreviewData]);
-
   const displayRows = useMemo((): EmpresaSummaryRow[] => {
     if (page !== 1 || !filtersDefault || standaloneCompanies.length === 0) {
       return summaryRows;
@@ -594,6 +519,92 @@ export default function EmpresasPage() {
       .map(localCompanyToSummary);
     return [...locals, ...summaryRows];
   }, [summaryRows, page, filtersDefault, standaloneCompanies]);
+
+  function clearFilters() {
+    setSearch('');
+    setSearchDebounced('');
+    setSourceFilter([]);
+    setEtapaFilter([]);
+    setRubroFilter([]);
+    setTipoFilter([]);
+    resetAdvisorFilter();
+    setInteractionRange(undefined);
+    setCreationRange(undefined);
+    setPage(1);
+    setSelectedCompanies([]);
+    setSelectAllMode(false);
+  }
+
+  function toggleSelectAll() {
+    if (selectAllMode) {
+      setSelectAllMode(false);
+      setSelectedCompanies([]);
+      return;
+    }
+    if (
+      selectedCompanies.length === displayRows.length &&
+      displayRows.length > 0
+    ) {
+      setSelectedCompanies([]);
+      return;
+    }
+    setSelectedCompanies(displayRows.map((r) => r.id));
+  }
+
+  function handleSelectAllMatchingFilter() {
+    setSelectAllMode(true);
+    setSelectedCompanies(displayRows.map((r) => r.id));
+  }
+
+  function toggleSelectCompany(id: string) {
+    if (selectAllMode) return;
+    setSelectedCompanies((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
+    );
+  }
+
+  const selectedDeleteCount = selectAllMode ? total : selectedCompanies.length;
+  const allPageSelected =
+    !selectAllMode &&
+    displayRows.length > 0 &&
+    selectedCompanies.length === displayRows.length;
+
+  async function handleBatchDelete() {
+    if (selectedDeleteCount === 0) return;
+    setBatchDeleting(true);
+    toast.loading('Eliminando…', { id: 'batch-delete-empresas' });
+    try {
+      const result = await bulkDeleteCompanies(
+        selectAllMode
+          ? { selectAll: true, ...listFilterParams }
+          : {
+              ids: selectedCompanies.filter((id) => isLikelyCompanyCuid(id)),
+            },
+      );
+      setBatchDeleteDialogOpen(false);
+      setSelectedCompanies([]);
+      setSelectAllMode(false);
+      await loadSummary();
+      await loadEtapaTabCounts();
+      toast.success(`${result.deleted} eliminada(s)`, {
+        id: 'batch-delete-empresas',
+      });
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : 'No se pudo eliminar',
+        { id: 'batch-delete-empresas' },
+      );
+    } finally {
+      setBatchDeleting(false);
+    }
+  }
+
+  const companyImportPreviewCsvKeys = useMemo(() => {
+    const withCols = importPreviewData?.rows.find(
+      (r) => r.csvColumns && Object.keys(r.csvColumns).length > 0,
+    );
+    return withCols ? Object.keys(withCols.csvColumns) : [];
+  }, [importPreviewData]);
 
   const [sorting, setSorting] = useState<SortingState>([]);
 
@@ -615,7 +626,11 @@ export default function EmpresasPage() {
         header: () => (
           <div className={comercialTableCheckboxWrapClass}>
             <Checkbox
-              checked={selectedCompanies.length === displayRows.length && displayRows.length > 0}
+              checked={
+                selectAllMode ||
+                (selectedCompanies.length === displayRows.length &&
+                  displayRows.length > 0)
+              }
               onCheckedChange={toggleSelectAll}
               className="h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
             />
@@ -624,7 +639,10 @@ export default function EmpresasPage() {
         cell: ({ row }) => (
           <div className={comercialTableCheckboxWrapClass}>
             <Checkbox
-              checked={selectedCompanies.includes(row.original.id)}
+              checked={
+                selectAllMode || selectedCompanies.includes(row.original.id)
+              }
+              disabled={selectAllMode}
               onCheckedChange={() => toggleSelectCompany(row.original.id)}
               className="h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
             />
@@ -736,7 +754,8 @@ export default function EmpresasPage() {
         enableHiding: true,
         cell: ({ getValue }) => {
           const rubro = parseRubroFromApi(getValue() as string | null | undefined);
-          return <span className="block truncate text-[13px] text-[#475569] dark:text-gray-400" title={rubro ? companyRubroLabels[rubro] : undefined}>{rubro ? companyRubroLabels[rubro] : '—'}</span>;
+          const label = rubro ? getRubroLabelFromCatalog(rubro, bundle) : undefined;
+          return <span className="block truncate text-[13px] text-[#475569] dark:text-gray-400" title={label}>{label ?? '—'}</span>;
         },
         enableSorting: false,
         size: 140,
@@ -1554,7 +1573,7 @@ export default function EmpresasPage() {
         description="Gestiona empresas y cuentas comerciales"
         className="mb-4"
       >
-        {hasPermission('empresas.eliminar') && selectedCompanies.length > 0 && (
+        {hasPermission('empresas.eliminar') && selectedDeleteCount > 0 && (
           <Button
             variant="destructive"
             onClick={() => setBatchDeleteDialogOpen(true)}
@@ -1565,13 +1584,50 @@ export default function EmpresasPage() {
             ) : (
               <Trash2 className="size-4" />
             )}{' '}
-            Eliminar ({selectedCompanies.length})
+            Eliminar ({selectedDeleteCount})
           </Button>
         )}
         <Button onClick={() => setNewEmpresaOpen(true)} className="h-9 w-[110px] text-sm font-normal shadow-md">
           <Plus /> Nueva
         </Button>
       </PageHeader>
+
+      {selectedDeleteCount > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border bg-muted/50 px-4 py-2.5">
+          {selectAllMode ? (
+            <span className="text-sm font-medium">
+              Todas las {total} empresas del filtro están seleccionadas
+            </span>
+          ) : (
+            <span className="text-sm font-medium">
+              {selectedCompanies.length} de {total} seleccionadas
+            </span>
+          )}
+          {allPageSelected && total > displayRows.length && (
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto px-1 text-xs"
+              onClick={handleSelectAllMatchingFilter}
+            >
+              Seleccionar las {total} empresas del filtro
+            </Button>
+          )}
+          {selectAllMode && (
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto px-1 text-xs"
+              onClick={() => {
+                setSelectAllMode(false);
+                setSelectedCompanies([]);
+              }}
+            >
+              Deseleccionar todo
+            </Button>
+          )}
+        </div>
+      )}
 
       <GlassCard>
       {/* Filter bar */}
@@ -1659,7 +1715,7 @@ export default function EmpresasPage() {
                 {formatInclusiveMultiFilterLabel(
                   rubroFilter,
                   'Rubro',
-                  (k) => companyRubroLabels[k] || k,
+                  (k) => rubroLabelsMap[k] || k,
                   'rubros',
                 )}
               </span>
@@ -1670,7 +1726,7 @@ export default function EmpresasPage() {
             <Command className={comercialProCommandClass}>
               <CommandList className="max-h-[260px] overflow-y-auto">
                 <CommandGroup>
-                  {Object.entries(companyRubroLabels).map(([key, label]) => {
+                  {Object.entries(rubroLabelsMap).map(([key, label]) => {
                     const selected = isInclusiveMultiFilterSelected(rubroFilter, key);
                     return (
                       <CommandItem
@@ -1680,7 +1736,7 @@ export default function EmpresasPage() {
                             toggleInclusiveMultiFilter(
                               prev,
                               key,
-                              Object.keys(companyRubroLabels),
+                              Object.keys(rubroLabelsMap),
                             ),
                           );
                           setPage(1);
@@ -2173,7 +2229,7 @@ export default function EmpresasPage() {
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     <StatusBadge status={emp.displayEtapa as Etapa} />
                     {rubro && (
-                      <Badge variant="outline" className="text-xs">{companyRubroLabels[rubro]}</Badge>
+                      <Badge variant="outline" className="text-xs">{getRubroLabelFromCatalog(rubro, bundle)}</Badge>
                     )}
                     {tipo && (
                       <Badge variant="outline" className="text-xs">Tipo {tipo}</Badge>
@@ -2242,10 +2298,14 @@ export default function EmpresasPage() {
         open={batchDeleteDialogOpen}
         onOpenChange={setBatchDeleteDialogOpen}
         title="Eliminar Empresas Seleccionadas"
-        description={`¿Estás seguro que deseas eliminar ${selectedCompanies.length} empresa(s)? Esta acción no se puede deshacer.`}
+        description={`¿Estás seguro que deseas eliminar ${selectedDeleteCount} empresa(s)? Esta acción no se puede deshacer.`}
         onConfirm={() => void handleBatchDelete()}
         variant="destructive"
-        confirmLabel={batchDeleting ? 'Eliminando...' : `Eliminar ${selectedCompanies.length}`}
+        confirmLabel={
+          batchDeleting
+            ? 'Eliminando...'
+            : `Eliminar ${selectedDeleteCount}`
+        }
       />
 
       <ConfirmDialog

@@ -15,7 +15,7 @@ import {
   formDialogInputClass,
   formDialogSelectTriggerClass,
 } from '@/components/ui/form-dialog';
-import { companyRubroLabels, companyTipoLabels } from '@/data/mock';
+import { companyTipoLabels } from '@/data/mock';
 import type { CompanyRubro, CompanyTipo, ContactSource } from '@/types';
 import { api } from '@/lib/api';
 import type { ApiCompanyRecord } from '@/lib/companyApi';
@@ -26,7 +26,7 @@ import { canReassignCommercialAdvisor } from '@/data/rbac';
 import { resolveAdvisorAssigneeId } from '@/lib/advisorAssigneeDefaults';
 import { useUsers } from '@/hooks/useUsers';
 import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
-import { useLeadSourceOptions } from '@/store/crmConfigStore';
+import { useLeadSourceOptions, useRubroOptions } from '@/store/crmConfigStore';
 
 export type CompanyEditSavePayload = {
   name: string;
@@ -70,6 +70,7 @@ export function CompanyEditDialog({
   const currentUser = useAppStore((s) => s.currentUser);
   const canEditAssignee = canReassignCommercialAdvisor(currentUserRole);
   const leadSourceOptions = useLeadSourceOptions();
+  const rubroOptions = useRubroOptions();
 
   const [editForm, setEditForm] = useState({
     name: '',
@@ -108,7 +109,7 @@ export function CompanyEditDialog({
         name: row.name,
         domain: '',
         telefono: '',
-        rubro: (row.rubro && row.rubro in companyRubroLabels ? row.rubro : '') as CompanyRubro | '',
+        rubro: (row.rubro?.trim() ?? '') as CompanyRubro | '',
         tipo: (row.tipo && (row.tipo === 'A' || row.tipo === 'B' || row.tipo === 'C') ? row.tipo : '') as CompanyTipo | '',
         ruc: '',
         razonSocial: '',
@@ -123,7 +124,7 @@ export function CompanyEditDialog({
         name: row.name,
         domain: '',
         telefono: '',
-        rubro: (row.rubro && row.rubro in companyRubroLabels ? row.rubro : '') as CompanyRubro | '',
+        rubro: (row.rubro?.trim() ?? '') as CompanyRubro | '',
         tipo: (row.tipo && (row.tipo === 'A' || row.tipo === 'B' || row.tipo === 'C') ? row.tipo : '') as CompanyTipo | '',
         ruc: '',
         razonSocial: '',
@@ -142,7 +143,7 @@ export function CompanyEditDialog({
           name: rec.name,
           domain: rec.domain ?? '',
           telefono: rec.telefono ?? '',
-          rubro: (rec.rubro && rec.rubro in companyRubroLabels ? rec.rubro : '') as CompanyRubro | '',
+          rubro: (rec.rubro?.trim() ?? '') as CompanyRubro | '',
           tipo: (rec.tipo && (rec.tipo === 'A' || rec.tipo === 'B' || rec.tipo === 'C') ? rec.tipo : '') as CompanyTipo | '',
           ruc: rec.ruc ?? '',
           razonSocial: rec.razonSocial ?? '',
@@ -156,7 +157,7 @@ export function CompanyEditDialog({
             name: row.name,
             domain: '',
             telefono: '',
-            rubro: (row.rubro && row.rubro in companyRubroLabels ? row.rubro : '') as CompanyRubro | '',
+            rubro: (row.rubro?.trim() ?? '') as CompanyRubro | '',
             tipo: (row.tipo && (row.tipo === 'A' || row.tipo === 'B' || row.tipo === 'C') ? row.tipo : '') as CompanyTipo | '',
             ruc: '',
             razonSocial: '',
@@ -233,8 +234,8 @@ export function CompanyEditDialog({
               <Select value={editForm.rubro} onValueChange={(v) => setEditForm((f) => ({ ...f, rubro: v as CompanyRubro }))}>
                 <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(companyRubroLabels).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  {rubroOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

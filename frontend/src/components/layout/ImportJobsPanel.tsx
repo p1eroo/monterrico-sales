@@ -75,7 +75,11 @@ export function ImportJobsPanel() {
         const errorRows = importJobErrorsList(job);
         const canOpenErrors = errorRows.length > 0;
         return (
-          <Card key={job.id} className="pointer-events-auto border shadow-lg">
+          <Card
+            key={job.id}
+            variant="elevated"
+            className="pointer-events-auto bg-background shadow-lg"
+          >
             <CardContent className="space-y-3 p-4">
               <div className="flex items-start gap-3">
                 <div className="mt-0.5">

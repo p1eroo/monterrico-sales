@@ -3,11 +3,13 @@ import {
   Injectable,
   OnModuleInit,
 } from '@nestjs/common';
+import { normalizeEtapaPercentFromCsvCell } from '../common/etapa-funnel-import.util';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   SEED_ACTIVITY_TYPES,
   SEED_LEAD_SOURCES,
   SEED_PRIORITIES,
+  SEED_RUBROS,
   SEED_STAGES,
   STAGE_PROBABILITY_FALLBACK,
   SYSTEM_ACTIVITY_SLUGS,
@@ -116,6 +118,18 @@ export class CrmConfigService implements OnModuleInit {
         })),
       });
     }
+
+    const rb = await this.prisma.crmRubro.count();
+    if (rb === 0) {
+      await this.prisma.crmRubro.createMany({
+        data: SEED_RUBROS.map((r, i) => ({
+          slug: r.slug,
+          name: r.name,
+          enabled: true,
+          sortOrder: i,
+        })),
+      });
+    }
   }
 
   private async userHasPermission(userId: string, permission: string) {
@@ -189,6 +203,7 @@ export class CrmConfigService implements OnModuleInit {
       stages,
       priorities,
       activityTypes,
+      rubros,
     ] = await Promise.all([
       this.prisma.crmOrganizationProfile.findUnique({ where: { id: ORG_ID } }),
       this.prisma.crmLeadSource.findMany({
@@ -199,6 +214,7 @@ export class CrmConfigService implements OnModuleInit {
       }),
       this.prisma.crmPriority.findMany({ orderBy: { sortOrder: 'asc' } }),
       this.prisma.crmActivityType.findMany({ orderBy: { sortOrder: 'asc' } }),
+      this.prisma.crmRubro.findMany({ orderBy: { sortOrder: 'asc' } }),
     ]);
 
     const orgDto = org
@@ -320,6 +336,13 @@ export class CrmConfigService implements OnModuleInit {
           enabled: r.enabled,
           sortOrder: r.sortOrder,
         })),
+        rubros: rubros.map((r) => ({
+          id: r.id,
+          slug: r.slug,
+          name: r.name,
+          enabled: r.enabled,
+          sortOrder: r.sortOrder,
+        })),
       },
       salesGoals,
       permissions: {
@@ -405,6 +428,53 @@ export class CrmConfigService implements OnModuleInit {
           );
         }
         await tx.crmLeadSource.delete({ where: { slug } });
+      }
+    });
+    return this.getBundle(userId);
+  }
+
+  async putRubros(
+    userId: string,
+    items: { slug: string; name: string; enabled: boolean }[],
+  ) {
+    await this.ensureReady();
+    const ok = await this.userHasPermission(userId, 'configuracion.editar');
+    if (!ok) {
+      throw new BadRequestException('Sin permiso para editar configuración');
+    }
+    const incoming = new Set(items.map((i) => i.slug));
+    await this.prisma.$transaction(async (tx) => {
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        const slug = it.slug.trim().toLowerCase();
+        if (!slug) {
+          throw new BadRequestException('Slug de rubro inválido');
+        }
+        await tx.crmRubro.upsert({
+          where: { slug },
+          create: {
+            slug,
+            name: it.name.trim(),
+            enabled: it.enabled,
+            sortOrder: i,
+          },
+          update: {
+            name: it.name.trim(),
+            enabled: it.enabled,
+            sortOrder: i,
+          },
+        });
+      }
+      const existing = await tx.crmRubro.findMany({ select: { slug: true } });
+      for (const { slug } of existing) {
+        if (incoming.has(slug)) continue;
+        const cnt = await tx.company.count({ where: { rubro: slug } });
+        if (cnt > 0) {
+          throw new BadRequestException(
+            `No se puede quitar el rubro "${slug}": hay ${cnt} empresa(s) con ese rubro`,
+          );
+        }
+        await tx.crmRubro.delete({ where: { slug } });
       }
     });
     return this.getBundle(userId);
@@ -856,10 +926,8 @@ export class CrmConfigService implements OnModuleInit {
     const byName = stages.find((s) => fold(s.name) === tFold);
     if (byName) return { ok: true, slug: byName.slug };
 
-    const pctClean = trimmed.replace(/%/g, '').trim().replace(',', '.');
-    const pctNum = Number.parseFloat(pctClean);
-    if (Number.isFinite(pctNum)) {
-      const rounded = Math.round(pctNum);
+    const rounded = normalizeEtapaPercentFromCsvCell(trimmed);
+    if (rounded !== null) {
       const matches = stages.filter((s) => s.probability === rounded);
       if (matches.length === 0) {
         return {
