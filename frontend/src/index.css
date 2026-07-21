@@ -43,6 +43,8 @@
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-icon: var(--sidebar-icon);
+    --color-sidebar-icon-active: var(--sidebar-icon-active);
     --color-surface-elevated: var(--surface-elevated);
     --color-surface-hover: var(--surface-hover);
     --color-text-primary: var(--text-primary);
@@ -125,6 +127,8 @@
     --sidebar-accent-foreground: #e2e8f0;
     --sidebar-border: #1a4a30;
     --sidebar-ring: #13944C;
+    --sidebar-icon: #b8e6cc;
+    --sidebar-icon-active: #ffffff;
     --success: #16a34a;
     --success-foreground: #ffffff;
     --warning: #f59e0b;
@@ -197,6 +201,8 @@
     --sidebar-accent-foreground: hsl(210 20% 88%);
     --sidebar-border: hsl(220 14% 16.2%);
     --sidebar-ring: #13944C;
+    --sidebar-icon: #9ca3af;
+    --sidebar-icon-active: #e5e7eb;
     --success: hsl(142 71% 45%);
     --success-foreground: #ffffff;
     --warning: hsl(38 92% 50%);

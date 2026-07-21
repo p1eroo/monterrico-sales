@@ -1498,6 +1498,7 @@ export default function FlotaProspectos() {
         "A.C.": p.aireAcondicionado ?? "",
         "Año Veh.": p.anioVehiculo != null ? String(p.anioVehiculo) : "",
         Distrito: p.distrito ?? "",
+        Ciudad: p.ciudad ?? "",
         "F. Cita": p.fechaCita
           ? new Date(p.fechaCita).toLocaleDateString("es-PE")
           : "",

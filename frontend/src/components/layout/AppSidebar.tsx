@@ -1,23 +1,7 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { UserPlus, Briefcase, CalendarCheck, Calendar, Target, Building2,
-  BarChart3,
-  Users,
-  Shield,
-  Settings,
-  LogOut,
-  FileSearch,
-  Mail,
-  Send,
-  FileArchive,
-  Bot,
-  Car,
-  UserCheck,
-  ArrowRightLeft,
-  MessageCircle,
-  Search,
-  Puzzle,
-  ChevronDown,
+import { UserPlus, Briefcase, Calendar, BarChart3, Users, Shield, Settings,
+  FileSearch, Bot, Car, UserCheck, ArrowRightLeft, MessageCircle, Search, ChevronDown,
 } from 'lucide-react';
 import type { PermissionKey } from '@/types';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -46,6 +30,21 @@ import { APP_PATHS } from '@/lib/detailRoutes';
 import logoMark from '@/assets/logo.png';
 import tmWordmark from '@/assets/TM.png';
 import { DashboardSvgIcon } from '@/components/icons/DashboardSvgIcon';
+import { UsersGroupTwoRoundedSvgIcon } from '@/components/icons/UsersGroupTwoRoundedSvgIcon';
+import { Buildings2SvgIcon } from '@/components/icons/Buildings2SvgIcon';
+import { MoneyBagSvgIcon } from '@/components/icons/MoneyBagSvgIcon';
+import { DocumentAddSvgIcon } from '@/components/icons/DocumentAddSvgIcon';
+import { CalendarSvgIcon } from '@/components/icons/CalendarSvgIcon';
+import { LetterSvgIcon } from '@/components/icons/LetterSvgIcon';
+import { MapArrowSquareSvgIcon } from '@/components/icons/MapArrowSquareSvgIcon';
+import { SuitcaseSvgIcon } from '@/components/icons/SuitcaseSvgIcon';
+import { ChatSquare2SvgIcon } from '@/components/icons/ChatSquare2SvgIcon';
+import { SsdSquareSvgIcon } from '@/components/icons/SsdSquareSvgIcon';
+import { CpuSvgIcon } from '@/components/icons/CpuSvgIcon';
+import { Widget5SvgIcon } from '@/components/icons/Widget5SvgIcon';
+import { SettingsSvgIcon } from '@/components/icons/SettingsSvgIcon';
+import { PaletteRoundSvgIcon } from '@/components/icons/PaletteRoundSvgIcon';
+import { SquareDoubleAltArrowLeftSvgIcon } from '@/components/icons/SquareDoubleAltArrowLeftSvgIcon';
 
 type NavIcon = ComponentType<{ className?: string }>;
 
@@ -63,36 +62,36 @@ const collapsedFlyoutClass =
 
 const navItems: NavDef[] = [
   { to: '/dashboard', label: 'Dashboard', icon: DashboardSvgIcon, permission: 'dashboard.ver' },
-  { to: APP_PATHS.contacts, label: 'Contactos', icon: UserPlus, permission: 'contactos.ver' },
-  { to: APP_PATHS.companies, label: 'Empresas', icon: Briefcase, permission: 'empresas.ver' },
-  { to: '/opportunities', label: 'Oportunidades', icon: Target, permission: 'oportunidades.ver' },
-  { to: '/tareas', label: 'Tareas', icon: CalendarCheck, permission: 'actividades.ver' },
-  { to: '/calendario', label: 'Calendario', icon: Calendar, permission: 'actividades.ver' },
-  { to: '/inbox', label: 'Correo', icon: Mail, permission: 'correo.ver' },
-  { to: '/campaigns', label: 'Masivo', icon: Send, permission: 'campanas.ver' },
+  { to: APP_PATHS.contacts, label: 'Contactos', icon: UsersGroupTwoRoundedSvgIcon, permission: 'contactos.ver' },
+  { to: APP_PATHS.companies, label: 'Empresas', icon: Buildings2SvgIcon, permission: 'empresas.ver' },
+  { to: '/opportunities', label: 'Oportunidades', icon: MoneyBagSvgIcon, permission: 'oportunidades.ver' },
+  { to: '/tareas', label: 'Tareas', icon: DocumentAddSvgIcon, permission: 'actividades.ver' },
+  { to: '/calendario', label: 'Calendario', icon: CalendarSvgIcon, permission: 'actividades.ver' },
+  { to: '/inbox', label: 'Correo', icon: LetterSvgIcon, permission: 'correo.ver' },
+  { to: '/campaigns', label: 'Masivo', icon: MapArrowSquareSvgIcon, permission: 'campanas.ver' },
   {
     to: '/clients',
     label: 'Clientes',
-    icon: Building2,
+    icon: SuitcaseSvgIcon,
     permission: 'clientes.ver',
     children: [
       { to: APP_PATHS.clientCompanies, label: 'Empresas', icon: Briefcase },
       { to: APP_PATHS.clientContacts, label: 'Contactos', icon: UserPlus },
     ],
   },
-  { to: '/reports', label: 'Reportes', icon: BarChart3, permission: 'reportes.ver' },
-  { to: '/archivos', label: 'Archivos', icon: FileArchive, permission: 'archivos.ver' },
+  { to: '/reports', label: 'Reportes', icon: ChatSquare2SvgIcon, permission: 'reportes.ver' },
+  { to: '/archivos', label: 'Archivos', icon: SsdSquareSvgIcon, permission: 'archivos.ver' },
   {
     to: '/integraciones',
     label: 'Integraciones',
-    icon: Puzzle,
+    icon: CpuSvgIcon,
     children: [
       { to: '/integraciones/apollo', label: 'Apollo', icon: Search },
       { to: '/agentes-ia', label: 'Agentes IA', icon: Bot },
     ],
   },
-  { to: '/team', label: 'Equipo', icon: Users, permission: 'equipo.ver' },
-  { to: '/settings', label: 'Configuración', icon: Settings, permission: 'configuracion.ver' },
+  { to: '/team', label: 'Equipo', icon: Widget5SvgIcon, permission: 'equipo.ver' },
+  { to: '/settings', label: 'Configuración', icon: SettingsSvgIcon, permission: 'configuracion.ver' },
 ];
 
 function navItemVisible(
@@ -341,7 +340,7 @@ export function AppSidebar() {
               onClick={() => navigate('/area-select')}
               className="text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             >
-              <ArrowRightLeft />
+              <PaletteRoundSvgIcon />
               <span>Cambiar área</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -354,7 +353,7 @@ export function AppSidebar() {
               }}
               className="text-sidebar-foreground/60 hover:bg-destructive/10 hover:text-destructive"
             >
-              <LogOut />
+              <SquareDoubleAltArrowLeftSvgIcon />
               <span>Cerrar sesión</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
