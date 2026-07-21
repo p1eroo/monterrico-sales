@@ -87,6 +87,7 @@ import {
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { captureChartCardImages } from "@/lib/reportsExport";
 
 export default function FlotaReportes() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
@@ -148,6 +149,15 @@ export default function FlotaReportes() {
     { key: "operador", label: "Actividad por Operador" },
     { key: "sunat", label: "SUNAT - Gestión de Flota" },
   ] as const;
+
+  const FLOTA_CHART_CARD_IDS: Record<string, string> = {
+    conversion: "chart-conversion",
+    conductores: "chart-conductores",
+    fuente: "chart-fuente",
+    zona: "chart-zona",
+    operador: "chart-operador",
+    sunat: "chart-sunat",
+  };
 
   const STORAGE_KEY = "flota-por-autorizar";
   const [porAutorizarCount, setPorAutorizarCount] = useState(() => {
@@ -732,6 +742,7 @@ export default function FlotaReportes() {
 
   async function handleExportPdf(selectedSections: Set<string>) {
     setExportingPdf(true);
+    setExportPdfDialogOpen(false);
     try {
       const baseName = `reporte-flota_${padExportStamp(new Date())}`;
       const doc = new jsPDF({
@@ -740,66 +751,9 @@ export default function FlotaReportes() {
         format: "a4",
       });
 
-      const chartIds: Record<string, string> = {
-        conversion: "chart-conversion",
-        conductores: "chart-conductores",
-        fuente: "chart-fuente",
-        zona: "chart-zona",
-        operador: "chart-operador",
-        sunat: "chart-sunat",
-      };
-      const chartImages: Record<string, string> = {};
-
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      for (const [key, id] of Object.entries(chartIds)) {
-        if (!selectedSections.has(key)) continue;
-        const cardEl = document.getElementById(id);
-        if (!cardEl) continue;
-        try {
-          const allSvgs = Array.from(cardEl.querySelectorAll("svg"));
-          if (allSvgs.length === 0) continue;
-          const svgEl = allSvgs.reduce((prev, current) =>
-            current.clientHeight > prev.clientHeight ? current : prev,
-          );
-          if (!svgEl || svgEl.clientHeight < 50) continue;
-
-          const clonedSvg = svgEl.cloneNode(true) as SVGElement;
-          const width = svgEl.clientWidth || 800;
-          const height = svgEl.clientHeight || 400;
-          clonedSvg.setAttribute("width", width.toString());
-          clonedSvg.setAttribute("height", height.toString());
-
-          const svgData = new XMLSerializer().serializeToString(clonedSvg);
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d");
-          const img = new Image();
-          canvas.width = width * 2;
-          canvas.height = height * 2;
-
-          const svgBlob = new Blob([svgData], {
-            type: "image/svg+xml;charset=utf-8",
-          });
-          const url = URL.createObjectURL(svgBlob);
-
-          await new Promise<void>((resolve, reject) => {
-            img.onload = () => {
-              if (ctx) {
-                ctx.fillStyle = "#ffffff";
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                chartImages[key] = canvas.toDataURL("image/png");
-              }
-              URL.revokeObjectURL(url);
-              resolve();
-            };
-            img.onerror = reject;
-            img.src = url;
-          });
-        } catch (e) {
-          console.error(`Error capturando gráfico ${id}:`, e);
-        }
-      }
+      const chartImages = await captureChartCardImages(FLOTA_CHART_CARD_IDS, {
+        selectedKeys: selectedSections,
+      });
 
       const contentWidth = 182;
       let y = 14;

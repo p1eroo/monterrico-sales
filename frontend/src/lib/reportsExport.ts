@@ -100,8 +100,6 @@ export const REPORT_CHART_CARD_IDS = {
   tasks: 'chart-tasks',
 } as const;
 
-type ReportChartKey = keyof typeof REPORT_CHART_CARD_IDS;
-
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
   return Promise.race([
     promise,
@@ -109,14 +107,26 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
   ]);
 }
 
-/** Captura los gráficos visibles en Reportes vía html2canvas (parcial si alguno falla). */
-export async function captureReportChartImages(): Promise<
-  NonNullable<ReportsExportInput['charts']>
-> {
-  const chartImages: NonNullable<ReportsExportInput['charts']> = {};
-  await new Promise((r) => setTimeout(r, CHART_CAPTURE_DELAY_MS));
+type CaptureChartCardImagesOptions = {
+  selectedKeys?: Set<string>;
+  delayMs?: number;
+  timeoutMs?: number;
+};
 
-  for (const [key, id] of Object.entries(REPORT_CHART_CARD_IDS) as [ReportChartKey, string][]) {
+/** Captura tarjetas de gráficos vía html2canvas (parcial si alguno falla o expira). */
+export async function captureChartCardImages(
+  chartIds: Record<string, string>,
+  options?: CaptureChartCardImagesOptions,
+): Promise<Record<string, string>> {
+  const chartImages: Record<string, string> = {};
+  const delayMs = options?.delayMs ?? CHART_CAPTURE_DELAY_MS;
+  const timeoutMs = options?.timeoutMs ?? CHART_CAPTURE_TIMEOUT_MS;
+  const selectedKeys = options?.selectedKeys;
+
+  await new Promise((r) => setTimeout(r, delayMs));
+
+  for (const [key, id] of Object.entries(chartIds)) {
+    if (selectedKeys && !selectedKeys.has(key)) continue;
     const cardEl = document.getElementById(id);
     if (!cardEl) continue;
 
@@ -133,7 +143,7 @@ export async function captureReportChartImages(): Promise<
           logging: false,
           useCORS: true,
         }).then((canvas) => canvas.toDataURL('image/png')),
-        CHART_CAPTURE_TIMEOUT_MS,
+        timeoutMs,
       );
       if (dataUrl) {
         chartImages[key] = dataUrl;
@@ -144,6 +154,15 @@ export async function captureReportChartImages(): Promise<
   }
 
   return chartImages;
+}
+
+/** Captura los gráficos visibles en Reportes vía html2canvas (parcial si alguno falla). */
+export async function captureReportChartImages(): Promise<
+  NonNullable<ReportsExportInput['charts']>
+> {
+  return captureChartCardImages(REPORT_CHART_CARD_IDS) as NonNullable<
+    ReportsExportInput['charts']
+  >;
 }
 
 type PdfSection = {
