@@ -12,6 +12,7 @@ import { ChatwootEventService } from './chatwoot-event.service';
 import { ChatwootOperadorSyncService } from './chatwoot-operador-sync.service';
 import { ChatwootOperadorReconcileScheduler } from './chatwoot-operador-reconcile.scheduler';
 import { ChatwootAttachmentStorageService } from './chatwoot-attachment-storage.service';
+import { ChatwootContactNameSyncService } from './chatwoot-contact-name-sync.service';
 
 @Global()
 @Module({
@@ -25,7 +26,13 @@ import { ChatwootAttachmentStorageService } from './chatwoot-attachment-storage.
     ChatwootOperadorSyncService,
     ChatwootOperadorReconcileScheduler,
     ChatwootAttachmentStorageService,
+    ChatwootContactNameSyncService,
   ],
-  exports: [ChatwootService, ChatwootEventService, ChatwootOperadorSyncService],
+  exports: [
+    ChatwootService,
+    ChatwootEventService,
+    ChatwootOperadorSyncService,
+    ChatwootContactNameSyncService,
+  ],
 })
 export class ChatwootModule {}

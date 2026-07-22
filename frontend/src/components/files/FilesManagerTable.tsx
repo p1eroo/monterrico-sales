@@ -27,6 +27,11 @@ import {
   type FilesSortKey,
 } from '@/lib/fileUtils';
 import { cn } from '@/lib/utils';
+import {
+  crmTableBodyRowClassInteractive,
+  crmTableFooterClass,
+  crmTableHeaderRowClassTall,
+} from '@/lib/crmTableSurface';
 import type { FileAttachment } from '@/types';
 
 interface FilesManagerTableProps {
@@ -116,7 +121,7 @@ export function FilesManagerTable({
     <div className="overflow-auto scrollbar-thin max-h-[calc(100vh-330px)]">
       <table className="w-full min-w-[720px] table-fixed">
         <thead>
-          <tr className="h-11 bg-[#eef1f5] text-left text-xs font-bold text-[#647789] dark:bg-gray-800 dark:text-gray-400">
+          <tr className={cn('h-11 text-left', crmTableHeaderRowClassTall)}>
             <th className="w-10 px-1" />
             <SortableTh
               label="Nombre"
@@ -174,7 +179,7 @@ export function FilesManagerTable({
             return (
               <tr
                 key={file.id}
-                className="h-14 cursor-pointer border-b border-dashed border-[#e8ecf0] bg-card/30 transition-colors last:border-b-0 hover:bg-[#fafbfc] dark:border-gray-700 dark:hover:bg-gray-800"
+                className={cn('h-14 last:border-b-0', crmTableBodyRowClassInteractive)}
                 onClick={() => onView(file)}
               >
                 <td className="px-1 align-middle" onClick={(e) => e.stopPropagation()}>

@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EstimatedBillingAreaChart } from '@/components/shared/EstimatedBillingAreaChart';
+import { ChartInfoTooltip } from '@/components/shared/ChartInfoTooltip';
 import { formatCurrencyCompact } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import type { EstimatedBillingWeekly } from '@/lib/analyticsApi';
@@ -15,6 +16,7 @@ interface EstimatedBillingMetricCardProps {
   data: EstimatedBillingWeekly | null | undefined;
   loading?: boolean;
   className?: string;
+  info?: string;
   onMaximize?: () => void;
   maximizeDisabled?: boolean;
 }
@@ -23,6 +25,7 @@ export function EstimatedBillingMetricCard({
   data,
   loading,
   className,
+  info,
   onMaximize,
   maximizeDisabled,
 }: EstimatedBillingMetricCardProps) {
@@ -55,9 +58,12 @@ export function EstimatedBillingMetricCard({
     <Card className={cn('min-h-[320px]', className)}>
       <CardContent className="flex min-h-[320px] flex-col p-5">
         <div className="flex min-h-8 items-center justify-between gap-2">
-          <p className="text-sm font-semibold text-[#0f172a] dark:text-gray-100">
-            Facturación estimada total
-          </p>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <p className="text-sm font-semibold text-[#0f172a] dark:text-gray-100">
+              Facturación estimada total
+            </p>
+            {info ? <ChartInfoTooltip description={info} /> : null}
+          </div>
           <Button
             type="button"
             variant="ghost"

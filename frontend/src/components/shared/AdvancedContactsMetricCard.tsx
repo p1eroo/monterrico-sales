@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AdvancedContactsBarChart } from '@/components/shared/AdvancedContactsBarChart';
+import { ChartInfoTooltip } from '@/components/shared/ChartInfoTooltip';
 import { cn } from '@/lib/utils';
 import type { AdvancedContactsWeekly } from '@/lib/analyticsApi';
 
@@ -14,6 +15,7 @@ interface AdvancedContactsMetricCardProps {
   data: AdvancedContactsWeekly | null | undefined;
   loading?: boolean;
   className?: string;
+  info?: string;
   onMaximize?: () => void;
   maximizeDisabled?: boolean;
 }
@@ -22,6 +24,7 @@ export function AdvancedContactsMetricCard({
   data,
   loading,
   className,
+  info,
   onMaximize,
   maximizeDisabled,
 }: AdvancedContactsMetricCardProps) {
@@ -54,9 +57,12 @@ export function AdvancedContactsMetricCard({
     <Card className={cn('min-h-[320px]', className)}>
       <CardContent className="flex min-h-[320px] flex-col p-5">
         <div className="flex min-h-8 items-center justify-between gap-2">
-          <p className="text-sm font-semibold text-[#0f172a] dark:text-gray-100">
-            Contactos avanzados
-          </p>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <p className="text-sm font-semibold text-[#0f172a] dark:text-gray-100">
+              Contactos avanzados
+            </p>
+            {info ? <ChartInfoTooltip description={info} /> : null}
+          </div>
           <Button
             type="button"
             variant="ghost"

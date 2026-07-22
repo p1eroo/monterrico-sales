@@ -54,7 +54,7 @@ export default function GoogleAuthCallback() {
   }, [searchParams, navigate, login, setGoogleConnected]);
 
   return (
-    <div className="flex h-screen items-center justify-center">
+    <div className="flex h-screen items-center justify-center bg-background">
       <div className="text-center">
         {status === 'loading' && (
           <>

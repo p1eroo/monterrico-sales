@@ -71,6 +71,8 @@ import {
 
 import { PageHeader } from "@/components/shared/PageHeader";
 import { GlassCard } from "@/components/shared/GlassCard";
+import { cn } from "@/lib/utils";
+import { crmTableFooterClass } from "@/lib/crmTableSurface";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -2072,7 +2074,7 @@ export default function FlotaProspectos() {
             />
           </div>
           {!initialLoading && (
-            <div className="flex h-14 items-center border-t border-dashed border-[#e8ecf0] bg-card/30 px-5 dark:border-gray-700">
+            <div className={cn('flex h-14 items-center px-5', crmTableFooterClass)}>
               {selectedIds.size > 0 && (
                 <p className="text-xs text-muted-foreground mr-4 italic">
                   ({selectedIds.size} seleccionados)

@@ -51,6 +51,11 @@ import {
   inclusiveMultiSourceFilterToApiParam,
   formatInclusiveMultiSourceFilterLabel,
 } from '@/lib/comercialFilterSurface';
+import {
+  crmTableBodyRowClassInteractive,
+  crmTableFooterClass,
+  crmTableHeaderRowClass,
+} from '@/lib/crmTableSurface';
 
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Pagination } from '@/components/shared/Pagination';
@@ -1157,7 +1162,7 @@ export default function OpportunitiesPage() {
               <ComercialTableColgroup columns={table.getVisibleLeafColumns()} />
               <thead>
                 {table.getHeaderGroups().map((hg) => (
-                  <tr key={hg.id} className="h-[36px] bg-[#eef1f5] dark:bg-gray-800 text-left text-[11px] font-bold text-[#647789] dark:text-gray-400">
+                  <tr key={hg.id} className={cn('h-[36px] text-left', crmTableHeaderRowClass)}>
                     {hg.headers.map((header: any) => (
                       <th
                         key={header.id}
@@ -1205,8 +1210,9 @@ export default function OpportunitiesPage() {
                     <tr
                       key={row.id}
                       className={cn(
-                        'h-[48px] border-b border-dashed border-[#e8ecf0] dark:border-gray-700 bg-card/30 transition-colors cursor-pointer last:border-b-0',
-                        pending ? 'bg-muted/40' : 'hover:bg-[#fafbfc] dark:hover:bg-gray-800',
+                        'h-[48px] last:border-b-0',
+                        crmTableBodyRowClassInteractive,
+                        pending && 'bg-muted/40 hover:bg-muted/40',
                       )}
                       onClick={(e) => openOpportunityDetail(row.original, e)}
                       onAuxClick={(e) => navigateOnAuxClick(e, opportunityDetailHref(row.original))}
@@ -1236,7 +1242,7 @@ export default function OpportunitiesPage() {
         ) : null}
 
         {totalFiltered > 0 && (
-          <div className="flex h-14 items-center border-t border-dashed border-[#e8ecf0] bg-card/30 px-5 dark:border-gray-700">
+          <div className={cn('flex h-14 items-center px-5', crmTableFooterClass)}>
             <Pagination
               page={page}
               totalPages={totalPages}

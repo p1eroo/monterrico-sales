@@ -4,7 +4,7 @@ import { useUsers } from '@/hooks/useUsers';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { MetricCard } from '@/components/shared/MetricCard';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -32,6 +32,11 @@ import {
 } from 'lucide-react';
 import { SquareBottomUpSvgIcon } from '@/components/icons/SquareBottomUpSvgIcon';
 import { chartExpandIconClass, chartCardHeaderClass } from '@/components/shared/ChartExpandToggleIcon';
+import { ChartCardTitle } from '@/components/shared/ChartCardTitle';
+import {
+  reportsChartDescriptions,
+  reportsKpiDescriptions,
+} from '@/lib/dashboardChartDescriptions';
 import { toast } from '@/lib/notify';
 import { useChartTheme } from '@/hooks/useChartTheme';
 import { formatCurrency } from '@/lib/formatters';
@@ -981,6 +986,7 @@ export default function Reports() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           title="Contactos creados en el periodo"
+          info={reportsKpiDescriptions.contactsCreated}
           value={kpis?.totalContacts ?? '—'}
           change={kpis ? kpis.changes.contacts : undefined}
           changeType={kpis ? changeTone(kpis.changes.contacts) : 'neutral'}
@@ -994,6 +1000,7 @@ export default function Reports() {
         />
         <MetricCard
           title="Ganadas en el periodo"
+          info={reportsKpiDescriptions.wonInPeriod}
           value={kpis?.conversionPct ?? '—'}
           description="En el periodo seleccionado"
           sparklineData={wonSparkline}
@@ -1005,6 +1012,7 @@ export default function Reports() {
         />
         <MetricCard
           title="Ventas Cerradas"
+          info={reportsKpiDescriptions.closedSales}
           value={kpis ? formatCurrency(kpis.closedSalesAmount) : '—'}
           change={kpis ? kpis.changes.sales : undefined}
           changeType={kpis ? changeTone(kpis.changes.sales) : 'neutral'}
@@ -1018,6 +1026,7 @@ export default function Reports() {
         />
         <MetricCard
           title="Tareas completadas"
+          info={reportsKpiDescriptions.tasksCompleted}
           value={kpis?.activitiesCompleted ?? '—'}
           description="En el periodo seleccionado"
           sparklineData={tasksSparkline}
@@ -1034,18 +1043,21 @@ export default function Reports() {
         <ActiveProspectsMetricCard
           data={summary?.activeProspectsWeekly}
           loading={loading}
+          info={reportsChartDescriptions.activeProspects}
           onMaximize={() => setActiveProspectsModalOpen(true)}
           maximizeDisabled={loading || activeProspectsChartEmpty}
         />
         <AdvancedContactsMetricCard
           data={summary?.advancedContactsWeekly}
           loading={loading}
+          info={reportsChartDescriptions.advancedContacts}
           onMaximize={() => setAdvancedContactsModalOpen(true)}
           maximizeDisabled={loading || advancedContactsChartEmpty}
         />
         <EstimatedBillingMetricCard
           data={summary?.estimatedBillingWeekly}
           loading={loading}
+          info={reportsChartDescriptions.estimatedBilling}
           onMaximize={() => setEstimatedBillingModalOpen(true)}
           maximizeDisabled={loading || estimatedBillingChartEmpty}
         />
@@ -1055,7 +1067,10 @@ export default function Reports() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.45fr)] lg:items-start">
         <Card id="chart-companies-funnel" className="h-fit">
           <CardHeader className={cn(chartCardHeaderClass, 'px-5 pb-0 pt-5')}>
-            <CardTitle className="flex min-h-8 items-center text-base font-medium">Empresas por etapa</CardTitle>
+            <ChartCardTitle
+              title="Empresas por etapa"
+              info={reportsChartDescriptions.companiesByStage}
+            />
             <Button
               type="button"
               variant="ghost"
@@ -1087,7 +1102,10 @@ export default function Reports() {
 
         <Card id="chart-weekly-opps" className="h-fit">
           <CardHeader className={cn(chartCardHeaderClass, 'px-5 pb-0 pt-5')}>
-            <CardTitle className="flex min-h-8 items-center text-base font-medium">Empresas</CardTitle>
+            <ChartCardTitle
+              title="Empresas"
+              info={reportsChartDescriptions.companiesWeekly}
+            />
             <Button
               type="button"
               variant="ghost"
@@ -1121,7 +1139,10 @@ export default function Reports() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1.15fr)] lg:items-start">
         <Card id="chart-contacts" className="h-fit">
           <CardHeader className={cn(chartCardHeaderClass, 'px-5 pb-0 pt-5')}>
-            <CardTitle className="flex min-h-8 items-center text-base font-medium">Contactos y Oportunidades</CardTitle>
+            <ChartCardTitle
+              title="Contactos y Oportunidades"
+              info={reportsChartDescriptions.contactsOpportunities}
+            />
             <Button
               type="button"
               variant="ghost"
@@ -1152,7 +1173,10 @@ export default function Reports() {
 
         <Card id="chart-sources-by-entity" className="h-fit">
           <CardHeader className={cn(chartCardHeaderClass, 'px-5 pb-0 pt-5')}>
-            <CardTitle className="flex min-h-8 items-center text-base font-medium">Fuentes: Empresas</CardTitle>
+            <ChartCardTitle
+              title="Fuentes: Empresas"
+              info={reportsChartDescriptions.sourcesByEntity}
+            />
             <Button
               type="button"
               variant="ghost"
@@ -1191,7 +1215,10 @@ export default function Reports() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-stretch">
         <Card id="chart-activities-donut" className="flex h-full flex-col">
           <CardHeader className={cn(chartCardHeaderClass, 'px-5 pb-0 pt-5')}>
-            <CardTitle className="flex min-h-8 items-center text-base font-medium">Actividades</CardTitle>
+            <ChartCardTitle
+              title="Actividades"
+              info={reportsChartDescriptions.activities}
+            />
             <Button
               type="button"
               variant="ghost"
@@ -1227,7 +1254,10 @@ export default function Reports() {
 
         <Card id="chart-tasks" className="flex h-full flex-col">
           <CardHeader className={cn(chartCardHeaderClass, 'px-5 pb-0 pt-5')}>
-            <CardTitle className="flex min-h-8 items-center text-base font-medium">Tareas</CardTitle>
+            <ChartCardTitle
+              title="Tareas"
+              info={reportsChartDescriptions.tasks}
+            />
             <Button
               type="button"
               variant="ghost"

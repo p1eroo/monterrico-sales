@@ -124,7 +124,7 @@ export default function MainLayout() {
     <SidebarProvider className="h-svh max-h-svh min-h-0 overflow-hidden">
       <AppSidebar />
       <SidebarInset
-        className="h-svh max-h-svh min-h-0 min-w-0 max-w-full bg-[#F3F4F6] dark:bg-neutral-950 md:z-20 md:h-[calc(100svh-1rem)] md:max-h-[calc(100svh-1rem)] md:!ml-0"
+        className="h-svh max-h-svh min-h-0 min-w-0 max-w-full bg-background md:z-20 md:h-[calc(100svh-1rem)] md:max-h-[calc(100svh-1rem)] md:!ml-0"
       >
         {/* overflow solo en el card interno; el toggle es hermano para no quedar recortado */}
         <div className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden md:rounded-xl">

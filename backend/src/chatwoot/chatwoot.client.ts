@@ -347,21 +347,28 @@ export class ChatwootClient {
     caption: string,
   ): Promise<ChatwootMessage> {
     const boundary = `----FormBoundary${Date.now()}`;
-    let body = '';
-    // attachments[]
-    body += `--${boundary}\r\n`;
-    body += `Content-Disposition: form-data; name="attachments[]"; filename="${fileName}"\r\n`;
-    body += `Content-Type: ${mimeType}\r\n\r\n`;
-    body += fileBuffer.toString('binary');
-    body += `\r\n--${boundary}\r\n`;
-    body += `Content-Disposition: form-data; name="message_type"\r\n\r\n`;
-    body += `outgoing\r\n`;
+    const chunks: Buffer[] = [];
+    const appendText = (text: string) => {
+      chunks.push(Buffer.from(text, 'utf8'));
+    };
+
+    appendText(`--${boundary}\r\n`);
+    appendText(
+      `Content-Disposition: form-data; name="attachments[]"; filename="${fileName}"\r\n`,
+    );
+    appendText(`Content-Type: ${mimeType}\r\n\r\n`);
+    chunks.push(fileBuffer);
+    appendText(`\r\n--${boundary}\r\n`);
+    appendText(`Content-Disposition: form-data; name="message_type"\r\n\r\n`);
+    appendText(`outgoing\r\n`);
     if (caption) {
-      body += `--${boundary}\r\n`;
-      body += `Content-Disposition: form-data; name="content"\r\n\r\n`;
-      body += `${caption}\r\n`;
+      appendText(`--${boundary}\r\n`);
+      appendText(`Content-Disposition: form-data; name="content"\r\n\r\n`);
+      appendText(`${caption}\r\n`);
     }
-    body += `--${boundary}--\r\n`;
+    appendText(`--${boundary}--\r\n`);
+
+    const body = Buffer.concat(chunks);
 
     const url = this.apiUrl(`/conversations/${conversationId}/messages`);
     const res = await fetch(url, {
@@ -370,7 +377,7 @@ export class ChatwootClient {
         'api_access_token': this.config.apiToken,
         'Content-Type': `multipart/form-data; boundary=${boundary}`,
       },
-      body: Buffer.from(body, 'binary'),
+      body,
     });
     if (!res.ok) {
       const text = await res.text().catch(() => '');

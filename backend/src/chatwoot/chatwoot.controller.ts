@@ -11,13 +11,14 @@ import {
   Req,
   Logger,
 } from '@nestjs/common';
-import { HttpException, HttpStatus, NotFoundException } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, NotFoundException } from '@nestjs/common';
 import type { Response } from 'express';
 import { Public } from '../auth/decorators/public.decorator';
 import { ChatwootService } from './chatwoot.service';
 import { ChatwootClient } from './chatwoot.client';
 import { ChatwootEventService } from './chatwoot-event.service';
 import { ChatwootAttachmentStorageService } from './chatwoot-attachment-storage.service';
+import { AudioConversionService } from '../media/audio-conversion.service';
 
 type AuthedReq = { user: { userId: string; name: string }; headers: { authorization?: string } };
 
@@ -30,6 +31,7 @@ export class ChatwootController {
     private readonly client: ChatwootClient,
     private readonly events: ChatwootEventService,
     private readonly attachmentStorage: ChatwootAttachmentStorageService,
+    private readonly audioConversion: AudioConversionService,
   ) {}
 
   @Get('conversations')
@@ -242,20 +244,40 @@ export class ChatwootController {
     @Body() body: { file: string; fileName: string; mimeType: string; caption?: string },
     @Req() req: AuthedReq,
   ) {
-    const buffer = Buffer.from(body.file, 'base64');
+    let buffer = Buffer.from(body.file, 'base64');
+    let fileName = body.fileName || 'archivo';
+    let mimeType = body.mimeType || 'application/octet-stream';
+
+    if (mimeType.toLowerCase().startsWith('audio/')) {
+      try {
+        const prepared = await this.audioConversion.prepareForMessaging(
+          buffer,
+          mimeType,
+          fileName,
+        );
+        buffer = Buffer.from(prepared.buffer);
+        fileName = prepared.fileName;
+        mimeType = prepared.mimeType;
+      } catch (e) {
+        throw new BadRequestException(
+          e instanceof Error ? e.message : 'No se pudo procesar el audio',
+        );
+      }
+    }
+
     const msg = await this.client.uploadAttachment(
       id,
       buffer,
-      body.fileName,
-      body.mimeType,
+      fileName,
+      mimeType,
       body.caption || '',
     );
     await this.attachmentStorage.storeOutboundUpload({
       conversationId: id,
       uploadedById: req.user.userId,
       buffer,
-      originalName: body.fileName,
-      mimeType: body.mimeType,
+      originalName: fileName,
+      mimeType,
       message: msg,
       authorizationHeader:
         typeof req.headers.authorization === 'string'

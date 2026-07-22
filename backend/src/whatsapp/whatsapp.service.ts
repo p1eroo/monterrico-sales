@@ -17,6 +17,7 @@ import { FilesService } from '../files/files.service';
 import { S3StorageService } from '../files/s3-storage.service';
 import { EvogoClient, type EvogoSendTextResult } from './evogo.client';
 import { MediaUploadService } from '../media/media-upload.service';
+import { AudioConversionService } from '../media/audio-conversion.service';
 import { SendWhatsappDto } from './dto/send-whatsapp.dto';
 import { digitsOnly, normalizePeWaNumber } from './wa-number.util';
 import {
@@ -30,7 +31,6 @@ import {
   stripHeavyPayload,
 } from './evolution-webhook.util';
 import { WhatsappGateway } from './whatsapp.gateway';
-import { spawn } from 'child_process';
 import { randomUUID } from 'node:crypto';
 import XLSX from 'xlsx';
 
@@ -144,6 +144,7 @@ export class WhatsappService {
     private readonly s3: S3StorageService,
     private readonly gateway: WhatsappGateway,
     private readonly mediaUpload: MediaUploadService,
+    private readonly audioConversion: AudioConversionService,
   ) {}
 
   private defaultInstanceKey(): string {
@@ -2241,54 +2242,30 @@ export class WhatsappService {
   }
 
   async uploadFlotaAudio(buffer: Buffer, originalName: string, mimeType: string, _userId: string): Promise<string> {
-    let audioBuffer = buffer;
-    let audioMime = mimeType;
-    let audioName = originalName;
-    if (mimeType.startsWith('audio/webm') || mimeType.startsWith('audio/ogg')) {
-      try {
-        audioBuffer = await this.convertWebmToMp3(buffer);
-        audioMime = 'audio/mpeg';
-        audioName = originalName.replace(/\.[^.]+$/, '.mp3');
-      } catch (e) {
-        this.logger.warn(`Error convirtiendo audio a MP3: ${String(e)}. Enviando como original.`);
-      }
+    let prepared: { buffer: Buffer; mimeType: string; fileName: string };
+    try {
+      prepared = await this.audioConversion.prepareForMessaging(
+        buffer,
+        mimeType,
+        originalName,
+      );
+    } catch (e) {
+      this.logger.warn(
+        `Error convirtiendo audio a MP3: ${e instanceof Error ? e.message : e}. Enviando como original.`,
+      );
+      prepared = { buffer, mimeType, fileName: originalName };
     }
     const authHeader = this.config.get<string>('MEDIA_UPLOAD_AUTHORIZATION')?.trim();
     const url = await this.mediaUpload.uploadToProspectosProxy(
-      audioBuffer,
-      audioName,
-      audioMime,
+      prepared.buffer,
+      prepared.fileName,
+      prepared.mimeType,
       { authorizationHeader: authHeader },
     );
-    this.logger.log(`Audio subido: ${url} (${audioBuffer.length} bytes, ${audioMime})`);
+    this.logger.log(
+      `Audio subido: ${url} (${prepared.buffer.length} bytes, ${prepared.mimeType})`,
+    );
     return url;
-  }
-
-  private convertWebmToMp3(input: Buffer): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-      const ffmpeg = spawn('ffmpeg', [
-        '-i', 'pipe:0',
-        '-c:a', 'libmp3lame',
-        '-b:a', '32k',
-        '-ac', '1',
-        '-ar', '24000',
-        '-f', 'mp3',
-        'pipe:1',
-      ]);
-      const chunks: Buffer[] = [];
-      ffmpeg.stdout.on('data', (c: Buffer) => chunks.push(c));
-      let stderr = '';
-      ffmpeg.stderr.on('data', (c: Buffer) => { stderr += c.toString(); });
-      ffmpeg.on('close', (code) => {
-        if (code === 0 && chunks.length > 0) {
-          resolve(Buffer.concat(chunks));
-        } else {
-          reject(new Error(`ffmpeg exit ${code}: ${stderr.slice(-200)}`));
-        }
-      });
-      ffmpeg.on('error', reject);
-      ffmpeg.stdin.end(input);
-    });
   }
 
   async uploadFlotaDocument(buffer: Buffer, originalName: string, mimeType: string, _userId: string): Promise<string> {

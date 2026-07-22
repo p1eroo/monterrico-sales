@@ -33,6 +33,8 @@ import {
   Play,
   Pause,
   Trash2,
+  Mic,
+  StopCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -95,7 +97,7 @@ import {
   type ChatwootAgent,
 } from '@/lib/chatwootApi';
 import { fetchOperadores, getOperatorDisplayName, flotaProspectosByPhone, flotaProspectoCreate, MODALIDAD_OPTIONS, type OperadorUser, type FlotaProspectoDetalle } from '@/lib/flotaProspectosApi';
-import { notifyFlotaProspectosRefresh } from '@/lib/flotaProspectosRealtime';
+import { notifyFlotaProspectosRefresh, useFlotaProspectosRealtime } from '@/lib/flotaProspectosRealtime';
 import { getConductorTelefonos } from '@/lib/flotaConductoresApi';
 import { api } from '@/lib/api';
 import { useAppStore } from '@/store';
@@ -1303,6 +1305,170 @@ function ultimaObs(obs: string | null | undefined): string {
   return entries[0].replace(/^\[.+?\]\s*/, '');
 }
 
+type PendingAttType = 'image' | 'audio' | 'document';
+
+type PendingAttachment = {
+  type: PendingAttType;
+  file: File;
+  previewUrl?: string;
+  durationSec?: number;
+  source?: 'recording' | 'file';
+};
+
+function formatVoiceDuration(seconds: number): string {
+  if (!isFinite(seconds) || seconds < 0) return '0:00';
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function VoiceNotePreview({
+  src,
+  durationSec,
+  onDiscard,
+  onSend,
+  sending,
+}: {
+  src: string;
+  durationSec: number;
+  onDiscard: () => void;
+  onSend: () => void;
+  sending: boolean;
+}) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [loadedDuration, setLoadedDuration] = useState(durationSec);
+
+  useEffect(() => {
+    setPlaying(false);
+    setCurrentTime(0);
+    setLoadedDuration(durationSec);
+  }, [src, durationSec]);
+
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    const onTime = () => setCurrentTime(el.currentTime);
+    const onEnd = () => {
+      setPlaying(false);
+      setCurrentTime(0);
+    };
+    const onMeta = () => {
+      if (isFinite(el.duration) && el.duration > 0) {
+        setLoadedDuration(el.duration);
+      }
+    };
+    el.addEventListener('timeupdate', onTime);
+    el.addEventListener('ended', onEnd);
+    el.addEventListener('loadedmetadata', onMeta);
+    el.addEventListener('durationchange', onMeta);
+    return () => {
+      el.removeEventListener('timeupdate', onTime);
+      el.removeEventListener('ended', onEnd);
+      el.removeEventListener('loadedmetadata', onMeta);
+      el.removeEventListener('durationchange', onMeta);
+    };
+  }, [src]);
+
+  function togglePlay() {
+    const el = audioRef.current;
+    if (!el) return;
+    if (playing) {
+      el.pause();
+      setPlaying(false);
+      return;
+    }
+    void el.play().then(() => setPlaying(true)).catch(() => {
+      toast.error('No se pudo reproducir el audio');
+    });
+  }
+
+  const totalDuration = loadedDuration > 0 ? loadedDuration : durationSec;
+  const progress = totalDuration > 0 ? Math.min(1, currentTime / totalDuration) : 0;
+  const bars = 28;
+
+  return (
+    <div className="flex w-full items-center gap-2 rounded-2xl border border-muted bg-muted/30 px-2 py-2">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-9 w-9 shrink-0 text-muted-foreground"
+        onClick={onDiscard}
+        disabled={sending}
+        title="Descartar"
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="h-10 w-10 shrink-0 rounded-full border-primary/40"
+        onClick={togglePlay}
+        disabled={sending}
+        title={playing ? 'Pausar' : 'Escuchar'}
+      >
+        {playing ? <Pause className="h-4 w-4" /> : <Play className="ml-0.5 h-4 w-4" />}
+      </Button>
+      <div className="flex h-8 min-w-0 flex-1 items-center gap-0.5 overflow-hidden">
+        {Array.from({ length: bars }, (_, i) => {
+          const height = 28 + ((i * 13 + 7) % 58);
+          const active = (i + 1) / bars <= progress;
+          return (
+            <div
+              key={i}
+              className={cn(
+                'w-0.5 shrink-0 rounded-full transition-colors',
+                active ? 'bg-primary' : 'bg-muted-foreground/35',
+              )}
+              style={{ height: `${height}%` }}
+            />
+          );
+        })}
+      </div>
+      <span className="w-10 shrink-0 text-xs tabular-nums text-muted-foreground">
+        {formatVoiceDuration(playing ? currentTime : totalDuration)}
+      </span>
+      <audio ref={audioRef} src={src} preload="metadata" className="hidden" />
+      <Button
+        type="button"
+        size="icon"
+        className="h-10 w-10 shrink-0 rounded-full"
+        onClick={onSend}
+        disabled={sending}
+        title="Enviar audio"
+      >
+        {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+      </Button>
+    </div>
+  );
+}
+
+function classifyAttachmentFile(file: File): PendingAttType {
+  if (file.type.startsWith('image/')) return 'image';
+  if (file.type.startsWith('audio/')) return 'audio';
+  return 'document';
+}
+
+function pendingAttFromFile(file: File): PendingAttachment {
+  const type = classifyAttachmentFile(file);
+  const needsPreview = type === 'image' || type === 'audio';
+  return {
+    type,
+    file,
+    previewUrl: needsPreview ? URL.createObjectURL(file) : undefined,
+    source: 'file',
+  };
+}
+
+function audioFileFromBlob(blob: Blob): File {
+  const mime = blob.type || 'audio/webm';
+  const ext = mime.includes('ogg') ? 'ogg' : mime.includes('mpeg') || mime.includes('mp3') ? 'mp3' : 'webm';
+  return new File([blob], `audio.${ext}`, { type: mime });
+}
+
 const PROSPECTO_EDIT_FIELDS = [
   'nombreCompleto', 'celular', 'movil', 'edad', 'distrito',
   'modalidad', 'placa', 'anioVehiculo', 'redSocial', 'observaciones',
@@ -1369,10 +1535,16 @@ export function ChatwootChatPanel({
   const [sending, setSending] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
-  const [pendingAtt, setPendingAtt] = useState<{ type: string; file: File; previewUrl?: string } | null>(null);
+  const [pendingAtt, setPendingAtt] = useState<PendingAttachment | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recordingDurationRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [newMessagesCount, setNewMessagesCount] = useState(0);
   const hasInitialScrolledRef = useRef(false);
@@ -1544,6 +1716,33 @@ export function ChatwootChatPanel({
       }
     }).catch(() => setProspecto(null)).finally(() => setLoadingProspecto(false));
   }, [conversationId, sender?.phone_number, contactDetail?.phone_number]);
+
+  useFlotaProspectosRealtime(() => {
+    if (!conversationId) return;
+    const phone = sender?.phone_number || contactDetail?.phone_number || prospecto?.celular;
+    if (!phone) return;
+    const cleanedPhone = phone.replace(/\D/g, '');
+    void flotaProspectosByPhone(cleanedPhone).then((res) => {
+      if (!res.found || !res.prospecto || res.prospecto.eliminadoAt) return;
+      setProspecto(res.prospecto);
+      const newName = res.prospecto.nombreCompleto?.trim();
+      if (!newName) return;
+      setContactDetail((prev) => (prev ? { ...prev, name: newName } : prev));
+      onConversationsUpdated((prev) =>
+        prev.map((c) =>
+          c.id === conversationId
+            ? {
+                ...c,
+                meta: {
+                  ...c.meta,
+                  sender: { ...c.meta.sender, name: newName },
+                },
+              }
+            : c,
+        ),
+      );
+    });
+  });
 
   async function handleStatusChange(newStatus: string) {
     setUpdating(true);
@@ -1857,18 +2056,81 @@ export function ChatwootChatPanel({
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    const isImage = file.type.startsWith('image/');
-    setPendingAtt({
-      type: isImage ? 'image' : 'document',
-      file,
-      previewUrl: isImage ? URL.createObjectURL(file) : undefined,
-    });
+    cancelPendingAtt();
+    setPendingAtt(pendingAttFromFile(file));
   }
 
   function cancelPendingAtt() {
     if (pendingAtt?.previewUrl) URL.revokeObjectURL(pendingAtt.previewUrl);
     setPendingAtt(null);
   }
+
+  async function startRecording() {
+    try {
+      cancelPendingAtt();
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
+          ? 'audio/ogg;codecs=opus'
+          : 'audio/webm';
+      const recorder = new MediaRecorder(stream, { mimeType });
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunks, { type: mimeType });
+        if (!blob.size) {
+          toast.error('No se grabó audio. Intenta de nuevo.');
+          return;
+        }
+        const file = audioFileFromBlob(blob);
+        const durationSec = recordingDurationRef.current || recordingDuration;
+        setPendingAtt({
+          type: 'audio',
+          file,
+          previewUrl: URL.createObjectURL(blob),
+          durationSec: Math.max(1, durationSec),
+          source: 'recording',
+        });
+      };
+      recorder.start(250);
+      mediaRecorderRef.current = recorder;
+      recordingDurationRef.current = 0;
+      setIsRecording(true);
+      setRecordingDuration(0);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration((d) => {
+          const next = d + 1;
+          recordingDurationRef.current = next;
+          return next;
+        });
+      }, 1000);
+    } catch {
+      toast.error('No se pudo acceder al micrófono. Permití el acceso e intentá de nuevo.');
+    }
+  }
+
+  function stopRecording() {
+    const recorder = mediaRecorderRef.current;
+    if (recorder?.state === 'recording') recorder.stop();
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    recordingTimerRef.current = null;
+    mediaRecorderRef.current = null;
+    setIsRecording(false);
+    setRecordingDuration(0);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      if (mediaRecorderRef.current?.state === 'recording') {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
 
   async function handleSendAttachment() {
     const att = pendingAtt;
@@ -1884,7 +2146,7 @@ export function ChatwootChatPanel({
         return { ...prev, [conversationId]: merged };
       });
       setDraft('');
-      setPendingAtt(null);
+      cancelPendingAtt();
       markConversationAsRead(conversationId).catch(() => {});
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al enviar archivo');
@@ -1985,8 +2247,7 @@ export function ChatwootChatPanel({
         const file = e.dataTransfer.files?.[0];
         if (!file) return;
         cancelPendingAtt();
-        const isImage = file.type.startsWith('image/');
-        setPendingAtt({ type: isImage ? 'image' : 'document', file, previewUrl: isImage ? URL.createObjectURL(file) : undefined });
+        setPendingAtt(pendingAttFromFile(file));
       }}
     >
       {/* Overlay drag & drop */}
@@ -2140,11 +2401,23 @@ export function ChatwootChatPanel({
         )}
 
         <div className="border-t border-muted bg-background/60 p-3">
-          {pendingAtt ? (
+          {pendingAtt?.type === 'audio' && pendingAtt.source === 'recording' && pendingAtt.previewUrl ? (
+            <VoiceNotePreview
+              src={pendingAtt.previewUrl}
+              durationSec={pendingAtt.durationSec ?? recordingDuration}
+              onDiscard={cancelPendingAtt}
+              onSend={() => void handleSendAttachment()}
+              sending={uploading}
+            />
+          ) : pendingAtt ? (
             <div className="space-y-3">
               <div className="flex items-center justify-between border-b border-muted/50 pb-2">
                 <span className="text-sm font-medium">
-                  {pendingAtt.type === 'image' ? 'Enviar foto' : 'Enviar documento'}
+                  {pendingAtt.type === 'image'
+                    ? 'Enviar foto'
+                    : pendingAtt.type === 'audio'
+                      ? 'Enviar audio'
+                      : 'Enviar documento'}
                 </span>
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={cancelPendingAtt} disabled={uploading}>
                   <X className="h-4 w-4" />
@@ -2153,6 +2426,12 @@ export function ChatwootChatPanel({
               <div className="flex flex-col items-center gap-3">
                 {pendingAtt.type === 'image' && pendingAtt.previewUrl && (
                   <img src={pendingAtt.previewUrl} alt="Preview" className="max-h-48 rounded-lg object-contain" />
+                )}
+                {pendingAtt.type === 'audio' && pendingAtt.previewUrl && (
+                  <div className="flex w-full items-center gap-3 rounded-lg bg-muted/30 px-4 py-3">
+                    <Music2 className="h-6 w-6 shrink-0 text-muted-foreground" />
+                    <audio controls preload="metadata" className="w-full max-w-md" src={pendingAtt.previewUrl} />
+                  </div>
                 )}
                 {pendingAtt.type === 'document' && (
                   <div className="flex items-center gap-3 rounded-lg bg-muted/30 px-4 py-3 w-full">
@@ -2175,13 +2454,34 @@ export function ChatwootChatPanel({
                 </div>
               </div>
             </div>
+          ) : isRecording ? (
+            <div className="flex items-center gap-2 rounded-lg border bg-destructive/5 px-3 py-2">
+              <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-destructive" />
+                Grabando...
+              </div>
+              <span className="text-sm tabular-nums text-muted-foreground">
+                {Math.floor(recordingDuration / 60)}:{String(recordingDuration % 60).padStart(2, '0')}
+              </span>
+              <div className="flex-1" />
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="shrink-0 text-destructive hover:text-destructive"
+                onClick={stopRecording}
+              >
+                <StopCircle className="h-5 w-5" />
+              </Button>
+            </div>
           ) : (
             <div className="flex items-end gap-2">
               <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+              <input ref={audioInputRef} type="file" accept="audio/*" className="hidden" onChange={handleFileSelect} />
               <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect} />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="shrink-0">
+                  <Button variant="ghost" size="icon" className="shrink-0" disabled={uploading}>
                     <Paperclip className="h-5 w-5" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -2189,11 +2489,24 @@ export function ChatwootChatPanel({
                   <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
                     <ImageIcon className="mr-2 h-4 w-4" /> Foto
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => { if (fileInputRef.current) { fileInputRef.current.click(); } }}>
+                  <DropdownMenuItem onClick={() => audioInputRef.current?.click()}>
+                    <Music2 className="mr-2 h-4 w-4" /> Audio
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
                     <FileText className="mr-2 h-4 w-4" /> Documento
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0"
+                title="Grabar audio"
+                disabled={uploading}
+                onClick={() => void startRecording()}
+              >
+                <Mic className="h-5 w-5" />
+              </Button>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="ghost" size="icon" className="shrink-0">
@@ -2237,10 +2550,10 @@ export function ChatwootChatPanel({
               />
               <Button
                 onClick={() => void handleSend()}
-                disabled={!draft.trim() || sending}
+                disabled={!draft.trim() || sending || uploading}
                 className="shrink-0"
               >
-                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {sending || uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </div>
           )}

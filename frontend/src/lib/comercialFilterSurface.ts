@@ -5,11 +5,11 @@ import { UNASSIGNED_SOURCE_SLUG } from '@/lib/sourcesByWeekChartUtils';
 
 /** Mismo borde y fondo que `Card variant="surface"` (sin sombra). */
 export const comercialCardSurfaceClass =
-  'border-[#e1e7ee] bg-card/30 shadow-none dark:border-gray-700 dark:bg-gray-900/30 dark:shadow-none';
+  'border-[#e1e7ee] bg-card/30 shadow-none dark:border-border dark:bg-card dark:shadow-none';
 
 /** Override para controles con estilos base propios (DateRange, MultiSelect, etc.). */
 export const comercialFilterSurfaceClass = cn(
-  '!border-[#e1e7ee] !bg-card/30 !shadow-none dark:!border-gray-700 dark:!bg-gray-900/30 dark:!shadow-none',
+  '!border-[#e1e7ee] !bg-card/30 !shadow-none dark:!border-border dark:!bg-card dark:!shadow-none',
 );
 
 export const comercialFilterActionClass = cn(
@@ -30,7 +30,7 @@ export const comercialProPopoverClass = cn(
   'overflow-hidden rounded-2xl border border-border/60 p-0',
   'bg-gradient-to-b from-white to-[#f7f8fa]',
   'shadow-[0_12px_40px_rgba(15,23,42,0.12)]',
-  'dark:border-neutral-700/80 dark:from-neutral-900 dark:to-neutral-950',
+  'dark:border-border dark:from-card dark:to-[#1a222c]',
   'dark:shadow-[0_12px_40px_rgba(0,0,0,0.45)]',
 );
 

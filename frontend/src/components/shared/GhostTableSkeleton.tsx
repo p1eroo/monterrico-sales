@@ -1,4 +1,9 @@
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+import {
+  crmTableBodyRowClass,
+  crmTableHeaderRowClassTall,
+} from '@/lib/crmTableSurface';
 
 interface GhostColumn {
   label: string;
@@ -17,7 +22,7 @@ export function GhostTableSkeleton({
     <div className="border-t border-border/40 overflow-auto scrollbar-thin">
       <table className="w-full table-fixed">
         <thead>
-          <tr className="h-11 bg-[#eef1f5] dark:bg-gray-800 text-left text-xs font-bold text-[#647789] dark:text-gray-400">
+          <tr className={cn('h-11 text-left', crmTableHeaderRowClassTall)}>
             {columns.map((col, i) => (
               <th
                 key={i}
@@ -31,7 +36,7 @@ export function GhostTableSkeleton({
         </thead>
         <tbody>
           {Array.from({ length: rows }).map((_, rowIdx) => (
-            <tr key={rowIdx} className="h-14 border-b border-dashed border-[#e8ecf0] dark:border-gray-700 bg-card/30 last:border-b-0">
+            <tr key={rowIdx} className={cn('h-14 last:border-b-0', crmTableBodyRowClass)}>
               {columns.map((col, colIdx) => (
                 <td
                   key={colIdx}

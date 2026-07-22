@@ -6,6 +6,7 @@ import { ChatwootOperadorSyncService } from './chatwoot-operador-sync.service';
 import { FlotaProspectosGateway } from '../flota-prospectos/flota-prospectos.gateway';
 import { ChatwootService } from './chatwoot.service';
 import { ChatwootAttachmentStorageService } from './chatwoot-attachment-storage.service';
+import { ChatwootContactNameSyncService } from './chatwoot-contact-name-sync.service';
 import type { ChatwootWebhookPayload } from './chatwoot.types';
 
 @Injectable()
@@ -20,6 +21,7 @@ export class ChatwootWebhookService {
     private readonly chatwootService: ChatwootService,
     private readonly prospectosGateway: FlotaProspectosGateway,
     private readonly attachmentStorage: ChatwootAttachmentStorageService,
+    private readonly contactNameSync: ChatwootContactNameSyncService,
   ) {}
 
   private emit(event: string, data: unknown) {
@@ -325,8 +327,7 @@ export class ChatwootWebhookService {
       },
     });
 
-    // Actualizar nombre con el que envía Chatwoot (siempre)
-    if (prospecto && name) {
+    if (prospecto && name && this.contactNameSync.shouldAcceptChatwootName(prospecto, name)) {
       const prevName = prospecto.nombreCompleto;
       prospecto = await this.prisma.flotaProspecto.update({
         where: { id: prospecto.id },
@@ -339,7 +340,7 @@ export class ChatwootWebhookService {
 
     // Si existe pero está eliminado, no reactivar — solo actualizar nombre si aplica
     if (prospecto?.eliminadoAt) {
-      if (name) {
+      if (name && this.contactNameSync.shouldAcceptChatwootName(prospecto, name)) {
         prospecto = await this.prisma.flotaProspecto.update({
           where: { id: prospecto.id },
           data: { nombreCompleto: name },

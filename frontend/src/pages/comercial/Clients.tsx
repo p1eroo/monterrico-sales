@@ -51,6 +51,11 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { comercialFilterIconClass, comercialProPopoverClass, comercialProCommandClass } from '@/lib/comercialFilterSurface';
+import {
+  crmTableBodyRowClassInteractive,
+  crmTableFooterClass,
+  crmTableHeaderRowClass,
+} from '@/lib/crmTableSurface';
 import { rightDrawerSheetContentClass } from '@/lib/rightPanelShell';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { toast } from '@/lib/notify';
@@ -784,7 +789,7 @@ export default function Clients() {
                 {table.getHeaderGroups().map((hg) => (
                   <tr
                     key={hg.id}
-                    className="h-[36px] bg-[#eef1f5] text-left text-[11px] font-bold text-[#647789] dark:bg-gray-800 dark:text-gray-400"
+                    className={cn('h-[36px] text-left', crmTableHeaderRowClass)}
                   >
                     {hg.headers.map((header) => (
                       <th
@@ -824,7 +829,7 @@ export default function Clients() {
                 {table.getRowModel().rows.map((row) => (
                     <tr
                       key={row.id}
-                      className="h-[48px] cursor-pointer border-b border-dashed border-[#e8ecf0] bg-transparent transition-colors last:border-b-0 hover:bg-[#fafbfc] dark:border-gray-700 dark:hover:bg-gray-800"
+                      className={cn('h-[48px] bg-transparent last:border-b-0', crmTableBodyRowClassInteractive)}
                       onClick={() => openClientDetail(row.original)}
                     >
                       {row.getVisibleCells().map((cell) => (
@@ -847,7 +852,7 @@ export default function Clients() {
         )}
 
         {!loading && totalFiltered > 0 && (
-          <div className="flex h-14 items-center border-t border-dashed border-[#e8ecf0] bg-transparent px-5 dark:border-gray-700">
+          <div className={cn('flex h-14 items-center bg-transparent px-5', crmTableFooterClass)}>
             <Pagination
               page={page}
               totalPages={totalPages}

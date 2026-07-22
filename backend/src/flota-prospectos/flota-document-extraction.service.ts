@@ -5,6 +5,7 @@ import {
   type DocumentVisionResult,
 } from './document-vision.service';
 import { FlotaProspectosGateway } from './flota-prospectos.gateway';
+import { ChatwootContactNameSyncService } from '../chatwoot/chatwoot-contact-name-sync.service';
 
 @Injectable()
 export class FlotaDocumentExtractionService {
@@ -14,6 +15,7 @@ export class FlotaDocumentExtractionService {
     private readonly prisma: PrismaService,
     private readonly vision: DocumentVisionService,
     private readonly prospectosGateway: FlotaProspectosGateway,
+    private readonly contactNameSync: ChatwootContactNameSyncService,
   ) {}
 
   /** Procesa una imagen y fusiona datos extraídos en el prospecto. */
@@ -120,6 +122,16 @@ export class FlotaDocumentExtractionService {
     });
 
     this.prospectosGateway.emitChange('updated', prospectoId);
+
+    if (
+      typeof data.nombreCompleto === 'string' &&
+      data.nombreCompleto !== existing.nombreCompleto
+    ) {
+      void this.contactNameSync.pushNameToChatwoot(
+        prospectoId,
+        data.nombreCompleto,
+      );
+    }
 
     this.logger.log(
       `Prospecto ${prospectoId}: datos fusionados desde ${result.tipoDocumento} (${Object.keys(data).join(', ')})`,

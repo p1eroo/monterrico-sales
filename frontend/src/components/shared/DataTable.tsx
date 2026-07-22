@@ -9,6 +9,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -16,6 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  crmTableBodyRowClassInteractive,
+  crmTableHeaderRowClass,
+  crmTableHeaderRowClassSticky,
+} from "@/lib/crmTableSurface";
 
 export type { ColumnDef } from "@tanstack/react-table";
 
@@ -158,7 +164,7 @@ export function DataTable<TData>({
         >
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id} className="h-[36px] bg-[#eef1f5] dark:bg-gray-800 sticky top-0 z-10">
+              <tr key={headerGroup.id} className={cn("h-[36px]", crmTableHeaderRowClassSticky)}>
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
@@ -199,7 +205,7 @@ export function DataTable<TData>({
                 ))}
               </tr>
             ))}
-            <tr className="bg-[#eef1f5] dark:bg-gray-800" style={{ top: 36, position: 'sticky', zIndex: 10 }}>
+            <tr className={crmTableHeaderRowClass} style={{ top: 36, position: 'sticky', zIndex: 10 }}>
               {table.getHeaderGroups().map((headerGroup) =>
                 headerGroup.headers.map((header) => (
                   <th
@@ -236,7 +242,7 @@ export function DataTable<TData>({
                 <tr
                   key={row.id}
                   data-row-id={(row.original as any)?.id || row.id}
-                  className="h-[48px] border-b border-dashed border-[#e8ecf0] dark:border-gray-700 bg-card/30 transition-colors cursor-pointer last:border-b-0 hover:bg-[#fafbfc] dark:hover:bg-gray-800"
+                  className={cn("h-[48px] last:border-b-0", crmTableBodyRowClassInteractive)}
                 >
                   {row.getVisibleCells().map((cell) => {
                     const colId = cell.column.id;

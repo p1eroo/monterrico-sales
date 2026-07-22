@@ -146,36 +146,36 @@
     --crm-scrollbar-thumb-hover: color-mix(in srgb, var(--primary) 38%, #94a3af);
 }
 
-/* Dark mode - Notion/Linear/Slack/HubSpot inspired */
+/* Dark mode - Minimals-inspired (fondo #161C24, cards/tablas #212B36) */
 .dark {
-    --background: hsl(220 19% 7.4%);
-    --foreground: hsl(210 20% 92%);
-    --card: hsl(220 16% 11%);
-    --card-foreground: hsl(210 20% 92%);
-    --popover: hsl(220 16% 11%);
-    --popover-foreground: hsl(210 20% 92%);
+    --background: #161c24;
+    --foreground: #ffffff;
+    --card: #212b36;
+    --card-foreground: #ffffff;
+    --popover: #212b36;
+    --popover-foreground: #ffffff;
     --primary: #13944C;
     --primary-foreground: #ffffff;
-    --secondary: hsl(220 16% 16%);
-    --secondary-foreground: hsl(210 20% 80%);
-    --muted: hsl(220 14% 13%);
-    --muted-foreground: hsl(215 12% 50%);
-    --accent: hsl(220 15% 16%);
-    --accent-foreground: hsl(210 20% 88%);
+    --secondary: #28313d;
+    --secondary-foreground: #919eab;
+    --muted: #28313d;
+    --muted-foreground: #919eab;
+    --accent: #28313d;
+    --accent-foreground: #ffffff;
     --destructive: hsl(0 72% 51%);
-    --border: hsl(220 14% 17.5%);
-    --input: hsl(220 14% 18.5%);
+    --border: #2d3743;
+    --input: #212b36;
     --ring: #13944C;
     --chart-1: #13944C;
     --chart-2: #60a5fa;
     --chart-3: #fbbf24;
     --chart-4: #a78bfa;
     --chart-5: #f472b6;
-    --surface-elevated: hsl(220 16% 11.8%);
-    --surface-hover: hsl(220 15% 13.8%);
-    --text-primary: hsl(210 20% 92%);
-    --text-secondary: hsl(215 12% 58%);
-    --text-tertiary: hsl(215 10% 40%);
+    --surface-elevated: #212b36;
+    --surface-hover: #28313d;
+    --text-primary: #ffffff;
+    --text-secondary: #919eab;
+    --text-tertiary: #637381;
     --stage-lead: hsl(38 92% 50%);
     --stage-prospect: hsl(210 100% 56%);
     --stage-client: hsl(142 71% 45%);
@@ -192,29 +192,30 @@
     --funnel-3: 175 60% 50%;
     --funnel-4: 145 65% 45%;
     --funnel-5: 280 60% 60%;
-    --funnel-track: 220 14% 18%;
-    --sidebar: hsl(220 18% 8.5%);
-    --sidebar-foreground: hsl(210 20% 92%);
+    --funnel-track: 210 19% 22%;
+    /* Shell y sidebar unificados con el fondo; verde solo en acentos activos */
+    --sidebar: #161c24;
+    --sidebar-foreground: #ffffff;
     --sidebar-primary: #13944C;
     --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: hsl(220 16% 12.5%);
-    --sidebar-accent-foreground: hsl(210 20% 88%);
-    --sidebar-border: hsl(220 14% 16.2%);
+    --sidebar-accent: #28313d;
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: #2d3743;
     --sidebar-ring: #13944C;
-    --sidebar-icon: #9ca3af;
-    --sidebar-icon-active: #e5e7eb;
+    --sidebar-icon: #919eab;
+    --sidebar-icon-active: #54d62c;
     --success: hsl(142 71% 45%);
     --success-foreground: #ffffff;
     --warning: hsl(38 92% 50%);
     --warning-foreground: #1e293b;
     --info: hsl(210 100% 56%);
     --info-foreground: #ffffff;
-    --workflow-grid-dot: rgba(148, 163, 184, 0.09);
-    --workflow-minimap-mask: rgba(11, 15, 23, 0.45);
-    --pipeline-kanban-surface: hsl(220 18% 10%);
-    --pipeline-kanban-column-header: color-mix(in srgb, hsl(220 18% 10%) 90%, transparent);
-    --crm-scrollbar-thumb: color-mix(in srgb, hsl(215 12% 48%) 75%, var(--border));
-    --crm-scrollbar-thumb-hover: color-mix(in srgb, var(--primary) 45%, hsl(215 12% 42%));
+    --workflow-grid-dot: rgba(145, 158, 171, 0.12);
+    --workflow-minimap-mask: rgba(22, 28, 36, 0.55);
+    --pipeline-kanban-surface: #212b36;
+    --pipeline-kanban-column-header: color-mix(in srgb, #212b36 92%, transparent);
+    --crm-scrollbar-thumb: color-mix(in srgb, #919eab 55%, var(--border));
+    --crm-scrollbar-thumb-hover: color-mix(in srgb, var(--primary) 45%, #637381);
 }
 
 @layer base {

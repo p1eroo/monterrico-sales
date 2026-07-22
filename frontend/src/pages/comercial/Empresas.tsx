@@ -90,6 +90,11 @@ import {
   inclusiveMultiSourceFilterToApiParam,
   formatInclusiveMultiSourceFilterLabel,
 } from '@/lib/comercialFilterSurface';
+import {
+  crmTableBodyRowClassInteractive,
+  crmTableFooterClass,
+  crmTableHeaderRowClass,
+} from '@/lib/crmTableSurface';
 import { api, API_BASE } from '@/lib/api';
 import { usePermissions } from '@/hooks/usePermissions';
 import {
@@ -2074,7 +2079,7 @@ export default function EmpresasPage() {
             <ComercialTableColgroup columns={table.getVisibleLeafColumns()} />
             <thead>
               {table.getHeaderGroups().map((hg) => (
-                <tr key={hg.id} className="h-[36px] bg-[#eef1f5] dark:bg-gray-800 text-left text-[11px] font-bold text-[#647789] dark:text-gray-400">
+                <tr key={hg.id} className={cn('h-[36px] text-left', crmTableHeaderRowClass)}>
                   {hg.headers.map((header) => (
                     <th
                       key={header.id}
@@ -2122,7 +2127,7 @@ export default function EmpresasPage() {
               {table.getRowModel().rows.map((row) => (
                 <tr
                   key={row.id}
-                  className="h-[48px] border-b border-dashed border-[#e8ecf0] dark:border-gray-700 bg-card/30 transition-colors cursor-pointer last:border-b-0 hover:bg-[#fafbfc] dark:hover:bg-gray-800"
+                  className={cn('h-[48px] last:border-b-0', crmTableBodyRowClassInteractive)}
                   onClick={(e) => openCompanyDetail(row.original, e)}
                   onAuxClick={(e) => navigateOnAuxClick(e, empresaDetailPath(row.original))}
                 >
@@ -2273,7 +2278,7 @@ export default function EmpresasPage() {
       )}
 
       {total > 0 && (
-        <div className="flex h-14 items-center border-t border-dashed border-[#e8ecf0] bg-card/30 px-5 dark:border-gray-700">
+        <div className={cn('flex h-14 items-center px-5', crmTableFooterClass)}>
           <Pagination
             page={page}
             totalPages={totalPages}

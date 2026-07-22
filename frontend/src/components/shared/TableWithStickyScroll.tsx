@@ -11,7 +11,7 @@ export function TableWithStickyScroll({ children, className, maxHeight }: Props)
   const scrollWrapperRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className={cn('flex flex-col overflow-hidden rounded-xl bg-background', className)} style={maxHeight ? { maxHeight } : undefined}>
+    <div className={cn('flex flex-col overflow-hidden rounded-xl bg-card', className)} style={maxHeight ? { maxHeight } : undefined}>
       <div
         ref={scrollWrapperRef}
         className="flex-1 min-h-0 overflow-y-auto overflow-x-auto scrollbar-thin"

@@ -48,6 +48,11 @@ import {
   matchesInclusiveMultiSourceFilterValue,
   toggleInclusiveMultiFilter,
 } from '@/lib/comercialFilterSurface';
+import {
+  crmTableBodyRowClassInteractive,
+  crmTableFooterClass,
+  crmTableHeaderRowClass,
+} from '@/lib/crmTableSurface';
 import { DateRangeFilterButton } from '@/components/ui/date-range-filter-button';
 import { ChartSquareIcon } from '@/components/icons/ChartSquareIcon';
 import { PaletteIcon } from '@/components/icons/PaletteIcon';
@@ -928,7 +933,7 @@ export default function ClienteContactos() {
               <ComercialTableColgroup columns={table.getVisibleLeafColumns()} />
               <thead>
                 {table.getHeaderGroups().map((hg) => (
-                  <tr key={hg.id} className="h-[36px] bg-[#eef1f5] text-left text-[11px] font-bold text-[#647789] dark:bg-gray-800 dark:text-gray-400">
+                  <tr key={hg.id} className={cn('h-[36px] text-left', crmTableHeaderRowClass)}>
                     {hg.headers.map((header) => (
                       <th
                         key={header.id}
@@ -983,7 +988,7 @@ export default function ClienteContactos() {
                   return (
                     <tr
                       key={row.id}
-                      className="h-[48px] cursor-pointer border-b border-dashed border-[#e8ecf0] bg-card/30 transition-colors last:border-b-0 hover:bg-[#fafbfc] dark:border-gray-700 dark:hover:bg-gray-800"
+                      className={cn('h-[48px] last:border-b-0', crmTableBodyRowClassInteractive)}
                       onClick={(e) => {
                         if (primaryEmpresa) {
                           navigateOnClick(
@@ -1027,7 +1032,7 @@ export default function ClienteContactos() {
         )}
 
         {!loading && totalFiltered > 0 && (
-          <div className="flex h-14 items-center border-t border-dashed border-[#e8ecf0] bg-card/30 px-5 dark:border-gray-700">
+          <div className={cn('flex h-14 items-center px-5', crmTableFooterClass)}>
             <Pagination
               page={page}
               totalPages={totalPages}
