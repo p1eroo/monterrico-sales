@@ -102,10 +102,13 @@ export function FlotaEstadoDistributionCard({
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(value: number, name: string) => [
-                      `${value.toLocaleString('es-PE')} (${total > 0 ? Math.round((value / total) * 100) : 0}%)`,
-                      name,
-                    ]}
+                    formatter={(value, name) => {
+                      const count = typeof value === 'number' ? value : 0;
+                      return [
+                        `${count.toLocaleString('es-PE')} (${total > 0 ? Math.round((count / total) * 100) : 0}%)`,
+                        name,
+                      ];
+                    }}
                     contentStyle={{
                       borderRadius: 10,
                       fontSize: 12,
