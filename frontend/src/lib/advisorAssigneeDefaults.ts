@@ -15,6 +15,15 @@ export function resolveAdvisorAssigneeId(
   return '';
 }
 
+/** Si resolveAdvisorAssigneeId queda vacío (p. ej. admin), usa fallbackId (primer asesor activo). */
+export function resolveAdvisorAssigneeIdWithFallback(
+  preferredId: string | undefined | null,
+  currentUser: AdvisorUserRef,
+  fallbackId?: string | null,
+): string {
+  return resolveAdvisorAssigneeId(preferredId, currentUser) || fallbackId?.trim() || '';
+}
+
 export function canUserReassignCommercialAdvisor(role?: string): boolean {
   return canReassignCommercialAdvisor(role ?? '');
 }

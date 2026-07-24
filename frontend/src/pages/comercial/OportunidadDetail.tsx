@@ -12,7 +12,7 @@ import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLog
 import { useActivities } from '@/hooks/useActivities';
 import { useUsers } from '@/hooks/useUsers';
 import { getPrimaryCompany } from '@/lib/utils';
-import { taskAssociationsFromActivity } from '@/lib/taskAssociationsFromActivity';
+import { mergeCompaniesForTaskPicker, taskAssociationsFromActivity } from '@/lib/taskAssociationsFromActivity';
 import type { CompanyRubro, Etapa, TimelineEvent, Activity } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { DetailLayout } from '@/components/shared/DetailLayout';
@@ -891,6 +891,17 @@ async function handleCreateNewContact(data: NewContactData) {
     } as Activity);
   }, [opp, linkedContact, primaryCompany]);
 
+  const companiesForTaskForm = useMemo(() => {
+    const fromContact = (linkedContact?.companies ?? []).map((c) => ({
+      name: c.name,
+      id: c.id,
+    }));
+    const primary = primaryCompany
+      ? [{ name: primaryCompany.name, id: primaryCompany.id }]
+      : [];
+    return mergeCompaniesForTaskPicker([...primary, ...fromContact], followUpAssociations);
+  }, [linkedContact, primaryCompany, followUpAssociations]);
+
   if (fromApi && apiLoading) {
     return <EntityDetailPageSkeleton ariaLabel="Cargando oportunidad" />;
   }
@@ -945,7 +956,7 @@ async function handleCreateNewContact(data: NewContactData) {
             <QuickActionsWithDialogs
               entityName={opp.title}
               contacts={linkedContacts}
-              companies={linkedContact?.companies ?? []}
+              companies={companiesForTaskForm}
               opportunities={[opp]}
               contactId={opp?.contactId}
               followUpAssociations={followUpAssociations}
@@ -1105,7 +1116,7 @@ async function handleCreateNewContact(data: NewContactData) {
           <TasksTab
             ref={tasksTabRef}
             contacts={linkedContacts}
-            companies={primaryCompany ? [{ name: primaryCompany.name }] : []}
+            companies={companiesForTaskForm}
             opportunities={opp ? [opp] : []}
             defaultAssigneeId={opp?.assignedTo}
             onActivityCreated={(activity) => setOppActivities((prev) => [activity as any, ...prev])}

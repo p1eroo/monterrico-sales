@@ -104,6 +104,26 @@ export function taskLinkBadgesFromActivity(
   return taskAssociationsFromActivity(a).map((x) => ({ type: x.type, name: x.name }));
 }
 
+/** Empresas disponibles en el buscador del formulario de tarea (base + vínculos prellenados). */
+export function mergeCompaniesForTaskPicker(
+  base: { name: string; id?: string }[],
+  extraAssociations: TaskAssociation[] = [],
+): { name: string; id?: string }[] {
+  const result = base.map((c) => ({ name: c.name, id: c.id }));
+  const keys = new Set(
+    result.map((c) => (c.id?.trim() ? `id:${c.id.trim()}` : `n:${c.name.trim().toLowerCase()}`)),
+  );
+  for (const a of extraAssociations) {
+    if (a.type !== 'empresa' || !a.name?.trim()) continue;
+    const id = a.id?.trim();
+    const key = id ? `id:${id}` : `n:${a.name.trim().toLowerCase()}`;
+    if (keys.has(key)) continue;
+    keys.add(key);
+    result.push({ name: a.name.trim(), id: id || undefined });
+  }
+  return result;
+}
+
 /** Misma lógica visual que en tarjetas (contacto, empresa, negocio) para tarea optimista. */
 export function contactLineFromTaskAssociations(assocs: TaskAssociation[] | undefined): string | undefined {
   if (!assocs?.length) return undefined;

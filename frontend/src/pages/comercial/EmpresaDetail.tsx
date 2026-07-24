@@ -46,7 +46,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { formatCurrency, formatDate } from '@/lib/formatters';
-import { taskAssociationsFromActivity } from '@/lib/taskAssociationsFromActivity';
+import { mergeCompaniesForTaskPicker, taskAssociationsFromActivity } from '@/lib/taskAssociationsFromActivity';
 import { ENTITY_DETAIL_SECTION_TAB_OPTIONS } from '@/lib/entityDetailSectionTabs';
 import { api } from '@/lib/api';
 import { APP_PATHS, companyDetailHref, companyDetailPath, contactDetailHref, isEntityDetailApiParam } from '@/lib/detailRoutes';
@@ -1240,6 +1240,28 @@ async function handleCreateNewContact(data: NewContactData) {
     } as Activity);
   }, [firstContact, resolvedCompanyId, companyData, companyName, companyOpportunities]);
 
+  const companiesForTaskForm = useMemo(() => {
+    const primary: { name: string; id?: string }[] =
+      companyData?.name || companyName
+        ? [{
+            name: companyData?.name ?? companyName,
+            id: (fromApiById && apiRecord?.id) || resolvedCompanyId,
+          }]
+        : [];
+    return mergeCompaniesForTaskPicker(
+      [...primary, ...linkedCompanies.map((c) => ({ name: c.name, id: c.id }))],
+      followUpAssociations,
+    );
+  }, [
+    companyData,
+    companyName,
+    fromApiById,
+    apiRecord?.id,
+    resolvedCompanyId,
+    linkedCompanies,
+    followUpAssociations,
+  ]);
+
   const hasCompany =
     companyContacts.length > 0 ||
     !!standaloneCompany ||
@@ -1306,7 +1328,7 @@ return (
             <QuickActionsWithDialogs
               entityName={companyName}
               contacts={companyContacts}
-              companies={linkedCompanies}
+              companies={companiesForTaskForm}
               opportunities={companyOpportunities}
               contactId={firstContact?.id}
               followUpAssociations={followUpAssociations}
@@ -1565,7 +1587,7 @@ return (
           <TasksTab
             ref={tasksTabRef}
             contacts={companyContacts}
-            companies={(companyData ? [{ name: companyData.name, id: fromApiById && apiRecord ? apiRecord.id : undefined }] : []).concat(linkedCompanies.map((c) => ({ name: c.name, id: c.id })))}
+            companies={companiesForTaskForm}
             opportunities={companyOpportunities}
             defaultAssigneeId={firstContact?.assignedTo}
             onActivityCreated={(activity) => setCompanyActivities((prev) => [activity as any, ...prev])}

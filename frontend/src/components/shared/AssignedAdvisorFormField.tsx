@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useUsers } from '@/hooks/useUsers';
 import { useAppStore } from '@/store';
 import { resolveAdvisorAssigneeId, canUserReassignCommercialAdvisor } from '@/lib/advisorAssigneeDefaults';
@@ -64,6 +64,20 @@ export function AssignedAdvisorFormField({
     (effectiveValue === currentUser.id ? currentUser.name : undefined) ||
     (effectiveValue ? 'Usuario no disponible en lista' : 'Sin asignar');
 
+  const selectValue = useMemo(() => {
+    if (effectiveDisabled || selectOptions.length === 0) return '';
+    if (effectiveValue && selectOptions.some((o) => o.id === effectiveValue)) {
+      return effectiveValue;
+    }
+    return selectOptions[0]?.id ?? '';
+  }, [effectiveDisabled, selectOptions, effectiveValue]);
+
+  // El Select puede mostrar un asesor por defecto sin que el padre tenga el id aún (p. ej. admin).
+  useEffect(() => {
+    if (effectiveDisabled || !selectValue || selectValue === value.trim()) return;
+    onChange(selectValue);
+  }, [effectiveDisabled, selectValue, value, onChange]);
+
   const mutedInputClass = `${formDialogInputClass} bg-muted/40`;
 
   function renderReadOnly(content: string) {
@@ -89,11 +103,6 @@ export function AssignedAdvisorFormField({
 
   if (effectiveDisabled) return renderReadOnly(readOnlyLabel);
   if (selectOptions.length === 0) return renderReadOnly('No hay asesores activos');
-
-  const selectValue =
-    effectiveValue && selectOptions.some((o) => o.id === effectiveValue)
-      ? effectiveValue
-      : (selectOptions[0]?.id ?? '');
 
   const select = (
     <Select value={selectValue} onValueChange={onChange}>

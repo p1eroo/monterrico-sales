@@ -94,6 +94,7 @@ import { opportunityListAll, mapApiOpportunityToOpportunity } from '@/lib/opport
 import { formatTodayPeruYmd, formatDate } from '@/lib/formatters';
 import {
   contactLineFromTaskAssociations,
+  mergeCompaniesForTaskPicker,
   taskAssociationsFromActivity,
   taskLinkBadgesFromActivity,
 } from '@/lib/taskAssociationsFromActivity';
@@ -488,22 +489,10 @@ export default function TareasPage() {
   );
 
   /** Incluye empresas de GET /companies y las de tarea de seguimiento aunque no estén en el listado. */
-  const taskFormCompanies = useMemo(() => {
-    const list = crmCompanies.map((c) => ({ ...c }));
-    const keys = new Set(
-      list.map((c) => (c.id ? `id:${c.id}` : `n:${c.name}`)),
-    );
-    for (const a of newTaskDefaultAssociations ?? []) {
-      if (a.type === 'empresa' && a.id) {
-        const k = `id:${a.id}`;
-        if (!keys.has(k)) {
-          list.push({ id: a.id, name: a.name });
-          keys.add(k);
-        }
-      }
-    }
-    return list;
-  }, [crmCompanies, newTaskDefaultAssociations]);
+  const taskFormCompanies = useMemo(
+    () => mergeCompaniesForTaskPicker(crmCompanies, newTaskDefaultAssociations ?? []),
+    [crmCompanies, newTaskDefaultAssociations],
+  );
 
   function handleKanbanStatusChange(taskId: string, next: ActivityStatus) {
     const task = allTasks.find((t) => t.id === taskId);

@@ -67,7 +67,7 @@ export function PremiumMetricCard({
 
   if (loading) {
     return (
-      <Card className="overflow-hidden border-none">
+      <Card className="relative overflow-hidden py-0">
         <CardContent className="p-5 space-y-4">
           <div className="flex justify-between items-start">
             <Skeleton className="h-4 w-24" />
@@ -81,7 +81,7 @@ export function PremiumMetricCard({
   }
 
   return (
-    <Card className="overflow-hidden border-none transition-all duration-300 group">
+    <Card className="relative overflow-hidden py-0 transition-all duration-300 group">
       <CardContent className="p-0">
         <div className="p-4 space-y-1">
           <div className="flex justify-between items-start mb-1">

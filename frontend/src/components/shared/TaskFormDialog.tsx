@@ -1,12 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   User, Building2, Briefcase, Search, Link2, ChevronDown,
 } from 'lucide-react';
 import { toast } from '@/lib/notify';
 import { priorityLabels } from '@/data/mock';
-import { canUserReassignCommercialAdvisor, resolveAdvisorAssigneeId } from '@/lib/advisorAssigneeDefaults';
+import {
+  canUserReassignCommercialAdvisor,
+  resolveAdvisorAssigneeIdWithFallback,
+} from '@/lib/advisorAssigneeDefaults';
 import { useUsers } from '@/hooks/useUsers';
 import { useAppStore } from '@/store';
+import { mergeCompaniesForTaskPicker } from '@/lib/taskAssociationsFromActivity';
 import type { Contact, Opportunity, TaskAssociation, TaskKind } from '@/types';
 import { TASK_KINDS } from '@/types';
 
@@ -116,7 +120,11 @@ export function TaskFormDialog({
   const canReassign = canUserReassignCommercialAdvisor(currentUser.role);
 
   function resolveDefaultAssignee() {
-    return resolveAdvisorAssigneeId(defaultAssigneeId, currentUser);
+    return resolveAdvisorAssigneeIdWithFallback(
+      defaultAssigneeId,
+      currentUser,
+      activeAdvisors[0]?.id,
+    );
   }
 
   function getDefaultDueDate() {
@@ -148,11 +156,19 @@ export function TaskFormDialog({
       );
       setFormAssignee(resolveDefaultAssignee());
     }
-  }, [open, defaultTitle, defaultStatus, defaultStartDate, defaultAssociations, defaultAssigneeId, canReassign, currentUser.id]);
+  }, [open, defaultTitle, defaultStatus, defaultStartDate, defaultAssociations, defaultAssigneeId, canReassign, currentUser.id, activeAdvisors]);
+
+  const pickerCompanies = useMemo(
+    () => mergeCompaniesForTaskPicker(companies, [
+      ...(defaultAssociations ?? []),
+      ...associations,
+    ]),
+    [companies, defaultAssociations, associations],
+  );
 
   const assocCounts = {
     contactos: contacts.length,
-    empresas: companies.length,
+    empresas: pickerCompanies.length,
     negocios: opportunities.length,
   };
 
@@ -186,7 +202,15 @@ export function TaskFormDialog({
       toast.error('Selecciona la fecha de tarea');
       return;
     }
-    const assigneeId = formAssignee.trim() || resolveDefaultAssignee();
+    const assigneeId = resolveAdvisorAssigneeIdWithFallback(
+      formAssignee || defaultAssigneeId,
+      currentUser,
+      activeAdvisors[0]?.id,
+    );
+    if (!assigneeId) {
+      toast.error('No hay asesor disponible para asignar la tarea');
+      return;
+    }
     const assigneeUser =
       users.find((u) => u.id === assigneeId) ??
       activeAdvisors.find((u) => u.id === assigneeId) ??
@@ -358,7 +382,7 @@ export function TaskFormDialog({
                       })}
 
                   {assocCategory === 'empresas' &&
-                    companies
+                    pickerCompanies
                       .filter((c) => c.name.toLowerCase().includes(assocSearch.toLowerCase()))
                       .slice(0, ASSOCIATION_PICKER_PAGE_SIZE)
                       .map((c) => {

@@ -24,6 +24,28 @@ export const dashboardChartDescriptions = {
     'Tareas completadas por tipo (llamada, reunión, correo, WhatsApp) y semana dentro del periodo filtrado.',
 } as const;
 
+export const flotaDashboardKpiDescriptions = {
+  nuevosProspectos:
+    'Prospectos de flota registrados en el mes en curso, comparado con el mes anterior.',
+  contactados:
+    'Prospectos que ya fueron contactados (total menos nuevos sin contactar y afiliados).',
+  sinContactar:
+    'Prospectos en estado Nuevo que aún no han sido contactados.',
+  conductoresActivos:
+    'Conductores con estado ACTIVO o DISPONIBLE en la flota.',
+} as const;
+
+export const flotaDashboardChartDescriptions = {
+  nuevosConductores:
+    'Altas de conductores agrupadas por semana según fecha de registro. Activos: conductores no retirados. Nuevos: total de altas en la semana. Respeta el rango de fechas seleccionado.',
+  sunatGestion:
+    'Servicios de clientes SUNAT e Intendencia Lima en el periodo. Barras: servicios por día. Línea: conductores únicos autorizados (móvil con prefijo 0S, 1S, 3S, 5S o 9S). Las métricas inferiores resumen el rango filtrado.',
+  prospectosRecientes:
+    'Los cinco prospectos de flota más recientes por fecha de registro. Haz clic en una fila para abrir su ficha.',
+  distribucionEstado:
+    'Composición de prospectos por estado actual. Tasa de afiliación: porcentaje en estado Afiliado. Sin contactar: prospectos en estado Nuevo.',
+} as const;
+
 export const reportsKpiDescriptions = {
   contactsCreated:
     'Contactos creados en el rango de fechas filtrado, según asesores y fuente seleccionados.',
