@@ -1,5 +1,11 @@
 import { useState, useMemo, useEffect, useCallback, type ComponentProps, type ComponentType } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  type ColumnDef,
+} from '@tanstack/react-table';
 import { toast } from '@/lib/notify';
 import {
   Plus, Search, X, MoreVertical,
@@ -53,9 +59,11 @@ import {
 import { cn } from '@/lib/utils';
 import { comercialFilterIconClass, comercialProPopoverClass, matchesInclusiveMultiFilterValue } from '@/lib/comercialFilterSurface';
 import {
+  comercialTableActionsColumnSizing,
   comercialTableCheckboxWrapClass,
-  comercialTableFixedColStyle,
+  comercialTableCellStyle,
   comercialTableLeadingCellClass,
+  comercialTableSelectColumnSizing,
 } from '@/lib/comercialTableLayout';
 import {
   crmTableBodyRowClassInteractive,
@@ -66,6 +74,7 @@ import { GlassCard } from '@/components/shared/GlassCard';
 import { ComercialInclusiveMultiFilter } from '@/components/shared/ComercialInclusiveMultiFilter';
 import { MultiAdvisorFilter } from '@/components/shared/MultiAdvisorFilter';
 import { GhostTableSkeleton } from '@/components/shared/GhostTableSkeleton';
+import { ComercialTableColgroup } from '@/components/shared/ComercialTableColgroup';
 import { ActivityFormDialog } from '@/components/shared/ActivityFormDialog';
 import {
   TaskDetailDialog,
@@ -627,6 +636,223 @@ export default function TareasPage() {
     setNewTaskOpen(true);
   }, []);
 
+  const taskTableColumns = useMemo<ColumnDef<Activity>[]>(
+    () => [
+      {
+        id: 'select',
+        header: () => <span className="sr-only">Seleccionar</span>,
+        cell: ({ row }) => {
+          const task = row.original;
+          return (
+            <div className={comercialTableCheckboxWrapClass}>
+              <Checkbox
+                checked={task.status === 'completada'}
+                onCheckedChange={() => handleTaskToggle(task.id)}
+                className={CRM_TABLE_CHECKBOX_CLASS}
+              />
+            </div>
+          );
+        },
+        ...comercialTableSelectColumnSizing,
+      },
+      {
+        id: 'actions',
+        header: '',
+        cell: ({ row }) => {
+          const task = row.original;
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon-sm" aria-label="Acciones">
+                  <MoreVertical className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {task.status !== 'completada' && (
+                  <DropdownMenuItem onClick={() => handleTaskToggle(task.id)}>
+                    <Check /> Completar
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => { setSelectedTaskDetail(task); setTaskDetailOpen(true); }}>
+                  <Pencil /> Editar
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onClick={() => requestDeleteTask(task.id)}>
+                  <Trash2 /> Eliminar
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        },
+        ...comercialTableActionsColumnSizing,
+      },
+      {
+        id: 'type',
+        header: 'Tipo',
+        size: 44,
+        minSize: 40,
+        cell: ({ row }) => {
+          const task = row.original;
+          const taskType: TaskKind =
+            task.taskKind && TASK_KINDS.includes(task.taskKind) ? task.taskKind : 'llamada';
+          const TypeIcon = taskKindIcons[taskType];
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className="mx-auto flex size-6 items-center justify-center text-muted-foreground"
+                  aria-label={taskTypeLabels[taskType]}
+                >
+                  <TypeIcon className="size-6 shrink-0" aria-hidden />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">{taskTypeLabels[taskType]}</TooltipContent>
+            </Tooltip>
+          );
+        },
+      },
+      {
+        id: 'titulo',
+        accessorKey: 'title',
+        header: 'Título',
+        size: 220,
+        cell: ({ row }) => {
+          const task = row.original;
+          return (
+            <span
+              className={cn(
+                'block truncate text-[13px] font-semibold text-[#0F172A] dark:text-gray-100',
+                task.status === 'completada' && 'line-through text-muted-foreground',
+              )}
+              title={task.title}
+            >
+              {task.title}
+            </span>
+          );
+        },
+      },
+      {
+        id: 'contacto',
+        header: 'Contacto',
+        size: 160,
+        cell: ({ row }) => {
+          const task = row.original;
+          if (!task.contactName) return <span className={CRM_CELL_EMPTY}>—</span>;
+          return (
+            <div className="min-w-0 truncate" title={`${task.contactName}${task.contactPhone ? ` - ${task.contactPhone}` : ''}`}>
+              <span className="block truncate text-[13px] font-semibold text-[#0F172A] dark:text-gray-100">
+                {task.contactName}
+              </span>
+              {task.contactPhone && (
+                <span className="block truncate text-[11px] text-muted-foreground">
+                  {task.contactPhone}
+                </span>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        id: 'empresa',
+        header: 'Empresa',
+        size: 160,
+        cell: ({ row }) => {
+          const task = row.original;
+          if (!task.companyName) return <span className={CRM_CELL_EMPTY}>—</span>;
+          return (
+            <span className={cn('block truncate', CRM_CELL_MUTED)} title={task.companyName}>
+              {task.companyName}
+            </span>
+          );
+        },
+      },
+      {
+        id: 'oportunidad',
+        header: 'Oportunidad',
+        size: 160,
+        cell: ({ row }) => {
+          const task = row.original;
+          if (!task.opportunityTitle) return <span className={CRM_CELL_EMPTY}>—</span>;
+          return (
+            <span className={cn('block truncate', CRM_CELL_MUTED)} title={task.opportunityTitle}>
+              {task.opportunityTitle}
+            </span>
+          );
+        },
+      },
+      {
+        id: 'prioridad',
+        header: 'Prioridad',
+        size: 104,
+        cell: ({ row }) => {
+          const taskPriority: ContactPriority = row.original.priority ?? 'media';
+          return (
+            <Badge
+              variant="outline"
+              className={cn('border-0 text-xs font-medium', taskPriorityBadgeClass[taskPriority])}
+            >
+              {priorityLabels[taskPriority]}
+            </Badge>
+          );
+        },
+      },
+      {
+        id: 'asignado',
+        header: 'Asignado',
+        size: 96,
+        cell: ({ row }) => (
+          <span className={cn('block truncate', CRM_CELL_MUTED)} title={row.original.assignedToName}>
+            {row.original.assignedToName?.split(' ')[0] ?? '—'}
+          </span>
+        ),
+      },
+      {
+        id: 'fecha',
+        header: 'Fecha',
+        size: 140,
+        cell: ({ row }) => {
+          const task = row.original;
+          const overdue = isOverdue(task.dueDate, task.status);
+          return (
+            <span
+              className={cn(
+                'flex flex-col gap-0.5 whitespace-nowrap text-[13px] leading-tight',
+                CRM_CELL_MUTED,
+                overdue && 'font-semibold text-red-600 dark:text-red-400',
+              )}
+            >
+              <span className="flex items-center gap-1">
+                {formatDueDate(task.dueDate, task.startTime)}
+                {overdue && <AlertTriangle className="size-3.5 shrink-0 text-red-500" />}
+              </span>
+              {task.startDate && (
+                <span className="text-[11px] text-muted-foreground/80">
+                  Inicio: {formatDueDate(task.startDate)}
+                </span>
+              )}
+            </span>
+          );
+        },
+      },
+      {
+        id: 'estado',
+        header: 'Estado',
+        size: 110,
+        cell: ({ row }) => <TaskStatusBadge status={row.original.status} />,
+      },
+    ],
+    [handleTaskToggle, requestDeleteTask, formatDueDate, isOverdue],
+  );
+
+  const tasksTable = useReactTable({
+    data: paginatedTasks,
+    columns: taskTableColumns,
+    getCoreRowModel: getCoreRowModel(),
+    enableColumnResizing: true,
+    columnResizeMode: 'onChange',
+    defaultColumn: { minSize: 60 },
+  });
+
   return (
     <TooltipProvider>
       <div className={viewMode === 'kanban' ? 'flex h-full min-h-0 min-w-0 flex-col gap-5' : 'min-w-0 max-w-full space-y-6'}>
@@ -915,66 +1141,55 @@ export default function TareasPage() {
               ) : (
                 <>
                   <div className="border-t border-border/40 overflow-auto scrollbar-thin max-h-[calc(100vh-330px)]">
-                    <table className="w-full table-fixed" style={{ minWidth: 1040 }}>
-                      <colgroup>
-                        <col style={comercialTableFixedColStyle('select')} />
-                        <col style={comercialTableFixedColStyle('actions')} />
-                        <col style={{ width: 44 }} />
-                        <col style={{ width: '18%' }} />
-                        <col style={{ width: '17%' }} />
-                        <col style={{ width: '17%' }} />
-                        <col style={{ width: '17%' }} />
-                        <col style={{ width: 104 }} />
-                        <col style={{ width: 96 }} />
-                        <col style={{ width: 140 }} />
-                        <col style={{ width: 110 }} />
-                      </colgroup>
+                    <table className="w-full table-fixed bg-transparent" style={{ minWidth: tasksTable.getTotalSize() }}>
+                      <ComercialTableColgroup columns={tasksTable.getVisibleLeafColumns()} />
                       <thead>
-                        <tr className={cn('h-[36px] text-left', crmTableHeaderRowClassSticky)}>
-                          <th className={comercialTableLeadingCellClass('select')} />
-                          <th className={comercialTableLeadingCellClass('actions')} />
-                          <th className={comercialTableLeadingCellClass('type', { extra: 'text-center' })}>
-                            Tipo
-                          </th>
-                          <th className={comercialTableLeadingCellClass('titulo', { primaryColumnId: 'titulo' })}>
-                            Título
-                          </th>
-                          <th className={cn(comercialTableLeadingCellClass('contacto'), taskTableResponsiveClass('contacto'))}>
-                            Contacto
-                          </th>
-                          <th className={cn(comercialTableLeadingCellClass('empresa'), taskTableResponsiveClass('empresa'))}>
-                            Empresa
-                          </th>
-                          <th className={cn(comercialTableLeadingCellClass('oportunidad'), taskTableResponsiveClass('oportunidad'))}>
-                            Oportunidad
-                          </th>
-                          <th className={cn(comercialTableLeadingCellClass('prioridad'), taskTableResponsiveClass('prioridad'))}>
-                            Prioridad
-                          </th>
-                          <th className={cn(comercialTableLeadingCellClass('asignado'), taskTableResponsiveClass('asignado'))}>
-                            Asignado
-                          </th>
-                          <th className={cn(comercialTableLeadingCellClass('fecha'), taskTableResponsiveClass('fecha'))}>
-                            Fecha
-                          </th>
-                          <th className={comercialTableLeadingCellClass('estado')}>
-                            Estado
-                          </th>
-                        </tr>
+                        {tasksTable.getHeaderGroups().map((hg) => (
+                          <tr key={hg.id} className={cn('h-[36px] text-left', crmTableHeaderRowClassSticky)}>
+                            {hg.headers.map((header) => (
+                              <th
+                                key={header.id}
+                                colSpan={header.colSpan}
+                                className={cn(
+                                  comercialTableLeadingCellClass(header.column.id, {
+                                    primaryColumnId: 'titulo',
+                                    extra: header.column.id === 'type' ? 'text-center' : undefined,
+                                  }),
+                                  taskTableResponsiveClass(header.column.id),
+                                )}
+                                style={comercialTableCellStyle(header.column.id, header.getSize())}
+                              >
+                                {flexRender(header.column.columnDef.header, header.getContext())}
+                                {header.column.getCanResize() && (
+                                  <div
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      header.getResizeHandler()(e);
+                                    }}
+                                    onTouchStart={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      header.getResizeHandler()(e);
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="group/rez absolute inset-y-0 right-0 flex w-5 cursor-col-resize items-center justify-center"
+                                  >
+                                    <div className="pointer-events-none h-4 w-[2px] select-none rounded-full bg-gray-200 transition-all group-hover/rez:w-[5px] group-hover/rez:bg-blue-500 group-active/rez:w-[5px] group-active/rez:bg-blue-500" />
+                                  </div>
+                                )}
+                              </th>
+                            ))}
+                          </tr>
+                        ))}
                       </thead>
-                      <tbody>
-                        {paginatedTasks.map((task) => {
-                          const taskType: TaskKind =
-                            task.taskKind && TASK_KINDS.includes(task.taskKind)
-                              ? task.taskKind
-                              : 'llamada';
-                          const TypeIcon = taskKindIcons[taskType];
+                      <tbody className="bg-transparent">
+                        {tasksTable.getRowModel().rows.map((row) => {
+                          const task = row.original;
                           const overdue = isOverdue(task.dueDate, task.status);
-                          const taskPriority: ContactPriority = task.priority ?? 'media';
-
                           return (
                             <tr
-                              key={task.id}
+                              key={row.id}
                               className={cn(
                                 'h-[48px] last:border-b-0',
                                 crmTableBodyRowClassInteractive,
@@ -986,137 +1201,26 @@ export default function TareasPage() {
                                 setTaskDetailOpen(true);
                               }}
                             >
-                              <td
-                                className={comercialTableLeadingCellClass('select')}
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <div className={comercialTableCheckboxWrapClass}>
-                                  <Checkbox
-                                    checked={task.status === 'completada'}
-                                    onCheckedChange={() => handleTaskToggle(task.id)}
-                                    className={CRM_TABLE_CHECKBOX_CLASS}
-                                  />
-                                </div>
-                              </td>
-                              <td
-                                className={comercialTableLeadingCellClass('actions')}
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon-sm" aria-label="Acciones">
-                                      <MoreVertical className="size-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="start">
-                                    {task.status !== 'completada' && (
-                                      <DropdownMenuItem onClick={() => handleTaskToggle(task.id)}>
-                                        <Check /> Completar
-                                      </DropdownMenuItem>
-                                    )}
-                                    <DropdownMenuItem onClick={() => { setSelectedTaskDetail(task); setTaskDetailOpen(true); }}>
-                                      <Pencil /> Editar
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem variant="destructive" onClick={() => requestDeleteTask(task.id)}>
-                                      <Trash2 /> Eliminar
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </td>
-                              <td className={comercialTableLeadingCellClass('type', { extra: 'text-center' })}>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span
-                                      className="mx-auto flex size-6 items-center justify-center text-muted-foreground"
-                                      aria-label={taskTypeLabels[taskType]}
-                                    >
-                                      <TypeIcon className="size-6 shrink-0" aria-hidden />
-                                    </span>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="top">{taskTypeLabels[taskType]}</TooltipContent>
-                                </Tooltip>
-                              </td>
-                              <td className={comercialTableLeadingCellClass('titulo', { primaryColumnId: 'titulo' })}>
-                                <span
+                              {row.getVisibleCells().map((cell) => (
+                                <td
+                                  key={cell.id}
                                   className={cn(
-                                    'block truncate text-[13px] font-semibold text-[#0F172A] dark:text-gray-100',
-                                    task.status === 'completada' && 'line-through text-muted-foreground',
+                                    comercialTableLeadingCellClass(cell.column.id, {
+                                      primaryColumnId: 'titulo',
+                                      extra: cell.column.id === 'type' ? 'text-center' : undefined,
+                                    }),
+                                    taskTableResponsiveClass(cell.column.id),
                                   )}
-                                  title={task.title}
+                                  style={comercialTableCellStyle(cell.column.id, cell.column.getSize())}
+                                  onClick={
+                                    cell.column.id === 'select' || cell.column.id === 'actions'
+                                      ? (e) => e.stopPropagation()
+                                      : undefined
+                                  }
                                 >
-                                  {task.title}
-                                </span>
-                              </td>
-                              <td className={cn(comercialTableLeadingCellClass('contacto'), taskTableResponsiveClass('contacto'))}>
-                                {task.contactName ? (
-                                  <div className="min-w-0 truncate" title={`${task.contactName}${task.contactPhone ? ` - ${task.contactPhone}` : ''}`}>
-                                    <span className="block truncate text-[13px] font-semibold text-[#0F172A] dark:text-gray-100">
-                                      {task.contactName}
-                                    </span>
-                                    {task.contactPhone && (
-                                      <span className="block truncate text-[11px] text-muted-foreground">
-                                        {task.contactPhone}
-                                      </span>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <span className={CRM_CELL_EMPTY}>—</span>
-                                )}
-                              </td>
-                              <td className={cn(comercialTableLeadingCellClass('empresa'), taskTableResponsiveClass('empresa'))}>
-                                {task.companyName ? (
-                                  <span className={cn('block truncate', CRM_CELL_MUTED)} title={task.companyName}>
-                                    {task.companyName}
-                                  </span>
-                                ) : (
-                                  <span className={CRM_CELL_EMPTY}>—</span>
-                                )}
-                              </td>
-                              <td className={cn(comercialTableLeadingCellClass('oportunidad'), taskTableResponsiveClass('oportunidad'))}>
-                                {task.opportunityTitle ? (
-                                  <span className={cn('block truncate', CRM_CELL_MUTED)} title={task.opportunityTitle}>
-                                    {task.opportunityTitle}
-                                  </span>
-                                ) : (
-                                  <span className={CRM_CELL_EMPTY}>—</span>
-                                )}
-                              </td>
-                              <td className={cn(comercialTableLeadingCellClass('prioridad'), taskTableResponsiveClass('prioridad'))}>
-                                <Badge
-                                  variant="outline"
-                                  className={cn('border-0 text-xs font-medium', taskPriorityBadgeClass[taskPriority])}
-                                >
-                                  {priorityLabels[taskPriority]}
-                                </Badge>
-                              </td>
-                              <td className={cn(comercialTableLeadingCellClass('asignado'), taskTableResponsiveClass('asignado'))}>
-                                <span className={cn('block truncate', CRM_CELL_MUTED)} title={task.assignedToName}>
-                                  {task.assignedToName?.split(' ')[0] ?? '—'}
-                                </span>
-                              </td>
-                              <td className={cn(comercialTableLeadingCellClass('fecha'), taskTableResponsiveClass('fecha'))}>
-                                <span
-                                  className={cn(
-                                    'flex flex-col gap-0.5 whitespace-nowrap text-[13px] leading-tight',
-                                    CRM_CELL_MUTED,
-                                    overdue && 'font-semibold text-red-600 dark:text-red-400',
-                                  )}
-                                >
-                                  <span className="flex items-center gap-1">
-                                    {formatDueDate(task.dueDate, task.startTime)}
-                                    {overdue && <AlertTriangle className="size-3.5 shrink-0 text-red-500" />}
-                                  </span>
-                                  {task.startDate && (
-                                    <span className="text-[11px] text-muted-foreground/80">
-                                      Inicio: {formatDueDate(task.startDate)}
-                                    </span>
-                                  )}
-                                </span>
-                              </td>
-                              <td className={comercialTableLeadingCellClass('estado')}>
-                                <TaskStatusBadge status={task.status} />
-                              </td>
+                                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                </td>
+                              ))}
                             </tr>
                           );
                         })}
