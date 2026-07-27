@@ -1446,6 +1446,9 @@ export default function EmpresasPage() {
                   <span className="block">
                     {importPreviewData.okCount} fila(s) lista(s) ·{' '}
                     {importPreviewData.errorCount} con error
+                    {importPreviewData.blockedCount
+                      ? ` · ${importPreviewData.blockedCount} bloqueada(s) por asesor`
+                      : ''}
                     {importPreviewData.skipped
                       ? ` · ${importPreviewData.skipped} vacía(s) omitida(s)`
                       : ''}
@@ -1519,6 +1522,13 @@ export default function EmpresasPage() {
                                 className="border-emerald-200 bg-emerald-50 font-normal text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
                               >
                                 OK
+                              </Badge>
+                            ) : row.blocked ? (
+                              <Badge
+                                variant="outline"
+                                className="border-amber-300 bg-amber-50 font-normal text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+                              >
+                                Bloqueada
                               </Badge>
                             ) : (
                               <Badge variant="destructive" className="font-normal">

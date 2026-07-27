@@ -15,7 +15,6 @@ const ACTIVITY_COUNT_FORMS: Record<string, [singular: string, plural: string]> =
   Llamadas: ['llamada', 'llamadas'],
   Reuniones: ['reunión', 'reuniones'],
   Correos: ['correo', 'correos'],
-  Notas: ['nota', 'notas'],
 };
 
 function formatActivityCount(typeLabel: string, value: number): string {

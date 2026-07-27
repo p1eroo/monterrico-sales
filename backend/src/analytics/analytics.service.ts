@@ -231,6 +231,33 @@ type AdvisorFunnelMovementCompaniesPage = {
   totalPages: number;
 };
 
+type ActivitiesByAdvisorDetailEntity = {
+  id: string;
+  name: string;
+  urlSlug: string;
+};
+
+type ActivitiesByAdvisorDetailRow = {
+  id: string;
+  type: string;
+  typeLabel: string;
+  title: string;
+  completedAt: string;
+  companies: ActivitiesByAdvisorDetailEntity[];
+  contacts: ActivitiesByAdvisorDetailEntity[];
+  opportunities: { id: string; title: string; urlSlug: string }[];
+};
+
+type ActivitiesByAdvisorDetailsPage = {
+  data: ActivitiesByAdvisorDetailRow[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  advisorName: string;
+  weekLabel: string;
+};
+
 const ADVISOR_FUNNEL_METRIC_TO_CATEGORY: Record<
   AdvisorFunnelMovementMetricKey,
   'nuevo' | 'avance' | 'atraso' | 'sinCambios'
@@ -253,7 +280,7 @@ type CompaniesBySourceWeeklySnapshot = {
 };
 
 type ActivitiesByTypeWeeklyRow = {
-  key: 'llamadas' | 'reuniones' | 'correos' | 'notas';
+  key: 'llamadas' | 'reuniones' | 'correos';
   label: string;
   counts: number[];
   total: number;
@@ -288,7 +315,7 @@ type ActivitiesByAdvisorWeeklySnapshot = {
 };
 
 type TasksByKindWeeklyRow = {
-  key: 'llamadas' | 'reuniones' | 'correos' | 'whatsapp';
+  key: 'llamadas' | 'reuniones' | 'correos';
   label: string;
   counts: number[];
   total: number;
@@ -326,7 +353,6 @@ const ACTIVITY_TYPE_DEFINITIONS = [
   { key: 'llamadas' as const, label: 'Llamadas' },
   { key: 'reuniones' as const, label: 'Reuniones' },
   { key: 'correos' as const, label: 'Correos' },
-  { key: 'notas' as const, label: 'Notas' },
 ];
 
 function activityTypeKeyFromRaw(
@@ -336,15 +362,34 @@ function activityTypeKeyFromRaw(
   if (t === 'llamada') return 'llamadas';
   if (t === 'reunion' || t === 'reunión') return 'reuniones';
   if (t === 'correo') return 'correos';
-  if (t === 'nota') return 'notas';
   return null;
 }
+
+function activityTypeDisplayLabel(type: string | null | undefined): string {
+  const t = type?.toLowerCase().trim() ?? '';
+  if (t === 'llamada') return 'Llamada';
+  if (t === 'reunion' || t === 'reunión') return 'Reunión';
+  if (t === 'correo') return 'Correo';
+  return type?.trim() || 'Actividad';
+}
+
+const INTERACTION_ACTIVITY_TYPE_FILTER: Prisma.ActivityWhereInput = {
+  OR: [
+    { type: { equals: 'llamada', mode: 'insensitive' } },
+    { type: { equals: 'reunion', mode: 'insensitive' } },
+    { type: { equals: 'correo', mode: 'insensitive' } },
+  ],
+};
+
+/** Cartera Clientes (ClienteEmpresa): no alimenta dashboard ni reportes comerciales. */
+const EXCLUDE_CLIENTE_CARTERA_ACTIVITY_FILTER: Prisma.ActivityWhereInput = {
+  clienteEmpresas: { none: {} },
+};
 
 const TASK_KIND_DEFINITIONS = [
   { key: 'llamadas' as const, label: 'Llamadas' },
   { key: 'reuniones' as const, label: 'Reuniones' },
   { key: 'correos' as const, label: 'Correos' },
-  { key: 'whatsapp' as const, label: 'WhatsApp' },
 ];
 
 function taskKindKeyFromRaw(
@@ -354,9 +399,24 @@ function taskKindKeyFromRaw(
   if (k === 'llamada') return 'llamadas';
   if (k === 'reunion' || k === 'reunión') return 'reuniones';
   if (k === 'correo') return 'correos';
-  if (k === 'whatsapp') return 'whatsapp';
   return null;
 }
+
+function taskKindDisplayLabel(taskKind: string | null | undefined): string {
+  const k = taskKind?.toLowerCase().trim() ?? '';
+  if (k === 'llamada') return 'Tarea · Llamada';
+  if (k === 'reunion' || k === 'reunión') return 'Tarea · Reunión';
+  if (k === 'correo') return 'Tarea · Correo';
+  return 'Tarea';
+}
+
+const TASK_KIND_ANALYTICS_FILTER: Prisma.ActivityWhereInput = {
+  OR: [
+    { taskKind: { equals: 'llamada', mode: 'insensitive' } },
+    { taskKind: { equals: 'reunion', mode: 'insensitive' } },
+    { taskKind: { equals: 'correo', mode: 'insensitive' } },
+  ],
+};
 
 const COMPANY_WEEKLY_CHART_WEEKS = 6;
 /** Tope de semanas en gráficos semanales (empresas, actividades, tareas) cuando el rango es largo. */
@@ -2119,6 +2179,284 @@ export class AnalyticsService {
     };
   }
 
+  /** Detalle de actividades completadas por asesor y semana (llamada, reunión, correo). */
+  async getActivitiesByAdvisorDetails(opts: {
+    advisorId: string;
+    weekStart: string;
+    weekEnd: string;
+    from?: string;
+    to?: string;
+    assignedTo?: string;
+    excludeAssignedTo?: string;
+    advisorPool?: string;
+    source?: string;
+    page?: number;
+    limit?: number;
+    crmScope: CrmDataScope;
+  }): Promise<ActivitiesByAdvisorDetailsPage> {
+    const advisorId = opts.advisorId?.trim();
+    if (!advisorId) {
+      throw new BadRequestException('advisorId requerido');
+    }
+
+    const weekStartRaw = opts.weekStart?.trim();
+    const weekEndRaw = opts.weekEnd?.trim();
+    if (!weekStartRaw || !weekEndRaw) {
+      throw new BadRequestException('weekStart y weekEnd requeridos');
+    }
+    const weekStart = new Date(weekStartRaw);
+    const weekEnd = new Date(weekEndRaw);
+    if (
+      Number.isNaN(weekStart.getTime()) ||
+      Number.isNaN(weekEnd.getTime())
+    ) {
+      throw new BadRequestException('weekStart/weekEnd inválidos');
+    }
+
+    const page = Math.max(1, Number(opts.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(opts.limit) || 25));
+    const unrestricted = opts.crmScope.unrestricted;
+    const filters = await this.resolveScopeFilters({
+      assignedTo: opts.assignedTo,
+      excludeAssignedTo: opts.excludeAssignedTo,
+      advisorPool: opts.advisorPool,
+      source: opts.source,
+      unrestricted,
+      viewerUserId: opts.crmScope.viewerUserId,
+    });
+
+    const where = this.activityWhereForAnalytics(
+      {
+        ...INTERACTION_ACTIVITY_TYPE_FILTER,
+        completedAt: { gte: weekStart, lte: weekEnd },
+        ...(advisorId === UNASSIGNED_ADVISOR_ID
+          ? { assignedTo: '' }
+          : { assignedTo: advisorId }),
+      },
+      filters,
+      unrestricted,
+    );
+
+    const [total, rows, advisorUser] = await Promise.all([
+      this.prisma.activity.count({ where }),
+      this.prisma.activity.findMany({
+        where,
+        orderBy: [{ completedAt: 'desc' }, { createdAt: 'desc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true,
+          type: true,
+          title: true,
+          completedAt: true,
+          companies: {
+            include: {
+              company: { select: { id: true, name: true, urlSlug: true } },
+            },
+          },
+          contacts: {
+            include: {
+              contact: { select: { id: true, name: true, urlSlug: true } },
+            },
+          },
+          opportunities: {
+            include: {
+              opportunity: { select: { id: true, title: true, urlSlug: true } },
+            },
+          },
+        },
+      }),
+      advisorId === UNASSIGNED_ADVISOR_ID
+        ? Promise.resolve(null)
+        : this.prisma.user.findUnique({
+            where: { id: advisorId },
+            select: { name: true },
+          }),
+    ]);
+
+    const advisorName =
+      advisorId === UNASSIGNED_ADVISOR_ID
+        ? 'Sin asignar'
+        : advisorUser?.name?.trim() || 'Sin nombre';
+    const weekLabel = formatIsoWeekLabel(isoWeekNumberLima(weekStart));
+
+    const data: ActivitiesByAdvisorDetailRow[] = rows.map((row) => ({
+      id: row.id,
+      type: row.type,
+      typeLabel: activityTypeDisplayLabel(row.type),
+      title: row.title.trim() || row.type,
+      completedAt: row.completedAt?.toISOString() ?? '',
+      companies: row.companies.map(({ company }) => ({
+        id: company.id,
+        name: company.name.trim() || 'Sin nombre',
+        urlSlug: company.urlSlug?.trim() || company.id,
+      })),
+      contacts: row.contacts.map(({ contact }) => ({
+        id: contact.id,
+        name: contact.name.trim() || 'Sin nombre',
+        urlSlug: contact.urlSlug?.trim() || contact.id,
+      })),
+      opportunities: row.opportunities.map(({ opportunity }) => ({
+        id: opportunity.id,
+        title: opportunity.title.trim() || 'Sin título',
+        urlSlug: opportunity.urlSlug?.trim() || opportunity.id,
+      })),
+    }));
+
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const safePage = Math.min(page, totalPages);
+
+    return {
+      data,
+      total,
+      page: safePage,
+      limit,
+      totalPages,
+      advisorName,
+      weekLabel,
+    };
+  }
+
+  /** Detalle de tareas completadas por asesor y semana (llamada, reunión, correo). */
+  async getTasksByAdvisorDetails(opts: {
+    advisorId: string;
+    weekStart: string;
+    weekEnd: string;
+    from?: string;
+    to?: string;
+    assignedTo?: string;
+    excludeAssignedTo?: string;
+    advisorPool?: string;
+    source?: string;
+    page?: number;
+    limit?: number;
+    crmScope: CrmDataScope;
+  }): Promise<ActivitiesByAdvisorDetailsPage> {
+    const advisorId = opts.advisorId?.trim();
+    if (!advisorId) {
+      throw new BadRequestException('advisorId requerido');
+    }
+
+    const weekStartRaw = opts.weekStart?.trim();
+    const weekEndRaw = opts.weekEnd?.trim();
+    if (!weekStartRaw || !weekEndRaw) {
+      throw new BadRequestException('weekStart y weekEnd requeridos');
+    }
+    const weekStart = new Date(weekStartRaw);
+    const weekEnd = new Date(weekEndRaw);
+    if (
+      Number.isNaN(weekStart.getTime()) ||
+      Number.isNaN(weekEnd.getTime())
+    ) {
+      throw new BadRequestException('weekStart/weekEnd inválidos');
+    }
+
+    const page = Math.max(1, Number(opts.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(opts.limit) || 25));
+    const unrestricted = opts.crmScope.unrestricted;
+    const filters = await this.resolveScopeFilters({
+      assignedTo: opts.assignedTo,
+      excludeAssignedTo: opts.excludeAssignedTo,
+      advisorPool: opts.advisorPool,
+      source: opts.source,
+      unrestricted,
+      viewerUserId: opts.crmScope.viewerUserId,
+    });
+
+    const where = this.activityWhereForAnalytics(
+      {
+        ...TASK_ACTIVITY_FILTER,
+        ...TASK_KIND_ANALYTICS_FILTER,
+        completedAt: { gte: weekStart, lte: weekEnd },
+        ...(advisorId === UNASSIGNED_ADVISOR_ID
+          ? { assignedTo: '' }
+          : { assignedTo: advisorId }),
+      },
+      filters,
+      unrestricted,
+    );
+
+    const [total, rows, advisorUser] = await Promise.all([
+      this.prisma.activity.count({ where }),
+      this.prisma.activity.findMany({
+        where,
+        orderBy: [{ completedAt: 'desc' }, { createdAt: 'desc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true,
+          type: true,
+          taskKind: true,
+          title: true,
+          completedAt: true,
+          companies: {
+            include: {
+              company: { select: { id: true, name: true, urlSlug: true } },
+            },
+          },
+          contacts: {
+            include: {
+              contact: { select: { id: true, name: true, urlSlug: true } },
+            },
+          },
+          opportunities: {
+            include: {
+              opportunity: { select: { id: true, title: true, urlSlug: true } },
+            },
+          },
+        },
+      }),
+      advisorId === UNASSIGNED_ADVISOR_ID
+        ? Promise.resolve(null)
+        : this.prisma.user.findUnique({
+            where: { id: advisorId },
+            select: { name: true },
+          }),
+    ]);
+
+    const advisorName =
+      advisorId === UNASSIGNED_ADVISOR_ID
+        ? 'Sin asignar'
+        : advisorUser?.name?.trim() || 'Sin nombre';
+    const weekLabel = formatIsoWeekLabel(isoWeekNumberLima(weekStart));
+
+    const data: ActivitiesByAdvisorDetailRow[] = rows.map((row) => ({
+      id: row.id,
+      type: row.taskKind ?? row.type,
+      typeLabel: taskKindDisplayLabel(row.taskKind),
+      title: row.title.trim() || taskKindDisplayLabel(row.taskKind),
+      completedAt: row.completedAt?.toISOString() ?? '',
+      companies: row.companies.map(({ company }) => ({
+        id: company.id,
+        name: company.name.trim() || 'Sin nombre',
+        urlSlug: company.urlSlug?.trim() || company.id,
+      })),
+      contacts: row.contacts.map(({ contact }) => ({
+        id: contact.id,
+        name: contact.name.trim() || 'Sin nombre',
+        urlSlug: contact.urlSlug?.trim() || contact.id,
+      })),
+      opportunities: row.opportunities.map(({ opportunity }) => ({
+        id: opportunity.id,
+        title: opportunity.title.trim() || 'Sin título',
+        urlSlug: opportunity.urlSlug?.trim() || opportunity.id,
+      })),
+    }));
+
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const safePage = Math.min(page, totalPages);
+
+    return {
+      data,
+      total,
+      page: safePage,
+      limit,
+      totalPages,
+      advisorName,
+      weekLabel,
+    };
+  }
+
   /**
    * Empresas creadas en el año en curso (1 ene Lima) en etapas con probabilidad
    * dentro del rango, al cierre de cada semana ISO (Lima).
@@ -3557,7 +3895,9 @@ export class AnalyticsService {
     filters: AnalyticsScopeFilters,
     _unrestricted: boolean,
   ): Prisma.ActivityWhereInput {
-    const w: Prisma.ActivityWhereInput = { ...base };
+    const w: Prisma.ActivityWhereInput = {
+      AND: [base, EXCLUDE_CLIENTE_CARTERA_ACTIVITY_FILTER],
+    };
     applyActivityAdvisorFilter(w, filters);
     return w;
   }
@@ -4023,13 +4363,13 @@ export class AnalyticsService {
       }),
     );
 
-    /** Actividades por tipo y mes (completadas) */
+    /** Actividades por tipo y mes (completadas; sin notas) */
     const activitiesByTypeMonth: Record<
       string,
-      { llamadas: number; reuniones: number; correos: number; notas: number }
+      { llamadas: number; reuniones: number; correos: number }
     > = {};
     for (const ym of months) {
-      activitiesByTypeMonth[ym] = { llamadas: 0, reuniones: 0, correos: 0, notas: 0 };
+      activitiesByTypeMonth[ym] = { llamadas: 0, reuniones: 0, correos: 0 };
     }
     const actsDone = await this.prisma.activity.findMany({
       where: this.activityWhereForAnalytics(
@@ -4048,7 +4388,6 @@ export class AnalyticsService {
       else if (t === 'reunion' || t === 'reunión') {
         activitiesByTypeMonth[key].reuniones += 1;
       } else if (t === 'correo') activitiesByTypeMonth[key].correos += 1;
-      else if (t === 'nota') activitiesByTypeMonth[key].notas += 1;
     }
     const activitiesByTypeData = months.map((ym) => ({
       name: monthLabelEs(ym),

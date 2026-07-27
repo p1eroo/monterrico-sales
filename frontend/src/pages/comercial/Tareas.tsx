@@ -1,25 +1,22 @@
-import { useState, useMemo, useEffect, useCallback, type ComponentProps } from 'react';
+import { useState, useMemo, useEffect, useCallback, type ComponentProps, type ComponentType } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCrmTeamAdvisorFilter } from '@/hooks/useCrmTeamAdvisorFilter';
 import { toast } from '@/lib/notify';
 import {
-  Plus, Search, X, MoreHorizontal, Phone, Users,
-  CheckSquare, Mail, MessageCircle,
+  Plus, Search, X, MoreVertical,
   CalendarDays, AlertTriangle,
   Check, Pencil, Trash2, Building2,
-  List, Grid3X3, Target, UserCircle,
-  ChevronDown,
+  Grid3X3, Target,
 } from 'lucide-react';
 import type {
-  Activity, ActivityType, ActivityStatus, TaskKind, ContactPriority, TaskAssociation,
+  Activity, ActivityStatus, TaskKind, ContactPriority, TaskAssociation,
   Contact, Opportunity,
 } from '@/types';
 import { TasksKanbanBoard } from '@/components/tasks/TasksKanbanBoard';
 import { TASK_KINDS } from '@/types';
 import type { CreateActivityPayload, UpdateActivityPayload } from '@/lib/activityApi';
 import { priorityLabels } from '@/data/mock';
-import { useUsers } from '@/hooks/useUsers';
 import { useActivities } from '@/hooks/useActivities';
+import { useMultiAdvisorFilter } from '@/hooks/useMultiAdvisorFilter';
 import {
   format, isBefore, startOfDay, isSameDay,
 } from 'date-fns';
@@ -31,27 +28,16 @@ import { Pagination } from '@/components/shared/Pagination';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Calendar, CalendarDayButton } from '@/components/ui/calendar';
 import {
   Dialog, DialogContent, DialogDescription,
   DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Collapsible, CollapsibleContent, CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Popover,
@@ -59,23 +45,27 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import {
-  Command,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
-import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { comercialFilterIconLgClass, comercialProPopoverClass, comercialProCommandClass } from '@/lib/comercialFilterSurface';
+import { comercialFilterIconClass, comercialProPopoverClass, matchesInclusiveMultiFilterValue } from '@/lib/comercialFilterSurface';
 import {
-  activityTypeIconCircleClass,
-  ACTIVITY_ICON_INHERIT,
-} from '@/lib/activityTypeCircleStyles';
+  comercialTableCheckboxWrapClass,
+  comercialTableFixedColStyle,
+  comercialTableLeadingCellClass,
+} from '@/lib/comercialTableLayout';
+import {
+  crmTableBodyRowClassInteractive,
+  crmTableFooterClass,
+  crmTableHeaderRowClassSticky,
+} from '@/lib/crmTableSurface';
+import { GlassCard } from '@/components/shared/GlassCard';
+import { ComercialInclusiveMultiFilter } from '@/components/shared/ComercialInclusiveMultiFilter';
+import { MultiAdvisorFilter } from '@/components/shared/MultiAdvisorFilter';
+import { GhostTableSkeleton } from '@/components/shared/GhostTableSkeleton';
 import { ActivityFormDialog } from '@/components/shared/ActivityFormDialog';
 import {
   TaskDetailDialog,
@@ -85,6 +75,10 @@ import {
 import { ChartSquareIcon } from '@/components/icons/ChartSquareIcon';
 import { CalendarSvgIcon } from '@/components/icons/CalendarSvgIcon';
 import { FilterSvgIcon } from '@/components/icons/FilterSvgIcon';
+import { LlamadaSvgIcon } from '@/components/icons/LlamadaSvgIcon';
+import { ReunionSvgIcon } from '@/components/icons/ReunionSvgIcon';
+import { CorreoSvgIcon } from '@/components/icons/CorreoSvgIcon';
+import { WhatsAppSvgIcon } from '@/components/icons/WhatsAppSvgIcon';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { TaskFormDialog } from '@/components/shared/TaskFormDialog';
 import type { TaskFormResult } from '@/components/shared/TaskFormDialog';
@@ -99,12 +93,11 @@ import {
   taskLinkBadgesFromActivity,
 } from '@/lib/taskAssociationsFromActivity';
 
-const activityIcons: Record<ActivityType, typeof Phone> = {
-  llamada: Phone,
-  reunion: Users,
-  tarea: CheckSquare,
-  correo: Mail,
-  whatsapp: MessageCircle,
+const taskKindIcons: Record<TaskKind, ComponentType<{ className?: string }>> = {
+  llamada: LlamadaSvgIcon,
+  reunion: ReunionSvgIcon,
+  correo: CorreoSvgIcon,
+  whatsapp: WhatsAppSvgIcon,
 };
 
 const taskPriorityBadgeClass: Record<'alta' | 'media' | 'baja', string> = {
@@ -128,13 +121,46 @@ const activityStatusConfig: Record<ActivityStatus, { label: string; className: s
   vencida: { label: 'Vencida', className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' },
 };
 
-const statusTabs = [
-  { value: 'todas', label: 'Todas' },
-  { value: 'pendiente', label: 'Pendientes' },
-  { value: 'completada', label: 'Completadas' },
-  { value: 'en_progreso', label: 'En progreso' },
-  { value: 'vencida', label: 'Vencidas' },
-];
+const STATUS_FILTER_KEYS = Object.keys(activityStatusConfig) as ActivityStatus[];
+const PRIORITY_FILTER_KEYS = Object.keys(priorityLabels) as ContactPriority[];
+
+const statusFilterOptions = STATUS_FILTER_KEYS.map((value) => ({
+  value,
+  label: activityStatusConfig[value].label,
+}));
+
+const priorityFilterOptions = PRIORITY_FILTER_KEYS.map((value) => ({
+  value,
+  label: priorityLabels[value],
+}));
+
+const TASK_VIEW_TOGGLE_SHELL =
+  'flex items-center rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 p-0.5';
+const TASK_VIEW_TOGGLE_BTN =
+  'rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer';
+const TASK_VIEW_TOGGLE_INACTIVE =
+  'text-[#647789] dark:text-gray-400 hover:text-[#1f2933] dark:hover:text-gray-100';
+const TASK_VIEW_TOGGLE_ACTIVE =
+  'bg-[#e8f5e9] dark:bg-green-900/30 text-[#13944C] dark:text-green-400';
+
+const TASK_TABLE_RESPONSIVE: Record<string, string> = {
+  contacto: 'hidden sm:table-cell',
+  empresa: 'hidden sm:table-cell',
+  oportunidad: 'hidden sm:table-cell',
+  prioridad: 'hidden sm:table-cell',
+  asignado: 'hidden md:table-cell',
+  fecha: 'hidden lg:table-cell',
+};
+
+function taskTableResponsiveClass(columnId: string): string {
+  return TASK_TABLE_RESPONSIVE[columnId] ?? '';
+}
+
+const CRM_TABLE_CHECKBOX_CLASS =
+  'h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded';
+
+const CRM_CELL_MUTED = 'text-[13px] text-[#475569] dark:text-gray-400';
+const CRM_CELL_EMPTY = 'text-[13px] text-muted-foreground/50';
 
 function TaskStatusBadge({ status }: { status: ActivityStatus }) {
   const config = activityStatusConfig[status];
@@ -176,7 +202,6 @@ function activityCompanyDisplayName(a: Activity): string | undefined {
 
 export default function TareasPage() {
   const navigate = useNavigate();
-  const { activeAdvisors } = useUsers();
   const {
     activities,
     loading: activitiesLoading,
@@ -187,27 +212,31 @@ export default function TareasPage() {
     refresh: refreshActivities,
   } = useActivities();
 
+  const {
+    selectedIds: advisorFilterIds,
+    setSelectedIds: setAdvisorFilterIds,
+    canSeeAllAdvisors,
+    activeAdvisors,
+    isInitialized: advisorFilterInitialized,
+    isActive: advisorFilterIsActive,
+    matchesAssignee,
+    reset: resetAdvisorFilter,
+  } = useMultiAdvisorFilter();
+
   const allTasks = useMemo(
     () => activities.filter(isTaskRow),
     [activities],
   );
 
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('todos');
-  const [priorityFilter, setPriorityFilter] = useState<'todas' | ContactPriority>('todas');
-  const [advisorFilter, setAdvisorFilter] = useState('todos');
-  const { canSeeAllAdvisors, currentUserId } = useCrmTeamAdvisorFilter(
-    advisorFilter as any,
-    setAdvisorFilter as any,
-  );
-  const [activeTab, setActiveTab] = useState('todas');
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('kanban');
   const [listPage, setListPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [newTaskColumnStatus, setNewTaskColumnStatus] = useState<ActivityStatus | undefined>();
   const [calendarDate, setCalendarDate] = useState<Date | undefined>();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [completedTask, setCompletedTask] = useState<Activity | null>(null);
   const [activityFromTaskOpen, setActivityFromTaskOpen] = useState(false);
   const [linkedTaskPromptOpen, setLinkedTaskPromptOpen] = useState(false);
@@ -271,26 +300,23 @@ export default function TareasPage() {
         (task.contactName?.toLowerCase().includes(q) ?? false) ||
         companyQ.includes(q);
 
-      const matchesTab = activeTab === 'todas' || task.status === activeTab;
-      const matchesStatus = statusFilter === 'todos' || task.status === statusFilter;
+      const matchesStatus = matchesInclusiveMultiFilterValue(statusFilter, task.status);
       const taskPriority = task.priority ?? 'media';
-      const matchesPriority =
-        priorityFilter === 'todas' || taskPriority === priorityFilter;
-      const matchesAdvisor = advisorFilter === 'todos' || task.assignedTo === advisorFilter;
+      const matchesPriority = matchesInclusiveMultiFilterValue(priorityFilter, taskPriority);
+      const matchesAdvisor = matchesAssignee(task.assignedTo);
       const dueDay = taskDueDay(task.dueDate);
       const matchesCalendarDate =
         !calendarDate || (dueDay != null && isSameDay(dueDay, calendarDate));
 
       return (
         matchesSearch &&
-        matchesTab &&
         matchesStatus &&
         matchesPriority &&
         matchesAdvisor &&
         matchesCalendarDate
       );
     });
-  }, [allTasksForDisplay, search, activeTab, statusFilter, priorityFilter, advisorFilter, calendarDate]);
+  }, [allTasksForDisplay, search, statusFilter, priorityFilter, matchesAssignee, calendarDate]);
 
   const paginatedTasks = useMemo(() => {
     const start = (listPage - 1) * pageSize;
@@ -309,11 +335,10 @@ export default function TareasPage() {
         task.description.toLowerCase().includes(q) ||
         (task.contactName?.toLowerCase().includes(q) ?? false) ||
         companyQ.includes(q);
-      const matchesStatus = statusFilter === 'todos' || task.status === statusFilter;
+      const matchesStatus = matchesInclusiveMultiFilterValue(statusFilter, task.status);
       const taskPriority = task.priority ?? 'media';
-      const matchesPriority =
-        priorityFilter === 'todas' || taskPriority === priorityFilter;
-      const matchesAdvisor = advisorFilter === 'todos' || task.assignedTo === advisorFilter;
+      const matchesPriority = matchesInclusiveMultiFilterValue(priorityFilter, taskPriority);
+      const matchesAdvisor = matchesAssignee(task.assignedTo);
       const dueDay = taskDueDay(task.dueDate);
       const matchesCalendarDate =
         !calendarDate || (dueDay != null && isSameDay(dueDay, calendarDate));
@@ -325,21 +350,13 @@ export default function TareasPage() {
         matchesCalendarDate
       );
     });
-  }, [allTasksForDisplay, search, statusFilter, priorityFilter, advisorFilter, calendarDate]);
+  }, [allTasksForDisplay, search, statusFilter, priorityFilter, matchesAssignee, calendarDate]);
 
   /** Lista actualizada del store (p. ej. PATCH optimista) para que el diálogo refleje el estado al instante. */
   const taskDetailActivity = useMemo(() => {
     if (!selectedTaskDetail) return null;
     return allTasksForDisplay.find((a) => a.id === selectedTaskDetail.id) ?? selectedTaskDetail;
   }, [selectedTaskDetail, allTasksForDisplay]);
-
-  const statusCounts = useMemo(() => {
-    const counts: Record<string, number> = { todas: allTasksForDisplay.length };
-    for (const a of allTasksForDisplay) {
-      counts[a.status] = (counts[a.status] ?? 0) + 1;
-    }
-    return counts;
-  }, [allTasksForDisplay]);
 
   const taskDateCounts = useMemo(
     () =>
@@ -424,22 +441,20 @@ export default function TareasPage() {
     [taskDateKeys],
   );
 
-  const advisorFilterIsActive = canSeeAllAdvisors
-    ? advisorFilter !== 'todos'
-    : false;
   const hasActiveFilters =
-    statusFilter !== 'todos' ||
-    priorityFilter !== 'todas' ||
+    statusFilter.length > 0 ||
+    priorityFilter.length > 0 ||
     advisorFilterIsActive ||
     search !== '' ||
     Boolean(calendarDate);
 
   function clearFilters() {
     setSearch('');
-    setStatusFilter('todos');
-    setPriorityFilter('todas');
-    setAdvisorFilter(canSeeAllAdvisors ? 'todos' : currentUserId);
+    setStatusFilter([]);
+    setPriorityFilter([]);
+    resetAdvisorFilter();
     setCalendarDate(undefined);
+    setListPage(1);
   }
 
   function isOverdue(dueDate: string, status: ActivityStatus) {
@@ -606,6 +621,12 @@ export default function TareasPage() {
     });
   }
 
+  const openNewTask = useCallback(() => {
+    setNewTaskColumnStatus(undefined);
+    setNewTaskDefaultAssociations(undefined);
+    setNewTaskOpen(true);
+  }, []);
+
   return (
     <TooltipProvider>
       <div className={viewMode === 'kanban' ? 'flex h-full min-h-0 min-w-0 flex-col gap-5' : 'min-w-0 max-w-full space-y-6'}>
@@ -656,113 +677,35 @@ export default function TareasPage() {
                   Filtros
                 </button>
               </PopoverTrigger>
-              <PopoverContent className={cn(comercialProPopoverClass, "w-[min(100vw-2rem,500px)] p-3")} align="end" sideOffset={8}>
-                <div className="flex items-center gap-3">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${statusFilter !== 'todos' ? 'text-black' : 'text-[#8a9aab] dark:text-gray-400'}`}>
-                        <ChartSquareIcon className={comercialFilterIconLgClass} />
-                        <span className="truncate flex-1">
-                          {statusFilter === 'todos'
-                            ? 'Estado'
-                            : activityStatusConfig[statusFilter as ActivityStatus]?.label ?? statusFilter}
-                        </span>
-                        <ChevronDown className="size-3.5 shrink-0 opacity-50" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className={cn(comercialProPopoverClass, "w-[200px] p-1.5")} align="start" sideOffset={8}>
-                      <Command className={comercialProCommandClass}>
-                        <CommandList className="max-h-[260px] overflow-y-auto">
-                          <CommandGroup>
-                            <CommandItem onSelect={() => setStatusFilter('todos')}>
-                              <span className="[&_svg]:!text-primary-foreground">
-                                <Checkbox checked={statusFilter === 'todos'} className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded" />
-                              </span>
-                              <span>Todos</span>
-                            </CommandItem>
-                            {Object.entries(activityStatusConfig).map(([key, { label }]) => (
-                              <CommandItem key={key} onSelect={() => setStatusFilter(key as any)}>
-                                <span className="[&_svg]:!text-primary-foreground">
-                                  <Checkbox checked={statusFilter === key} className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded" />
-                                </span>
-                                <span>{label}</span>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate ${priorityFilter !== 'todas' ? 'text-black' : 'text-[#8a9aab] dark:text-gray-400'}`}>
-                        <ChartSquareIcon className={comercialFilterIconLgClass} />
-                        <span className="truncate flex-1">
-                          {priorityFilter === 'todas'
-                            ? 'Prioridad'
-                            : priorityLabels[priorityFilter as ContactPriority] ?? priorityFilter}
-                        </span>
-                        <ChevronDown className="size-3.5 shrink-0 opacity-50" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className={cn(comercialProPopoverClass, "w-[200px] p-1.5")} align="start" sideOffset={8}>
-                      <Command className={comercialProCommandClass}>
-                        <CommandList className="max-h-[260px] overflow-y-auto">
-                          <CommandGroup>
-                            <CommandItem onSelect={() => setPriorityFilter('todas' as any)}>
-                              <span className="[&_svg]:!text-primary-foreground">
-                                <Checkbox checked={priorityFilter === 'todas'} className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded" />
-                              </span>
-                              <span>Todas</span>
-                            </CommandItem>
-                            {(Object.keys(priorityLabels) as ContactPriority[]).map((key) => (
-                              <CommandItem key={key} onSelect={() => setPriorityFilter(key as any)}>
-                                <span className="[&_svg]:!text-primary-foreground">
-                                  <Checkbox checked={priorityFilter === key} className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded" />
-                                </span>
-                                <span>{priorityLabels[key]}</span>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button className={`!h-12 flex-1 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left truncate disabled:opacity-50 disabled:cursor-not-allowed ${advisorFilter !== 'todos' ? 'text-black' : 'text-[#8a9aab] dark:text-gray-400'}`} disabled={!canSeeAllAdvisors}>
-                        <UserCircle className={comercialFilterIconLgClass} />
-                        <span className="truncate flex-1">
-                          {advisorFilter === 'todos'
-                            ? 'Asesor'
-                            : activeAdvisors.find((u) => u.id === advisorFilter)?.name ?? 'Asesor'}
-                        </span>
-                        <ChevronDown className="size-3.5 shrink-0 opacity-50" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className={cn(comercialProPopoverClass, "w-[200px] p-1.5")} align="start" sideOffset={8}>
-                      <Command className={comercialProCommandClass}>
-                        <CommandList className="max-h-[260px] overflow-y-auto">
-                          <CommandGroup>
-                            <CommandItem onSelect={() => setAdvisorFilter('todos')}>
-                              <span className="[&_svg]:!text-primary-foreground">
-                                <Checkbox checked={advisorFilter === 'todos'} className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded" />
-                              </span>
-                              <span>Todos</span>
-                            </CommandItem>
-                            {activeAdvisors.map((u) => (
-                              <CommandItem key={u.id} onSelect={() => setAdvisorFilter(u.id)}>
-                                <span className="[&_svg]:!text-primary-foreground">
-                                  <Checkbox checked={advisorFilter === u.id} className="mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded" />
-                                </span>
-                                <span>{u.name}</span>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
+              <PopoverContent className={cn(comercialProPopoverClass, "w-[min(100vw-2rem,640px)] p-3")} align="end" sideOffset={8}>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                  <ComercialInclusiveMultiFilter
+                    value={statusFilter}
+                    onChange={setStatusFilter}
+                    options={statusFilterOptions}
+                    placeholder="Estado"
+                    countLabel="estados"
+                    icon={<ChartSquareIcon className={comercialFilterIconClass} />}
+                    className="flex-1 w-auto min-w-0"
+                  />
+                  <ComercialInclusiveMultiFilter
+                    value={priorityFilter}
+                    onChange={setPriorityFilter}
+                    options={priorityFilterOptions}
+                    placeholder="Prioridad"
+                    countLabel="prioridades"
+                    icon={<ChartSquareIcon className={comercialFilterIconClass} />}
+                    className="flex-1 w-auto min-w-0"
+                  />
+                  <MultiAdvisorFilter
+                    value={advisorFilterIds}
+                    onChange={setAdvisorFilterIds}
+                    advisors={activeAdvisors}
+                    disabled={!canSeeAllAdvisors}
+                    isActive={advisorFilterIsActive}
+                    isInitialized={advisorFilterInitialized}
+                    className="!w-[240px] flex-1 min-w-[240px]"
+                  />
                 </div>
               </PopoverContent>
             </Popover>
@@ -773,19 +716,59 @@ export default function TareasPage() {
             )}
           </div>
         ) : (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className={TASK_VIEW_TOGGLE_SHELL}>
+              <button
+                type="button"
+                className={cn(TASK_VIEW_TOGGLE_BTN, TASK_VIEW_TOGGLE_ACTIVE)}
+              >
+                Lista
+              </button>
+              <button
+                type="button"
+                className={cn(TASK_VIEW_TOGGLE_BTN, TASK_VIEW_TOGGLE_INACTIVE)}
+                onClick={() => setViewMode('kanban')}
+              >
+                Kanban
+              </button>
+            </div>
+            <div className={TASK_VIEW_TOGGLE_SHELL}>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className={cn(
+                      TASK_VIEW_TOGGLE_BTN,
+                      'inline-flex items-center gap-1.5',
+                      calendarDate
+                        ? TASK_VIEW_TOGGLE_ACTIVE
+                        : TASK_VIEW_TOGGLE_INACTIVE,
+                    )}
+                  >
+                    <CalendarSvgIcon className="size-4" />
+                    Calendario
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className={cn(comercialProPopoverClass, 'w-auto p-4')} align="end" sideOffset={8}>
+                  <Calendar
+                    mode="single"
+                    selected={calendarDate}
+                    onSelect={setCalendarDate}
+                    className="mx-auto"
+                    {...calendarTaskProps}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
             {activitiesLoading && (
               <span className="text-sm text-muted-foreground">Cargando…</span>
             )}
             <Button
-              onClick={() => {
-                setNewTaskColumnStatus(undefined);
-                setNewTaskDefaultAssociations(undefined);
-                setNewTaskOpen(true);
-              }}
+              onClick={openNewTask}
               disabled={activitiesLoading}
+              className="h-9 w-[110px] text-sm font-normal shadow-md"
             >
-              <Plus /> Nueva Tarea
+              <Plus /> Nueva
             </Button>
           </div>
         )}
@@ -800,109 +783,8 @@ export default function TareasPage() {
         </div>
       )}
 
-      {/* Filter bar */}
-      <div className={viewMode === 'kanban' ? 'hidden' : 'flex flex-col gap-3 lg:flex-row lg:items-center'}>
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por título, descripción o contacto..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Estado" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos los estados</SelectItem>
-              {Object.entries(activityStatusConfig).map(([key, { label }]) => (
-                <SelectItem key={key} value={key}>{label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={priorityFilter}
-            onValueChange={(v) => setPriorityFilter(v as 'todas' | ContactPriority)}
-          >
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Prioridad" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todas las prioridades</SelectItem>
-              {(Object.keys(priorityLabels) as ContactPriority[]).map((key) => (
-                <SelectItem key={key} value={key}>
-                  {priorityLabels[key]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={advisorFilter}
-            onValueChange={setAdvisorFilter}
-            disabled={!canSeeAllAdvisors}
-          >
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Asesor" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos los asesores</SelectItem>
-              {activeAdvisors.map((u) => (
-                <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters}>
-              <X className="size-4" /> Limpiar
-            </Button>
-          )}
-
-          <div className="ml-auto flex items-center rounded-md border" role="tablist" aria-label="Vista de tareas">
-            <Button
-              type="button"
-              variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-              size="icon-sm"
-              onClick={() => setViewMode('list')}
-              className="rounded-r-none"
-              aria-label="Vista lista"
-            >
-              <List className="size-4" />
-            </Button>
-            <Button
-              type="button"
-              variant={viewMode === 'kanban' ? 'secondary' : 'ghost'}
-              size="icon-sm"
-              onClick={() => setViewMode('kanban')}
-              className="rounded-l-none"
-              aria-label="Vista tablero"
-            >
-              <Grid3X3 className="size-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {calendarDate && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <CalendarDays className="size-4 text-[#13944C]" />
-          <span>
-            Mostrando tareas para <span className="font-medium text-foreground">{selectedDateLabel}</span>
-          </span>
-          <Button variant="link" size="sm" className="h-auto p-0" onClick={() => setCalendarDate(undefined)}>
-            Ver todas
-          </Button>
-        </div>
-      )}
-
-      {/* Main content: list + sidebar */}
+      {/* Main content: list / kanban */}
       <div className="flex min-h-0 min-w-0 max-w-full flex-1 gap-6">
-        {/* Task list / Kanban */}
         <div
           className={cn(
             'min-w-0 flex-1',
@@ -941,30 +823,90 @@ export default function TareasPage() {
               />
             )
           ) : (
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList
-              variant="line"
-              className="w-full flex-nowrap gap-1 p-0"
-            >
-              {statusTabs.map((tab) => (
-                <TabsTrigger
-                  key={tab.value}
-                  value={tab.value}
-                  className="min-w-0 flex-1 basis-0 overflow-hidden px-1.5 sm:px-2"
-                >
-                  <span className="min-w-0 truncate">{tab.label}</span>
-                  <Badge
-                    variant="secondary"
-                    className="ml-1 shrink-0 px-1.5 py-0 text-xs max-sm:ml-0.5 max-sm:px-1"
-                  >
-                    {statusCounts[tab.value] ?? 0}
-                  </Badge>
-                </TabsTrigger>
-              ))}
-            </TabsList>
+            <GlassCard>
+              {calendarDate ? (
+                <div className="flex items-center gap-2 border-b border-border/40 px-5 py-2.5 text-sm text-muted-foreground">
+                  <CalendarDays className="size-4 text-[#13944C]" />
+                  <span>
+                    Mostrando tareas para{' '}
+                    <span className="font-medium text-foreground">{selectedDateLabel}</span>
+                  </span>
+                  <Button variant="link" size="sm" className="h-auto p-0" onClick={() => setCalendarDate(undefined)}>
+                    Ver todas
+                  </Button>
+                </div>
+              ) : null}
 
-            <TabsContent value={activeTab} className="mt-4">
-              {filteredTasks.length === 0 ? (
+              <div className="flex min-w-0 flex-col gap-2 px-5 py-3 lg:flex-row lg:items-center">
+                <div className="relative w-full min-w-0 max-w-[400px]">
+                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#8a9aab] dark:text-gray-400" />
+                  <Input
+                    placeholder="Buscar por título, descripción o contacto..."
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setListPage(1);
+                    }}
+                    className="!h-10 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 pl-8 text-[13px] text-black dark:text-gray-100 placeholder:text-[#8a9aab] dark:placeholder:text-gray-400 transition-colors hover:border-primary focus-visible:ring-1 shadow-none"
+                  />
+                </div>
+                <ComercialInclusiveMultiFilter
+                  value={statusFilter}
+                  onChange={(value) => {
+                    setStatusFilter(value);
+                    setListPage(1);
+                  }}
+                  options={statusFilterOptions}
+                  placeholder="Estado"
+                  countLabel="estados"
+                  icon={<ChartSquareIcon className={comercialFilterIconClass} />}
+                />
+                <ComercialInclusiveMultiFilter
+                  value={priorityFilter}
+                  onChange={(value) => {
+                    setPriorityFilter(value);
+                    setListPage(1);
+                  }}
+                  options={priorityFilterOptions}
+                  placeholder="Prioridad"
+                  countLabel="prioridades"
+                  icon={<ChartSquareIcon className={comercialFilterIconClass} />}
+                />
+                <MultiAdvisorFilter
+                  value={advisorFilterIds}
+                  onChange={setAdvisorFilterIds}
+                  advisors={activeAdvisors}
+                  disabled={!canSeeAllAdvisors}
+                  isActive={advisorFilterIsActive}
+                  isInitialized={advisorFilterInitialized}
+                  className="!w-[240px]"
+                  onInteraction={() => setListPage(1)}
+                />
+                {hasActiveFilters ? (
+                  <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    <X className="size-4" /> Limpiar
+                  </Button>
+                ) : null}
+              </div>
+
+              {activitiesLoading && allTasks.length === 0 ? (
+                <GhostTableSkeleton
+                  columns={[
+                    { label: '', width: 44 },
+                    { label: '', width: 40 },
+                    { label: 'Tipo', width: 44 },
+                    { label: 'Título', width: 220 },
+                    { label: 'Contacto', width: 160, className: 'hidden sm:table-cell' },
+                    { label: 'Empresa', width: 160, className: 'hidden sm:table-cell' },
+                    { label: 'Oportunidad', width: 160, className: 'hidden sm:table-cell' },
+                    { label: 'Prioridad', width: 104, className: 'hidden sm:table-cell' },
+                    { label: 'Asignado', width: 96, className: 'hidden md:table-cell' },
+                    { label: 'Fecha', width: 140, className: 'hidden lg:table-cell' },
+                    { label: 'Estado', width: 110 },
+                  ]}
+                  rows={10}
+                />
+              ) : filteredTasks.length === 0 ? (
                 <EmptyState
                   icon={CalendarDays}
                   title="No se encontraron tareas"
@@ -972,207 +914,217 @@ export default function TareasPage() {
                 />
               ) : (
                 <>
-                <div className="scrollbar-thin max-h-[calc(100vh-22rem)] min-w-0 max-w-full overflow-auto rounded-[14px]">
-                  <Table
-                    className="table-fixed w-full min-w-[1040px]"
-                    containerClassName="min-w-0 overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]"
-                  >
-                    <colgroup>
-                      <col className="w-10" />
-                      <col className="w-11" />
-                      <col className="min-w-[10rem] w-[18%]" />
-                      <col className="min-w-[11rem] w-[17%]" />
-                      <col className="min-w-[11rem] w-[17%]" />
-                      <col className="min-w-[11rem] w-[17%]" />
-                      <col className="w-[104px]" />
-                      <col className="w-20" />
-                      <col className="w-[11.25rem]" />
-                      <col className="w-[124px]" />
-                      <col className="w-10" />
-                    </colgroup>
-                    <TableHeader className="sticky top-0 z-10 bg-background">
-                      <TableRow>
-                        <TableHead className="w-10" />
-                        <TableHead className="w-11 text-center text-muted-foreground">
-                          Tipo
-                        </TableHead>
-                        <TableHead className="min-w-[12rem] whitespace-normal text-muted-foreground">
-                          <span className="block hyphens-auto pr-1 leading-tight sm:whitespace-nowrap">Título</span>
-                        </TableHead>
-                        <TableHead className="hidden min-w-[10rem] whitespace-normal sm:table-cell text-muted-foreground">
-                          <span className="block pr-1 leading-tight sm:whitespace-nowrap">Contacto</span>
-                        </TableHead>
-                        <TableHead className="hidden min-w-[10rem] whitespace-normal sm:table-cell text-muted-foreground">
-                          <span className="block pr-1 leading-tight sm:whitespace-nowrap">Empresa</span>
-                        </TableHead>
-                        <TableHead className="hidden min-w-[10rem] whitespace-normal sm:table-cell text-muted-foreground">
-                          <span className="block pr-1 leading-tight sm:whitespace-nowrap">Oportunidad</span>
-                        </TableHead>
-                        <TableHead className="hidden w-[104px] sm:table-cell px-2 text-muted-foreground">
-                          Prioridad
-                        </TableHead>
-                        <TableHead className="hidden w-20 md:table-cell px-2 text-muted-foreground">
-                          Asignado
-                        </TableHead>
-                        <TableHead className="hidden w-[11.25rem] lg:table-cell px-2 text-muted-foreground">
-                          Fecha
-                        </TableHead>
-                        <TableHead className="w-[124px] px-2 text-right text-muted-foreground">Estado</TableHead>
-                        <TableHead className="w-10" />
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {paginatedTasks.map((task) => {
-                        const taskType: TaskKind =
-                          task.taskKind && TASK_KINDS.includes(task.taskKind)
-                            ? task.taskKind
-                            : 'llamada';
-                        const TypeIcon = activityIcons[taskType];
-                        const circle = activityTypeIconCircleClass(taskType);
-                        const overdue = isOverdue(task.dueDate, task.status);
-                        const taskPriority: ContactPriority = task.priority ?? 'media';
+                  <div className="border-t border-border/40 overflow-auto scrollbar-thin max-h-[calc(100vh-330px)]">
+                    <table className="w-full table-fixed" style={{ minWidth: 1040 }}>
+                      <colgroup>
+                        <col style={comercialTableFixedColStyle('select')} />
+                        <col style={comercialTableFixedColStyle('actions')} />
+                        <col style={{ width: 44 }} />
+                        <col style={{ width: '18%' }} />
+                        <col style={{ width: '17%' }} />
+                        <col style={{ width: '17%' }} />
+                        <col style={{ width: '17%' }} />
+                        <col style={{ width: 104 }} />
+                        <col style={{ width: 96 }} />
+                        <col style={{ width: 140 }} />
+                        <col style={{ width: 110 }} />
+                      </colgroup>
+                      <thead>
+                        <tr className={cn('h-[36px] text-left', crmTableHeaderRowClassSticky)}>
+                          <th className={comercialTableLeadingCellClass('select')} />
+                          <th className={comercialTableLeadingCellClass('actions')} />
+                          <th className={comercialTableLeadingCellClass('type', { extra: 'text-center' })}>
+                            Tipo
+                          </th>
+                          <th className={comercialTableLeadingCellClass('titulo', { primaryColumnId: 'titulo' })}>
+                            Título
+                          </th>
+                          <th className={cn(comercialTableLeadingCellClass('contacto'), taskTableResponsiveClass('contacto'))}>
+                            Contacto
+                          </th>
+                          <th className={cn(comercialTableLeadingCellClass('empresa'), taskTableResponsiveClass('empresa'))}>
+                            Empresa
+                          </th>
+                          <th className={cn(comercialTableLeadingCellClass('oportunidad'), taskTableResponsiveClass('oportunidad'))}>
+                            Oportunidad
+                          </th>
+                          <th className={cn(comercialTableLeadingCellClass('prioridad'), taskTableResponsiveClass('prioridad'))}>
+                            Prioridad
+                          </th>
+                          <th className={cn(comercialTableLeadingCellClass('asignado'), taskTableResponsiveClass('asignado'))}>
+                            Asignado
+                          </th>
+                          <th className={cn(comercialTableLeadingCellClass('fecha'), taskTableResponsiveClass('fecha'))}>
+                            Fecha
+                          </th>
+                          <th className={comercialTableLeadingCellClass('estado')}>
+                            Estado
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedTasks.map((task) => {
+                          const taskType: TaskKind =
+                            task.taskKind && TASK_KINDS.includes(task.taskKind)
+                              ? task.taskKind
+                              : 'llamada';
+                          const TypeIcon = taskKindIcons[taskType];
+                          const overdue = isOverdue(task.dueDate, task.status);
+                          const taskPriority: ContactPriority = task.priority ?? 'media';
 
-                        return (
-                          <TableRow
-                            key={task.id}
-                            className={cn(
-                              'cursor-pointer transition-colors hover:bg-muted/50',
-                              overdue && 'bg-red-50/30 dark:bg-red-950/20',
-                              task.status === 'completada' && 'opacity-75',
-                            )}
-                            onClick={() => {
-                              setSelectedTaskDetail(task);
-                              setTaskDetailOpen(true);
-                            }}
-                          >
-                            <TableCell onClick={(e) => e.stopPropagation()}>
-                              <Checkbox
-                                checked={task.status === 'completada'}
-                                onCheckedChange={() => handleTaskToggle(task.id)}
-                              />
-                            </TableCell>
-                            <TableCell className="text-center align-middle">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <button
-                                    type="button"
-                                    className={cn(
-                                      'mx-auto mt-0.5 flex h-7 w-7 cursor-default items-center justify-center rounded-full border-0 p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-                                      ACTIVITY_ICON_INHERIT,
-                                      circle ??
-                                        'bg-muted text-muted-foreground [&_svg]:text-muted-foreground',
-                                    )}
-                                    onClick={(e) => e.stopPropagation()}
-                                    aria-label={taskTypeLabels[taskType]}
-                                  >
-                                    <TypeIcon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                                  </button>
-                                </TooltipTrigger>
-                                <TooltipContent side="top">{taskTypeLabels[taskType]}</TooltipContent>
-                              </Tooltip>
-                            </TableCell>
-                            <TableCell className="min-w-[12rem] align-middle font-medium">
-                              <span
-                                className={cn(
-                                  'block truncate',
-                                  task.status === 'completada' && 'line-through text-muted-foreground',
-                                )}
-                                title={task.title}
+                          return (
+                            <tr
+                              key={task.id}
+                              className={cn(
+                                'h-[48px] last:border-b-0',
+                                crmTableBodyRowClassInteractive,
+                                overdue && 'bg-red-50/30 dark:bg-red-950/20',
+                                task.status === 'completada' && 'opacity-75',
+                              )}
+                              onClick={() => {
+                                setSelectedTaskDetail(task);
+                                setTaskDetailOpen(true);
+                              }}
+                            >
+                              <td
+                                className={comercialTableLeadingCellClass('select')}
+                                onClick={(e) => e.stopPropagation()}
                               >
-                                {task.title}
-                              </span>
-                            </TableCell>
-                            <TableCell className="hidden min-w-[10rem] align-middle sm:table-cell">
-                              {task.contactName ? (
-                                <div className="truncate" title={`${task.contactName}${task.contactPhone ? ` - ${task.contactPhone}` : ''}`}>
-                                  <span className="text-sm font-medium text-foreground">{task.contactName}</span>
-                                  {task.contactPhone && (
-                                    <span className="block truncate text-xs text-muted-foreground">{task.contactPhone}</span>
-                                  )}
+                                <div className={comercialTableCheckboxWrapClass}>
+                                  <Checkbox
+                                    checked={task.status === 'completada'}
+                                    onCheckedChange={() => handleTaskToggle(task.id)}
+                                    className={CRM_TABLE_CHECKBOX_CLASS}
+                                  />
                                 </div>
-                              ) : (
-                                <span className="text-sm text-muted-foreground/50">—</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="hidden min-w-[10rem] align-middle sm:table-cell">
-                              {task.companyName ? (
-                                <span className="block truncate text-sm font-medium text-foreground" title={task.companyName}>{task.companyName}</span>
-                              ) : (
-                                <span className="text-sm text-muted-foreground/50">—</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="hidden min-w-[10rem] align-middle sm:table-cell">
-                              {task.opportunityTitle ? (
-                                <span className="block truncate text-sm font-medium text-foreground" title={task.opportunityTitle}>{task.opportunityTitle}</span>
-                              ) : (
-                                <span className="text-sm text-muted-foreground/50">—</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="hidden align-middle px-2 sm:table-cell">
-                              <Badge
-                                variant="outline"
-                                className={cn('border-0 text-xs font-medium', taskPriorityBadgeClass[taskPriority])}
+                              </td>
+                              <td
+                                className={comercialTableLeadingCellClass('actions')}
+                                onClick={(e) => e.stopPropagation()}
                               >
-                                {priorityLabels[taskPriority]}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="hidden min-w-0 max-w-20 align-middle px-2 md:table-cell text-muted-foreground">
-                              <span className="block truncate text-sm" title={task.assignedToName}>
-                                {task.assignedToName?.split(' ')[0]}
-                              </span>
-                            </TableCell>
-                            <TableCell className="hidden min-w-0 max-w-[11.25rem] align-middle px-2 text-sm text-muted-foreground lg:table-cell">
-                              <span
-                                className={cn(
-                                  'flex flex-col gap-0.5 whitespace-nowrap leading-tight',
-                                  overdue && 'font-semibold text-red-600 dark:text-red-400',
-                                )}
-                              >
-                                <span className="flex items-center gap-1">
-                                  {formatDueDate(task.dueDate, task.startTime)}
-                                  {overdue && <AlertTriangle className="size-3.5 shrink-0 text-red-500" />}
-                                </span>
-                                {task.startDate && (
-                                  <span className="text-xs text-muted-foreground/80">
-                                    Inicio: {formatDueDate(task.startDate)}
-                                  </span>
-                                )}
-                              </span>
-                            </TableCell>
-                            <TableCell className="align-middle text-right">
-                              <TaskStatusBadge status={task.status} />
-                            </TableCell>
-                            <TableCell onClick={(e) => e.stopPropagation()}>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon-sm" className="h-8 w-8">
-                                    <MoreHorizontal className="size-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  {task.status !== 'completada' && (
-                                    <DropdownMenuItem onClick={() => handleTaskToggle(task.id)}>
-                                      <Check /> Completar
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon-sm" aria-label="Acciones">
+                                      <MoreVertical className="size-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="start">
+                                    {task.status !== 'completada' && (
+                                      <DropdownMenuItem onClick={() => handleTaskToggle(task.id)}>
+                                        <Check /> Completar
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuItem onClick={() => { setSelectedTaskDetail(task); setTaskDetailOpen(true); }}>
+                                      <Pencil /> Editar
                                     </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem variant="destructive" onClick={() => requestDeleteTask(task.id)}>
+                                      <Trash2 /> Eliminar
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </td>
+                              <td className={comercialTableLeadingCellClass('type', { extra: 'text-center' })}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span
+                                      className="mx-auto flex size-6 items-center justify-center text-muted-foreground"
+                                      aria-label={taskTypeLabels[taskType]}
+                                    >
+                                      <TypeIcon className="size-6 shrink-0" aria-hidden />
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top">{taskTypeLabels[taskType]}</TooltipContent>
+                                </Tooltip>
+                              </td>
+                              <td className={comercialTableLeadingCellClass('titulo', { primaryColumnId: 'titulo' })}>
+                                <span
+                                  className={cn(
+                                    'block truncate text-[13px] font-semibold text-[#0F172A] dark:text-gray-100',
+                                    task.status === 'completada' && 'line-through text-muted-foreground',
                                   )}
-                                  <DropdownMenuItem onClick={() => { setSelectedTaskDetail(task); setTaskDetailOpen(true); }}>
-                                    <Pencil /> Editar
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem variant="destructive" onClick={() => requestDeleteTask(task.id)}>
-                                    <Trash2 /> Eliminar
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
+                                  title={task.title}
+                                >
+                                  {task.title}
+                                </span>
+                              </td>
+                              <td className={cn(comercialTableLeadingCellClass('contacto'), taskTableResponsiveClass('contacto'))}>
+                                {task.contactName ? (
+                                  <div className="min-w-0 truncate" title={`${task.contactName}${task.contactPhone ? ` - ${task.contactPhone}` : ''}`}>
+                                    <span className="block truncate text-[13px] font-semibold text-[#0F172A] dark:text-gray-100">
+                                      {task.contactName}
+                                    </span>
+                                    {task.contactPhone && (
+                                      <span className="block truncate text-[11px] text-muted-foreground">
+                                        {task.contactPhone}
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className={CRM_CELL_EMPTY}>—</span>
+                                )}
+                              </td>
+                              <td className={cn(comercialTableLeadingCellClass('empresa'), taskTableResponsiveClass('empresa'))}>
+                                {task.companyName ? (
+                                  <span className={cn('block truncate', CRM_CELL_MUTED)} title={task.companyName}>
+                                    {task.companyName}
+                                  </span>
+                                ) : (
+                                  <span className={CRM_CELL_EMPTY}>—</span>
+                                )}
+                              </td>
+                              <td className={cn(comercialTableLeadingCellClass('oportunidad'), taskTableResponsiveClass('oportunidad'))}>
+                                {task.opportunityTitle ? (
+                                  <span className={cn('block truncate', CRM_CELL_MUTED)} title={task.opportunityTitle}>
+                                    {task.opportunityTitle}
+                                  </span>
+                                ) : (
+                                  <span className={CRM_CELL_EMPTY}>—</span>
+                                )}
+                              </td>
+                              <td className={cn(comercialTableLeadingCellClass('prioridad'), taskTableResponsiveClass('prioridad'))}>
+                                <Badge
+                                  variant="outline"
+                                  className={cn('border-0 text-xs font-medium', taskPriorityBadgeClass[taskPriority])}
+                                >
+                                  {priorityLabels[taskPriority]}
+                                </Badge>
+                              </td>
+                              <td className={cn(comercialTableLeadingCellClass('asignado'), taskTableResponsiveClass('asignado'))}>
+                                <span className={cn('block truncate', CRM_CELL_MUTED)} title={task.assignedToName}>
+                                  {task.assignedToName?.split(' ')[0] ?? '—'}
+                                </span>
+                              </td>
+                              <td className={cn(comercialTableLeadingCellClass('fecha'), taskTableResponsiveClass('fecha'))}>
+                                <span
+                                  className={cn(
+                                    'flex flex-col gap-0.5 whitespace-nowrap text-[13px] leading-tight',
+                                    CRM_CELL_MUTED,
+                                    overdue && 'font-semibold text-red-600 dark:text-red-400',
+                                  )}
+                                >
+                                  <span className="flex items-center gap-1">
+                                    {formatDueDate(task.dueDate, task.startTime)}
+                                    {overdue && <AlertTriangle className="size-3.5 shrink-0 text-red-500" />}
+                                  </span>
+                                  {task.startDate && (
+                                    <span className="text-[11px] text-muted-foreground/80">
+                                      Inicio: {formatDueDate(task.startDate)}
+                                    </span>
+                                  )}
+                                </span>
+                              </td>
+                              <td className={comercialTableLeadingCellClass('estado')}>
+                                <TaskStatusBadge status={task.status} />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 {filteredTasks.length > 0 && (
-                  <div className="mt-4">
+                  <div className={cn('flex h-14 items-center px-5', crmTableFooterClass)}>
                     <Pagination
                       page={listPage}
                       totalPages={totalPages}
@@ -1188,67 +1140,10 @@ export default function TareasPage() {
                 )}
                 </>
               )}
-            </TabsContent>
-          </Tabs>
+            </GlassCard>
           )}
         </div>
-
-        {/* Calendar sidebar - desktop */}
-        {viewMode !== 'kanban' && (
-        <aside className="hidden w-[320px] shrink-0 lg:block">
-          <div className="sticky top-6 space-y-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="mb-3 text-center">
-                  <p className="text-sm font-medium text-muted-foreground">
-                    {format(calendarDate ?? new Date(), "EEEE", { locale: es })}
-                  </p>
-                  <p className="text-3xl font-bold text-[#13944C]">
-                    {format(calendarDate ?? new Date(), 'd')}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {format(calendarDate ?? new Date(), "MMMM yyyy", { locale: es })}
-                  </p>
-                </div>
-                <Calendar
-                  mode="single"
-                  selected={calendarDate}
-                  onSelect={setCalendarDate}
-                  className="mx-auto"
-                  {...calendarTaskProps}
-                />
-              </CardContent>
-            </Card>
-          </div>
-        </aside>
-        )}
       </div>
-
-      {/* Mobile calendar collapsible */}
-      {viewMode !== 'kanban' && (
-      <div className="lg:hidden">
-        <Collapsible open={sidebarOpen} onOpenChange={setSidebarOpen}>
-          <CollapsibleTrigger asChild>
-            <Button variant="outline" className="w-full">
-              <CalendarDays className="size-4" />
-              {sidebarOpen ? 'Ocultar calendario' : 'Ver calendario'}
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="mt-4 space-y-4">
-            <Card>
-              <CardContent className="flex flex-col items-center p-4">
-                <Calendar
-                  mode="single"
-                  selected={calendarDate}
-                  onSelect={setCalendarDate}
-                  {...calendarTaskProps}
-                />
-              </CardContent>
-            </Card>
-          </CollapsibleContent>
-        </Collapsible>
-      </div>
-      )}
 
       {/* Vista previa de tarea (mismo que TasksTab) */}
       <TaskDetailDialog

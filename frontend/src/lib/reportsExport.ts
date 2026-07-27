@@ -40,7 +40,6 @@ export type ReportsExportInput = {
     llamadas: number;
     reuniones: number;
     correos: number;
-    notas: number;
   }[];
   followUpsByMonth: { name: string; completados: number; pendientes: number }[];
   /** Datos para tablas de nuevas secciones */
@@ -54,14 +53,12 @@ export type ReportsExportInput = {
       llamadas: number;
       reuniones: number;
       correos: number;
-      notas: number;
     };
     currentMonth: {
       name: string;
       llamadas: number;
       reuniones: number;
       correos: number;
-      notas: number;
     };
   };
   /** Layout del PDF: `reports` alinea secciones con la pantalla de Reportes */
@@ -180,14 +177,12 @@ function buildReportsPdfSections(data: ReportsExportInput): PdfSection[] {
           data.activitiesComparison.previousMonth.llamadas,
           data.activitiesComparison.previousMonth.reuniones,
           data.activitiesComparison.previousMonth.correos,
-          data.activitiesComparison.previousMonth.notas,
         ],
         [
           data.activitiesComparison.currentMonth.name,
           data.activitiesComparison.currentMonth.llamadas,
           data.activitiesComparison.currentMonth.reuniones,
           data.activitiesComparison.currentMonth.correos,
-          data.activitiesComparison.currentMonth.notas,
         ],
       ]
     : data.activitiesByType.slice(-2).map((x) => [
@@ -195,7 +190,6 @@ function buildReportsPdfSections(data: ReportsExportInput): PdfSection[] {
         x.llamadas,
         x.reuniones,
         x.correos,
-        x.notas,
       ]);
 
   return [
@@ -223,7 +217,7 @@ function buildReportsPdfSections(data: ReportsExportInput): PdfSection[] {
     },
     {
       title: 'Actividades',
-      head: [['Mes', 'Llamadas', 'Reuniones', 'Correos', 'Notas']],
+      head: [['Mes', 'Llamadas', 'Reuniones', 'Correos']],
       body: activitiesBody,
       chartKey: 'activities',
     },
@@ -333,13 +327,12 @@ function buildLegacyPdfSections(data: ReportsExportInput): PdfSection[] {
     },
     {
       title: 'Actividades por tipo',
-      head: [['Mes', 'Llamadas', 'Reuniones', 'Correos', 'Notas']],
+      head: [['Mes', 'Llamadas', 'Reuniones', 'Correos']],
       body: data.activitiesByType.map((x) => [
         x.name,
         x.llamadas,
         x.reuniones,
         x.correos,
-        x.notas,
       ]),
       chartKey: 'activities',
     },
@@ -476,13 +469,12 @@ export function downloadReportsCsv(data: ReportsExportInput, baseName: string) {
       },
       {
         title: 'Actividades por tipo',
-        headers: ['Mes', 'Llamadas', 'Reuniones', 'Correos', 'Notas'],
+        headers: ['Mes', 'Llamadas', 'Reuniones', 'Correos'],
         rows: data.activitiesByType.map((x) => [
           x.name,
           x.llamadas,
           x.reuniones,
           x.correos,
-          x.notas,
         ]),
       },
       {
@@ -591,7 +583,6 @@ export function downloadReportsXlsx(data: ReportsExportInput, baseName: string) 
       Llamadas: x.llamadas,
       Reuniones: x.reuniones,
       Correos: x.correos,
-      Notas: x.notas,
     })),
   );
   addSheet(

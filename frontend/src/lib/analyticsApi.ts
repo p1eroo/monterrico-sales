@@ -114,13 +114,12 @@ export type AnalyticsSummary = {
     llamadas: number;
     reuniones: number;
     correos: number;
-    notas: number;
   }[];
   /** Últimas 6 semanas ISO: actividades completadas por tipo (llamada, reunión, etc.). */
   activitiesByTypeWeekly: {
     weeks: { name: string; weekStart: string; weekEnd: string }[];
     types: {
-      key: 'llamadas' | 'reuniones' | 'correos' | 'notas';
+      key: 'llamadas' | 'reuniones' | 'correos';
       label: string;
       counts: number[];
       total: number;
@@ -151,7 +150,7 @@ export type AnalyticsSummary = {
   tasksByKindWeekly: {
     weeks: { name: string; weekStart: string; weekEnd: string }[];
     kinds: {
-      key: 'llamadas' | 'reuniones' | 'correos' | 'whatsapp';
+      key: 'llamadas' | 'reuniones' | 'correos';
       label: string;
       counts: number[];
       total: number;
@@ -489,5 +488,70 @@ export async function fetchAdvisorFunnelMovementCompanies(
   if (params.limit != null) q.set('limit', String(params.limit));
   return api<AdvisorFunnelMovementCompaniesPage>(
     `/analytics/advisor-funnel-movement/companies?${q.toString()}`,
+  );
+}
+
+export type ActivitiesByAdvisorDetailEntity = {
+  id: string;
+  name: string;
+  urlSlug: string;
+};
+
+export type ActivitiesByAdvisorDetailRow = {
+  id: string;
+  type: string;
+  typeLabel: string;
+  title: string;
+  completedAt: string;
+  companies: ActivitiesByAdvisorDetailEntity[];
+  contacts: ActivitiesByAdvisorDetailEntity[];
+  opportunities: { id: string; title: string; urlSlug: string }[];
+};
+
+export type ActivitiesByAdvisorDetailsPage = {
+  data: ActivitiesByAdvisorDetailRow[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  advisorName: string;
+  weekLabel: string;
+};
+
+export type ActivitiesByAdvisorDetailsQuery = AnalyticsQueryFilters & {
+  advisorId: string;
+  weekStart: string;
+  weekEnd: string;
+  page?: number;
+  limit?: number;
+};
+
+export async function fetchActivitiesByAdvisorDetails(
+  params: ActivitiesByAdvisorDetailsQuery,
+): Promise<ActivitiesByAdvisorDetailsPage> {
+  const q = new URLSearchParams();
+  appendAnalyticsFilters(q, params);
+  q.set('advisorId', params.advisorId);
+  q.set('weekStart', params.weekStart);
+  q.set('weekEnd', params.weekEnd);
+  if (params.page != null) q.set('page', String(params.page));
+  if (params.limit != null) q.set('limit', String(params.limit));
+  return api<ActivitiesByAdvisorDetailsPage>(
+    `/analytics/activities-by-advisor/details?${q.toString()}`,
+  );
+}
+
+export async function fetchTasksByAdvisorDetails(
+  params: ActivitiesByAdvisorDetailsQuery,
+): Promise<ActivitiesByAdvisorDetailsPage> {
+  const q = new URLSearchParams();
+  appendAnalyticsFilters(q, params);
+  q.set('advisorId', params.advisorId);
+  q.set('weekStart', params.weekStart);
+  q.set('weekEnd', params.weekEnd);
+  if (params.page != null) q.set('page', String(params.page));
+  if (params.limit != null) q.set('limit', String(params.limit));
+  return api<ActivitiesByAdvisorDetailsPage>(
+    `/analytics/tasks-by-advisor/details?${q.toString()}`,
   );
 }

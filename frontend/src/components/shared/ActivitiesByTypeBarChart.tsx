@@ -8,7 +8,7 @@ export type ActivitiesByTypeTotals = {
   correos: number;
   llamadas: number;
   reuniones: number;
-  notas: number;
+  notas?: number;
 };
 
 export type ActivitiesByTypeMonthRow = ActivitiesByTypeTotals & {
@@ -24,7 +24,6 @@ const ACTIVITY_ITEMS = [
   { key: 'correos' as const, label: 'Correos' },
   { key: 'llamadas' as const, label: 'Llamadas' },
   { key: 'reuniones' as const, label: 'Reuniones' },
-  { key: 'notas' as const, label: 'Notas' },
 ] as const;
 
 /** Mes anterior (oscuro) vs mes actual (claro), estilo referencia Apex. */
@@ -35,7 +34,7 @@ function formatValue(n: number): string {
 }
 
 function comparisonTotal(comparison: ActivitiesByTypeMonthComparison): number {
-  const keys = ['correos', 'llamadas', 'reuniones', 'notas'] as const;
+  const keys = ['correos', 'llamadas', 'reuniones'] as const;
   return keys.reduce(
     (sum, key) =>
       sum + (comparison.previousMonth[key] ?? 0) + (comparison.currentMonth[key] ?? 0),

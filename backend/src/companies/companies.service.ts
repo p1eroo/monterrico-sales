@@ -395,6 +395,7 @@ export class CompaniesService {
         clienteRecuperado: normalizeClienteRecuperado(dto.clienteRecuperado),
         etapa,
         assignedTo,
+        ...(dto.createdAt ? { createdAt: dto.createdAt } : {}),
       },
     });
 

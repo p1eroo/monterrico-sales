@@ -19,9 +19,9 @@ export const dashboardChartDescriptions = {
   companies:
     'Empresas de la cartera clasificadas por semana según movimiento de etapa: avance, ingreso nuevo, atraso o sin cambios.',
   activities:
-    'Interacciones completadas (llamadas, reuniones, correos y notas) por tipo y semana dentro del periodo filtrado.',
+    'Interacciones completadas (llamadas, reuniones y correos) por tipo y semana dentro del periodo filtrado.',
   tasks:
-    'Tareas completadas por tipo (llamada, reunión, correo, WhatsApp) y semana dentro del periodo filtrado.',
+    'Tareas completadas por tipo (llamada, reunión y correo) y semana dentro del periodo filtrado.',
 } as const;
 
 export const flotaDashboardKpiDescriptions = {

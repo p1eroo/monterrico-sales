@@ -1,10 +1,11 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import Chart from 'react-apexcharts';
 import type { ApexOptions } from 'apexcharts';
 import { useChartTheme } from '@/hooks/useChartTheme';
 import { buildAdvisorStackedBarTooltipHtml } from '@/lib/advisorStackedBarTooltip';
 import {
   type TasksByAdvisorStackedData,
+  type TasksByAdvisorStackedRow,
   tasksByAdvisorStackedHasData,
 } from '@/lib/tasksByAdvisorStackedUtils';
 import { cn } from '@/lib/utils';
@@ -13,14 +14,12 @@ const TASK_SERIES = [
   { key: 'llamadas' as const, label: 'Llamadas', color: '#13944C' },
   { key: 'reuniones' as const, label: 'Reuniones', color: '#34d399' },
   { key: 'correos' as const, label: 'Correos', color: '#065f46' },
-  { key: 'whatsapp' as const, label: 'WhatsApp', color: '#6ee7b7' },
 ] as const;
 
 const TASK_COUNT_BY_LABEL: Record<string, [singular: string, plural: string]> = {
   Llamadas: ['tarea de llamada', 'tareas de llamada'],
   Reuniones: ['tarea de reunión', 'tareas de reunión'],
   Correos: ['tarea de correo', 'tareas de correo'],
-  WhatsApp: ['tarea de WhatsApp', 'tareas de WhatsApp'],
 };
 
 function formatValue(n: number): string {
@@ -47,6 +46,7 @@ interface TasksByAdvisorStackedBarChartProps {
   className?: string;
   chartHeight?: number;
   showLegend?: boolean;
+  onAdvisorSelect?: (advisor: TasksByAdvisorStackedRow) => void;
 }
 
 export function TasksByAdvisorStackedBarChart({
@@ -54,8 +54,35 @@ export function TasksByAdvisorStackedBarChart({
   className,
   chartHeight,
   showLegend = true,
+  onAdvisorSelect,
 }: TasksByAdvisorStackedBarChartProps) {
   const chartTheme = useChartTheme();
+  const hoverIndexRef = useRef(-1);
+  const onAdvisorSelectRef = useRef(onAdvisorSelect);
+  const chartWrapRef = useRef<HTMLDivElement>(null);
+  onAdvisorSelectRef.current = onAdvisorSelect;
+
+  useEffect(() => {
+    if (!onAdvisorSelect) return;
+    const root = chartWrapRef.current;
+    if (!root) return;
+
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      const label = target?.closest('.apexcharts-yaxis-label');
+      if (!label || !root.contains(label)) return;
+      const labels = root.querySelectorAll('.apexcharts-yaxis-label');
+      const index = Array.from(labels).indexOf(label);
+      const advisor = data.advisors[index];
+      if (advisor && advisor.total > 0) {
+        onAdvisorSelect(advisor);
+      }
+    };
+
+    root.addEventListener('click', handleClick);
+    return () => root.removeEventListener('click', handleClick);
+  }, [data.advisors, onAdvisorSelect]);
+
   const isEmpty = !tasksByAdvisorStackedHasData(data);
   const height = resolveChartHeight(data.advisors.length, chartHeight);
 
@@ -82,6 +109,34 @@ export function TasksByAdvisorStackedBarChart({
         fontFamily: 'inherit',
         animations: { enabled: true, speed: 450 },
         background: 'transparent',
+        events: onAdvisorSelect
+          ? {
+              mouseMove(_event, _chartContext, config) {
+                if (!config) return;
+                const idx = config.dataPointIndex;
+                if (idx != null && idx >= 0) hoverIndexRef.current = idx;
+              },
+              click(_event, _chartContext, config) {
+                if (!config || !onAdvisorSelectRef.current) return;
+                const idx =
+                  config.dataPointIndex >= 0
+                    ? config.dataPointIndex
+                    : hoverIndexRef.current;
+                const advisor = data.advisors[idx];
+                if (advisor && advisor.total > 0) {
+                  onAdvisorSelectRef.current(advisor);
+                }
+              },
+              dataPointSelection(_event, _chartContext, config) {
+                if (!config || !onAdvisorSelectRef.current) return;
+                const idx = config.dataPointIndex;
+                const advisor = data.advisors[idx ?? -1];
+                if (advisor && advisor.total > 0) {
+                  onAdvisorSelectRef.current(advisor);
+                }
+              },
+            }
+          : {},
       },
       colors: TASK_SERIES.map((item) => item.color),
       plotOptions: {
@@ -173,9 +228,9 @@ export function TasksByAdvisorStackedBarChart({
       chartTheme.axisColor,
       chartTheme.gridStroke,
       chartTheme.isDark,
-      data.advisors.length,
       data.advisors,
       data.weekLabel,
+      onAdvisorSelect,
       showLegend,
     ],
   );
@@ -196,7 +251,19 @@ export function TasksByAdvisorStackedBarChart({
 
   return (
     <div className={cn('flex w-full flex-col', className)}>
-      <div className="shrink-0 leading-none [&_.apexcharts-svg]:overflow-visible">
+      {onAdvisorSelect ? (
+        <p className="mb-2 text-[11px] text-muted-foreground">
+          Clic en un asesor para ver el detalle por empresa, contacto y oportunidad.
+        </p>
+      ) : null}
+      <div
+        ref={chartWrapRef}
+        className={cn(
+          'shrink-0 leading-none [&_.apexcharts-svg]:overflow-visible',
+          onAdvisorSelect &&
+            '[&_.apexcharts-bar-area]:cursor-pointer [&_.apexcharts-yaxis-label]:cursor-pointer',
+        )}
+      >
         <Chart options={options} series={series} type="bar" height={height} />
       </div>
     </div>

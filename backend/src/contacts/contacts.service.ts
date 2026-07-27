@@ -307,6 +307,7 @@ export class ContactsService {
         clienteRecuperado: normalizeClienteRecuperado(dto.clienteRecuperado),
         etapa,
         assignedTo,
+        ...(dto.createdAt ? { createdAt: dto.createdAt } : {}),
       },
     });
     this.logger.log(`[createCompanyInTx] facturacionEstimada guardado: ${company.facturacionEstimada} (tipo: ${typeof company.facturacionEstimada}) en company id=${company.id}`);

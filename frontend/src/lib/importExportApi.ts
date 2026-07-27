@@ -12,11 +12,28 @@ function getToken(): string | null {
 
 export type BulkImportRowError = { row: number; message: string; name?: string };
 
+export type BulkImportRowAction = 'created' | 'updated' | 'linked' | 'blocked';
+
+export type BulkImportRowResult = {
+  row: number;
+  name: string;
+  contactoVista?: string;
+  action: BulkImportRowAction;
+  detail: string;
+  changes: string[];
+  unchanged: string[];
+};
+
 export type BulkImportResult = {
   totalRows: number;
+  processed: number;
   created: number;
+  updated: number;
+  linked: number;
+  blocked: number;
   skipped: number;
   errors: BulkImportRowError[];
+  rows: BulkImportRowResult[];
 };
 
 export type ImportJobStatus = 'queued' | 'running' | 'completed' | 'failed';
@@ -30,6 +47,9 @@ export type ImportJob = {
   processedRows: number;
   created: number;
   updated: number;
+  linked: number;
+  blocked: number;
+  processed: number;
   skipped: number;
   errorCount: number;
   percent: number;
@@ -88,6 +108,7 @@ export type CompanyImportPreviewRow = {
   etapa: string;
   facturacionEstimada: number;
   ok: boolean;
+  blocked?: boolean;
   error?: string;
   csvColumns: Record<string, string>;
 };
@@ -98,6 +119,7 @@ export type CompanyImportPreviewResult = {
   rows: CompanyImportPreviewRow[];
   okCount: number;
   errorCount: number;
+  blockedCount: number;
 };
 
 async function buildImportFormData(file: File): Promise<FormData> {

@@ -13,7 +13,11 @@ import {
   formatImportedCompanyName,
   formatImportedPersonName,
 } from '../common/import-display-name.util';
-import { inferCompanyDomainFromContactEmail } from '../common/email-domain.util';
+import {
+  inferCompanyDomainFromContactEmail,
+  normalizeCompanyDomain,
+} from '../common/email-domain.util';
+import { parseImportDateCell } from '../common/parse-date-input.util';
 import {
   companyRucDigits,
   storeCompanyRucValue,
@@ -51,16 +55,121 @@ function importRowErr(row: number, message: string, name?: string): BulkImportRo
   return trimmed ? { row, message, name: trimmed } : { row, message };
 }
 
-export type BulkImportResultDto = {
+export function bulkImportResult(params: {
   totalRows: number;
+  processed?: number;
   created: number;
+  updated?: number;
+  linked?: number;
+  blocked?: number;
   skipped: number;
   errors: BulkImportRowError[];
+  rows?: BulkImportRowResultDto[];
+}): BulkImportResultDto {
+  const processed =
+    params.processed ??
+    params.created +
+      (params.updated ?? 0) +
+      (params.linked ?? 0) +
+      (params.blocked ?? 0);
+  return {
+    totalRows: params.totalRows,
+    processed,
+    created: params.created,
+    updated: params.updated ?? 0,
+    linked: params.linked ?? 0,
+    blocked: params.blocked ?? 0,
+    skipped: params.skipped,
+    errors: params.errors,
+    rows: params.rows ?? [],
+  };
+}
+
+export type BulkImportRowAction = 'created' | 'updated' | 'linked' | 'blocked';
+
+export type BulkImportRowResultDto = {
+  row: number;
+  name: string;
+  contactoVista?: string;
+  action: BulkImportRowAction;
+  /** Resumen en una línea */
+  detail: string;
+  /** Cambios aplicados */
+  changes: string[];
+  /** Sin cambios o no aplicables, con motivo */
+  unchanged: string[];
+};
+
+type CompanyImportUpdateReport = {
+  updated: boolean;
+  changes: string[];
+  unchanged: string[];
+};
+
+type ContactImportUpdateReport = {
+  updated: boolean;
+  changes: string[];
+  unchanged: string[];
+};
+
+const CONTACT_IMPORT_FIELD_LABELS: Record<string, string> = {
+  telefono: 'Teléfono',
+  correo: 'Correo',
+  fuente: 'Fuente',
+  cargo: 'Cargo',
+  etapa: 'Etapa',
+  assignedTo: 'Asesor',
+  estimatedValue: 'Valor estimado',
+  departamento: 'Departamento',
+  provincia: 'Provincia',
+  distrito: 'Distrito',
+  direccion: 'Dirección',
+  clienteRecuperado: 'Cliente recuperado',
+};
+
+const COMPANY_IMPORT_FIELD_LABELS: Record<string, string> = {
+  telefono: 'Teléfono',
+  domain: 'Dominio',
+  rubro: 'Rubro',
+  tipo: 'Tipo',
+  correo: 'Correo',
+  linkedin: 'LinkedIn',
+  distrito: 'Distrito',
+  provincia: 'Provincia',
+  departamento: 'Departamento',
+  direccion: 'Dirección',
+  fuente: 'Fuente',
+  etapa: 'Etapa',
+  facturacionEstimada: 'Facturación estimada',
+  clienteRecuperado: 'Cliente recuperado',
+  assignedTo: 'Asesor',
+  ruc: 'RUC',
+};
+
+export type BulkImportResultDto = {
+  totalRows: number;
+  /** Filas procesadas con éxito */
+  processed: number;
+  /** Empresas nuevas creadas */
+  created: number;
+  /** Filas que modificaron registros existentes */
+  updated: number;
+  /** Filas que solo vincularon existentes sin cambios */
+  linked: number;
+  /** Filas omitidas por dominio ya asignado a otro asesor */
+  blocked: number;
+  skipped: number;
+  errors: BulkImportRowError[];
+  rows: BulkImportRowResultDto[];
 };
 
 export type ImportProgressCallback = (progress: {
   processedRows: number;
   created: number;
+  updated?: number;
+  linked?: number;
+  blocked?: number;
+  processed?: number;
   skipped: number;
   errorCount: number;
 }) => void | Promise<void>;
@@ -99,6 +208,8 @@ export type CompanyImportPreviewRowDto = {
   etapa: string;
   facturacionEstimada: number;
   ok: boolean;
+  /** Dominio existente con otro asesor; no es error de formato */
+  blocked?: boolean;
   error?: string;
   /** Encabezado original del CSV → valor de celda (vacío como string vacío). */
   csvColumns: Record<string, string>;
@@ -110,6 +221,7 @@ export type CompanyImportPreviewResultDto = {
   rows: CompanyImportPreviewRowDto[];
   okCount: number;
   errorCount: number;
+  blockedCount: number;
 };
 
 /** Plantilla / export contactos: sin ids (los genera el sistema). Empresa por nombre + RUC. */
@@ -156,6 +268,7 @@ const CONTACT_TEMPLATE_HEADERS = [
 
 /** Plantilla / import empresa: sin id; contacto opcional por fila (mismo patrón que import contactos). */
 const COMPANY_HEADERS = [
+  'fecha_ingreso',
   'nombre',
   'razon_social',
   'ruc',
@@ -194,6 +307,7 @@ const COMPANY_HEADERS = [
 ] as const;
 
 const COMPANY_TEMPLATE_HEADERS = [
+  'fecha_ingreso',
   'nombre',
   'razon_social',
   'ruc',
@@ -215,6 +329,13 @@ const COMPANY_TEMPLATE_HEADERS = [
   'contacto_telefono',
   'contacto_correo',
   'contacto_cargo',
+] as const;
+
+/** Import temporal: dominio + fecha de ingreso (empresa, contactos y oportunidades vinculadas). */
+const COMPANY_FECHA_INGRESO_HEADERS = [
+  'fecha_ingreso',
+  'domain',
+  'contacto_correo',
 ] as const;
 
 const OPPORTUNITY_HEADERS = [
@@ -352,12 +473,9 @@ export class ImportExportService {
     row: string[],
     headerIndex: Map<string, number>,
   ): string {
-    const explicit = this.rowGetImportText(row, headerIndex, [
-      'domain',
-      'dominio',
-    ])
-      .trim()
-      .toLowerCase();
+    const explicit = normalizeCompanyDomain(
+      this.rowGetImportText(row, headerIndex, ['domain', 'dominio']),
+    );
     if (explicit) return explicit;
 
     const companyEmail = this.rowGetImportText(row, headerIndex, [
@@ -372,6 +490,242 @@ export class ImportExportService {
       'contacto_email',
     ]);
     return inferCompanyDomainFromContactEmail(contactEmail) ?? '';
+  }
+
+  private readCompanyImportFechaIngreso(
+    row: string[],
+    headerIndex: Map<string, number>,
+  ): Date | null {
+    const raw = rowGet(row, headerIndex, [
+      'fecha_ingreso',
+      'fecha_de_ingreso',
+      'fecha_alta',
+      'fecha_creacion',
+    ]);
+    return parseImportDateCell(raw);
+  }
+
+  private async importUserLabel(userId: string | null | undefined): Promise<string> {
+    const id = userId?.trim();
+    if (!id) return 'Sin asignar';
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { name: true },
+    });
+    return user?.name?.trim() || id;
+  }
+
+  /** Resuelve texto del Excel al slug canónico del catálogo CRM. */
+  private async normalizeImportLeadSource(
+    raw?: string | null,
+    fallback = 'base',
+  ): Promise<string> {
+    return this.crmConfig.normalizeLeadSourceOrDefault(raw, fallback);
+  }
+
+  /** Etiqueta legible de una fuente (slug o variante del catálogo). */
+  private async importLeadSourceLabel(raw?: string | null): Promise<string> {
+    const slug = await this.normalizeImportLeadSource(raw, raw?.trim() ?? '');
+    if (!slug) return '—';
+    const row = await this.prisma.crmLeadSource.findFirst({
+      where: {
+        enabled: true,
+        slug: { equals: slug, mode: 'insensitive' },
+      },
+      select: { name: true },
+    });
+    return row?.name?.trim() || slug;
+  }
+
+  private async applyImportLeadSourceFieldUpdate(params: {
+    currentRaw?: string | null;
+    incomingRaw?: string;
+    fieldLabel: string;
+    data: Prisma.CompanyUncheckedUpdateInput | Prisma.ContactUncheckedUpdateInput;
+    changes: string[];
+    recordSame: (displayLabel: string) => void;
+  }): Promise<void> {
+    const incomingTrim = params.incomingRaw?.trim();
+    if (!incomingTrim) return;
+
+    const nextSlug = await this.normalizeImportLeadSource(incomingTrim);
+    const prevSlug = await this.normalizeImportLeadSource(params.currentRaw, '');
+
+    if (prevSlug !== nextSlug) {
+      const [beforeLabel, afterLabel] = await Promise.all([
+        prevSlug
+          ? this.importLeadSourceLabel(prevSlug)
+          : Promise.resolve('—'),
+        this.importLeadSourceLabel(nextSlug),
+      ]);
+      params.data.fuente = nextSlug;
+      params.changes.push(
+        `${params.fieldLabel}: ${beforeLabel} → ${afterLabel}`,
+      );
+      return;
+    }
+
+    const label = await this.importLeadSourceLabel(nextSlug);
+    params.recordSame(label);
+    const stored = params.currentRaw?.trim() ?? '';
+    if (stored && stored !== nextSlug) {
+      params.data.fuente = nextSlug;
+    }
+  }
+
+  private companyImportHasAssigneeConflict(
+    existingAssignedTo: string | null | undefined,
+    incomingAssignedTo: string | undefined,
+  ): boolean {
+    const current = existingAssignedTo?.trim();
+    const incoming = incomingAssignedTo?.trim();
+    return !!(current && incoming && current !== incoming);
+  }
+
+  private async resolveCompanyImportAssignee(
+    row: string[],
+    headerIndex: Map<string, number>,
+    importingUserId: string,
+    scope?: CrmDataScope,
+  ): Promise<string> {
+    const assignedRow =
+      this.rowGetImportText(row, headerIndex, [
+        'asignado_a',
+        'assignedto',
+        'usuario_id',
+      ]) || undefined;
+    if (scope && !scope.unrestricted) {
+      return importingUserId;
+    }
+    return this.assigneeFromCsvOrImporter(assignedRow, importingUserId);
+  }
+
+  private buildCompanyImportBlockedRowResult(params: {
+    row: number;
+    empresaNombre: string;
+    contactoVista: string;
+    domain: string;
+    existingCompanyName: string;
+    currentAdvisorLabel: string;
+    incomingAdvisorLabel: string;
+  }): BulkImportRowResultDto {
+    return {
+      row: params.row,
+      name: params.empresaNombre,
+      contactoVista: params.contactoVista,
+      action: 'blocked',
+      detail: `Dominio «${params.domain}» ya asignado a ${params.currentAdvisorLabel}`,
+      changes: [],
+      unchanged: [
+        `Empresa existente: ${params.existingCompanyName}`,
+        `Dominio: ${params.domain}`,
+        `Asesor actual: ${params.currentAdvisorLabel}`,
+        `Asesor en importación: ${params.incomingAdvisorLabel}`,
+        'No se aplicaron cambios (empresa, contacto ni oportunidad)',
+      ],
+    };
+  }
+
+  private buildCompanyImportRowResult(params: {
+    row: number;
+    empresaNombre: string;
+    contactoVista: string;
+    changes: string[];
+    unchanged: string[];
+  }): BulkImportRowResultDto {
+    const changes = params.changes.filter(Boolean);
+    const unchanged = params.unchanged.filter(Boolean);
+    const isCreate = changes.some((c) =>
+      c.toLowerCase().startsWith('empresa creada'),
+    );
+    const action: BulkImportRowAction = isCreate
+      ? 'created'
+      : changes.length > 0
+        ? 'updated'
+        : 'linked';
+
+    let detail: string;
+    if (isCreate) {
+      detail = changes.slice(0, 2).join(' · ') || 'Empresa nueva';
+    } else if (changes.length > 0) {
+      detail = `${changes.length} cambio${changes.length === 1 ? '' : 's'} aplicado${changes.length === 1 ? '' : 's'}`;
+      if (unchanged.length > 0) {
+        detail += ` · ${unchanged.length} sin cambio`;
+      }
+    } else {
+      detail =
+        unchanged[0] ??
+        'Sin cambios; registros existentes vinculados';
+    }
+
+    return {
+      row: params.row,
+      name: params.empresaNombre,
+      contactoVista: params.contactoVista,
+      action,
+      detail,
+      changes,
+      unchanged,
+    };
+  }
+
+  private appendCompanyImportIdentityNotes(params: {
+    unchanged: string[];
+    companyCreated: boolean;
+    excelName: string;
+    excelRazon?: string;
+    existingName?: string;
+    fechaIngreso: Date | null;
+  }): void {
+    if (params.companyCreated) return;
+
+    const excelFormatted = params.excelName.trim()
+      ? formatImportedCompanyName(params.excelName.trim())
+      : '';
+    const existing = params.existingName?.trim() ?? '';
+    if (
+      excelFormatted &&
+      existing &&
+      excelFormatted.localeCompare(existing, undefined, {
+        sensitivity: 'accent',
+      }) !== 0
+    ) {
+      params.unchanged.push(
+        `Nombre: no se modificó (Excel «${excelFormatted}»; en sistema «${existing}»; en reimportación la identidad es el dominio)`,
+      );
+    }
+
+    const razonFormatted = params.excelRazon?.trim()
+      ? formatImportedCompanyName(params.excelRazon.trim())
+      : '';
+    if (razonFormatted && existing && razonFormatted !== existing) {
+      params.unchanged.push(
+        `Razón social: no se modifica en reimportación (Excel «${razonFormatted}»)`,
+      );
+    }
+
+    if (params.fechaIngreso) {
+      params.unchanged.push(
+        'Fecha ingreso: no se modifica en empresas ya existentes',
+      );
+    }
+  }
+
+  private recordCompanyImportRowResult(
+    rowResults: BulkImportRowResultDto[],
+    counters: {
+      created: number;
+      updated: number;
+      linked: number;
+      blocked: number;
+    },
+    result: BulkImportRowResultDto,
+  ): void {
+    rowResults.push(result);
+    if (result.action === 'created') counters.created += 1;
+    else if (result.action === 'updated') counters.updated += 1;
+    else if (result.action === 'blocked') counters.blocked += 1;
+    else counters.linked += 1;
   }
 
   /** Oportunidad ya vinculada a la misma empresa y el mismo contacto. */
@@ -684,7 +1038,12 @@ export class ImportExportService {
       assignedTo?: string;
       ruc?: string;
     },
-  ): Promise<boolean> {
+  ): Promise<CompanyImportUpdateReport> {
+    const empty: CompanyImportUpdateReport = {
+      updated: false,
+      changes: [],
+      unchanged: [],
+    };
     const current = await this.prisma.company.findUnique({
       where: { id: companyId },
       select: {
@@ -706,16 +1065,42 @@ export class ImportExportService {
         ruc: true,
       },
     });
-    if (!current) return false;
+    if (!current) return empty;
 
     const data: Prisma.CompanyUncheckedUpdateInput = {};
+    const changes: string[] = [];
+    const unchanged: string[] = [];
+
+    const recordChange = (
+      key: keyof typeof COMPANY_IMPORT_FIELD_LABELS,
+      before: string,
+      after: string,
+    ) => {
+      data[key as keyof Prisma.CompanyUncheckedUpdateInput] = after as never;
+      changes.push(
+        `${COMPANY_IMPORT_FIELD_LABELS[key]}: ${before || '—'} → ${after}`,
+      );
+    };
+
+    const recordSame = (
+      key: keyof typeof COMPANY_IMPORT_FIELD_LABELS,
+      value: string,
+    ) => {
+      unchanged.push(
+        `${COMPANY_IMPORT_FIELD_LABELS[key]}: sin cambios (ya era «${value || '—'}»)`,
+      );
+    };
 
     const mergedPhone = this.mergeCompanyPhoneImportField(
       current.telefono ?? undefined,
       params.telefono,
     );
-    if (mergedPhone && mergedPhone !== (current.telefono?.trim() || undefined)) {
+    const prevPhone = current.telefono?.trim() || '';
+    if (mergedPhone && mergedPhone !== prevPhone) {
       data.telefono = mergedPhone;
+      changes.push(
+        `${COMPANY_IMPORT_FIELD_LABELS.telefono}: ${prevPhone || '—'} → ${mergedPhone}`,
+      );
     }
 
     const maybeSetTrimmed = (
@@ -735,9 +1120,9 @@ export class ImportExportService {
     ) => {
       const next = incoming?.trim();
       if (!next) return;
-      const prev = current[key]?.trim();
+      const prev = current[key]?.trim() || '';
       if (prev !== next) {
-        data[key] = next;
+        recordChange(key, prev, next);
       }
     };
 
@@ -750,43 +1135,263 @@ export class ImportExportService {
     maybeSetTrimmed('provincia', params.provincia);
     maybeSetTrimmed('departamento', params.departamento);
     maybeSetTrimmed('direccion', params.direccion);
-    maybeSetTrimmed('fuente', params.fuente);
     maybeSetTrimmed('etapa', params.etapa);
+    await this.applyImportLeadSourceFieldUpdate({
+      currentRaw: current.fuente,
+      incomingRaw: params.fuente,
+      fieldLabel: COMPANY_IMPORT_FIELD_LABELS.fuente,
+      data,
+      changes,
+      recordSame: (displayLabel) => recordSame('fuente', displayLabel),
+    });
+    if (params.etapa?.trim()) {
+      const prev = current.etapa?.trim() || '';
+      if (prev === params.etapa.trim()) {
+        recordSame('etapa', prev);
+      }
+    }
+    if (params.rubro?.trim()) {
+      const prev = current.rubro?.trim() || '';
+      if (prev === params.rubro.trim()) {
+        recordSame('rubro', prev);
+      }
+    }
 
     if (
       params.setFacturacionEstimada &&
       params.facturacionEstimada != null &&
-      Number.isFinite(params.facturacionEstimada) &&
-      current.facturacionEstimada !== params.facturacionEstimada
+      Number.isFinite(params.facturacionEstimada)
     ) {
-      data.facturacionEstimada = params.facturacionEstimada;
+      const prev = String(current.facturacionEstimada ?? '');
+      const next = String(params.facturacionEstimada);
+      if (current.facturacionEstimada !== params.facturacionEstimada) {
+        data.facturacionEstimada = params.facturacionEstimada;
+        changes.push(
+          `${COMPANY_IMPORT_FIELD_LABELS.facturacionEstimada}: ${prev || '—'} → ${next}`,
+        );
+      } else {
+        recordSame('facturacionEstimada', prev);
+      }
     }
 
-    if (
-      params.clienteRecuperado &&
-      current.clienteRecuperado !== params.clienteRecuperado
-    ) {
-      data.clienteRecuperado = params.clienteRecuperado;
+    if (params.clienteRecuperado) {
+      const prev = current.clienteRecuperado ?? '';
+      if (current.clienteRecuperado !== params.clienteRecuperado) {
+        data.clienteRecuperado = params.clienteRecuperado;
+        changes.push(
+          `${COMPANY_IMPORT_FIELD_LABELS.clienteRecuperado}: ${prev || '—'} → ${params.clienteRecuperado}`,
+        );
+      }
     }
 
     const nextAssignedTo = params.assignedTo?.trim();
-    if (nextAssignedTo && current.assignedTo !== nextAssignedTo) {
-      data.assignedTo = nextAssignedTo;
+    if (nextAssignedTo) {
+      if (current.assignedTo !== nextAssignedTo) {
+        const [beforeName, afterName] = await Promise.all([
+          this.importUserLabel(current.assignedTo),
+          this.importUserLabel(nextAssignedTo),
+        ]);
+        data.assignedTo = nextAssignedTo;
+        changes.push(`${COMPANY_IMPORT_FIELD_LABELS.assignedTo}: ${beforeName} → ${afterName}`);
+      } else {
+        const name = await this.importUserLabel(current.assignedTo);
+        recordSame('assignedTo', name);
+      }
     }
 
     const nextRuc = storeCompanyRucValue(params.ruc);
-    if (nextRuc && nextRuc !== (current.ruc?.trim() || '')) {
-      data.ruc = nextRuc;
+    if (nextRuc) {
+      const prev = current.ruc?.trim() || '';
+      if (nextRuc !== prev) {
+        data.ruc = nextRuc;
+        changes.push(`${COMPANY_IMPORT_FIELD_LABELS.ruc}: ${prev || '—'} → ${nextRuc}`);
+      }
     }
 
-    if (Object.keys(data).length === 0) return false;
+    if (Object.keys(data).length === 0) {
+      return { updated: false, changes, unchanged };
+    }
 
     await this.prisma.company.update({
       where: { id: companyId },
       data,
     });
     await this.entitySync.propagateFromCompany(companyId);
-    return true;
+    return { updated: true, changes, unchanged };
+  }
+
+  private async updateExistingContactFromImport(
+    contactId: string,
+    params: {
+      telefono?: string;
+      correo?: string;
+      fuente?: string;
+      cargo?: string;
+      etapa?: string;
+      assignedTo?: string;
+      estimatedValue?: number;
+      setEstimatedValue?: boolean;
+      departamento?: string;
+      provincia?: string;
+      distrito?: string;
+      direccion?: string;
+      clienteRecuperado?: 'si' | 'no';
+    },
+  ): Promise<ContactImportUpdateReport> {
+    const empty: ContactImportUpdateReport = {
+      updated: false,
+      changes: [],
+      unchanged: [],
+    };
+    const current = await this.prisma.contact.findUnique({
+      where: { id: contactId },
+      select: {
+        telefono: true,
+        correo: true,
+        fuente: true,
+        cargo: true,
+        etapa: true,
+        assignedTo: true,
+        estimatedValue: true,
+        departamento: true,
+        provincia: true,
+        distrito: true,
+        direccion: true,
+        clienteRecuperado: true,
+      },
+    });
+    if (!current) return empty;
+
+    const data: Prisma.ContactUncheckedUpdateInput = {};
+    const changes: string[] = [];
+    const unchanged: string[] = [];
+
+    const contactLabel = (key: keyof typeof CONTACT_IMPORT_FIELD_LABELS) =>
+      `Contacto — ${CONTACT_IMPORT_FIELD_LABELS[key]}`;
+
+    const recordChange = (
+      key: keyof typeof CONTACT_IMPORT_FIELD_LABELS,
+      before: string,
+      after: string,
+    ) => {
+      data[key as keyof Prisma.ContactUncheckedUpdateInput] = after as never;
+      changes.push(`${contactLabel(key)}: ${before || '—'} → ${after}`);
+    };
+
+    const recordSame = (
+      key: keyof typeof CONTACT_IMPORT_FIELD_LABELS,
+      value: string,
+    ) => {
+      unchanged.push(
+        `${contactLabel(key)}: sin cambios (ya era «${value || '—'}»)`,
+      );
+    };
+
+    const mergedPhone = this.mergeCompanyPhoneImportField(
+      current.telefono ?? undefined,
+      params.telefono,
+    );
+    const prevPhone = current.telefono?.trim() || '';
+    if (mergedPhone && mergedPhone !== prevPhone) {
+      data.telefono = mergedPhone;
+      changes.push(
+        `${contactLabel('telefono')}: ${prevPhone || '—'} → ${mergedPhone}`,
+      );
+    }
+
+    const maybeSetTrimmed = (
+      key: 'correo' | 'fuente' | 'cargo' | 'etapa' | 'departamento' | 'provincia' | 'distrito' | 'direccion',
+      incoming?: string,
+    ) => {
+      const next = incoming?.trim();
+      if (!next) return;
+      const prev = current[key]?.trim() || '';
+      if (prev !== next) {
+        recordChange(key, prev, next);
+      }
+    };
+
+    maybeSetTrimmed('correo', params.correo);
+    maybeSetTrimmed('cargo', params.cargo);
+    maybeSetTrimmed('etapa', params.etapa);
+    maybeSetTrimmed('departamento', params.departamento);
+    maybeSetTrimmed('provincia', params.provincia);
+    maybeSetTrimmed('distrito', params.distrito);
+    maybeSetTrimmed('direccion', params.direccion);
+
+    await this.applyImportLeadSourceFieldUpdate({
+      currentRaw: current.fuente,
+      incomingRaw: params.fuente,
+      fieldLabel: contactLabel('fuente'),
+      data,
+      changes,
+      recordSame: (displayLabel) => recordSame('fuente', displayLabel),
+    });
+
+    if (params.etapa?.trim()) {
+      const prev = current.etapa?.trim() || '';
+      if (prev === params.etapa.trim()) {
+        recordSame('etapa', prev);
+      }
+    }
+    if (params.cargo?.trim()) {
+      const prev = current.cargo?.trim() || '';
+      if (prev === params.cargo.trim()) {
+        recordSame('cargo', prev);
+      }
+    }
+
+    if (
+      params.setEstimatedValue &&
+      params.estimatedValue != null &&
+      Number.isFinite(params.estimatedValue)
+    ) {
+      const prev = String(current.estimatedValue ?? '');
+      const next = String(params.estimatedValue);
+      if (current.estimatedValue !== params.estimatedValue) {
+        data.estimatedValue = params.estimatedValue;
+        changes.push(
+          `${contactLabel('estimatedValue')}: ${prev || '—'} → ${next}`,
+        );
+      } else {
+        recordSame('estimatedValue', prev);
+      }
+    }
+
+    if (params.clienteRecuperado) {
+      const prev = current.clienteRecuperado ?? '';
+      if (current.clienteRecuperado !== params.clienteRecuperado) {
+        data.clienteRecuperado = params.clienteRecuperado;
+        changes.push(
+          `${contactLabel('clienteRecuperado')}: ${prev || '—'} → ${params.clienteRecuperado}`,
+        );
+      }
+    }
+
+    const nextAssignedTo = params.assignedTo?.trim();
+    if (nextAssignedTo) {
+      if (current.assignedTo !== nextAssignedTo) {
+        const [beforeName, afterName] = await Promise.all([
+          this.importUserLabel(current.assignedTo),
+          this.importUserLabel(nextAssignedTo),
+        ]);
+        data.assignedTo = nextAssignedTo;
+        changes.push(`${contactLabel('assignedTo')}: ${beforeName} → ${afterName}`);
+      } else {
+        const name = await this.importUserLabel(current.assignedTo);
+        recordSame('assignedTo', name);
+      }
+    }
+
+    if (Object.keys(data).length === 0) {
+      return { updated: false, changes, unchanged };
+    }
+
+    await this.prisma.contact.update({
+      where: { id: contactId },
+      data,
+    });
+    return { updated: true, changes, unchanged };
   }
 
   private readContactPhoneImportField(
@@ -1105,18 +1710,18 @@ export class ImportExportService {
 
   private async companiesByDomainMap(
     domains: string[],
-  ): Promise<Map<string, { id: string; name: string }>> {
+  ): Promise<Map<string, { id: string; name: string; assignedTo: string | null }>> {
     const uniq = [...new Set(domains.filter((d) => d.length > 0).map((d) => d.toLowerCase()))];
-    const out = new Map<string, { id: string; name: string }>();
+    const out = new Map<string, { id: string; name: string; assignedTo: string | null }>();
     if (uniq.length === 0) return out;
     const found = await this.prisma.company.findMany({
       where: { domain: { in: uniq, mode: 'insensitive' } },
-      select: { id: true, name: true, domain: true },
+      select: { id: true, name: true, domain: true, assignedTo: true },
     });
     for (const row of found) {
       const k = (row.domain ?? '').toLowerCase();
       if (!k) continue;
-      out.set(k, { id: row.id, name: row.name });
+      out.set(k, { id: row.id, name: row.name, assignedTo: row.assignedTo });
     }
     return out;
   }
@@ -1459,7 +2064,7 @@ export class ImportExportService {
   > {
     const nombre = params.empresaNombre.trim();
     const rucStored = storeCompanyRucValue(params.empresaRuc);
-    const domain = params.empresaDomain?.trim().toLowerCase() || '';
+    const domain = normalizeCompanyDomain(params.empresaDomain);
     const dryRun = params.dryRun === true;
     const cr = params.contactClienteRecuperado;
 
@@ -1899,7 +2504,7 @@ export class ImportExportService {
         const fuenteRaw = this.rowGetImportText(row, headerIndex, ['fuente', 'source']);
         const telefono = telefonoRaw.trim() || '-';
         const correo = correoRaw.trim();
-        const fuente = fuenteRaw.trim() || 'base';
+        const fuente = await this.normalizeImportLeadSource(fuenteRaw, 'base');
         const valorRaw = rowGet(row, headerIndex, [
           'valor_estimado',
           'estimatedvalue',
@@ -2100,16 +2705,226 @@ export class ImportExportService {
       }
     }
 
-    return {
+    return bulkImportResult({
       totalRows: dataRows,
+      processed: created,
       created,
       skipped,
       errors,
-    };
+    });
   }
 
   companiesTemplateCsv(): string {
     return UTF8_BOM + stringifyCsvRow([...COMPANY_TEMPLATE_HEADERS]);
+  }
+
+  companiesFechaIngresoTemplateCsv(): string {
+    return UTF8_BOM + stringifyCsvRow([...COMPANY_FECHA_INGRESO_HEADERS]);
+  }
+
+  /**
+   * Actualiza solo fecha de ingreso (`createdAt`) de empresa existente y registros vinculados
+   * (contactos y oportunidades de la empresa). No modifica otros campos comerciales.
+   */
+  async importCompaniesFechaIngreso(
+    csvText: string,
+    scope?: CrmDataScope,
+  ): Promise<BulkImportResultDto> {
+    const rows = parseCsv(csvText);
+    if (rows.length < 2) {
+      throw new BadRequestException(
+        'El archivo debe incluir encabezados y al menos una fila de datos',
+      );
+    }
+    const headerIndex = buildHeaderIndex(rows[0]!);
+    const errors: BulkImportRowError[] = [];
+    const rowResults: BulkImportRowResultDto[] = [];
+    let updated = 0;
+    let skipped = 0;
+    const dataRows = rows.length - 1;
+    if (dataRows > MAX_COMPANY_IMPORT_ROWS) {
+      throw new BadRequestException(
+        `Máximo ${MAX_COMPANY_IMPORT_ROWS} filas de datos por archivo`,
+      );
+    }
+
+    const fmtDate = (d: Date) => d.toISOString().slice(0, 10);
+
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i]!;
+      const excelRow = i + 1;
+      if (row.every((c) => !(c ?? '').trim())) {
+        skipped += 1;
+        continue;
+      }
+
+      const domain = this.resolveCompanyImportDomain(row, headerIndex);
+      const fechaIngreso = this.readCompanyImportFechaIngreso(row, headerIndex);
+      const rowLabel =
+        domain ||
+        this.rowGetImportText(row, headerIndex, ['nombre', 'name']).trim() ||
+        undefined;
+
+      if (!domain) {
+        errors.push(
+          importRowErr(
+            excelRow,
+            'Dominio obligatorio (columna domain/dominio o inferible desde contacto_correo/correo)',
+            rowLabel,
+          ),
+        );
+        continue;
+      }
+
+      if (!fechaIngreso) {
+        errors.push(
+          importRowErr(
+            excelRow,
+            'Fecha ingreso obligatoria (columna fecha_ingreso, fecha_de_ingreso o fecha_alta)',
+            rowLabel,
+          ),
+        );
+        continue;
+      }
+
+      try {
+        const company = await this.prisma.company.findFirst({
+          where: { domain: { equals: domain, mode: 'insensitive' } },
+          select: { id: true, name: true, createdAt: true },
+        });
+        if (!company) {
+          errors.push(
+            importRowErr(
+              excelRow,
+              `No existe empresa con dominio «${domain}»`,
+              rowLabel,
+            ),
+          );
+          continue;
+        }
+
+        if (scope && !scope.unrestricted) {
+          const inScope = await this.prisma.company.findFirst({
+            where: mergeCompanyScope({ id: company.id }, scope),
+            select: { id: true },
+          });
+          if (!inScope) {
+            errors.push(
+              importRowErr(
+                excelRow,
+                'La empresa no está disponible para tu usuario',
+                company.name,
+              ),
+            );
+            continue;
+          }
+        }
+
+        const linked = await this.applyCompanyFechaIngresoImport(
+          company.id,
+          fechaIngreso,
+        );
+        const prevLabel = linked.prevCompanyDate
+          ? fmtDate(linked.prevCompanyDate)
+          : '—';
+        const nextLabel = fmtDate(fechaIngreso);
+        const changes = [
+          `Empresa «${company.name}»: ${prevLabel} → ${nextLabel}`,
+        ];
+        if (linked.contactCount > 0) {
+          changes.push(
+            `Contactos vinculados: ${linked.contactCount} actualizado${linked.contactCount === 1 ? '' : 's'}`,
+          );
+        }
+        if (linked.opportunityCount > 0) {
+          changes.push(
+            `Oportunidades vinculadas: ${linked.opportunityCount} actualizada${linked.opportunityCount === 1 ? '' : 's'}`,
+          );
+        }
+
+        rowResults.push({
+          row: excelRow,
+          name: company.name,
+          contactoVista: domain,
+          action: 'updated',
+          detail: `Fecha ingreso ${nextLabel} · ${company.name}`,
+          changes,
+          unchanged: [],
+        });
+        updated += 1;
+      } catch (e: unknown) {
+        errors.push(
+          importRowErr(
+            excelRow,
+            prismaErrorToSpanishMessage(e, 'Error al actualizar fecha de ingreso'),
+            rowLabel,
+          ),
+        );
+      }
+    }
+
+    return bulkImportResult({
+      totalRows: dataRows,
+      processed: rowResults.length,
+      created: 0,
+      updated,
+      linked: 0,
+      blocked: 0,
+      skipped,
+      errors,
+      rows: rowResults,
+    });
+  }
+
+  private async applyCompanyFechaIngresoImport(
+    companyId: string,
+    fecha: Date,
+  ): Promise<{
+    contactCount: number;
+    opportunityCount: number;
+    prevCompanyDate: Date | null;
+  }> {
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+      select: { createdAt: true },
+    });
+    const prevCompanyDate = company?.createdAt ?? null;
+
+    const contactLinks = await this.prisma.companyContact.findMany({
+      where: { companyId },
+      select: { contactId: true },
+    });
+    const oppLinks = await this.prisma.companyOpportunity.findMany({
+      where: { companyId },
+      select: { opportunityId: true },
+    });
+    const contactIds = contactLinks.map((r) => r.contactId);
+    const opportunityIds = oppLinks.map((r) => r.opportunityId);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.company.update({
+        where: { id: companyId },
+        data: { createdAt: fecha },
+      });
+      if (contactIds.length > 0) {
+        await tx.contact.updateMany({
+          where: { id: { in: contactIds } },
+          data: { createdAt: fecha },
+        });
+      }
+      if (opportunityIds.length > 0) {
+        await tx.opportunity.updateMany({
+          where: { id: { in: opportunityIds } },
+          data: { createdAt: fecha },
+        });
+      }
+    });
+
+    return {
+      contactCount: contactIds.length,
+      opportunityCount: opportunityIds.length,
+      prevCompanyDate,
+    };
   }
 
   /**
@@ -2321,6 +3136,8 @@ export class ImportExportService {
   /** Vista previa import empresas (sin Factiliza ni escritura en BD). */
   async previewCompaniesImport(
     csvText: string,
+    importingUserId: string,
+    scope?: CrmDataScope,
   ): Promise<CompanyImportPreviewResultDto> {
     const rows = parseCsv(csvText);
     if (rows.length < 2) {
@@ -2343,6 +3160,7 @@ export class ImportExportService {
       | { kind: 'row'; row: CompanyImportPreviewRowDto }
       | {
           kind: 'work';
+          rowIndex: number;
           excelRow: number;
           csvColumns: Record<string, string>;
           effectiveCompanyName: string;
@@ -2456,6 +3274,7 @@ export class ImportExportService {
 
       segments.push({
         kind: 'work',
+        rowIndex: i,
         excelRow,
         csvColumns,
         effectiveCompanyName,
@@ -2476,7 +3295,7 @@ export class ImportExportService {
     const uniqDomains = [...new Set(workItems.map((w) => w.domain).filter((d) => d.length > 0))];
     const byDomain = uniqDomains.length > 0
       ? await this.companiesByDomainMap(uniqDomains)
-      : new Map<string, { id: string; name: string }>();
+      : new Map<string, { id: string; name: string; assignedTo: string | null }>();
 
     const out: CompanyImportPreviewRowDto[] = [];
     const fileCompanyContactDup = new Map<string, number>();
@@ -2492,7 +3311,44 @@ export class ImportExportService {
         continue;
       }
       const w = seg;
-      const existingDomain = w.domain ? (byDomain.get(w.domain) ?? null) : null;
+      const existingDomain = w.domain ? (byDomain.get(w.domain.toLowerCase()) ?? null) : null;
+
+      let incomingAssigned: string | undefined;
+      if (existingDomain?.assignedTo) {
+        incomingAssigned = await this.resolveCompanyImportAssignee(
+          rows[w.rowIndex]!,
+          headerIndex,
+          importingUserId,
+          scope,
+        );
+      }
+
+      if (
+        existingDomain &&
+        this.companyImportHasAssigneeConflict(
+          existingDomain.assignedTo,
+          incomingAssigned,
+        )
+      ) {
+        const [currentLabel, incomingLabel] = await Promise.all([
+          this.importUserLabel(existingDomain.assignedTo),
+          this.importUserLabel(incomingAssigned),
+        ]);
+        out.push({
+          row: w.excelRow,
+          empresaNombre: w.effectiveCompanyName,
+          empresaRuc: w.rucRaw,
+          empresaResumen: `Existente: ${existingDomain.name}`,
+          contactoVista: '—',
+          etapa: w.etapaSlug,
+          facturacionEstimada: w.facturacionEstimada,
+          ok: false,
+          blocked: true,
+          error: `Dominio ya asignado a ${currentLabel} (importación: ${incomingLabel}). No se modificará.`,
+          csvColumns: w.csvColumns,
+        });
+        continue;
+      }
 
       let empresaResumen: string;
       let companyId: string | null = null;
@@ -2603,13 +3459,15 @@ export class ImportExportService {
     }
 
     const okCount = out.filter((r) => r.ok).length;
-    const errorCount = out.filter((r) => !r.ok).length;
+    const blockedCount = out.filter((r) => r.blocked).length;
+    const errorCount = out.filter((r) => !r.ok && !r.blocked).length;
     return {
       totalRows: dataRows,
       skipped,
       rows: out,
       okCount,
       errorCount,
+      blockedCount,
     };
   }
 
@@ -2666,7 +3524,8 @@ export class ImportExportService {
     }
     const headerIndex = buildHeaderIndex(rows[0]!);
     const errors: BulkImportRowError[] = [];
-    let created = 0;
+    const rowResults: BulkImportRowResultDto[] = [];
+    const rowCounters = { created: 0, updated: 0, linked: 0, blocked: 0 };
     let skipped = 0;
     let processedRows = 0;
     const dataRows = rows.length - 1;
@@ -2693,9 +3552,10 @@ export class ImportExportService {
         ['razon_social', 'razonsocial'],
       ).trim();
       const fuente = this.rowGetImportText(row, headerIndex, ['fuente', 'source']);
-      const normalizedFuente = fuente.trim() || 'base';
+      const normalizedFuente = await this.normalizeImportLeadSource(fuente, 'base');
       const rucRaw = this.rowGetImportText(row, headerIndex, ['ruc']).trim();
       const domain = this.resolveCompanyImportDomain(row, headerIndex);
+      const fechaIngreso = this.readCompanyImportFechaIngreso(row, headerIndex);
       const nombreEmpresaTrim = nombreEmpresa.trim();
       const effectiveCompanyName = this.companyImportEffectiveName(
         nombreEmpresaTrim,
@@ -2749,16 +3609,12 @@ export class ImportExportService {
         ]),
       );
 
-      const assignedRow =
-        this.rowGetImportText(row, headerIndex, [
-          'asignado_a',
-          'assignedto',
-          'usuario_id',
-        ]) || undefined;
-      const assignedTo =
-        scope && !scope.unrestricted
-          ? importingUserId
-          : await this.assigneeFromCsvOrImporter(assignedRow, importingUserId);
+      const assignedTo = await this.resolveCompanyImportAssignee(
+        row,
+        headerIndex,
+        importingUserId,
+        scope,
+      );
       const companyTelefono =
         this.readCompanyPhoneImportField(row, headerIndex) || undefined;
       const companyImportUpdate = {
@@ -2789,21 +3645,67 @@ export class ImportExportService {
       >[1];
 
       let companyId: string;
+      let companyCreated = false;
+      let companyExistingName: string | undefined;
+      const rowChanges: string[] = [];
+      const rowUnchanged: string[] = [];
       try {
         const existingDomain = domain
           ? await this.prisma.company.findFirst({
               where: { domain: { equals: domain, mode: 'insensitive' } },
-              select: { id: true, name: true, domain: true },
+              select: { id: true, name: true, domain: true, assignedTo: true },
             })
           : null;
 
         if (existingDomain) {
+          if (
+            this.companyImportHasAssigneeConflict(
+              existingDomain.assignedTo,
+              assignedTo,
+            )
+          ) {
+            const [currentLabel, incomingLabel] = await Promise.all([
+              this.importUserLabel(existingDomain.assignedTo),
+              this.importUserLabel(assignedTo),
+            ]);
+            this.recordCompanyImportRowResult(
+              rowResults,
+              rowCounters,
+              this.buildCompanyImportBlockedRowResult({
+                row: excelRow,
+                empresaNombre:
+                  effectiveCompanyName || existingDomain.name || domain,
+                contactoVista: '—',
+                domain,
+                existingCompanyName: existingDomain.name,
+                currentAdvisorLabel: currentLabel,
+                incomingAdvisorLabel: incomingLabel,
+              }),
+            );
+            continue;
+          }
+
           companyId = existingDomain.id;
-          await this.updateExistingCompanyFromImport(
+          companyExistingName = existingDomain.name;
+          const companyReport = await this.updateExistingCompanyFromImport(
             companyId,
             companyImportUpdate,
           );
+          rowChanges.push(...companyReport.changes);
+          rowUnchanged.push(...companyReport.unchanged);
+          rowUnchanged.unshift(
+            `Empresa existente encontrada por dominio «${domain}» (${companyExistingName})`,
+          );
+          this.appendCompanyImportIdentityNotes({
+            unchanged: rowUnchanged,
+            companyCreated: false,
+            excelName: effectiveCompanyName,
+            excelRazon: razonRow,
+            existingName: companyExistingName,
+            fechaIngreso,
+          });
         } else {
+          companyCreated = true;
           const nameForCreate = effectiveCompanyName || domain;
           let dto: CreateCompanyDto = {
             name: formatImportedCompanyName(nameForCreate),
@@ -2828,6 +3730,7 @@ export class ImportExportService {
               : {}),
             etapa: companyImportUpdate.etapa,
             assignedTo: companyImportUpdate.assignedTo,
+            ...(fechaIngreso ? { createdAt: fechaIngreso } : {}),
           };
           const createdCo = await this.companiesService.create(
             dto,
@@ -2835,6 +3738,24 @@ export class ImportExportService {
             scope,
           );
           companyId = createdCo.id;
+          const advisorLabel = await this.importUserLabel(assignedTo);
+          rowChanges.push(
+            `Empresa creada: ${formatImportedCompanyName(nameForCreate)}`,
+            `Dominio: ${domain}`,
+          );
+          if (advisorLabel) {
+            rowChanges.push(`Asesor: ${advisorLabel}`);
+          }
+          if (fechaIngreso) {
+            rowChanges.push(
+              `Fecha ingreso: ${fechaIngreso.toISOString().slice(0, 10)}`,
+            );
+          }
+          if (razonRow.trim()) {
+            rowChanges.push(
+              `Razón social: ${formatImportedCompanyName(razonRow.trim())}`,
+            );
+          }
         }
       } catch (e: unknown) {
         errors.push(
@@ -2895,7 +3816,7 @@ export class ImportExportService {
         !!contactoNombreEfectivo || puedeContactoDesdeCorreoSolo;
 
       if (!puedeNombreDoc) {
-        await this.resolveCompanyImportOpportunityWithoutContact({
+        const oppResult = await this.resolveCompanyImportOpportunityWithoutContact({
             companyId,
             companyName: companyDisplayName,
             rowTitle: effectiveCompanyName,
@@ -2903,7 +3824,25 @@ export class ImportExportService {
             etapaSlug,
             assignedTo,
           });
-        created += 1;
+        const oppChanges = [...rowChanges];
+        const oppUnchanged = [...rowUnchanged];
+        if (oppResult.isNewOpportunity) {
+          oppChanges.push('Oportunidad: creada (sin contacto en fila)');
+        } else {
+          oppUnchanged.push('Oportunidad: ya existía; sin cambios');
+        }
+        oppUnchanged.push('Contacto: no indicado en la fila');
+        this.recordCompanyImportRowResult(
+          rowResults,
+          rowCounters,
+          this.buildCompanyImportRowResult({
+            row: excelRow,
+            empresaNombre: effectiveCompanyName || companyDisplayName,
+            contactoVista: '—',
+            changes: oppChanges,
+            unchanged: oppUnchanged,
+          }),
+        );
         continue;
       }
 
@@ -2947,17 +3886,50 @@ export class ImportExportService {
 
       try {
         let contactId: string | undefined;
+        let contactCreated = false;
+        let contactReport: ContactImportUpdateReport | null = null;
+        const contactImportUpdate = {
+          telefono:
+            contactoTel.trim() && contactoTel.trim() !== '-'
+              ? contactoTel.trim()
+              : undefined,
+          correo: contactoCorreo || undefined,
+          fuente: contactFuente,
+          cargo:
+            this.rowGetImportText(row, headerIndex, ['contacto_cargo']) ||
+            undefined,
+          etapa: etapaSlug,
+          assignedTo,
+          estimatedValue: facturacionEstimada,
+          setEstimatedValue:
+            !!factRaw.trim() &&
+            facturacionParsed != null &&
+            Number.isFinite(facturacionParsed) &&
+            facturacionParsed >= 0,
+          departamento: contactoDepartamento,
+          provincia: contactoProvincia,
+          distrito: contactoDistrito,
+          direccion: contactoDireccion,
+          ...(contactoClienteRec
+            ? { clienteRecuperado: contactoClienteRec }
+            : {}),
+        } satisfies Parameters<
+          ImportExportService['updateExistingContactFromImport']
+        >[1];
+
         if (existingContactId) {
           contactId = existingContactId;
           await this.ensureCompanyContactLinkForImport(
             existingContactId,
             companyId,
           );
-          await this.entitySync.propagateFromContact(
-            companyId,
+          contactReport = await this.updateExistingContactFromImport(
             existingContactId,
+            contactImportUpdate,
           );
+          await this.entitySync.propagateFromCompany(companyId);
         } else {
+          contactCreated = true;
           const createdContact = await this.contactsService.create(
             {
               name: contactName.trim(),
@@ -2983,7 +3955,7 @@ export class ImportExportService {
           contactId = createdContact.id;
         }
 
-        await this.resolveCompanyImportOpportunityForContact({
+        const oppResult = await this.resolveCompanyImportOpportunityForContact({
             companyId,
             contactId,
             companyName: companyDisplayName,
@@ -2995,7 +3967,36 @@ export class ImportExportService {
             scope,
           });
 
-        created += 1;
+        const finalChanges = [...rowChanges];
+        const finalUnchanged = [...rowUnchanged];
+        if (contactCreated) {
+          finalChanges.push(`Contacto creado: ${contactName.trim()}`);
+        } else if (contactReport) {
+          finalUnchanged.unshift(
+            `Contacto «${contactName.trim()}»: existente vinculado a la empresa`,
+          );
+          finalChanges.push(...contactReport.changes);
+          finalUnchanged.push(...contactReport.unchanged);
+        }
+        if (oppResult.isNewOpportunity) {
+          finalChanges.push('Oportunidad: creada y vinculada al contacto');
+        } else {
+          finalChanges.push(
+            'Oportunidad: actualizada (monto, etapa, asesor, título o fuente según fila)',
+          );
+        }
+
+        this.recordCompanyImportRowResult(
+          rowResults,
+          rowCounters,
+          this.buildCompanyImportRowResult({
+            row: excelRow,
+            empresaNombre: effectiveCompanyName || companyDisplayName,
+            contactoVista: contactName.trim(),
+            changes: finalChanges,
+            unchanged: finalUnchanged,
+          }),
+        );
       } catch (e: unknown) {
         errors.push(
           importRowErr(
@@ -3026,7 +4027,11 @@ export class ImportExportService {
         if (onProgress) {
           await onProgress({
             processedRows,
-            created,
+            created: rowCounters.created,
+            updated: rowCounters.updated,
+            linked: rowCounters.linked,
+            blocked: rowCounters.blocked,
+            processed: rowResults.length,
             skipped,
             errorCount: errors.length,
           });
@@ -3034,7 +4039,17 @@ export class ImportExportService {
       }
     }
 
-    return { totalRows: dataRows, created, skipped, errors };
+    return bulkImportResult({
+      totalRows: dataRows,
+      processed: rowResults.length,
+      created: rowCounters.created,
+      updated: rowCounters.updated,
+      linked: rowCounters.linked,
+      blocked: rowCounters.blocked,
+      skipped,
+      errors,
+      rows: rowResults,
+    });
   }
 
   opportunitiesTemplateCsv(): string {
@@ -3361,6 +4376,12 @@ export class ImportExportService {
       }
     }
 
-    return { totalRows: dataRows, created, skipped, errors };
+    return bulkImportResult({
+      totalRows: dataRows,
+      processed: created,
+      created,
+      skipped,
+      errors,
+    });
   }
 }

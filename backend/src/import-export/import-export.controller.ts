@@ -186,12 +186,22 @@ export class ImportExportController {
   @Post('companies/preview')
   @RequirePermissions('empresas.crear')
   @UseInterceptors(FileInterceptor('file', importFileOpts))
-  async companiesPreview(@UploadedFile() file?: Express.Multer.File) {
+  async companiesPreview(
+    @UploadedFile() file?: Express.Multer.File,
+    @Req() req?: AuthedReq,
+  ) {
     if (!file?.buffer?.length) {
       throw new BadRequestException('Adjunta un archivo Excel (.xlsx)');
     }
     const text = file.buffer.toString('utf-8');
-    return this.importExportService.previewCompaniesImport(text);
+    const scope = req?.user
+      ? await this.crmDataScope.buildScope(req.user.userId, req.user.roleId)
+      : undefined;
+    return this.importExportService.previewCompaniesImport(
+      text,
+      req?.user?.userId ?? '',
+      scope,
+    );
   }
 
   @Post('companies/import')
@@ -225,6 +235,36 @@ export class ImportExportController {
           update,
         ),
     );
+  }
+
+  @Get('companies/template-fecha-ingreso')
+  @RequirePermissions('empresas.editar')
+  companiesFechaIngresoTemplate(@Res({ passthrough: false }) res: Response) {
+    const body = this.importExportService.companiesFechaIngresoTemplateCsv();
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="plantilla-fecha-ingreso-empresas.csv"',
+    );
+    res.send(body);
+  }
+
+  @Post('companies/import-fecha-ingreso')
+  @RequirePermissions('empresas.editar')
+  @UseInterceptors(FileInterceptor('file', importFileOpts))
+  async companiesImportFechaIngreso(
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Req() req: AuthedReq,
+  ) {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException('Adjunta un archivo Excel (.xlsx)');
+    }
+    const text = file.buffer.toString('utf-8');
+    const scope = await this.crmDataScope.buildScope(
+      req.user.userId,
+      req.user.roleId,
+    );
+    return this.importExportService.importCompaniesFechaIngreso(text, scope);
   }
 
   @Get('opportunities/template')

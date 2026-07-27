@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { useImportJobsStore } from '@/store/importJobsStore';
 import { importJobErrorsList, type ImportJob } from '@/lib/importExportApi';
 import { ImportJobErrorsDialog } from '@/components/layout/ImportJobErrorsDialog';
+import { ImportJobSummaryDialog } from '@/components/layout/ImportJobSummaryDialog';
 
 function entityLabel(entity: 'contacts' | 'companies' | 'opportunities' | 'flota-prospecto') {
   if (entity === 'contacts') return 'contactos';
@@ -23,6 +24,7 @@ export function ImportJobsPanel() {
   const dismissJob = useImportJobsStore((s) => s.dismissJob);
   const notified = useRef(new Set<string>());
   const [errorsModalJob, setErrorsModalJob] = useState<ImportJob | null>(null);
+  const [summaryModalJob, setSummaryModalJob] = useState<ImportJob | null>(null);
 
   const visibleJobs = useMemo(() => jobs.slice(0, 4), [jobs]);
   const activeCount = jobs.filter(
@@ -66,6 +68,21 @@ export function ImportJobsPanel() {
           if (!o) setErrorsModalJob(null);
         }}
       />
+      <ImportJobSummaryDialog
+        open={summaryModalJob != null}
+        job={summaryModalJob}
+        onOpenChange={(o) => {
+          if (!o) setSummaryModalJob(null);
+        }}
+        onViewErrors={
+          summaryModalJob && importJobErrorsList(summaryModalJob).length > 0
+            ? () => {
+                setErrorsModalJob(summaryModalJob);
+                setSummaryModalJob(null);
+              }
+            : undefined
+        }
+      />
       {visibleJobs.length > 0 ? (
       <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-3 md:bottom-6 md:right-6">
       {visibleJobs.map((job) => {
@@ -74,6 +91,10 @@ export function ImportJobsPanel() {
         const failed = job.status === 'failed';
         const errorRows = importJobErrorsList(job);
         const canOpenErrors = errorRows.length > 0;
+        const canOpenSummary =
+          completed &&
+          ((job.result?.rows?.length ?? 0) > 0 || (job.processed ?? 0) > 0);
+        const processedCount = job.processed || job.result?.processed || 0;
         return (
           <Card
             key={job.id}
@@ -134,8 +155,19 @@ export function ImportJobsPanel() {
               <Progress value={job.percent} />
 
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                <span>Creadas: {job.created}</span>
-                {job.updated > 0 && <span>Actualizadas: {job.updated}</span>}
+                {completed && processedCount > 0 ? (
+                  <span>Procesadas: {processedCount}</span>
+                ) : null}
+                <span>Nuevas: {job.created}</span>
+                {(job.updated > 0 || completed) && job.updated > 0 ? (
+                  <span>Actualizadas: {job.updated}</span>
+                ) : null}
+                {job.linked > 0 ? <span>Vinculadas: {job.linked}</span> : null}
+                {(job.blocked > 0 || job.result?.blocked) ? (
+                  <span className="text-amber-800 dark:text-amber-200">
+                    Bloqueadas: {job.blocked || job.result?.blocked || 0}
+                  </span>
+                ) : null}
                 <span>Omitidas: {job.skipped}</span>
                 <span>Errores: {job.errorCount}</span>
               </div>
@@ -144,21 +176,34 @@ export function ImportJobsPanel() {
                 <p className="text-xs text-destructive">{job.errorMessage}</p>
               ) : null}
 
-              {canOpenErrors ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className={
-                    failed
-                      ? 'w-full border-destructive/50 text-destructive hover:bg-destructive/10'
-                      : 'w-full border-amber-600/40 text-amber-900 hover:bg-amber-50 dark:border-amber-500/35 dark:text-amber-100 dark:hover:bg-amber-950/40'
-                  }
-                  onClick={() => setErrorsModalJob(job)}
-                >
-                  Ver errores ({errorRows.length})
-                </Button>
-              ) : null}
+              <div className="flex flex-col gap-2">
+                {canOpenSummary ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => setSummaryModalJob(job)}
+                  >
+                    Ver detalle
+                  </Button>
+                ) : null}
+                {canOpenErrors ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={
+                      failed
+                        ? 'w-full border-destructive/50 text-destructive hover:bg-destructive/10'
+                        : 'w-full border-amber-600/40 text-amber-900 hover:bg-amber-50 dark:border-amber-500/35 dark:text-amber-100 dark:hover:bg-amber-950/40'
+                    }
+                    onClick={() => setErrorsModalJob(job)}
+                  >
+                    Ver errores ({errorRows.length})
+                  </Button>
+                ) : null}
+              </div>
             </CardContent>
           </Card>
         );

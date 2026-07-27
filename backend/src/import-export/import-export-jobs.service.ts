@@ -9,6 +9,9 @@ export type ImportJobProgressInput = {
   processedRows: number;
   created: number;
   updated?: number;
+  linked?: number;
+  blocked?: number;
+  processed?: number;
   skipped: number;
   errorCount: number;
 };
@@ -23,6 +26,9 @@ type ImportJobState = {
   processedRows: number;
   created: number;
   updated: number;
+  linked: number;
+  blocked: number;
+  processed: number;
   skipped: number;
   errorCount: number;
   startedAt: string;
@@ -41,6 +47,9 @@ export type ImportJobDto = {
   processedRows: number;
   created: number;
   updated: number;
+  linked: number;
+  blocked: number;
+  processed: number;
   skipped: number;
   errorCount: number;
   percent: number;
@@ -71,6 +80,9 @@ export class ImportExportJobsService {
       processedRows: job.processedRows,
       created: job.created,
       updated: job.updated,
+      linked: job.linked,
+      blocked: job.blocked,
+      processed: job.processed,
       skipped: job.skipped,
       errorCount: job.errorCount,
       percent,
@@ -111,6 +123,9 @@ export class ImportExportJobsService {
       processedRows: 0,
       created: 0,
       updated: 0,
+      linked: 0,
+      blocked: 0,
+      processed: 0,
       skipped: 0,
       errorCount: 0,
       startedAt: now,
@@ -143,6 +158,9 @@ export class ImportExportJobsService {
         current.processedRows = Math.min(current.totalRows, Math.max(0, progress.processedRows));
         current.created = Math.max(0, progress.created);
         if (progress.updated !== undefined) current.updated = Math.max(0, progress.updated);
+        if (progress.linked !== undefined) current.linked = Math.max(0, progress.linked);
+        if (progress.blocked !== undefined) current.blocked = Math.max(0, progress.blocked);
+        if (progress.processed !== undefined) current.processed = Math.max(0, progress.processed);
         current.skipped = Math.max(0, progress.skipped);
         current.errorCount = Math.max(0, progress.errorCount);
         current.updatedAt = new Date().toISOString();
@@ -151,7 +169,11 @@ export class ImportExportJobsService {
       if (!finished) return;
       finished.status = 'completed';
       finished.processedRows = finished.totalRows;
+      finished.processed = result.processed;
       finished.created = result.created;
+      finished.updated = result.updated;
+      finished.linked = result.linked;
+      finished.blocked = result.blocked;
       finished.skipped = result.skipped;
       finished.errorCount = result.errors.length;
       finished.result = result;

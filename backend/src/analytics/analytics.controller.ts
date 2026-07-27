@@ -136,4 +136,78 @@ export class AnalyticsController {
       crmScope,
     });
   }
+
+  /** Detalle de actividades completadas por asesor y semana. */
+  @Get('activities-by-advisor/details')
+  @RequireAnyPermission('dashboard.ver', 'reportes.ver')
+  async getActivitiesByAdvisorDetails(
+    @Req() req: AuthedReq,
+    @Query('advisorId') advisorId?: string,
+    @Query('weekStart') weekStart?: string,
+    @Query('weekEnd') weekEnd?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('assignedTo') assignedTo?: string,
+    @Query('excludeAssignedTo') excludeAssignedTo?: string,
+    @Query('advisorPool') advisorPool?: string,
+    @Query('source') source?: string,
+  ) {
+    const crmScope = await this.crmDataScope.buildScope(
+      req.user.userId,
+      req.user.roleId,
+    );
+    return this.analytics.getActivitiesByAdvisorDetails({
+      advisorId: advisorId ?? '',
+      weekStart: weekStart ?? '',
+      weekEnd: weekEnd ?? '',
+      from,
+      to,
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+      assignedTo,
+      excludeAssignedTo,
+      advisorPool,
+      source,
+      crmScope,
+    });
+  }
+
+  /** Detalle de tareas completadas por asesor y semana. */
+  @Get('tasks-by-advisor/details')
+  @RequireAnyPermission('dashboard.ver', 'reportes.ver')
+  async getTasksByAdvisorDetails(
+    @Req() req: AuthedReq,
+    @Query('advisorId') advisorId?: string,
+    @Query('weekStart') weekStart?: string,
+    @Query('weekEnd') weekEnd?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('assignedTo') assignedTo?: string,
+    @Query('excludeAssignedTo') excludeAssignedTo?: string,
+    @Query('advisorPool') advisorPool?: string,
+    @Query('source') source?: string,
+  ) {
+    const crmScope = await this.crmDataScope.buildScope(
+      req.user.userId,
+      req.user.roleId,
+    );
+    return this.analytics.getTasksByAdvisorDetails({
+      advisorId: advisorId ?? '',
+      weekStart: weekStart ?? '',
+      weekEnd: weekEnd ?? '',
+      from,
+      to,
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+      assignedTo,
+      excludeAssignedTo,
+      advisorPool,
+      source,
+      crmScope,
+    });
+  }
 }

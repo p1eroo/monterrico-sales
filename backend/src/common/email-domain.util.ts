@@ -28,6 +28,20 @@ const CONSUMER_EMAIL_DOMAINS = new Set([
 ]);
 
 /**
+ * Normaliza un dominio de empresa (importación o entrada manual).
+ * Acepta prefijo `@` como en plantillas Excel (`@empresa.com.pe`).
+ */
+export function normalizeCompanyDomain(
+  raw: string | undefined | null,
+): string {
+  let value = (raw ?? '').trim().toLowerCase();
+  if (!value) return '';
+  value = value.replace(/^@+/, '').trim();
+  if (value.startsWith('www.')) value = value.slice(4);
+  return value;
+}
+
+/**
  * Extrae un dominio de sitio a partir del correo del contacto (parte tras @).
  * Devuelve undefined si el correo es inválido, falta host o es dominio de consumidor genérico.
  */

@@ -18,6 +18,7 @@ import type {
   BulkImportResultDto,
   BulkImportRowError,
 } from '../import-export/import-export.service';
+import { bulkImportResult } from '../import-export/import-export.service';
 
 function normalizeStr(s: string): string {
   return s.toLowerCase().replace(/\s+/g, '').trim();
@@ -1286,13 +1287,13 @@ export class FlotaProspectosService {
     const sampleNames: string[] = [];
 
     if (rows.length < 2) {
-      return { totalRows: 0, created: 0, skipped: 0, errors };
+      return bulkImportResult({ totalRows: 0, created: 0, skipped: 0, errors });
     }
 
     const { dataRows, col } = this.findHeaderAndData(rows);
     const totalRows = dataRows.length;
     if (totalRows === 0)
-      return { totalRows: 0, created: 0, skipped: 0, errors };
+      return bulkImportResult({ totalRows: 0, created: 0, skipped: 0, errors });
 
     const sheetPhones = new Set<string>();
     for (const row of dataRows) {
@@ -1573,7 +1574,7 @@ export class FlotaProspectosService {
       description: `Importación desde archivo: ${created} creados, ${updated} actualizados, ${skipped} omitidos, ${errors.length} errores.${sampleText}`,
     });
 
-    return { totalRows, created, skipped, errors };
+    return bulkImportResult({ totalRows, created, skipped, errors });
   }
 
   /** Importar desde Google Sheets con progreso (para jobs) */
@@ -1596,13 +1597,13 @@ export class FlotaProspectosService {
     }
 
     if (rawRows.length === 0) {
-      return { totalRows: 0, created: 0, skipped: 0, errors };
+      return bulkImportResult({ totalRows: 0, created: 0, skipped: 0, errors });
     }
 
     const { dataRows, col } = this.findHeaderAndData(rawRows);
     const totalRows = dataRows.length;
     if (totalRows === 0)
-      return { totalRows: 0, created: 0, skipped: 0, errors };
+      return bulkImportResult({ totalRows: 0, created: 0, skipped: 0, errors });
 
     const sheetPhones = new Set<string>();
     for (const row of dataRows) {
@@ -1886,7 +1887,7 @@ export class FlotaProspectosService {
       description: `Importación desde Google Sheets (${sheetName}): ${created} creados, ${updated} actualizados, ${skipped} omitidos, ${errors.length} errores.${sampleText}`,
     });
 
-    return { totalRows, created, skipped, errors };
+    return bulkImportResult({ totalRows, created, skipped, errors });
   }
 
   /** Contar prospectos por estado y duplicados */

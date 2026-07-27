@@ -15,7 +15,6 @@ const TASK_COUNT_FORMS: Record<string, [singular: string, plural: string]> = {
   Llamadas: ['tarea de llamada', 'tareas de llamada'],
   Reuniones: ['tarea de reunión', 'tareas de reunión'],
   Correos: ['tarea de correo', 'tareas de correo'],
-  WhatsApp: ['tarea de WhatsApp', 'tareas de WhatsApp'],
 };
 
 function formatTaskCount(typeLabel: string, value: number): string {

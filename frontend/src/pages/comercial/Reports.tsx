@@ -58,6 +58,7 @@ import {
   type AnalyticsSummary,
   type AnalyticsKPIs,
   type AdvisorFunnelMovementDetailQuery,
+  type ActivitiesByAdvisorDetailsQuery,
 } from '@/lib/analyticsApi';
 import {
   captureReportChartImages,
@@ -87,9 +88,11 @@ import {
   activitiesByTypeHeatmapHasData,
 } from '@/lib/activitiesByTypeHeatmapUtils';
 import { ActivitiesByAdvisorStackedBarChart } from '@/components/shared/ActivitiesByAdvisorStackedBarChart';
+import { ActivitiesByAdvisorDetailSheet } from '@/components/shared/ActivitiesByAdvisorDetailSheet';
 import {
   buildActivitiesByAdvisorStackedData,
   activitiesByAdvisorStackedHasData,
+  type ActivitiesByAdvisorStackedRow,
 } from '@/lib/activitiesByAdvisorStackedUtils';
 import type { ActivitiesByTypeMonthComparison } from '@/components/shared/ActivitiesByTypeBarChart';
 import { SourcesByEntityMixedChart } from '@/components/shared/SourcesByEntityMixedChart';
@@ -112,6 +115,7 @@ import { TasksByAdvisorStackedBarChart } from '@/components/shared/TasksByAdviso
 import {
   buildTasksByAdvisorStackedData,
   tasksByAdvisorStackedHasData,
+  type TasksByAdvisorStackedRow,
 } from '@/lib/tasksByAdvisorStackedUtils';
 import { OpportunitiesWeeklyProgressStackedChart } from '@/components/shared/OpportunitiesWeeklyProgressStackedChart';
 import { CompaniesWeeklyExpandedPanel } from '@/components/shared/CompaniesWeeklyExpandedPanel';
@@ -178,7 +182,6 @@ const EMPTY_ACTIVITY_MONTH = {
   correos: 0,
   llamadas: 0,
   reuniones: 0,
-  notas: 0,
 } as const;
 
 export default function Reports() {
@@ -213,6 +216,9 @@ export default function Reports() {
   const [activitiesBarModalOpen, setActivitiesBarModalOpen] = useState(false);
   const [activitiesChartView, setActivitiesChartView] = useState<'type' | 'advisor'>('type');
   const [activitiesAdvisorWeekPillIndex, setActivitiesAdvisorWeekPillIndex] = useState(0);
+  const [activitiesAdvisorDetailOpen, setActivitiesAdvisorDetailOpen] = useState(false);
+  const [activitiesAdvisorDetailSelection, setActivitiesAdvisorDetailSelection] =
+    useState<ActivitiesByAdvisorStackedRow | null>(null);
   const [weeklyCompaniesModalOpen, setWeeklyCompaniesModalOpen] = useState(false);
   const [weeklyOpportunitiesModalOpen, setWeeklyOpportunitiesModalOpen] = useState(false);
   const [companiesWeeklyModalView, setCompaniesWeeklyModalView] =
@@ -226,6 +232,9 @@ export default function Reports() {
   const [tasksModalOpen, setTasksModalOpen] = useState(false);
   const [tasksChartView, setTasksChartView] = useState<'type' | 'advisor'>('type');
   const [tasksAdvisorWeekPillIndex, setTasksAdvisorWeekPillIndex] = useState(0);
+  const [tasksAdvisorDetailOpen, setTasksAdvisorDetailOpen] = useState(false);
+  const [tasksAdvisorDetailSelection, setTasksAdvisorDetailSelection] =
+    useState<TasksByAdvisorStackedRow | null>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
   const chartTheme = useChartTheme();
 
@@ -621,6 +630,31 @@ export default function Reports() {
     [summary?.activitiesByAdvisorWeekly, activitiesAdvisorSelectedWeekIndex],
   );
 
+  const activitiesAdvisorSelectedWeek = useMemo(() => {
+    if (activitiesAdvisorSelectedWeekIndex < 0) return null;
+    return summary?.activitiesByAdvisorWeekly?.weeks?.[activitiesAdvisorSelectedWeekIndex] ?? null;
+  }, [activitiesAdvisorSelectedWeekIndex, summary?.activitiesByAdvisorWeekly?.weeks]);
+
+  const activitiesAdvisorDetailQuery = useMemo((): Omit<
+    ActivitiesByAdvisorDetailsQuery,
+    'advisorId' | 'weekStart' | 'weekEnd' | 'page' | 'limit'
+  > => ({
+    from: reportsEffectiveRange.from,
+    to: reportsEffectiveRange.to,
+    assignedTo: advisorListParams.assignedTo,
+    excludeAssignedTo: advisorListParams.excludeAssignedTo,
+    advisorPool: advisorListParams.advisorPool,
+    source: inclusiveMultiSourceFilterToApiParam(sourceFilter),
+    area: 'comercial',
+  }), [
+    reportsEffectiveRange.from,
+    reportsEffectiveRange.to,
+    advisorListParams.assignedTo,
+    advisorListParams.excludeAssignedTo,
+    advisorListParams.advisorPool,
+    sourceFilter,
+  ]);
+
   const tasksByKindHeatmap = useMemo(
     () => buildTasksByKindHeatmapData(summary?.tasksByKindWeekly),
     [summary?.tasksByKindWeekly],
@@ -652,6 +686,31 @@ export default function Reports() {
       ),
     [summary?.tasksByAdvisorWeekly, tasksAdvisorSelectedWeekIndex],
   );
+
+  const tasksAdvisorSelectedWeek = useMemo(() => {
+    if (tasksAdvisorSelectedWeekIndex < 0) return null;
+    return summary?.tasksByAdvisorWeekly?.weeks?.[tasksAdvisorSelectedWeekIndex] ?? null;
+  }, [tasksAdvisorSelectedWeekIndex, summary?.tasksByAdvisorWeekly?.weeks]);
+
+  const tasksAdvisorDetailQuery = useMemo((): Omit<
+    ActivitiesByAdvisorDetailsQuery,
+    'advisorId' | 'weekStart' | 'weekEnd' | 'page' | 'limit'
+  > => ({
+    from: reportsEffectiveRange.from,
+    to: reportsEffectiveRange.to,
+    assignedTo: advisorListParams.assignedTo,
+    excludeAssignedTo: advisorListParams.excludeAssignedTo,
+    advisorPool: advisorListParams.advisorPool,
+    source: inclusiveMultiSourceFilterToApiParam(sourceFilter),
+    area: 'comercial',
+  }), [
+    reportsEffectiveRange.from,
+    reportsEffectiveRange.to,
+    advisorListParams.assignedTo,
+    advisorListParams.excludeAssignedTo,
+    advisorListParams.advisorPool,
+    sourceFilter,
+  ]);
 
   const activitiesHeatmapScopeLabel = useMemo(() => {
     if (!canSeeAllAdvisors || !advisorFilterIsActive) return 'Equipo completo';
@@ -1446,6 +1505,10 @@ export default function Reports() {
                       320,
                       activitiesByAdvisorStackedModal.advisors.length * 44 + 96,
                     )}
+                    onAdvisorSelect={(advisor) => {
+                      setActivitiesAdvisorDetailSelection(advisor);
+                      setActivitiesAdvisorDetailOpen(true);
+                    }}
                   />
                 ) : (
                   <p className="py-8 text-center text-sm text-muted-foreground">
@@ -1457,6 +1520,21 @@ export default function Reports() {
             </div>
           </DialogContent>
         </Dialog>
+
+        <ActivitiesByAdvisorDetailSheet
+          open={activitiesAdvisorDetailOpen}
+          onOpenChange={setActivitiesAdvisorDetailOpen}
+          advisorId={activitiesAdvisorDetailSelection?.advisorId ?? null}
+          advisorName={activitiesAdvisorDetailSelection?.advisorName ?? null}
+          weekLabel={
+            activitiesAdvisorSelectedWeek?.name ??
+            activitiesByAdvisorStackedModal.weekLabel ??
+            null
+          }
+          weekStart={activitiesAdvisorSelectedWeek?.weekStart ?? null}
+          weekEnd={activitiesAdvisorSelectedWeek?.weekEnd ?? null}
+          detailQuery={activitiesAdvisorDetailQuery}
+        />
 
         <Dialog open={weeklyCompaniesModalOpen} onOpenChange={setWeeklyCompaniesModalOpen}>
           <DialogContent className={dialogContentClass} showCloseButton closeButtonIcon="chart-reduce">
@@ -1601,6 +1679,10 @@ export default function Reports() {
                       320,
                       tasksByAdvisorStackedModal.advisors.length * 44 + 96,
                     )}
+                    onAdvisorSelect={(advisor) => {
+                      setTasksAdvisorDetailSelection(advisor);
+                      setTasksAdvisorDetailOpen(true);
+                    }}
                   />
                 ) : (
                   <p className="py-8 text-center text-sm text-muted-foreground">
@@ -1612,6 +1694,23 @@ export default function Reports() {
             </div>
           </DialogContent>
         </Dialog>
+
+        <ActivitiesByAdvisorDetailSheet
+          kind="tasks"
+          open={tasksAdvisorDetailOpen}
+          onOpenChange={setTasksAdvisorDetailOpen}
+          advisorId={tasksAdvisorDetailSelection?.advisorId ?? null}
+          advisorName={tasksAdvisorDetailSelection?.advisorName ?? null}
+          weekLabel={
+            tasksAdvisorSelectedWeek?.name ??
+            tasksByAdvisorStackedModal.weekLabel ??
+            null
+          }
+          weekStart={tasksAdvisorSelectedWeek?.weekStart ?? null}
+          weekEnd={tasksAdvisorSelectedWeek?.weekEnd ?? null}
+          detailQuery={tasksAdvisorDetailQuery}
+        />
+
         {/*<Card>
           <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 space-y-2">

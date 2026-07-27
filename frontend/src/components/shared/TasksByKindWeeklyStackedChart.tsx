@@ -14,14 +14,12 @@ const TASK_SERIES = [
   { label: 'Llamadas', color: '#0E6B40' },
   { label: 'Reuniones', color: '#2ECC87' },
   { label: 'Correos', color: '#064E31' },
-  { label: 'WhatsApp', color: '#B5EFD3' },
 ] as const;
 
 const TASK_COUNT_FORMS: Record<string, [singular: string, plural: string]> = {
   Llamadas: ['tarea de llamada', 'tareas de llamada'],
   Reuniones: ['tarea de reunión', 'tareas de reunión'],
   Correos: ['tarea de correo', 'tareas de correo'],
-  WhatsApp: ['tarea de WhatsApp', 'tareas de WhatsApp'],
 };
 
 function formatValue(n: number): string {

@@ -14,14 +14,12 @@ const ACTIVITY_SERIES = [
   { label: 'Llamadas', color: '#0E6B40' },
   { label: 'Reuniones', color: '#2ECC87' },
   { label: 'Correos', color: '#064E31' },
-  { label: 'Notas', color: '#B5EFD3' },
 ] as const;
 
 const ACTIVITY_COUNT_FORMS: Record<string, [singular: string, plural: string]> = {
   Llamadas: ['llamada', 'llamadas'],
   Reuniones: ['reunión', 'reuniones'],
   Correos: ['correo', 'correos'],
-  Notas: ['nota', 'notas'],
 };
 
 function formatValue(n: number): string {

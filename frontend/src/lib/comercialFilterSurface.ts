@@ -25,6 +25,22 @@ export const comercialFilterIconClass =
 export const comercialFilterIconLgClass =
   'size-6 shrink-0 text-[#72808f] dark:text-gray-500';
 
+/** Botón trigger de filtro single/multi en barra CRM (!h-10, w-[190px]). */
+export function comercialFilterButtonClass(
+  isActive: boolean,
+  className?: string,
+): string {
+  return cn(
+    '!h-10 w-[190px] rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-[13px] hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 text-left',
+    isActive ? 'text-black dark:text-gray-100' : 'text-[#8a9aab] dark:text-gray-400',
+    className,
+  );
+}
+
+/** Checkbox estándar en listas de filtros comerciales. */
+export const comercialFilterCheckboxClass =
+  'mr-2 h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded';
+
 /** Popovers de filtros / columnas / switcher: look pro (gradiente, sombra, radio amplio). */
 export const comercialProPopoverClass = cn(
   'overflow-hidden rounded-2xl border border-border/60 p-0',

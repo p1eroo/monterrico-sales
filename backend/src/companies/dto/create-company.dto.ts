@@ -21,4 +21,6 @@ export class CreateCompanyDto {
   clienteRecuperado?: string;
   etapa?: string;
   assignedTo?: string;
+  /** Fecha de alta (p. ej. importación con columna fecha_ingreso). */
+  createdAt?: Date;
 }
