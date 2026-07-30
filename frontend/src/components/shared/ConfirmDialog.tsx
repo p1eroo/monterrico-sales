@@ -1,6 +1,10 @@
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  formDialogNestedContentClass,
+  formDialogNestedOverlayClass,
+} from '@/components/ui/form-dialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -12,6 +16,10 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   variant?: 'default' | 'destructive';
   confirmLabel?: string;
+  /** Encima de FormDialogShell (z-201), p. ej. confirmación dentro de un modal de detalle. */
+  nested?: boolean;
+  contentClassName?: string;
+  overlayClassName?: string;
 }
 
 export function ConfirmDialog({
@@ -22,6 +30,9 @@ export function ConfirmDialog({
   onConfirm,
   variant = 'default',
   confirmLabel,
+  nested = false,
+  contentClassName,
+  overlayClassName,
 }: ConfirmDialogProps) {
   function handleConfirm() {
     onConfirm();
@@ -30,7 +41,12 @@ export function ConfirmDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent
+        overlayClassName={
+          overlayClassName ?? (nested ? formDialogNestedOverlayClass : undefined)
+        }
+        className={cn(nested && `!fixed ${formDialogNestedContentClass}`, contentClassName)}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}

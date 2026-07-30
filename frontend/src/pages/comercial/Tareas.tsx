@@ -21,11 +21,11 @@ import { TasksKanbanBoard } from '@/components/tasks/TasksKanbanBoard';
 import { TasksCalendarPopover } from '@/components/tasks/TasksCalendarPopover';
 import { TaskDueColorGuide } from '@/components/tasks/TaskDueColorGuide';
 import { TASK_KINDS } from '@/types';
-import type { CreateActivityPayload, UpdateActivityPayload } from '@/lib/activityApi';
+import type { UpdateActivityPayload } from '@/lib/activityApi';
 import {
+  buildCreateTaskPayloadFromForm,
   buildTaskDetailUpdatePayload,
-  associationIdsFromTaskAssociations,
-  normalizeTaskAssociations,
+  taskFormHasEntityLinks,
 } from '@/lib/taskActivityUpdate';
 import { priorityLabels } from '@/data/mock';
 import { useActivities } from '@/hooks/useActivities';
@@ -111,8 +111,8 @@ import {
   type TaskDueUrgencyFilter,
 } from '@/lib/taskStatus';
 import {
-  contactLineFromTaskAssociations,
   mergeCompaniesForTaskPicker,
+  contactLineFromTaskAssociations,
   taskAssociationsFromActivity,
   taskLinkBadgesFromActivity,
 } from '@/lib/taskAssociationsFromActivity';
@@ -632,44 +632,15 @@ export default function TareasPage() {
   }
 
   async function handleTaskFormSave(data: TaskFormResult): Promise<void> {
-    const links = associationIdsFromTaskAssociations(
-      normalizeTaskAssociations(data.associations),
-    );
-
-    if (
-      links.contactIds.length === 0 &&
-      links.companyIds.length === 0 &&
-      links.opportunityIds.length === 0 &&
-      links.clienteEmpresaIds.length === 0
-    ) {
+    if (!taskFormHasEntityLinks(data)) {
       toast.error('Debes vincular la tarea a un contacto, empresa u oportunidad');
       throw new Error('TASK_FORM_VALIDATION');
     }
-    const payload: CreateActivityPayload = {
-      type: 'tarea',
-      taskKind: data.type,
-      title: data.title,
-      description: '',
-      assignedTo: data.assignee,
-      status: data.status,
-      priority: data.priority,
-      dueDate: data.dueDate,
-      startDate: data.startDate,
-      startTime: data.startTime,
-      ...(data.status === 'completada'
-        ? { completedAt: new Date().toISOString().slice(0, 10) }
-        : {}),
-      contactIds: links.contactIds,
-      companyIds: links.companyIds,
-      opportunityIds: links.opportunityIds,
-      clienteEmpresaIds: links.clienteEmpresaIds,
-    };
-    const optimisticDisplay = {
-      assigneeName: data.assigneeName,
-      contactNameLine: contactLineFromTaskAssociations(data.associations),
-    };
     try {
-      await createActivity(payload, optimisticDisplay);
+      await createActivity(buildCreateTaskPayloadFromForm(data), {
+        assigneeName: data.assigneeName,
+        contactNameLine: contactLineFromTaskAssociations(data.associations),
+      });
       toast.success('Tarea creada');
     } catch (e) {
       if (e instanceof Error && e.message === 'TASK_FORM_VALIDATION') return;

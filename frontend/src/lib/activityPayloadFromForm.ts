@@ -1,6 +1,7 @@
 import type { ActivityFormData } from '@/components/shared/ActivityFormDialog';
 import type { Activity, TaskKind } from '@/types';
 import type { CreateActivityPayload, UpdateActivityPayload } from '@/lib/activityApi';
+import { linkIdsFromActivity } from '@/lib/activityEntityLinks';
 import { formatTodayPeruYmd } from '@/lib/formatters';
 
 export type ActivityEntityContext = {
@@ -13,14 +14,47 @@ export type ActivityEntityContext = {
 export function entityContextFromActivity(
   activity: Pick<
     Activity,
-    'contactId' | 'companyId' | 'opportunityId' | 'clienteEmpresaId'
+    | 'contactId'
+    | 'companyId'
+    | 'opportunityId'
+    | 'clienteEmpresaId'
+    | 'linkedContacts'
+    | 'linkedCompanies'
+    | 'linkedOpportunities'
+    | 'linkedClienteEmpresas'
   >,
 ): ActivityEntityContext {
+  const links = linkIdsFromActivity(activity as Activity);
   return {
-    contactId: activity.contactId,
-    companyId: activity.companyId,
-    opportunityId: activity.opportunityId,
-    clienteEmpresaId: activity.clienteEmpresaId,
+    contactId: links.contactIds[0],
+    companyId: links.companyIds[0],
+    opportunityId: links.opportunityIds[0],
+    clienteEmpresaId: links.clienteEmpresaIds[0],
+  };
+}
+
+export function entityLinkIdsFromActivity(
+  activity: Pick<
+    Activity,
+    | 'contactId'
+    | 'companyId'
+    | 'opportunityId'
+    | 'clienteEmpresaId'
+    | 'linkedContacts'
+    | 'linkedCompanies'
+    | 'linkedOpportunities'
+    | 'linkedClienteEmpresas'
+  >,
+): Pick<
+  CreateActivityPayload,
+  'contactIds' | 'companyIds' | 'opportunityIds' | 'clienteEmpresaIds'
+> {
+  const links = linkIdsFromActivity(activity as Activity);
+  return {
+    contactIds: links.contactIds,
+    companyIds: links.companyIds,
+    opportunityIds: links.opportunityIds,
+    clienteEmpresaIds: links.clienteEmpresaIds,
   };
 }
 
@@ -105,6 +139,7 @@ export async function completeTaskWithActivityForm(params: {
       entityContextFromActivity(params.task),
       assignedTo,
     ),
+    ...entityLinkIdsFromActivity(params.task),
     status: 'completada',
     completedAt,
   };

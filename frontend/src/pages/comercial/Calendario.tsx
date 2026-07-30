@@ -9,6 +9,10 @@ import { toast } from '@/lib/notify';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { ActivityFormDialog, type ActivityFormData } from '@/components/shared/ActivityFormDialog';
 import { activityPayloadFromForm } from '@/lib/activityPayloadFromForm';
+import {
+  buildCreateTaskPayloadFromForm,
+  taskFormHasEntityLinks,
+} from '@/lib/taskActivityUpdate';
 import { TaskFormDialog, type TaskFormResult } from '@/components/shared/TaskFormDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -386,30 +390,12 @@ export default function CalendarioPage() {
   }
 
   async function handleCalendarTaskFormSave(data: TaskFormResult) {
-    const contactAssoc = data.associations?.find((a) => a.type === 'contacto');
-    const negocioAssoc = data.associations?.find((a) => a.type === 'negocio');
-    const empresaAssoc = data.associations?.find((a) => a.type === 'empresa');
-    const companyId =
-      empresaAssoc?.id && /^c[a-z0-9]+$/i.test(empresaAssoc.id) ? empresaAssoc.id : undefined;
-
-    if (!contactAssoc && !companyId && !negocioAssoc) {
+    if (!taskFormHasEntityLinks(data)) {
       toast.error('Debes vincular la tarea a un contacto, empresa u oportunidad');
       throw new Error('validation');
     }
     try {
-      await apiCreateActivity({
-        type: 'tarea',
-        taskKind: data.type,
-        title: data.title,
-        description: '',
-        assignedTo: data.assignee,
-        dueDate: data.dueDate,
-        startDate: data.startDate,
-        startTime: data.startTime,
-        contactId: contactAssoc?.id,
-        companyId,
-        opportunityId: negocioAssoc?.id,
-      });
+      await apiCreateActivity(buildCreateTaskPayloadFromForm(data));
       void loadCalendarActivities();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al crear la tarea');

@@ -17,6 +17,7 @@ import {
 import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLogsApi';
 import { useUsers } from '@/hooks/useUsers';
 import { useActivities } from '@/hooks/useActivities';
+import { activityMatchesEntityFilter } from '@/lib/activityEntityLinks';
 import type { Etapa, CompanyRubro, CompanyTipo, ContactSource, TimelineEvent, Contact, Activity } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { EntityDetailPageSkeleton } from '@/components/shared/EntityDetailPageSkeleton';
@@ -404,8 +405,10 @@ export default function EmpresaDetailPage() {
   );
   const persistedCompanyActivities = useMemo(() => activitiesFromStore.filter((activity) => {
     if (activity.type === 'tarea') return false;
-    if (resolvedCompanyId && activity.companyId === resolvedCompanyId) return true;
-    return !!activity.contactId && companyContactIds.includes(activity.contactId);
+    return activityMatchesEntityFilter(activity, {
+      companyId: resolvedCompanyId,
+      companyContactIds,
+    });
   }), [activitiesFromStore, resolvedCompanyId, companyContactIds]);
   const tasksTabRef = useRef<TasksTabHandle>(null);
   const [newOppOpen, setNewOppOpen] = useState(false);
@@ -1332,7 +1335,6 @@ return (
               opportunities={companyOpportunities}
               contactId={firstContact?.id}
               followUpAssociations={followUpAssociations}
-              onTaskCreated={(task) => tasksTabRef.current?.addTask(task as any)}
               onActivityCreated={handleQuickActivityCreated}
               inline
             />

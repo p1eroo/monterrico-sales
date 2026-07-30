@@ -9,8 +9,14 @@ import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFor
 import { useActivities } from '@/hooks/useActivities';
 import type { Contact, Opportunity, TaskAssociation, Activity, TaskKind } from '@/types';
 import { TASK_KINDS } from '@/types';
-import type { UpdateActivityPayload } from '@/lib/activityApi';
+import { activityMatchesTasksTabContext } from '@/lib/activityEntityLinks';
 import { completeTaskWithActivityForm } from '@/lib/activityPayloadFromForm';
+import {
+  buildCreateTaskPayloadFromForm,
+  buildTaskDetailUpdatePayload,
+  normalizeTaskAssociations,
+  taskFormHasEntityLinks,
+} from '@/lib/taskActivityUpdate';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -192,46 +198,82 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
   const tasks = useMemo(() => {
     const filtered = activities.filter((a) => {
       if (!isTaskActivity(a)) return false;
-      if (contactId && a.contactId === contactId) return true;
-      if (companyId && a.companyId === companyId) return true;
-      if (clienteEmpresaId && a.clienteEmpresaId === clienteEmpresaId) return true;
-      if (opportunityId && a.opportunityId === opportunityId) return true;
-      return false;
+      return activityMatchesTasksTabContext(a, {
+        contactId,
+        companyId,
+        opportunityId,
+        clienteEmpresaId,
+      });
     });
     return filtered.map(activityToMockTask);
   }, [activities, contactId, companyId, opportunityId, clienteEmpresaId]);
 
   useImperativeHandle(ref, () => ({
     addTask: async (task) => {
-      const contactAssoc = task.associations?.find((a) => a.type === 'contacto');
-      const empresaAssoc = task.associations?.find((a) => a.type === 'empresa');
-      const clienteEmpresaAssoc = task.associations?.find((a) => a.type === 'cliente_empresa');
-      const negocioAssoc = task.associations?.find((a) => a.type === 'negocio');
-      const userId = users.find((u) => u.name === task.assignee)?.id ?? defaultAssigneeId ?? activeAdvisors[0]?.id;
+      const userId =
+        users.find((u) => u.name === task.assignee)?.id ??
+        defaultAssigneeId ??
+        activeAdvisors[0]?.id;
       if (!userId) return;
-      const contactIdToUse = contactAssoc?.id ?? contactId;
-      const companyIdToUse = empresaAssoc?.id && /^c[a-z0-9]+$/i.test(empresaAssoc.id) ? empresaAssoc.id : companyId;
-      const clienteEmpresaIdToUse = clienteEmpresaAssoc?.id ?? clienteEmpresaId;
-      const opportunityIdToUse = negocioAssoc?.id ?? opportunityId;
-      if (!contactIdToUse && !companyIdToUse && !clienteEmpresaIdToUse && !opportunityIdToUse) return;
+
+      const mergedAssociations = normalizeTaskAssociations(task.associations);
+      const formLike = {
+        title: task.title,
+        type:
+          task.type && TASK_KINDS.includes(task.type as TaskKind)
+            ? (task.type as TaskKind)
+            : 'llamada',
+        status: (task.status as TaskStatus) || 'pendiente',
+        priority: (task.priority as TaskPriority) || 'media',
+        assignee: userId,
+        assigneeName: task.assignee,
+        startDate: task.startDate,
+        startTime: task.startTime,
+        dueDate: task.dueDate,
+        associations: mergedAssociations,
+      };
+
+      if (!taskFormHasEntityLinks(formLike)) {
+        const fallbackAssocs: TaskAssociation[] = [...mergedAssociations];
+        if (contactId && !fallbackAssocs.some((a) => a.type === 'contacto' && a.id === contactId)) {
+          const c = contacts.find((x) => x.id === contactId);
+          fallbackAssocs.push({ type: 'contacto', id: contactId, name: c?.name ?? 'Contacto' });
+        }
+        if (
+          companyId &&
+          !fallbackAssocs.some((a) => a.type === 'empresa' && a.id === companyId)
+        ) {
+          const c = companies.find((x) => x.id === companyId);
+          fallbackAssocs.push({ type: 'empresa', id: companyId, name: c?.name ?? 'Empresa' });
+        }
+        if (
+          opportunityId &&
+          !fallbackAssocs.some((a) => a.type === 'negocio' && a.id === opportunityId)
+        ) {
+          const o = opportunities.find((x) => x.id === opportunityId);
+          fallbackAssocs.push({
+            type: 'negocio',
+            id: opportunityId,
+            name: o?.title ?? 'Oportunidad',
+          });
+        }
+        if (
+          clienteEmpresaId &&
+          !fallbackAssocs.some((a) => a.type === 'cliente_empresa' && a.id === clienteEmpresaId)
+        ) {
+          fallbackAssocs.push({
+            type: 'cliente_empresa',
+            id: clienteEmpresaId,
+            name: 'Empresa cliente',
+          });
+        }
+        formLike.associations = fallbackAssocs;
+      }
+
+      if (!taskFormHasEntityLinks(formLike)) return;
+
       try {
-        await createActivity({
-          type: 'tarea',
-          taskKind:
-            task.type && TASK_KINDS.includes(task.type as TaskKind)
-              ? task.type
-              : 'llamada',
-          title: task.title,
-          description: '',
-          assignedTo: userId,
-          dueDate: task.dueDate,
-          startDate: task.startDate,
-          startTime: task.startTime,
-          contactId: contactIdToUse,
-          companyId: companyIdToUse,
-          clienteEmpresaId: clienteEmpresaIdToUse,
-          opportunityId: opportunityIdToUse,
-        });
+        await createActivity(buildCreateTaskPayloadFromForm(formLike));
         toast.success('Tarea creada');
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'Error al crear');
@@ -613,6 +655,12 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
                 return;
               }
               try {
+                const linkPayload = {
+                  ...(contactId ? { contactIds: [contactId] } : {}),
+                  ...(companyId ? { companyIds: [companyId] } : {}),
+                  ...(clienteEmpresaId ? { clienteEmpresaIds: [clienteEmpresaId] } : {}),
+                  ...(opportunityId ? { opportunityIds: [opportunityId] } : {}),
+                };
                 await createActivity({
                   type: 'tarea',
                   taskKind:
@@ -625,10 +673,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
                   dueDate,
                   startDate: linkedTaskStartDate || undefined,
                   startTime: linkedTaskTime || undefined,
-                  contactId: contactId || undefined,
-                  companyId: companyId || undefined,
-                  clienteEmpresaId: clienteEmpresaId || undefined,
-                  opportunityId: opportunityId || undefined,
+                  ...linkPayload,
                 });
                 toast.success(`Tarea "${linkedTaskTitle}" creada`);
                 setLinkedTaskOpen(false);
@@ -666,21 +711,10 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
           for (const nd of newTasks) {
             const oldDetail = current.find((c) => c.id === nd.id);
             if (!oldDetail) continue;
-            const payload: UpdateActivityPayload = {};
-            if (nd.title !== oldDetail.title) payload.title = nd.title;
-            if (nd.status !== oldDetail.status) {
-              payload.status = nd.status;
-              if (nd.status === 'completada') {
-                payload.completedAt = new Date().toISOString().slice(0, 10);
-              }
-            }
-            if (nd.type !== oldDetail.type) payload.taskKind = nd.type;
-            if (nd.dueDate !== oldDetail.dueDate) payload.dueDate = nd.dueDate;
-            if (nd.startDate !== oldDetail.startDate) payload.startDate = nd.startDate;
-            if (nd.startTime !== oldDetail.startTime) payload.startTime = nd.startTime;
-            if ((nd.priority ?? 'media') !== (oldDetail.priority ?? 'media')) {
-              payload.priority = nd.priority ?? 'media';
-            }
+            const prevAssigneeId = users.find((u) => u.name === oldDetail.assignee)?.id;
+            const payload = buildTaskDetailUpdatePayload(oldDetail, nd, {
+              previousAssigneeId: prevAssigneeId,
+            });
             if (Object.keys(payload).length === 0) continue;
             try {
               await updateActivity(nd.id, payload);

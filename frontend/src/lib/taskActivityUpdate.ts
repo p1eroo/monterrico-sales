@@ -1,6 +1,7 @@
-import type { UpdateActivityPayload } from '@/lib/activityApi';
+import type { CreateActivityPayload, UpdateActivityPayload } from '@/lib/activityApi';
 import { isLikelyCompanyCuid } from '@/lib/companyApi';
 import type { TaskDetailTask } from '@/components/shared/TaskDetailDialog';
+import type { TaskFormResult } from '@/components/shared/TaskFormDialog';
 import type { TaskAssociation } from '@/types';
 
 /** Quita duplicados exactos (mismo tipo + id). */
@@ -60,6 +61,43 @@ export function taskAssociationsChanged(
   next?: TaskAssociation[],
 ): boolean {
   return associationLinkKey(prev) !== associationLinkKey(next);
+}
+
+export function taskFormHasEntityLinks(data: TaskFormResult): boolean {
+  const links = associationIdsFromTaskAssociations(
+    normalizeTaskAssociations(data.associations),
+  );
+  return (
+    links.contactIds.length > 0 ||
+    links.companyIds.length > 0 ||
+    links.opportunityIds.length > 0 ||
+    links.clienteEmpresaIds.length > 0
+  );
+}
+
+export function buildCreateTaskPayloadFromForm(data: TaskFormResult): CreateActivityPayload {
+  const links = associationIdsFromTaskAssociations(
+    normalizeTaskAssociations(data.associations),
+  );
+  return {
+    type: 'tarea',
+    taskKind: data.type,
+    title: data.title,
+    description: '',
+    assignedTo: data.assignee,
+    status: data.status,
+    priority: data.priority,
+    dueDate: data.dueDate,
+    startDate: data.startDate,
+    startTime: data.startTime,
+    ...(data.status === 'completada'
+      ? { completedAt: new Date().toISOString().slice(0, 10) }
+      : {}),
+    contactIds: links.contactIds,
+    companyIds: links.companyIds,
+    opportunityIds: links.opportunityIds,
+    clienteEmpresaIds: links.clienteEmpresaIds,
+  };
 }
 
 export function buildTaskDetailUpdatePayload(

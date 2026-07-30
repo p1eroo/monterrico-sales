@@ -1,5 +1,10 @@
 import type { Activity } from '@/types';
 import { TASK_KINDS, type TaskKind } from '@/types';
+import {
+  activityIsLinkedToContact,
+  activityIsLinkedToCompany,
+  contactIdsFromActivity,
+} from '@/lib/activityEntityLinks';
 
 /** Misma noción de “tarea” que en TasksTab: type tarea + taskKind válido y no completada. */
 export function isPendingTaskActivity(a: Activity): boolean {
@@ -31,7 +36,7 @@ export function nextPendingTaskForContact(
 ): NextPendingTaskSummary | null {
   if (!contactId) return null;
   const candidates = list.filter(
-    (a) => isPendingTaskActivity(a) && a.contactId === contactId,
+    (a) => isPendingTaskActivity(a) && activityIsLinkedToContact(a, contactId),
   );
   const first = sortByDueDateThenCreated(candidates)[0];
   return first ? { title: first.title, dueDate: first.dueDate } : null;
@@ -49,8 +54,9 @@ export function nextPendingTaskForCompanyScope(
   const { companyId } = opts;
   const candidates = list.filter((a) => {
     if (!isPendingTaskActivity(a)) return false;
-    if (companyId && a.companyId === companyId) return true;
-    if (a.contactId && contactSet.has(a.contactId)) return true;
+    if (companyId && activityIsLinkedToCompany(a, companyId)) return true;
+    const linkedContacts = contactIdsFromActivity(a);
+    if (linkedContacts.some((id) => contactSet.has(id))) return true;
     return false;
   });
   const first = sortByDueDateThenCreated(candidates)[0];

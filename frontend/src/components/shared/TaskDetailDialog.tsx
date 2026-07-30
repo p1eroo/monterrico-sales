@@ -1076,6 +1076,7 @@ export function TaskDetailDialog({
         }
         onConfirm={confirmTaskDelete}
         variant="destructive"
+        nested
       />
     </>
   );

@@ -13,6 +13,7 @@ import { useActivities } from '@/hooks/useActivities';
 import { useUsers } from '@/hooks/useUsers';
 import { getPrimaryCompany } from '@/lib/utils';
 import { mergeCompaniesForTaskPicker, taskAssociationsFromActivity } from '@/lib/taskAssociationsFromActivity';
+import { activityMatchesEntityFilter } from '@/lib/activityEntityLinks';
 import type { CompanyRubro, Etapa, TimelineEvent, Activity } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { DetailLayout } from '@/components/shared/DetailLayout';
@@ -150,14 +151,21 @@ export default function OportunidadDetailPage() {
   }, [fromApi, apiRecord, opp, linkedContact]);
 
   const initialOppActivities = useMemo(() => {
-    if (!opp?.contactId) return [];
-    return activities.filter((a) => a.contactId === opp.contactId);
-  }, [opp]);
+    if (!opp?.id) return [];
+    return activities.filter((a) =>
+      activityMatchesEntityFilter(a, {
+        opportunityId: opp.id,
+        contactId: opp.contactId,
+      }),
+    );
+  }, [activities, opp?.id, opp?.contactId]);
   const [oppActivities, setOppActivities] = useState(initialOppActivities);
   const persistedOppActivities = useMemo(() => activitiesFromStore.filter((activity) => {
     if (activity.type === 'tarea') return false;
-    if (opp?.id && activity.opportunityId === opp.id) return true;
-    return !!opp?.contactId && activity.contactId === opp.contactId;
+    return activityMatchesEntityFilter(activity, {
+      opportunityId: opp?.id,
+      contactId: opp?.contactId,
+    });
   }), [activitiesFromStore, opp?.id, opp?.contactId]);
   const noteActivities = useMemo(
     () => oppActivities.filter((activity) => activity.type === 'nota'),
@@ -960,7 +968,6 @@ async function handleCreateNewContact(data: NewContactData) {
               opportunities={[opp]}
               contactId={opp?.contactId}
               followUpAssociations={followUpAssociations}
-              onTaskCreated={(task) => tasksTabRef.current?.addTask(task as any)}
               onActivityCreated={handleQuickActivityCreated}
               inline
             />

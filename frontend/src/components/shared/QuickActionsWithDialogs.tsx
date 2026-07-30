@@ -11,6 +11,12 @@ import {
 } from 'lucide-react';
 import { toast } from '@/lib/notify';
 import type { Contact, Opportunity, TaskAssociation } from '@/types';
+import { useActivities } from '@/hooks/useActivities';
+import {
+  buildCreateTaskPayloadFromForm,
+  taskFormHasEntityLinks,
+} from '@/lib/taskActivityUpdate';
+import { contactLineFromTaskAssociations } from '@/lib/taskAssociationsFromActivity';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -137,7 +143,6 @@ export function QuickActionsWithDialogs({
   contacts = [],
   companies = [],
   opportunities = [],
-  onTaskCreated,
   onActivityCreated,
   followUpAssociations = [],
   excludeActions = [],
@@ -145,6 +150,7 @@ export function QuickActionsWithDialogs({
   clienteEmpresaId,
   clienteEmpresaName,
 }: QuickActionsWithDialogsProps) {
+  const { createActivity } = useActivities();
   const [activeDialog, setActiveDialog] = useState<string | null>(null);
   const [noteContent, setNoteContent] = useState('');
 
@@ -193,24 +199,24 @@ export function QuickActionsWithDialogs({
     setActiveDialog(null);
   }
 
-  function handleTaskFormSave(data: TaskFormResult) {
-    const companyFromAssoc = data.associations?.find((a) => a.type === 'empresa')?.name;
-    const task: QuickTask = {
-      id: `t${Date.now()}`,
-      title: data.title,
-      status: data.status as TaskStatus,
-      type: data.type as TaskType,
-      priority: data.priority,
-      company: companyFromAssoc,
-      startDate: data.startDate,
-      dueDate: data.dueDate,
-      startTime: data.startTime,
-      assignee: data.assigneeName,
-      associations: data.associations,
-    };
-    onTaskCreated?.(task);
-    setTaskFormOpen(false);
-    setLinkedTaskFormOpen(false);
+  async function handleTaskFormSave(data: TaskFormResult) {
+    if (!taskFormHasEntityLinks(data)) {
+      toast.error('Debes vincular la tarea a un contacto, empresa u oportunidad');
+      throw new Error('TASK_FORM_VALIDATION');
+    }
+    try {
+      await createActivity(buildCreateTaskPayloadFromForm(data), {
+        assigneeName: data.assigneeName,
+        contactNameLine: contactLineFromTaskAssociations(data.associations),
+      });
+      toast.success('Tarea creada');
+      setTaskFormOpen(false);
+      setLinkedTaskFormOpen(false);
+    } catch (e) {
+      if (e instanceof Error && e.message === 'TASK_FORM_VALIDATION') return;
+      toast.error(e instanceof Error ? e.message : 'Error al crear tarea');
+      throw e;
+    }
   }
 
   async function handleActivitySave(data: import('./ActivityFormDialog').ActivityFormData) {

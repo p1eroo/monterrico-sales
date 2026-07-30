@@ -23,6 +23,10 @@ import { useAppStore } from '@/store';
 import { canReassignCommercialAdvisor } from '@/data/rbac';
 import { getPrimaryCompany } from '@/lib/utils';
 import { taskAssociationsFromActivity } from '@/lib/taskAssociationsFromActivity';
+import {
+  activityIsLinkedToContact,
+  activityMatchesEntityFilter,
+} from '@/lib/activityEntityLinks';
 
 import { EmptyState } from '@/components/shared/EmptyState';
 import { LinkExistingDialog, type LinkExistingItem } from '@/components/shared/LinkExistingDialog';
@@ -253,15 +257,17 @@ export default function ContactoDetailPage() {
   const mergedContacts = useMemo(() => contacts, [contacts]);
 
   const initialActivities = useMemo(
-    () => activities.filter((a) => a.contactId === routeId),
-    [routeId],
+    () => activities.filter((a) => activityIsLinkedToContact(a, routeId)),
+    [activities, routeId],
   );
 
   const persistedContactActivities = useMemo(() => activitiesFromStore.filter((activity) => {
     if (activity.type === 'tarea') return false;
-    if (contact?.id && activity.contactId === contact.id) return true;
     const primaryCompanyId = contact ? getPrimaryCompany(contact)?.id : undefined;
-    return !!primaryCompanyId && activity.companyId === primaryCompanyId;
+    return activityMatchesEntityFilter(activity, {
+      contactId: contact?.id,
+      primaryCompanyId,
+    });
   }), [activitiesFromStore, contact]);
 
   const contactOpportunities = useMemo(() => {
@@ -946,7 +952,6 @@ export default function ContactoDetailPage() {
               opportunities={contactOpportunities}
               contactId={contact.id}
               followUpAssociations={followUpAssociations}
-              onTaskCreated={(task) => tasksTabRef.current?.addTask(task as any)}
               onActivityCreated={handleQuickActivityCreated}
               excludeActions={['archivo']}
               inline

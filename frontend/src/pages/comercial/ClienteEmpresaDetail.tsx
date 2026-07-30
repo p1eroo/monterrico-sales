@@ -416,7 +416,6 @@ export default function ClienteEmpresaDetailPage() {
                 clienteEmpresaId={empresa.id}
                 clienteEmpresaName={empresa.empresa}
                 followUpAssociations={followUpAssociations}
-                onTaskCreated={(task) => tasksTabRef.current?.addTask(task)}
                 onActivityCreated={handleQuickActivityCreated}
                 inline
               />
