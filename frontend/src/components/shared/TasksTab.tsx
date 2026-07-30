@@ -10,6 +10,7 @@ import { useActivities } from '@/hooks/useActivities';
 import type { Contact, Opportunity, TaskAssociation, Activity, TaskKind } from '@/types';
 import { TASK_KINDS } from '@/types';
 import type { UpdateActivityPayload } from '@/lib/activityApi';
+import { completeTaskWithActivityForm } from '@/lib/activityPayloadFromForm';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -419,38 +420,44 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
           type={completedTask.type}
           open={activityFromTaskOpen}
           onOpenChange={(open) => { setActivityFromTaskOpen(open); if (!open) setCompletedTask(null); }}
-          onSave={(data) => {
-            if (!completedTask) return;
+          onSave={async (data) => {
+            if (!completedTask?.type || !TASK_KINDS.includes(completedTask.type)) return;
             const t = completedTask;
-            const summary = data.description?.trim() || '';
-            const payload: UpdateActivityPayload = {
-              status: 'completada',
-              completedAt: new Date().toISOString().slice(0, 10),
-            };
-            if (summary) payload.description = summary;
-            setLinkPromptSource(t);
-            setActivityFromTaskOpen(false);
-            setLinkedTaskPromptOpen(true);
-            void updateActivity(t.id, payload)
-              .then(() => {
-                onActivityCreated?.({
-                  id: t.id,
-                  type: t.type!,
-                  title: t.title,
-                  description: summary,
-                  assignedTo: '',
-                  assignedToName: t.assignee,
-                  status: 'completada',
-                  dueDate: t.dueDate,
-                  createdAt: new Date().toISOString().slice(0, 10),
-                  contactId,
-                });
-              })
-              .catch((e) => {
-                toast.error(
-                  e instanceof Error ? e.message : 'Error al guardar; el estado se revirtió.',
-                );
+            const kind = completedTask.type!;
+            const sourceActivity = activities.find((a) => a.id === t.id);
+            if (!sourceActivity) {
+              toast.error('No se encontró la tarea para registrar la actividad');
+              throw new Error('task_not_found');
+            }
+            try {
+              const { savedActivity } = await completeTaskWithActivityForm({
+                kind,
+                form: data,
+                task: sourceActivity,
+                createActivity,
+                updateActivity,
               });
+              setLinkPromptSource(t);
+              setActivityFromTaskOpen(false);
+              setLinkedTaskPromptOpen(true);
+              onActivityCreated?.({
+                id: savedActivity.id,
+                type: savedActivity.type,
+                title: savedActivity.title,
+                description: savedActivity.description,
+                assignedTo: savedActivity.assignedTo,
+                assignedToName: savedActivity.assignedToName,
+                status: savedActivity.status,
+                dueDate: savedActivity.dueDate,
+                createdAt: savedActivity.createdAt,
+                contactId: savedActivity.contactId ?? contactId,
+              });
+            } catch (e) {
+              toast.error(
+                e instanceof Error ? e.message : 'Error al guardar; el estado se revirtió.',
+              );
+              throw e;
+            }
           }}
           taskSummary={{
             title: completedTask.title,

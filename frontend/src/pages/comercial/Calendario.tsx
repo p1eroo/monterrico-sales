@@ -8,6 +8,7 @@ import {
 import { toast } from '@/lib/notify';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { ActivityFormDialog, type ActivityFormData } from '@/components/shared/ActivityFormDialog';
+import { activityPayloadFromForm } from '@/lib/activityPayloadFromForm';
 import { TaskFormDialog, type TaskFormResult } from '@/components/shared/TaskFormDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -81,56 +82,6 @@ const NEW_ACTIVITY_ACTIONS = [
   { kind: 'whatsapp' as const, icon: MessageCircle, label: 'WhatsApp' },
   { kind: 'tarea' as const, icon: ClipboardList, label: 'Tarea' },
 ];
-
-function activityPayloadFromForm(
-  kind: 'llamada' | 'reunion' | 'correo' | 'whatsapp',
-  data: ActivityFormData,
-  ctx: { contactId?: string; companyId?: string; opportunityId?: string },
-  assignedTo: string,
-): CreateActivityPayload {
-  const today = new Date().toISOString().slice(0, 10);
-  let dueDate = today;
-  let startDate = today;
-  let startTime = '09:00';
-  const extra: string[] = [];
-
-  if (kind === 'llamada') {
-    dueDate = data.date || today;
-    startDate = data.date || today;
-    startTime = data.time || '09:00';
-    if (data.duration) extra.push(`Duración: ${data.duration} min`);
-    if (data.result) extra.push(`Resultado: ${data.result}`);
-  } else if (kind === 'reunion') {
-    const dt = data.dateTime?.trim();
-    if (dt) {
-      dueDate = dt.slice(0, 10);
-      startDate = dt.slice(0, 10);
-      startTime = dt.length >= 16 ? dt.slice(11, 16) : '09:00';
-    }
-    if (data.meetingType) extra.push(`Modalidad: ${data.meetingType}`);
-    if (data.result) extra.push(`Resultado: ${data.result}`);
-  } else {
-    dueDate = today;
-    startDate = today;
-    startTime = '09:00';
-  }
-
-  const title =
-    data.title?.trim() ||
-    (kind === 'llamada' ? 'Llamada' : kind === 'reunion' ? 'Reunión' : kind === 'correo' ? 'Correo' : 'WhatsApp');
-  const description = [data.description?.trim(), ...extra].filter(Boolean).join('\n');
-
-  return {
-    type: kind,
-    title,
-    description,
-    assignedTo,
-    dueDate,
-    startDate,
-    startTime,
-    ...ctx,
-  };
-}
 
 export default function CalendarioPage() {
   const googleConnected = useAppStore((s) => s.googleConnected);

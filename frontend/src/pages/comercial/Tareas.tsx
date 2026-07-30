@@ -101,6 +101,7 @@ import {
   taskAssociationsFromActivity,
   taskLinkBadgesFromActivity,
 } from '@/lib/taskAssociationsFromActivity';
+import { completeTaskWithActivityForm } from '@/lib/activityPayloadFromForm';
 
 const taskKindIcons: Record<TaskKind, ComponentType<{ className?: string }>> = {
   llamada: LlamadaSvgIcon,
@@ -1332,24 +1333,28 @@ export default function TareasPage() {
                 setTaskCompletionPreviewId(null);
               }
             }}
-            onSave={(data) => {
-              if (!completedTask) return;
+            onSave={async (data) => {
+              if (!completedTask?.taskKind || !TASK_KINDS.includes(completedTask.taskKind)) return;
               const t = completedTask;
-              const summary = data.description?.trim() || '';
-              const payload: UpdateActivityPayload = {
-                status: 'completada',
-                completedAt: new Date().toISOString().slice(0, 10),
-              };
-              if (summary) payload.description = summary;
-              setLinkPromptSourceActivity(t);
-              setTaskCompletionPreviewId(null);
-              setActivityFromTaskOpen(false);
-              setLinkedTaskPromptOpen(true);
-              void updateActivity(t.id, payload).catch((e) => {
+              const kind = completedTask.taskKind!;
+              try {
+                await completeTaskWithActivityForm({
+                  kind,
+                  form: data,
+                  task: t,
+                  createActivity,
+                  updateActivity,
+                });
+                setLinkPromptSourceActivity(t);
+                setTaskCompletionPreviewId(null);
+                setActivityFromTaskOpen(false);
+                setLinkedTaskPromptOpen(true);
+              } catch (e) {
                 toast.error(
                   e instanceof Error ? e.message : 'Error al guardar la actividad; el estado se revirtió.',
                 );
-              });
+                throw e;
+              }
             }}
             taskSummary={{
               title: completedTask.title,
