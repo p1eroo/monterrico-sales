@@ -240,6 +240,180 @@ export class ActivitiesService {
     return row;
   }
 
+  private trimLinkId(value: string | null | undefined): string | undefined {
+    if (value == null) return undefined;
+    const trimmed = value.trim();
+    return trimmed || undefined;
+  }
+
+  private mergeLinkIds(
+    single?: string | null,
+    many?: string[] | null,
+  ): string[] {
+    const ids = new Set<string>();
+    for (const raw of many ?? []) {
+      const id = this.trimLinkId(raw);
+      if (id) ids.add(id);
+    }
+    const one = this.trimLinkId(single);
+    if (one) ids.add(one);
+    return [...ids];
+  }
+
+  private hasLinkFields(dto: UpdateActivityDto): boolean {
+    return (
+      'contactId' in dto ||
+      'companyId' in dto ||
+      'opportunityId' in dto ||
+      'clienteEmpresaId' in dto ||
+      'contactIds' in dto ||
+      'companyIds' in dto ||
+      'opportunityIds' in dto ||
+      'clienteEmpresaIds' in dto
+    );
+  }
+
+  private async resolveActivityLinks(
+    raw: {
+      contactId?: string | null;
+      companyId?: string | null;
+      opportunityId?: string | null;
+      clienteEmpresaId?: string | null;
+      contactIds?: string[] | null;
+      companyIds?: string[] | null;
+      opportunityIds?: string[] | null;
+      clienteEmpresaIds?: string[] | null;
+    },
+    scope?: CrmDataScope,
+    actor?: ActivityActor,
+    options?: { autoLink?: boolean },
+  ) {
+    const autoLink = options?.autoLink !== false;
+    let contactIds = this.mergeLinkIds(raw.contactId, raw.contactIds);
+    let companyIds = this.mergeLinkIds(raw.companyId, raw.companyIds);
+    let opportunityIds = this.mergeLinkIds(raw.opportunityId, raw.opportunityIds);
+    const clienteEmpresaIds = this.mergeLinkIds(
+      raw.clienteEmpresaId,
+      raw.clienteEmpresaIds,
+    );
+
+    const hasExplicitArrays =
+      (raw.contactIds?.length ?? 0) > 0 ||
+      (raw.companyIds?.length ?? 0) > 0 ||
+      (raw.opportunityIds?.length ?? 0) > 0 ||
+      (raw.clienteEmpresaIds?.length ?? 0) > 0;
+
+    if (autoLink && !hasExplicitArrays) {
+      if (opportunityIds.length === 1 && companyIds.length === 0) {
+        const co = await this.prisma.companyOpportunity.findFirst({
+          where: { opportunityId: opportunityIds[0] },
+          select: { companyId: true },
+        });
+        if (co) companyIds = [co.companyId];
+      }
+      if (opportunityIds.length === 1 && contactIds.length === 0) {
+        const co = await this.prisma.contactOpportunity.findFirst({
+          where: { opportunityId: opportunityIds[0] },
+          select: { contactId: true },
+        });
+        if (co) contactIds = [co.contactId];
+      }
+      if (companyIds.length === 1 && opportunityIds.length === 0) {
+        const co = await this.prisma.companyOpportunity.findFirst({
+          where: { companyId: companyIds[0] },
+          orderBy: { opportunity: { createdAt: 'desc' } },
+          select: { opportunityId: true },
+        });
+        if (co) opportunityIds = [co.opportunityId];
+      }
+    }
+
+    if (
+      contactIds.length === 0 &&
+      companyIds.length === 0 &&
+      opportunityIds.length === 0 &&
+      clienteEmpresaIds.length === 0
+    ) {
+      throw new BadRequestException(
+        'Debe vincularse a al menos un contacto, empresa, oportunidad o empresa cliente',
+      );
+    }
+
+    for (const contactId of contactIds) {
+      const c = await this.prisma.contact.findUnique({ where: { id: contactId } });
+      if (!c) {
+        throw new BadRequestException('El contacto indicado no existe');
+      }
+      if (
+        scope &&
+        !scope.unrestricted &&
+        c.assignedTo !== scope.viewerUserId
+      ) {
+        throw new BadRequestException('El contacto indicado no existe');
+      }
+    }
+    for (const companyId of companyIds) {
+      const c = await this.prisma.company.findFirst({
+        where: mergeCompanyScope({ id: companyId }, scope),
+      });
+      if (!c) {
+        throw new BadRequestException('La empresa indicada no existe');
+      }
+    }
+    for (const opportunityId of opportunityIds) {
+      const o = await this.prisma.opportunity.findUnique({
+        where: { id: opportunityId },
+      });
+      if (!o) {
+        throw new BadRequestException('La oportunidad indicada no existe');
+      }
+      if (
+        scope &&
+        !scope.unrestricted &&
+        o.assignedTo !== scope.viewerUserId
+      ) {
+        throw new BadRequestException('La oportunidad indicada no existe');
+      }
+    }
+    for (const clienteEmpresaId of clienteEmpresaIds) {
+      await this.assertClienteEmpresaAccess(
+        clienteEmpresaId,
+        scope,
+        actor?.username,
+      );
+    }
+
+    return { contactIds, companyIds, opportunityIds, clienteEmpresaIds };
+  }
+
+  private async syncActivityLinks(
+    tx: Prisma.TransactionClient,
+    activityId: string,
+    links: Awaited<ReturnType<ActivitiesService['resolveActivityLinks']>>,
+  ) {
+    await tx.contactActivity.deleteMany({ where: { activityId } });
+    await tx.companyActivity.deleteMany({ where: { activityId } });
+    await tx.opportunityActivity.deleteMany({ where: { activityId } });
+    await tx.clienteEmpresaActivity.deleteMany({ where: { activityId } });
+
+    for (const contactId of links.contactIds) {
+      await tx.contactActivity.create({ data: { contactId, activityId } });
+    }
+    for (const companyId of links.companyIds) {
+      await tx.companyActivity.create({ data: { companyId, activityId } });
+    }
+    for (const opportunityId of links.opportunityIds) {
+      await tx.opportunityActivity.create({
+        data: { opportunityId, activityId },
+      });
+    }
+    for (const clienteEmpresaId of links.clienteEmpresaIds) {
+      await tx.clienteEmpresaActivity.create({
+        data: { clienteEmpresaId, activityId },
+      });
+    }
+  }
+
   async create(
     dto: CreateActivityDto,
     scope?: CrmDataScope,
@@ -274,97 +448,22 @@ export class ActivitiesService {
     const completedAt = this.parseDate(dto.completedAt);
     const status = dto.status?.trim() || 'pendiente';
     const priority = this.normalizePriority(dto.priority);
-    const contactId = dto.contactId?.trim();
-    const companyId = dto.companyId?.trim();
-    const opportunityId = dto.opportunityId?.trim();
-    const clienteEmpresaId = dto.clienteEmpresaId?.trim();
 
-    // Auto-vincular compañía/contacto si solo se vinculó una oportunidad
-    let resolvedContactId = contactId;
-    let resolvedCompanyId = companyId;
-    let resolvedOpportunityId = opportunityId;
-
-    if (opportunityId) {
-      // Quien nos dieron una oportunidad, buscar empresa y contacto vinculados
-      if (!resolvedCompanyId) {
-        const co = await this.prisma.companyOpportunity.findFirst({
-          where: { opportunityId },
-          select: { companyId: true },
-        });
-        if (co) resolvedCompanyId = co.companyId;
-      }
-      if (!resolvedContactId) {
-        const co = await this.prisma.contactOpportunity.findFirst({
-          where: { opportunityId },
-          select: { contactId: true },
-        });
-        if (co) resolvedContactId = co.contactId;
-      }
-    } else if (companyId && !opportunityId) {
-      // Solo empresa → buscar su oportunidad principal (la primera)
-      const co = await this.prisma.companyOpportunity.findFirst({
-        where: { companyId },
-        orderBy: { opportunity: { createdAt: 'desc' } },
-        select: { opportunityId: true },
-      });
-      if (co) resolvedOpportunityId = co.opportunityId;
-    }
-
-    if (
-      !resolvedContactId &&
-      !resolvedCompanyId &&
-      !resolvedOpportunityId &&
-      !clienteEmpresaId
-    ) {
-      throw new BadRequestException(
-        'Debe vincularse a al menos un contacto, empresa, oportunidad o empresa cliente',
-      );
-    }
-    if (contactId) {
-      const c = await this.prisma.contact.findUnique({
-        where: { id: contactId },
-      });
-      if (!c) {
-        throw new BadRequestException('El contacto indicado no existe');
-      }
-      if (
-        scope &&
-        !scope.unrestricted &&
-        c.assignedTo !== scope.viewerUserId
-      ) {
-        throw new BadRequestException('El contacto indicado no existe');
-      }
-    }
-    if (companyId) {
-      const c = await this.prisma.company.findFirst({
-        where: mergeCompanyScope({ id: companyId }, scope),
-      });
-      if (!c) {
-        throw new BadRequestException('La empresa indicada no existe');
-      }
-    }
-    if (opportunityId) {
-      const o = await this.prisma.opportunity.findUnique({
-        where: { id: opportunityId },
-      });
-      if (!o) {
-        throw new BadRequestException('La oportunidad indicada no existe');
-      }
-      if (
-        scope &&
-        !scope.unrestricted &&
-        o.assignedTo !== scope.viewerUserId
-      ) {
-        throw new BadRequestException('La oportunidad indicada no existe');
-      }
-    }
-    if (clienteEmpresaId) {
-      await this.assertClienteEmpresaAccess(
-        clienteEmpresaId,
-        scope,
-        actor?.username,
-      );
-    }
+    const links = await this.resolveActivityLinks(
+      {
+        contactId: dto.contactId,
+        companyId: dto.companyId,
+        opportunityId: dto.opportunityId,
+        clienteEmpresaId: dto.clienteEmpresaId,
+        contactIds: dto.contactIds,
+        companyIds: dto.companyIds,
+        opportunityIds: dto.opportunityIds,
+        clienteEmpresaIds: dto.clienteEmpresaIds,
+      },
+      scope,
+      actor,
+      { autoLink: true },
+    );
 
     const row = await this.prisma.$transaction(async (tx) => {
       const activity = await tx.activity.create({
@@ -382,38 +481,7 @@ export class ActivitiesService {
           completedAt,
         },
       });
-      if (contactId) {
-        await tx.contactActivity.create({
-          data: { contactId, activityId: activity.id },
-        });
-      } else if (resolvedContactId) {
-        await tx.contactActivity.create({
-          data: { contactId: resolvedContactId, activityId: activity.id },
-        });
-      }
-      if (companyId) {
-        await tx.companyActivity.create({
-          data: { companyId, activityId: activity.id },
-        });
-      } else if (resolvedCompanyId) {
-        await tx.companyActivity.create({
-          data: { companyId: resolvedCompanyId, activityId: activity.id },
-        });
-      }
-      if (opportunityId) {
-        await tx.opportunityActivity.create({
-          data: { opportunityId, activityId: activity.id },
-        });
-      } else if (resolvedOpportunityId) {
-        await tx.opportunityActivity.create({
-          data: { opportunityId: resolvedOpportunityId, activityId: activity.id },
-        });
-      }
-      if (clienteEmpresaId) {
-        await tx.clienteEmpresaActivity.create({
-          data: { clienteEmpresaId, activityId: activity.id },
-        });
-      }
+      await this.syncActivityLinks(tx, activity.id, links);
       return tx.activity.findUniqueOrThrow({
         where: { id: activity.id },
         include: activityInclude,
@@ -576,15 +644,43 @@ export class ActivitiesService {
     if ('completedAt' in dto && dto.completedAt !== undefined) {
       data.completedAt = this.parseDate(String(dto.completedAt));
     }
-    if (Object.keys(data).length === 0) {
+
+    const linkUpdate = this.hasLinkFields(dto);
+    let resolvedLinks: Awaited<
+      ReturnType<ActivitiesService['resolveActivityLinks']>
+    > | null = null;
+    if (linkUpdate) {
+      resolvedLinks = await this.resolveActivityLinks(
+        {
+          contactId: dto.contactId,
+          companyId: dto.companyId,
+          opportunityId: dto.opportunityId,
+          clienteEmpresaId: dto.clienteEmpresaId,
+          contactIds: dto.contactIds,
+          companyIds: dto.companyIds,
+          opportunityIds: dto.opportunityIds,
+          clienteEmpresaIds: dto.clienteEmpresaIds,
+        },
+        scope,
+        actor,
+        { autoLink: false },
+      );
+    }
+
+    if (Object.keys(data).length === 0 && !linkUpdate) {
       throw new BadRequestException('No hay campos para actualizar');
     }
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.activity.update({
-        where: { id },
-        data: data as Prisma.ActivityUpdateInput,
-      });
+      if (Object.keys(data).length > 0) {
+        await tx.activity.update({
+          where: { id },
+          data: data as Prisma.ActivityUpdateInput,
+        });
+      }
+      if (linkUpdate && resolvedLinks) {
+        await this.syncActivityLinks(tx, id, resolvedLinks);
+      }
     });
 
     const row = await this.findOne(id, scope);

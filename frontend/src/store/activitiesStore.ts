@@ -86,6 +86,46 @@ function mergeActivityOptimistic(activity: Activity, payload: UpdateActivityPayl
     next.completedAt =
       payload.completedAt === '' ? undefined : payload.completedAt.slice(0, 10);
   }
+  if (payload.contactIds !== undefined) {
+    next.contactId = payload.contactIds[0];
+    if (payload.contactIds.length === 0) {
+      next.contactId = undefined;
+      next.contactName = undefined;
+    }
+  } else if (payload.contactId !== undefined) {
+    next.contactId = payload.contactId ?? undefined;
+    if (!payload.contactId) next.contactName = undefined;
+  }
+  if (payload.companyIds !== undefined) {
+    next.companyId = payload.companyIds[0];
+    if (payload.companyIds.length === 0) {
+      next.companyId = undefined;
+      next.companyName = undefined;
+    }
+  } else if (payload.companyId !== undefined) {
+    next.companyId = payload.companyId ?? undefined;
+    if (!payload.companyId) next.companyName = undefined;
+  }
+  if (payload.opportunityIds !== undefined) {
+    next.opportunityId = payload.opportunityIds[0];
+    if (payload.opportunityIds.length === 0) {
+      next.opportunityId = undefined;
+      next.opportunityTitle = undefined;
+    }
+  } else if (payload.opportunityId !== undefined) {
+    next.opportunityId = payload.opportunityId ?? undefined;
+    if (!payload.opportunityId) next.opportunityTitle = undefined;
+  }
+  if (payload.clienteEmpresaIds !== undefined) {
+    next.clienteEmpresaId = payload.clienteEmpresaIds[0];
+    if (payload.clienteEmpresaIds.length === 0) {
+      next.clienteEmpresaId = undefined;
+      next.clienteEmpresaName = undefined;
+    }
+  } else if (payload.clienteEmpresaId !== undefined) {
+    next.clienteEmpresaId = payload.clienteEmpresaId ?? undefined;
+    if (!payload.clienteEmpresaId) next.clienteEmpresaName = undefined;
+  }
   return next;
 }
 

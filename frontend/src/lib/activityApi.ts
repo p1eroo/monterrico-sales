@@ -75,10 +75,19 @@ function toDateOnly(iso: string | null): string {
 }
 
 export function mapApiActivityToActivity(row: ApiActivity): Activity {
-  const contact = row.contacts?.[0]?.contact;
-  const company = row.companies?.[0]?.company;
-  const opportunity = row.opportunities?.[0]?.opportunity;
-  const clienteEmpresa = row.clienteEmpresas?.[0]?.clienteEmpresa;
+  const linkedContacts =
+    row.contacts?.map((c) => c.contact).filter((c): c is NonNullable<typeof c> => Boolean(c)) ?? [];
+  const linkedCompanies = row.companies?.map((c) => c.company).filter(Boolean) ?? [];
+  const linkedOpportunities =
+    row.opportunities?.map((o) => o.opportunity).filter(Boolean) ?? [];
+  const linkedClienteEmpresas =
+    row.clienteEmpresas?.map((c) => c.clienteEmpresa).filter(Boolean) ?? [];
+
+  const contact = linkedContacts[0];
+  const company = linkedCompanies[0];
+  const opportunity = linkedOpportunities[0];
+  const clienteEmpresa = linkedClienteEmpresas[0];
+
   return {
     id: row.id,
     type: parseType(row.type),
@@ -94,6 +103,20 @@ export function mapApiActivityToActivity(row: ApiActivity): Activity {
     clienteEmpresaName: clienteEmpresa?.empresa,
     opportunityId: opportunity?.id,
     opportunityTitle: opportunity?.title,
+    linkedContacts: linkedContacts.map((c) => ({
+      id: c.id,
+      name: c.name,
+      telefono: c.telefono ?? undefined,
+    })),
+    linkedCompanies: linkedCompanies.map((c) => ({ id: c.id, name: c.name })),
+    linkedOpportunities: linkedOpportunities.map((o) => ({
+      id: o.id,
+      title: o.title,
+    })),
+    linkedClienteEmpresas: linkedClienteEmpresas.map((c) => ({
+      id: c.id,
+      name: c.empresa,
+    })),
     assignedTo: row.user?.id ?? row.assignedTo ?? '',
     assignedToName: row.user?.name ?? 'Sin asignar',
     status: parseStatus(row.status),
@@ -122,6 +145,10 @@ export type CreateActivityPayload = {
   companyId?: string;
   opportunityId?: string;
   clienteEmpresaId?: string;
+  contactIds?: string[];
+  companyIds?: string[];
+  opportunityIds?: string[];
+  clienteEmpresaIds?: string[];
 };
 
 export type UpdateActivityPayload = {
@@ -136,6 +163,14 @@ export type UpdateActivityPayload = {
   startDate?: string;
   startTime?: string;
   completedAt?: string;
+  contactId?: string | null;
+  companyId?: string | null;
+  opportunityId?: string | null;
+  clienteEmpresaId?: string | null;
+  contactIds?: string[];
+  companyIds?: string[];
+  opportunityIds?: string[];
+  clienteEmpresaIds?: string[];
 };
 
 export async function fetchActivities(): Promise<Activity[]> {

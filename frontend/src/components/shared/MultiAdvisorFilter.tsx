@@ -1,5 +1,8 @@
+import { useMemo } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useAppStore } from '@/store';
+import { useUsersStore } from '@/store/usersStore';
 import {
   Popover,
   PopoverContent,
@@ -42,10 +45,22 @@ type MultiAdvisorFilterProps = {
   onInteraction?: () => void;
 };
 
-function optionLabel(id: string, advisors: AdvisorOption[]): string {
+function resolveAdvisorLabel(
+  id: string,
+  advisors: AdvisorOption[],
+  currentUser: { id: string; name: string },
+  getUserName: (userId: string) => string,
+): string {
   if (id === ADVISOR_UNASSIGNED) return 'Sin asignar';
   if (id === ADVISOR_OTHERS) return 'Otros';
-  return advisors.find((u) => u.id === id)?.name || id;
+  const fromList = advisors.find((u) => u.id === id)?.name;
+  if (fromList) return fromList;
+  if (id === currentUser.id && currentUser.name.trim()) {
+    return currentUser.name.trim();
+  }
+  const fromUsers = getUserName(id);
+  if (fromUsers !== 'Sin asignar') return fromUsers;
+  return id;
 }
 
 export function MultiAdvisorFilter({
@@ -58,15 +73,32 @@ export function MultiAdvisorFilter({
   className,
   onInteraction,
 }: MultiAdvisorFilterProps) {
+  const currentUser = useAppStore((s) => s.currentUser);
+  const getUserName = useUsersStore((s) => s.getUserName);
+
+  const labelFor = (id: string) =>
+    resolveAdvisorLabel(id, advisors, currentUser, getUserName);
+
+  const displayAdvisors = useMemo(() => {
+    const merged = [...advisors];
+    for (const id of value) {
+      if (id === ADVISOR_UNASSIGNED || id === ADVISOR_OTHERS) continue;
+      if (merged.some((u) => u.id === id)) continue;
+      const name = resolveAdvisorLabel(id, advisors, currentUser, getUserName);
+      if (name !== id) merged.push({ id, name });
+    }
+    return merged;
+  }, [advisors, value, currentUser, getUserName]);
+
   const showsOwnPortfolio = disabled && value.length === 1;
 
   const label = showsOwnPortfolio
-    ? optionLabel(value[0]!, advisors)
+    ? labelFor(value[0]!)
     : !isActive
       ? 'Asesor'
       : value.length === 0
         ? 'Ninguno'
-        : value.map((id) => optionLabel(id, advisors)).join(', ');
+        : value.map((id) => labelFor(id)).join(', ');
 
   const toggle = (id: string) => {
     onChange(
@@ -79,10 +111,10 @@ export function MultiAdvisorFilter({
 
   const allSelectableIds = showSpecials
     ? [
-        ...advisors.map((u) => u.id),
+        ...displayAdvisors.map((u) => u.id),
         ...ADVISOR_SPECIAL_OPTIONS.map((o) => o.id),
       ]
-    : advisors.map((u) => u.id);
+    : displayAdvisors.map((u) => u.id);
 
   const allSelected =
     isInitialized &&
@@ -128,7 +160,7 @@ export function MultiAdvisorFilter({
         <Command className={comercialProCommandClass}>
           <CommandList className="max-h-[280px] overflow-y-auto">
             <CommandGroup className="p-0">
-              {advisors.map((u) => {
+              {displayAdvisors.map((u) => {
                 const selected =
                   (!disabled && !isInitialized) || value.includes(u.id);
                 return (

@@ -12,8 +12,14 @@ export class CreateActivityDto {
   startDate?: string;
   startTime?: string;
   completedAt?: string;
+  /** Vínculo único (legacy) */
   contactId?: string;
   companyId?: string;
   opportunityId?: string;
   clienteEmpresaId?: string;
+  /** Vínculos múltiples */
+  contactIds?: string[];
+  companyIds?: string[];
+  opportunityIds?: string[];
+  clienteEmpresaIds?: string[];
 }

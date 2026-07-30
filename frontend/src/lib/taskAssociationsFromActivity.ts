@@ -6,18 +6,32 @@ import type { Activity, Contact, Opportunity, TaskAssociation } from '@/types';
  */
 export function taskAssociationsFromActivity(a: Activity): TaskAssociation[] {
   const out: TaskAssociation[] = [];
-  if (a.contactId) {
-    const raw = a.contactName?.trim() ?? '';
+
+  const contacts =
+    a.linkedContacts?.length
+      ? a.linkedContacts
+      : a.contactId
+        ? [{ id: a.contactId, name: a.contactName?.trim() || 'Contacto' }]
+        : [];
+  for (const c of contacts) {
+    const raw = c.name?.trim() ?? '';
     const name = a.companyName?.trim()
       ? raw
       : raw.includes(' - ')
         ? raw.split(' - ')[0].trim()
         : raw;
-    out.push({ type: 'contacto', id: a.contactId, name: name || raw || 'Contacto' });
+    out.push({ type: 'contacto', id: c.id, name: name || raw || 'Contacto' });
   }
-  if (a.companyId) {
-    let name = a.companyName?.trim();
-    if (!name) {
+
+  const companies =
+    a.linkedCompanies?.length
+      ? a.linkedCompanies
+      : a.companyId
+        ? [{ id: a.companyId, name: a.companyName?.trim() || 'Empresa' }]
+        : [];
+  for (const company of companies) {
+    let name = company.name?.trim();
+    if (!name && companies.length === 1) {
       const cn = a.contactName?.trim();
       if (cn) {
         if (a.contactId && cn.includes(' - ')) {
@@ -27,24 +41,38 @@ export function taskAssociationsFromActivity(a: Activity): TaskAssociation[] {
           name = cn;
         }
       }
-      if (!name) name = 'Empresa';
     }
-    out.push({ type: 'empresa', id: a.companyId, name });
+    out.push({ type: 'empresa', id: company.id, name: name || 'Empresa' });
   }
-  if (a.clienteEmpresaId) {
+
+  const clienteEmpresas =
+    a.linkedClienteEmpresas?.length
+      ? a.linkedClienteEmpresas
+      : a.clienteEmpresaId
+        ? [{ id: a.clienteEmpresaId, name: a.clienteEmpresaName?.trim() || 'Empresa cliente' }]
+        : [];
+  for (const ce of clienteEmpresas) {
     out.push({
       type: 'cliente_empresa',
-      id: a.clienteEmpresaId,
-      name: a.clienteEmpresaName?.trim() || 'Empresa cliente',
+      id: ce.id,
+      name: ce.name?.trim() || 'Empresa cliente',
     });
   }
-  if (a.opportunityId) {
+
+  const opportunities =
+    a.linkedOpportunities?.length
+      ? a.linkedOpportunities
+      : a.opportunityId
+        ? [{ id: a.opportunityId, title: a.opportunityTitle?.trim() || 'Oportunidad' }]
+        : [];
+  for (const opp of opportunities) {
     out.push({
       type: 'negocio',
-      id: a.opportunityId,
-      name: a.opportunityTitle?.trim() || 'Oportunidad',
+      id: opp.id,
+      name: opp.title?.trim() || 'Oportunidad',
     });
   }
+
   return out;
 }
 
@@ -104,6 +132,31 @@ export function taskLinkBadgesFromActivity(
   return taskAssociationsFromActivity(a).map((x) => ({ type: x.type, name: x.name }));
 }
 
+export function isTaskAssociationMatchingContact(
+  assoc: TaskAssociation,
+  contactId: string,
+): boolean {
+  return assoc.type === 'contacto' && assoc.id === contactId;
+}
+
+export function isTaskAssociationMatchingEmpresa(
+  assoc: TaskAssociation,
+  company: { id?: string; name: string },
+): boolean {
+  if (assoc.type !== 'empresa') return false;
+  const rowId = company.id ?? company.name;
+  if (assoc.id === rowId) return true;
+  if (company.id && assoc.id === company.id) return true;
+  return assoc.name.trim().toLowerCase() === company.name.trim().toLowerCase();
+}
+
+export function isTaskAssociationMatchingNegocio(
+  assoc: TaskAssociation,
+  opportunityId: string,
+): boolean {
+  return assoc.type === 'negocio' && assoc.id === opportunityId;
+}
+
 /** Empresas disponibles en el buscador del formulario de tarea (base + vínculos prellenados). */
 export function mergeCompaniesForTaskPicker(
   base: { name: string; id?: string }[],
@@ -127,15 +180,17 @@ export function mergeCompaniesForTaskPicker(
 /** Misma lógica visual que en tarjetas (contacto, empresa, negocio) para tarea optimista. */
 export function contactLineFromTaskAssociations(assocs: TaskAssociation[] | undefined): string | undefined {
   if (!assocs?.length) return undefined;
-  const c = assocs.find((a) => a.type === 'contacto');
-  const e = assocs.find((a) => a.type === 'empresa');
+  const contactNames = assocs.filter((a) => a.type === 'contacto').map((a) => a.name);
+  const companyNames = assocs.filter((a) => a.type === 'empresa').map((a) => a.name);
+  if (contactNames.length && companyNames.length) {
+    return `${contactNames.join(', ')} - ${companyNames[0]}`.trim();
+  }
+  if (contactNames.length) return contactNames.join(', ');
   const ce = assocs.find((a) => a.type === 'cliente_empresa');
-  const n = assocs.find((a) => a.type === 'negocio');
-  if (c && e) return `${c.name} - ${e.name}`.trim();
-  if (c && ce) return `${c.name} - ${ce.name}`.trim();
-  if (c) return c.name;
-  if (e) return e.name;
   if (ce) return ce.name;
+  const e = assocs.find((a) => a.type === 'empresa');
+  if (e) return e.name;
+  const n = assocs.find((a) => a.type === 'negocio');
   if (n) return n.name;
   return undefined;
 }

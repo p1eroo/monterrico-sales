@@ -18,13 +18,19 @@ import type {
   Contact, Opportunity,
 } from '@/types';
 import { TasksKanbanBoard } from '@/components/tasks/TasksKanbanBoard';
+import { TasksCalendarPopover } from '@/components/tasks/TasksCalendarPopover';
+import { TaskDueColorGuide } from '@/components/tasks/TaskDueColorGuide';
 import { TASK_KINDS } from '@/types';
 import type { CreateActivityPayload, UpdateActivityPayload } from '@/lib/activityApi';
+import {
+  buildTaskDetailUpdatePayload,
+  associationIdsFromTaskAssociations,
+  normalizeTaskAssociations,
+} from '@/lib/taskActivityUpdate';
 import { priorityLabels } from '@/data/mock';
 import { useActivities } from '@/hooks/useActivities';
 import { useMultiAdvisorFilter } from '@/hooks/useMultiAdvisorFilter';
-import {
-  format, isBefore, startOfDay, isSameDay,
+import { format, isSameDay,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -35,7 +41,7 @@ import { Pagination } from '@/components/shared/Pagination';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, CalendarDayButton } from '@/components/ui/calendar';
+import { CalendarDayButton } from '@/components/ui/calendar';
 import {
   Dialog, DialogContent, DialogDescription,
   DialogFooter, DialogHeader, DialogTitle,
@@ -82,7 +88,6 @@ import {
   type TaskComment as TaskDetailComment,
 } from '@/components/shared/TaskDetailDialog';
 import { ChartSquareIcon } from '@/components/icons/ChartSquareIcon';
-import { CalendarSvgIcon } from '@/components/icons/CalendarSvgIcon';
 import { FilterSvgIcon } from '@/components/icons/FilterSvgIcon';
 import { LlamadaSvgIcon } from '@/components/icons/LlamadaSvgIcon';
 import { ReunionSvgIcon } from '@/components/icons/ReunionSvgIcon';
@@ -95,6 +100,16 @@ import { contactListAll, mapApiContactRowToContact } from '@/lib/contactApi';
 import { companyListAll } from '@/lib/companyApi';
 import { opportunityListAll, mapApiOpportunityToOpportunity } from '@/lib/opportunityApi';
 import { formatTodayPeruYmd, formatDate } from '@/lib/formatters';
+import {
+  countTasksByDueUrgency,
+  effectiveTaskStatus,
+  isTaskOverdue,
+  matchesTaskDueUrgencyFilter,
+  taskDueDateTextClass,
+  taskDueDay,
+  taskDueRowHighlightClass,
+  type TaskDueUrgencyFilter,
+} from '@/lib/taskStatus';
 import {
   contactLineFromTaskAssociations,
   mergeCompaniesForTaskPicker,
@@ -125,10 +140,10 @@ const taskTypeLabels: Record<TaskKind, string> = {
 };
 
 const activityStatusConfig: Record<ActivityStatus, { label: string; className: string }> = {
-  pendiente: { label: 'Pendiente', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
-  completada: { label: 'Completada', className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' },
-  en_progreso: { label: 'En progreso', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
-  vencida: { label: 'Vencida', className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' },
+  pendiente: { label: 'Pendiente', className: 'text-amber-700 dark:text-amber-300' },
+  completada: { label: 'Completada', className: 'text-emerald-700 dark:text-emerald-300' },
+  en_progreso: { label: 'En progreso', className: 'text-blue-700 dark:text-blue-300' },
+  vencida: { label: 'Vencida', className: 'text-red-700 dark:text-red-300' },
 };
 
 const STATUS_FILTER_KEYS = Object.keys(activityStatusConfig) as ActivityStatus[];
@@ -152,6 +167,8 @@ const TASK_VIEW_TOGGLE_INACTIVE =
   'text-[#647789] dark:text-gray-400 hover:text-[#1f2933] dark:hover:text-gray-100';
 const TASK_VIEW_TOGGLE_ACTIVE =
   'bg-[#e8f5e9] dark:bg-green-900/30 text-[#13944C] dark:text-green-400';
+const TASK_TOOLBAR_SEARCH_INPUT =
+  '!h-auto min-h-0 rounded-md border-0 bg-transparent py-1.5 pl-9 pr-3 text-sm text-black shadow-none placeholder:text-[#8a9aab] focus-visible:ring-0 dark:placeholder:text-gray-400';
 
 const TASK_TABLE_RESPONSIVE: Record<string, string> = {
   contacto: 'hidden sm:table-cell',
@@ -187,15 +204,6 @@ function isTaskRow(a: Activity): boolean {
     !!a.taskKind &&
     TASK_KINDS.includes(a.taskKind)
   );
-}
-
-const DATE_ONLY_YMD = /^\d{4}-\d{2}-\d{2}$/;
-
-function taskDueDay(dueDate: string): Date | null {
-  const t = dueDate?.trim();
-  if (!t || !DATE_ONLY_YMD.test(t)) return null;
-  const d = startOfDay(new Date(`${t}T12:00:00-05:00`));
-  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 /** Nombre de empresa para listados (coherente con `mapApiActivityToActivity`). */
@@ -247,6 +255,9 @@ export default function TareasPage() {
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [newTaskColumnStatus, setNewTaskColumnStatus] = useState<ActivityStatus | undefined>();
   const [calendarDate, setCalendarDate] = useState<Date | undefined>();
+  const [showCalendarHint, setShowCalendarHint] = useState(true);
+  const [showDueColorGuide, setShowDueColorGuide] = useState(true);
+  const [dueUrgencyFilter, setDueUrgencyFilter] = useState<TaskDueUrgencyFilter | null>(null);
   const [completedTask, setCompletedTask] = useState<Activity | null>(null);
   const [activityFromTaskOpen, setActivityFromTaskOpen] = useState(false);
   const [linkedTaskPromptOpen, setLinkedTaskPromptOpen] = useState(false);
@@ -309,6 +320,15 @@ export default function TareasPage() {
     if (taskDetailOpen) void loadTaskDetailEntities();
   }, [taskDetailOpen, loadTaskDetailEntities]);
 
+  const tasksInAdvisorScope = useMemo(
+    () => allTasksForDisplay.filter((task) => matchesAssignee(task.assignedTo)),
+    [allTasksForDisplay, matchesAssignee],
+  );
+
+  const dueUrgencyCounts = useMemo(
+    () => countTasksByDueUrgency(tasksInAdvisorScope),
+    [tasksInAdvisorScope],
+  );
 
   const filteredTasks = useMemo(() => {
     return allTasksForDisplay.filter((task) => {
@@ -321,23 +341,28 @@ export default function TareasPage() {
         (task.contactName?.toLowerCase().includes(q) ?? false) ||
         companyQ.includes(q);
 
-      const matchesStatus = matchesInclusiveMultiFilterValue(statusFilter, task.status);
+      const matchesStatus = matchesInclusiveMultiFilterValue(
+        statusFilter,
+        effectiveTaskStatus(task),
+      );
       const taskPriority = task.priority ?? 'media';
       const matchesPriority = matchesInclusiveMultiFilterValue(priorityFilter, taskPriority);
       const matchesAdvisor = matchesAssignee(task.assignedTo);
       const dueDay = taskDueDay(task.dueDate);
       const matchesCalendarDate =
         !calendarDate || (dueDay != null && isSameDay(dueDay, calendarDate));
+      const matchesDueUrgency = matchesTaskDueUrgencyFilter(task, dueUrgencyFilter);
 
       return (
         matchesSearch &&
         matchesStatus &&
         matchesPriority &&
         matchesAdvisor &&
-        matchesCalendarDate
+        matchesCalendarDate &&
+        matchesDueUrgency
       );
     });
-  }, [allTasksForDisplay, search, statusFilter, priorityFilter, matchesAssignee, calendarDate]);
+  }, [allTasksForDisplay, search, statusFilter, priorityFilter, matchesAssignee, calendarDate, dueUrgencyFilter]);
 
   const paginatedTasks = useMemo(() => {
     const start = (listPage - 1) * pageSize;
@@ -356,22 +381,27 @@ export default function TareasPage() {
         task.description.toLowerCase().includes(q) ||
         (task.contactName?.toLowerCase().includes(q) ?? false) ||
         companyQ.includes(q);
-      const matchesStatus = matchesInclusiveMultiFilterValue(statusFilter, task.status);
+      const matchesStatus = matchesInclusiveMultiFilterValue(
+        statusFilter,
+        effectiveTaskStatus(task),
+      );
       const taskPriority = task.priority ?? 'media';
       const matchesPriority = matchesInclusiveMultiFilterValue(priorityFilter, taskPriority);
       const matchesAdvisor = matchesAssignee(task.assignedTo);
       const dueDay = taskDueDay(task.dueDate);
       const matchesCalendarDate =
         !calendarDate || (dueDay != null && isSameDay(dueDay, calendarDate));
+      const matchesDueUrgency = matchesTaskDueUrgencyFilter(task, dueUrgencyFilter);
       return (
         matchesSearch &&
         matchesStatus &&
         matchesPriority &&
         matchesAdvisor &&
-        matchesCalendarDate
+        matchesCalendarDate &&
+        matchesDueUrgency
       );
     });
-  }, [allTasksForDisplay, search, statusFilter, priorityFilter, matchesAssignee, calendarDate]);
+  }, [allTasksForDisplay, search, statusFilter, priorityFilter, matchesAssignee, calendarDate, dueUrgencyFilter]);
 
   /** Lista actualizada del store (p. ej. PATCH optimista) para que el diálogo refleje el estado al instante. */
   const taskDetailActivity = useMemo(() => {
@@ -406,8 +436,7 @@ export default function TareasPage() {
         ...props
       }: ComponentProps<typeof CalendarDayButton>) {
         const taskCount = taskDateCounts.get(format(day.date, 'yyyy-MM-dd')) ?? 0;
-        const showDot = modifiers.hasTasks && !modifiers.outside;
-        const showCounter = taskCount > 1 && !modifiers.outside;
+        const showDot = taskCount > 0 && !modifiers.outside;
         const dayButton = (
           <div className="relative">
             <CalendarDayButton className={className} modifiers={modifiers} day={day} {...props}>
@@ -421,28 +450,16 @@ export default function TareasPage() {
                 )}
               />
             ) : null}
-            {showCounter ? (
-              <span
-                className={cn(
-                  'pointer-events-none absolute right-0.5 top-0.5 flex min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-semibold leading-none',
-                  modifiers.selected
-                    ? 'bg-white/90 text-[#13944C]'
-                    : 'bg-[#13944C] text-white',
-                )}
-              >
-                {taskCount}
-              </span>
-            ) : null}
           </div>
         );
 
-        if (!showCounter) return dayButton;
+        if (!showDot) return dayButton;
 
         return (
           <Tooltip>
             <TooltipTrigger asChild>{dayButton}</TooltipTrigger>
             <TooltipContent side="top" sideOffset={6}>
-              {taskCount} tareas
+              {taskCount === 1 ? '1 tarea' : `${taskCount} tareas`}
             </TooltipContent>
           </Tooltip>
         );
@@ -467,7 +484,8 @@ export default function TareasPage() {
     priorityFilter.length > 0 ||
     advisorFilterIsActive ||
     search !== '' ||
-    Boolean(calendarDate);
+    Boolean(calendarDate) ||
+    dueUrgencyFilter != null;
 
   function clearFilters() {
     setSearch('');
@@ -475,14 +493,12 @@ export default function TareasPage() {
     setPriorityFilter([]);
     resetAdvisorFilter();
     setCalendarDate(undefined);
+    setDueUrgencyFilter(null);
     setListPage(1);
   }
 
   function isOverdue(dueDate: string, status: ActivityStatus) {
-    if (status === 'completada') return false;
-    const day = taskDueDay(dueDate);
-    if (!day) return false;
-    return isBefore(day, startOfDay(new Date()));
+    return isTaskOverdue({ dueDate, status });
   }
 
   const selectedDateLabel = format(
@@ -504,7 +520,7 @@ export default function TareasPage() {
     return {
       id: a.id,
       title: a.title,
-      status: a.status,
+      status: effectiveTaskStatus(a),
       type: kind,
       priority: a.priority ?? 'media',
       company: activityCompanyDisplayName(a),
@@ -530,9 +546,19 @@ export default function TareasPage() {
     [crmCompanies, newTaskDefaultAssociations],
   );
 
+  const taskDetailFormCompanies = useMemo(
+    () =>
+      mergeCompaniesForTaskPicker(
+        crmCompanies,
+        taskDetailActivity ? taskAssociationsFromActivity(taskDetailActivity) : [],
+      ),
+    [crmCompanies, taskDetailActivity],
+  );
+
   function handleKanbanStatusChange(taskId: string, next: ActivityStatus) {
     const task = allTasks.find((t) => t.id === taskId);
-    if (!task || task.status === next) return;
+    if (!task || effectiveTaskStatus(task) === next) return;
+    if (next === 'vencida') return;
     const openActivityModal =
       next === 'completada' &&
       task.taskKind &&
@@ -605,13 +631,17 @@ export default function TareasPage() {
     }
   }
 
-  function handleTaskFormSave(data: TaskFormResult): void {
-    const contactAssoc = data.associations?.find((a) => a.type === 'contacto');
-    const negocioAssoc = data.associations?.find((a) => a.type === 'negocio');
-    const empresaAssoc = data.associations?.find((a) => a.type === 'empresa');
-    const companyId = empresaAssoc?.id && /^c[a-z0-9]+$/i.test(empresaAssoc.id) ? empresaAssoc.id : undefined;
+  async function handleTaskFormSave(data: TaskFormResult): Promise<void> {
+    const links = associationIdsFromTaskAssociations(
+      normalizeTaskAssociations(data.associations),
+    );
 
-    if (!contactAssoc && !companyId && !negocioAssoc) {
+    if (
+      links.contactIds.length === 0 &&
+      links.companyIds.length === 0 &&
+      links.opportunityIds.length === 0 &&
+      links.clienteEmpresaIds.length === 0
+    ) {
       toast.error('Debes vincular la tarea a un contacto, empresa u oportunidad');
       throw new Error('TASK_FORM_VALIDATION');
     }
@@ -629,17 +659,23 @@ export default function TareasPage() {
       ...(data.status === 'completada'
         ? { completedAt: new Date().toISOString().slice(0, 10) }
         : {}),
-      contactId: contactAssoc?.id,
-      companyId,
-      opportunityId: negocioAssoc?.id,
+      contactIds: links.contactIds,
+      companyIds: links.companyIds,
+      opportunityIds: links.opportunityIds,
+      clienteEmpresaIds: links.clienteEmpresaIds,
     };
     const optimisticDisplay = {
       assigneeName: data.assigneeName,
       contactNameLine: contactLineFromTaskAssociations(data.associations),
     };
-    void createActivity(payload, optimisticDisplay).catch((e) => {
+    try {
+      await createActivity(payload, optimisticDisplay);
+      toast.success('Tarea creada');
+    } catch (e) {
+      if (e instanceof Error && e.message === 'TASK_FORM_VALIDATION') return;
       toast.error(e instanceof Error ? e.message : 'Error al crear tarea');
-    });
+      throw e;
+    }
   }
 
   const openNewTask = useCallback(() => {
@@ -825,23 +861,19 @@ export default function TareasPage() {
         cell: ({ row }) => {
           const task = row.original;
           const overdue = isOverdue(task.dueDate, task.status);
+          const dateTextClass = taskDueDateTextClass(task);
           return (
             <span
               className={cn(
                 'flex flex-col gap-0.5 whitespace-nowrap text-[13px] leading-tight',
                 CRM_CELL_MUTED,
-                overdue && 'font-semibold text-red-600 dark:text-red-400',
+                dateTextClass,
               )}
             >
               <span className="flex items-center gap-1">
                 {formatDueDate(task.dueDate, task.startTime)}
                 {overdue && <AlertTriangle className="size-3.5 shrink-0 text-red-500" />}
               </span>
-              {task.startDate && (
-                <span className="text-[11px] text-muted-foreground/80">
-                  Inicio: {formatDueDate(task.startDate)}
-                </span>
-              )}
             </span>
           );
         },
@@ -850,7 +882,9 @@ export default function TareasPage() {
         id: 'estado',
         header: 'Estado',
         size: 110,
-        cell: ({ row }) => <TaskStatusBadge status={row.original.status} />,
+        cell: ({ row }) => (
+          <TaskStatusBadge status={effectiveTaskStatus(row.original)} />
+        ),
       },
     ],
     [handleTaskToggle, requestDeleteTask, formatDueDate, isOverdue],
@@ -871,50 +905,63 @@ export default function TareasPage() {
       <PageHeader title="Tareas">
         {viewMode === 'kanban' ? (
           <div className="flex items-center gap-2">
-            <div className="flex items-center rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 p-0.5">
+            <div className={TASK_VIEW_TOGGLE_SHELL}>
               <button
-                className="rounded-md px-3 py-1.5 text-sm font-medium text-[#647789] dark:text-gray-400 hover:text-[#1f2933] dark:hover:text-gray-100 transition-colors cursor-pointer"
+                type="button"
+                className={cn(TASK_VIEW_TOGGLE_BTN, TASK_VIEW_TOGGLE_INACTIVE)}
                 onClick={() => setViewMode('list')}
               >
                 Lista
               </button>
-              <button className="rounded-md px-3 py-1.5 text-sm font-medium bg-[#e8f5e9] dark:bg-green-900/30 text-[#13944C] dark:text-green-400">
+              <button
+                type="button"
+                className={cn(TASK_VIEW_TOGGLE_BTN, TASK_VIEW_TOGGLE_ACTIVE)}
+              >
                 Kanban
               </button>
             </div>
-            <div className="relative w-full min-w-0 max-w-[400px]">
-              <Search className="absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-[#8a9aab] dark:text-gray-400" />
+            <div className={cn(TASK_VIEW_TOGGLE_SHELL, 'relative w-full min-w-0 max-w-[400px]')}>
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#8a9aab] dark:text-gray-400" />
               <Input
                 placeholder="Buscar tareas..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="!h-12 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 pl-10 text-[15px] text-black placeholder:text-[#8a9aab] dark:placeholder:text-gray-400 transition-colors hover:border-primary focus-visible:ring-1 shadow-none"
+                className={TASK_TOOLBAR_SEARCH_INPUT}
               />
             </div>
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="!h-12 rounded-lg border border-[#e1e7ee] dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 px-3 text-sm font-medium text-[#647789] dark:text-gray-400 hover:border-primary transition-colors shadow-none cursor-pointer flex items-center gap-1.5 whitespace-nowrap">
-                  <CalendarSvgIcon className="size-5" />
-                  Calendario
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className={cn(comercialProPopoverClass, "w-auto p-4")} align="end" sideOffset={8}>
-                <Calendar
-                  mode="single"
-                  selected={calendarDate}
-                  onSelect={setCalendarDate}
-                  className="mx-auto"
-                  {...calendarTaskProps}
-                />
-              </PopoverContent>
-            </Popover>
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#1f2933] dark:text-gray-100 transition-opacity hover:opacity-70 cursor-pointer whitespace-nowrap">
-                  <FilterSvgIcon className="size-[18px]" />
-                  Filtros
-                </button>
-              </PopoverTrigger>
+            <div className={TASK_VIEW_TOGGLE_SHELL}>
+              <TasksCalendarPopover
+                calendarDate={calendarDate}
+                onCalendarDateChange={setCalendarDate}
+                calendarTaskProps={calendarTaskProps}
+                showHint={showCalendarHint}
+                onDismissHint={() => setShowCalendarHint(false)}
+                triggerClassName={cn(
+                  TASK_VIEW_TOGGLE_BTN,
+                  'inline-flex items-center gap-1.5',
+                  calendarDate
+                    ? TASK_VIEW_TOGGLE_ACTIVE
+                    : TASK_VIEW_TOGGLE_INACTIVE,
+                )}
+              />
+            </div>
+            <div className={TASK_VIEW_TOGGLE_SHELL}>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className={cn(
+                      TASK_VIEW_TOGGLE_BTN,
+                      'inline-flex items-center gap-1.5 font-semibold',
+                      hasActiveFilters
+                        ? TASK_VIEW_TOGGLE_ACTIVE
+                        : TASK_VIEW_TOGGLE_INACTIVE,
+                    )}
+                  >
+                    <FilterSvgIcon className="size-4" />
+                    Filtros
+                  </button>
+                </PopoverTrigger>
               <PopoverContent className={cn(comercialProPopoverClass, "w-[min(100vw-2rem,640px)] p-3")} align="end" sideOffset={8}>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
                   <ComercialInclusiveMultiFilter
@@ -947,6 +994,7 @@ export default function TareasPage() {
                 </div>
               </PopoverContent>
             </Popover>
+            </div>
             {(hasActiveFilters || search) && (
               <Button variant="ghost" size="sm" onClick={clearFilters}>
                 <X className="size-4" /> Limpiar
@@ -971,46 +1019,47 @@ export default function TareasPage() {
               </button>
             </div>
             <div className={TASK_VIEW_TOGGLE_SHELL}>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className={cn(
-                      TASK_VIEW_TOGGLE_BTN,
-                      'inline-flex items-center gap-1.5',
-                      calendarDate
-                        ? TASK_VIEW_TOGGLE_ACTIVE
-                        : TASK_VIEW_TOGGLE_INACTIVE,
-                    )}
-                  >
-                    <CalendarSvgIcon className="size-4" />
-                    Calendario
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className={cn(comercialProPopoverClass, 'w-auto p-4')} align="end" sideOffset={8}>
-                  <Calendar
-                    mode="single"
-                    selected={calendarDate}
-                    onSelect={setCalendarDate}
-                    className="mx-auto"
-                    {...calendarTaskProps}
-                  />
-                </PopoverContent>
-              </Popover>
+              <TasksCalendarPopover
+                calendarDate={calendarDate}
+                onCalendarDateChange={setCalendarDate}
+                calendarTaskProps={calendarTaskProps}
+                showHint={showCalendarHint}
+                onDismissHint={() => setShowCalendarHint(false)}
+                triggerClassName={cn(
+                  TASK_VIEW_TOGGLE_BTN,
+                  'inline-flex items-center gap-1.5',
+                  calendarDate
+                    ? TASK_VIEW_TOGGLE_ACTIVE
+                    : TASK_VIEW_TOGGLE_INACTIVE,
+                )}
+              />
             </div>
             {activitiesLoading && (
               <span className="text-sm text-muted-foreground">Cargando…</span>
             )}
             <Button
+              type="button"
               onClick={openNewTask}
               disabled={activitiesLoading}
-              className="h-9 w-[110px] text-sm font-normal shadow-md"
+              className="inline-flex h-auto items-center gap-1.5 rounded-md border-0 bg-[#13944C] px-3 py-2 text-sm font-medium text-white shadow-md hover:bg-[#0f7a3d] disabled:opacity-50"
             >
-              <Plus /> Nueva
+              <Plus className="size-4" /> Nueva
             </Button>
           </div>
         )}
       </PageHeader>
+
+      <TaskDueColorGuide
+        open={showDueColorGuide}
+        onDismiss={() => setShowDueColorGuide(false)}
+        onReopen={() => setShowDueColorGuide(true)}
+        activeFilter={dueUrgencyFilter}
+        counts={dueUrgencyCounts}
+        onFilterChange={(next) => {
+          setDueUrgencyFilter(next);
+          setListPage(1);
+        }}
+      />
 
       {activitiesError && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -1044,14 +1093,7 @@ export default function TareasPage() {
                   setNewTaskOpen(true);
                 }}
                 onStatusChange={handleKanbanStatusChange}
-                onCompleteToggle={handleTaskToggle}
-                onEdit={(t) => {
-                  setSelectedTaskDetail(t);
-                  setTaskDetailOpen(true);
-                }}
-                onDelete={requestDeleteTask}
                 formatDueDate={formatDueDate}
-                isOverdue={isOverdue}
               />
             ) : (
               <EmptyState
@@ -1198,14 +1240,14 @@ export default function TareasPage() {
                       <tbody className="bg-transparent">
                         {tasksTable.getRowModel().rows.map((row) => {
                           const task = row.original;
-                          const overdue = isOverdue(task.dueDate, task.status);
+                          const rowHighlight = taskDueRowHighlightClass(task);
                           return (
                             <tr
                               key={row.id}
                               className={cn(
                                 'h-[48px] last:border-b-0',
                                 crmTableBodyRowClassInteractive,
-                                overdue && 'bg-red-50/30 dark:bg-red-950/20',
+                                rowHighlight,
                                 task.status === 'completada' && 'opacity-75',
                               )}
                               onClick={() => {
@@ -1288,34 +1330,23 @@ export default function TareasPage() {
             const oldAct = currentActs.find((a) => a.id === nd.id);
             if (!oldAct) continue;
             const oldDetail = activityToTaskDetail(oldAct);
-            const payload: UpdateActivityPayload = {};
-            if (nd.title !== oldDetail.title) payload.title = nd.title;
-            if (nd.status !== oldDetail.status) {
-              payload.status = nd.status;
-              if (nd.status === 'completada') {
-                payload.completedAt = new Date().toISOString().slice(0, 10);
-              }
-            }
-            if (nd.type !== oldDetail.type) payload.taskKind = nd.type;
-            if (nd.dueDate !== oldDetail.dueDate) payload.dueDate = nd.dueDate;
-            if (nd.startDate !== oldDetail.startDate) payload.startDate = nd.startDate;
-            if (nd.startTime !== oldDetail.startTime) payload.startTime = nd.startTime;
-            if ((nd.priority ?? 'media') !== (oldDetail.priority ?? 'media')) {
-              payload.priority = nd.priority ?? 'media';
-            }
+            const payload = buildTaskDetailUpdatePayload(oldDetail, nd, {
+              previousAssigneeId: oldAct.assignedTo,
+            });
             if (Object.keys(payload).length === 0) continue;
             try {
               const updated = await updateActivity(nd.id, payload);
               setSelectedTaskDetail((prev) => (prev?.id === updated.id ? updated : prev));
             } catch (e) {
               toast.error(e instanceof Error ? e.message : 'Error al actualizar');
+              throw e;
             }
           }
         }}
         taskComments={taskComments}
         onTaskCommentsChange={setTaskComments}
         contacts={crmContacts}
-        companies={taskFormCompanies}
+        companies={taskDetailFormCompanies}
         opportunities={crmOpportunities}
         onCompleteWithActivity={(t) => {
           const act = allTasks.find((a) => a.id === t.id);
@@ -1447,7 +1478,6 @@ export default function TareasPage() {
         defaultStatus={newTaskColumnStatus}
         defaultAssociations={newTaskDefaultAssociations}
         onSave={handleTaskFormSave}
-        optimisticClose
       />
 
       <ConfirmDialog

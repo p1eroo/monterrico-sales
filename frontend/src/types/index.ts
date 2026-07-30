@@ -213,6 +213,11 @@ export interface Activity {
   clienteEmpresaName?: string;
   opportunityId?: string;
   opportunityTitle?: string;
+  /** Todos los vínculos devueltos por la API (tareas con asociaciones múltiples). */
+  linkedContacts?: Array<{ id: string; name: string; telefono?: string }>;
+  linkedCompanies?: Array<{ id: string; name: string }>;
+  linkedOpportunities?: Array<{ id: string; title: string }>;
+  linkedClienteEmpresas?: Array<{ id: string; name: string }>;
   assignedTo: string;
   assignedToName: string;
   status: ActivityStatus;

@@ -24,6 +24,7 @@ import { rightDrawerDialogContentClass } from '@/lib/rightPanelShell';
 import type { Activity, CalendarEvent } from '@/types';
 import { resolveCalendarEventLinks } from '@/lib/calendarEventLinks';
 import { taskAssociationsFromActivity } from '@/lib/taskAssociationsFromActivity';
+import { effectiveTaskStatus, isTaskOverdue } from '@/lib/taskStatus';
 
 type TaskItem = { activity?: Activity; event?: CalendarEvent };
 
@@ -71,7 +72,13 @@ function getTodayTasks(currentUserId: string): TaskItem[] {
 }
 
 function isOverdue(item: TaskItem): boolean {
-  return (item.activity?.status ?? item.event?.status) === 'vencida';
+  if (item.activity) {
+    return isTaskOverdue({
+      status: item.activity.status,
+      dueDate: item.activity.dueDate,
+    });
+  }
+  return item.event?.status === 'vencida';
 }
 
 function getStatusBadgeClass(status: string): string {
@@ -240,7 +247,12 @@ export function DailyBriefingPanel({
                             const title = item.activity?.title ?? item.event?.title ?? '';
                             const time = item.activity?.startTime ?? item.event?.startTime ?? '';
                             const type = item.activity?.type ?? item.event?.type ?? 'tarea';
-                            const status = item.activity?.status ?? item.event?.status ?? 'pendiente';
+                            const status = item.activity
+                              ? effectiveTaskStatus({
+                                  status: item.activity.status,
+                                  dueDate: item.activity.dueDate,
+                                })
+                              : item.event?.status ?? 'pendiente';
                             const companyContact = briefingTaskSubtitle(item);
                             const overdue = isOverdue(item);
 

@@ -81,6 +81,7 @@ export function FormDialogField({
   className,
   hint,
   compactControl = true,
+  labelClassName,
 }: {
   label: React.ReactNode;
   required?: boolean;
@@ -89,10 +90,11 @@ export function FormDialogField({
   hint?: React.ReactNode;
   /** false para bloques con varios controles (p. ej. asociaciones con badges). */
   compactControl?: boolean;
+  labelClassName?: string;
 }) {
   return (
     <div className={cn('space-y-2', className)}>
-      <Label className="text-sm font-semibold text-foreground/90">
+      <Label className={cn('text-sm font-semibold text-foreground/90', labelClassName)}>
         {label}
         {required ? <span className="text-destructive"> *</span> : null}
       </Label>
@@ -228,6 +230,7 @@ export function FormDialogShell({
   children,
   footer,
   maxWidthClassName = 'sm:max-w-2xl',
+  titleClassName,
   footerClassName,
   bodyClassName,
   contentClassName,
@@ -241,6 +244,7 @@ export function FormDialogShell({
   children: React.ReactNode;
   footer: React.ReactNode;
   maxWidthClassName?: string;
+  titleClassName?: string;
   footerClassName?: string;
   bodyClassName?: string;
   contentClassName?: string;
@@ -262,7 +266,7 @@ export function FormDialogShell({
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-8 pt-8 scrollbar-thin [scrollbar-gutter:stable]">
           <div className="flex items-start justify-between gap-4">
             <DialogHeader className="gap-1 p-0 text-left">
-              <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
+              <DialogTitle className={cn('text-xl font-bold tracking-tight text-foreground', titleClassName)}>
                 {title}
               </DialogTitle>
               {description ? (

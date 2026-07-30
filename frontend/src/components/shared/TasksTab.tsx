@@ -33,6 +33,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { formatDate, formatTodayPeruYmd } from '@/lib/formatters';
+import { effectiveTaskStatus } from '@/lib/taskStatus';
 import { taskAssociationsFromActivity } from '@/lib/taskAssociationsFromActivity';
 import {
   activityTypeIconCircleClass,
@@ -393,9 +394,17 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
                     </div>
                   </TableCell>
                   <TableCell className="text-right align-middle">
-                    <Badge className={`text-xs border-0 ${taskStatusColors[task.status]}`}>
-                      {taskStatusLabels[task.status]}
-                    </Badge>
+                    {(() => {
+                      const displayStatus = effectiveTaskStatus({
+                        status: task.status,
+                        dueDate: task.dueDate,
+                      });
+                      return (
+                        <Badge className={`text-xs border-0 ${taskStatusColors[displayStatus]}`}>
+                          {taskStatusLabels[displayStatus]}
+                        </Badge>
+                      );
+                    })()}
                   </TableCell>
                 </TableRow>
               );
