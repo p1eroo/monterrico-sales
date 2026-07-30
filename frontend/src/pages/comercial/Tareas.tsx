@@ -279,24 +279,35 @@ export default function TareasPage() {
     );
   }, [allTasks, taskCompletionPreviewId]);
 
-  const loadTaskFormEntities = useCallback(async () => {
+  const loadTaskFormCompanies = useCallback(async () => {
     try {
-      const [contactRows, companyRows, oppRows] = await Promise.all([
+      const companyRows = await companyListAll();
+      setCrmCompanies(companyRows.map((c) => ({ name: c.name, id: c.id })));
+    } catch {
+      toast.error('No se pudieron cargar las empresas');
+    }
+  }, []);
+
+  const loadTaskDetailEntities = useCallback(async () => {
+    try {
+      const [contactRows, oppRows] = await Promise.all([
         contactListAll(),
-        companyListAll(),
         opportunityListAll(),
       ]);
       setCrmContacts(contactRows.map(mapApiContactRowToContact));
-      setCrmCompanies(companyRows.map((c) => ({ name: c.name, id: c.id })));
       setCrmOpportunities(oppRows.map(mapApiOpportunityToOpportunity));
     } catch {
-      toast.error('No se pudieron cargar contactos, empresas u oportunidades');
+      toast.error('No se pudieron cargar contactos u oportunidades');
     }
   }, []);
 
   useEffect(() => {
-    void loadTaskFormEntities();
-  }, [loadTaskFormEntities]);
+    void loadTaskFormCompanies();
+  }, [loadTaskFormCompanies]);
+
+  useEffect(() => {
+    if (taskDetailOpen) void loadTaskDetailEntities();
+  }, [taskDetailOpen, loadTaskDetailEntities]);
 
 
   const filteredTasks = useMemo(() => {
@@ -1429,9 +1440,9 @@ export default function TareasPage() {
         }}
         title="Nueva Tarea"
         description="Crea una nueva tarea vinculada a al menos un contacto, empresa u oportunidad."
-        contacts={crmContacts}
+        contacts={[]}
         companies={taskFormCompanies}
-        opportunities={crmOpportunities}
+        opportunities={[]}
         defaultTitle={newTaskDefaultTitle}
         defaultStatus={newTaskColumnStatus}
         defaultAssociations={newTaskDefaultAssociations}

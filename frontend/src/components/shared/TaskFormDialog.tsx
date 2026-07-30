@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-  User, Building2, Briefcase, Search, Link2, ChevronDown,
+  User, Building2, Briefcase, Search, Link2, ChevronDown, Loader2,
 } from 'lucide-react';
 import { toast } from '@/lib/notify';
 import { priorityLabels } from '@/data/mock';
@@ -11,6 +11,9 @@ import {
 import { useUsers } from '@/hooks/useUsers';
 import { useAppStore } from '@/store';
 import { mergeCompaniesForTaskPicker } from '@/lib/taskAssociationsFromActivity';
+import { isLikelyCompanyCuid } from '@/lib/companyApi';
+import { contactListPaginated, mapApiContactRowToContact } from '@/lib/contactApi';
+import { opportunityListPaginated, mapApiOpportunityToOpportunity } from '@/lib/opportunityApi';
 import type { Contact, Opportunity, TaskAssociation, TaskKind } from '@/types';
 import { TASK_KINDS } from '@/types';
 
@@ -73,6 +76,34 @@ const taskCreateStatusOptions = (
 
 /** Filas visibles por pestaña al abrir el buscador; el resto se alcanza filtrando por texto. */
 const ASSOCIATION_PICKER_PAGE_SIZE = 8;
+
+const LINKED_ENTITY_FETCH_LIMIT = 500;
+
+function resolveSelectedCompanyId(associations: TaskAssociation[]): string | undefined {
+  const empresa = associations.find(
+    (a) => a.type === 'empresa' && a.id && isLikelyCompanyCuid(a.id),
+  );
+  return empresa?.id;
+}
+
+function contactBelongsToCompany(
+  contact: Contact,
+  companyId: string,
+  companyName?: string,
+): boolean {
+  return (
+    contact.companies?.some(
+      (c) =>
+        (c.id && c.id === companyId) ||
+        (companyName && c.name.toLowerCase() === companyName.toLowerCase()),
+    ) ?? false
+  );
+}
+
+function opportunityBelongsToCompany(opp: Opportunity, companyId: string): boolean {
+  if (opp.linkedCompanyIds?.includes(companyId)) return true;
+  return opp.clientId === companyId;
+}
 
 export interface TaskFormDialogProps {
   open: boolean;
@@ -144,7 +175,20 @@ export function TaskFormDialog({
   const [associations, setAssociations] = useState<TaskAssociation[]>([]);
   const [assocPanelOpen, setAssocPanelOpen] = useState(false);
   const [assocSearch, setAssocSearch] = useState('');
-  const [assocCategory, setAssocCategory] = useState<'contactos' | 'empresas' | 'negocios'>('contactos');
+  const [assocCategory, setAssocCategory] = useState<'contactos' | 'empresas' | 'negocios'>('empresas');
+  const [linkedContacts, setLinkedContacts] = useState<Contact[]>([]);
+  const [linkedOpportunities, setLinkedOpportunities] = useState<Opportunity[]>([]);
+  const [linkedLoading, setLinkedLoading] = useState(false);
+
+  const selectedCompanyId = useMemo(
+    () => resolveSelectedCompanyId(associations),
+    [associations],
+  );
+
+  const selectedCompanyName = useMemo(
+    () => associations.find((a) => a.type === 'empresa' && a.id === selectedCompanyId)?.name,
+    [associations, selectedCompanyId],
+  );
 
   useEffect(() => {
     if (open) {
@@ -155,8 +199,71 @@ export function TaskFormDialog({
         defaultAssociations?.length ? defaultAssociations.map((a) => ({ ...a })) : [],
       );
       setFormAssignee(resolveDefaultAssignee());
+      const hasCompany = defaultAssociations?.some(
+        (a) => a.type === 'empresa' && a.id && isLikelyCompanyCuid(a.id),
+      );
+      setAssocCategory(hasCompany ? 'contactos' : 'empresas');
     }
   }, [open, defaultTitle, defaultStatus, defaultStartDate, defaultAssociations, defaultAssigneeId, canReassign, currentUser.id, activeAdvisors]);
+
+  useEffect(() => {
+    if (!open || !selectedCompanyId) {
+      setLinkedContacts([]);
+      setLinkedOpportunities([]);
+      setLinkedLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLinkedLoading(true);
+
+    Promise.all([
+      contactListPaginated({
+        linkedToCompanyId: selectedCompanyId,
+        limit: LINKED_ENTITY_FETCH_LIMIT,
+        page: 1,
+      }),
+      opportunityListPaginated({
+        linkedToCompanyId: selectedCompanyId,
+        limit: LINKED_ENTITY_FETCH_LIMIT,
+        page: 1,
+      }),
+    ])
+      .then(([contactRes, oppRes]) => {
+        if (cancelled) return;
+        setLinkedContacts(contactRes.data.map(mapApiContactRowToContact));
+        setLinkedOpportunities(oppRes.data.map(mapApiOpportunityToOpportunity));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLinkedContacts([]);
+        setLinkedOpportunities([]);
+        toast.error('No se pudieron cargar contactos u oportunidades vinculados');
+      })
+      .finally(() => {
+        if (!cancelled) setLinkedLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, selectedCompanyId]);
+
+  useEffect(() => {
+    if (!selectedCompanyId || linkedLoading) return;
+
+    const contactIds = new Set(linkedContacts.map((c) => c.id));
+    const oppIds = new Set(linkedOpportunities.map((o) => o.id));
+
+    setAssociations((prev) => {
+      const next = prev.filter((a) => {
+        if (a.type === 'contacto') return contactIds.has(a.id);
+        if (a.type === 'negocio') return oppIds.has(a.id);
+        return true;
+      });
+      return next.length === prev.length ? prev : next;
+    });
+  }, [selectedCompanyId, linkedContacts, linkedOpportunities, linkedLoading]);
 
   const pickerCompanies = useMemo(
     () => mergeCompaniesForTaskPicker(companies, [
@@ -166,11 +273,50 @@ export function TaskFormDialog({
     [companies, defaultAssociations, associations],
   );
 
+  const pickerContacts = useMemo((): Contact[] => {
+    if (selectedCompanyId) return linkedContacts;
+    const empresa = associations.find((a) => a.type === 'empresa');
+    if (empresa && !isLikelyCompanyCuid(empresa.id)) {
+      return contacts.filter((c) => contactBelongsToCompany(c, empresa.id, empresa.name));
+    }
+    return contacts;
+  }, [selectedCompanyId, linkedContacts, associations, contacts]);
+
+  const pickerOpportunities = useMemo((): Opportunity[] => {
+    if (selectedCompanyId) return linkedOpportunities;
+    const empresa = associations.find((a) => a.type === 'empresa');
+    if (empresa && !isLikelyCompanyCuid(empresa.id)) {
+      return opportunities.filter((o) =>
+        opportunityBelongsToCompany(o, empresa.id) ||
+        (empresa.name && o.clientName?.toLowerCase() === empresa.name.toLowerCase()),
+      );
+    }
+    return opportunities;
+  }, [selectedCompanyId, linkedOpportunities, associations, opportunities]);
+
+  const usesLinkedFetch = Boolean(selectedCompanyId);
+
   const assocCounts = {
-    contactos: contacts.length,
+    contactos: pickerContacts.length,
     empresas: pickerCompanies.length,
-    negocios: opportunities.length,
+    negocios: pickerOpportunities.length,
   };
+
+  const filteredPickerContacts = useMemo(
+    () =>
+      pickerContacts.filter((l) =>
+        l.name.toLowerCase().includes(assocSearch.toLowerCase()),
+      ),
+    [pickerContacts, assocSearch],
+  );
+
+  const filteredPickerOpportunities = useMemo(
+    () =>
+      pickerOpportunities.filter((o) =>
+        o.title.toLowerCase().includes(assocSearch.toLowerCase()),
+      ),
+    [pickerOpportunities, assocSearch],
+  );
 
   function resetForm() {
     setFormTitle('');
@@ -183,6 +329,10 @@ export function TaskFormDialog({
     setAssociations([]);
     setAssocPanelOpen(false);
     setAssocSearch('');
+    setAssocCategory('empresas');
+    setLinkedContacts([]);
+    setLinkedOpportunities([]);
+    setLinkedLoading(false);
   }
 
   async function handleSave() {
@@ -302,7 +452,22 @@ export function TaskFormDialog({
                   <button
                     type="button"
                     className="ml-0.5 rounded-sm p-0.5 hover:bg-muted"
-                    onClick={() => setAssociations((prev) => prev.filter((x) => !(x.type === a.type && x.id === a.id)))}
+                    onClick={() => {
+                      if (a.type === 'empresa') {
+                        setAssociations((prev) =>
+                          prev.filter(
+                            (x) =>
+                              x.type !== 'empresa' &&
+                              x.type !== 'contacto' &&
+                              x.type !== 'negocio',
+                          ),
+                        );
+                      } else {
+                        setAssociations((prev) =>
+                          prev.filter((x) => !(x.type === a.type && x.id === a.id)),
+                        );
+                      }
+                    }}
                   >
                     <span className="text-xs leading-none text-muted-foreground">&times;</span>
                   </button>
@@ -355,31 +520,59 @@ export function TaskFormDialog({
                 </div>
 
                 <div className="max-h-52 space-y-0.5 overflow-y-auto">
+                  {assocCategory === 'contactos' && !usesLinkedFetch && pickerContacts.length === 0 && (
+                    <p className="px-2 py-6 text-center text-xs text-muted-foreground">
+                      Selecciona una empresa para ver sus contactos vinculados.
+                    </p>
+                  )}
+                  {assocCategory === 'contactos' && usesLinkedFetch && linkedLoading && (
+                    <div className="flex items-center justify-center gap-2 px-2 py-6 text-xs text-muted-foreground">
+                      <Loader2 className="size-4 animate-spin" />
+                      Cargando contactos…
+                    </div>
+                  )}
                   {assocCategory === 'contactos' &&
-                    contacts
-                      .filter((l) => l.name.toLowerCase().includes(assocSearch.toLowerCase()))
+                    !linkedLoading &&
+                    filteredPickerContacts
                       .slice(0, ASSOCIATION_PICKER_PAGE_SIZE)
                       .map((l) => {
                         const isSelected = associations.some((a) => a.type === 'contacto' && a.id === l.id);
                         return (
-                          <button
+                          <label
                             key={l.id}
-                            type="button"
-                            className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-muted/60 ${isSelected ? 'bg-muted/50' : ''}`}
-                            onClick={() => {
-                              if (isSelected) {
-                                setAssociations((prev) => prev.filter((a) => !(a.type === 'contacto' && a.id === l.id)));
-                              } else {
-                                setAssociations((prev) => [...prev, { type: 'contacto', id: l.id, name: l.name }]);
-                              }
-                            }}
+                            className={`flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-muted/60 ${isSelected ? 'bg-muted/50' : ''}`}
                           >
-                            <Checkbox checked={isSelected} className="size-3.5" />
+                            <Checkbox
+                              checked={isSelected}
+                              className="size-3.5 shrink-0"
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setAssociations((prev) => [
+                                    ...prev,
+                                    { type: 'contacto', id: l.id, name: l.name },
+                                  ]);
+                                } else {
+                                  setAssociations((prev) =>
+                                    prev.filter((a) => !(a.type === 'contacto' && a.id === l.id)),
+                                  );
+                                }
+                              }}
+                            />
                             <User className="size-3.5 text-muted-foreground" />
                             <span className="truncate">{l.name}</span>
-                          </button>
+                          </label>
                         );
                       })}
+                  {assocCategory === 'contactos' &&
+                    !linkedLoading &&
+                    usesLinkedFetch &&
+                    filteredPickerContacts.length === 0 && (
+                      <p className="px-2 py-6 text-center text-xs text-muted-foreground">
+                        {selectedCompanyName
+                          ? `No hay contactos vinculados a ${selectedCompanyName}.`
+                          : 'No hay contactos vinculados a esta empresa.'}
+                      </p>
+                    )}
 
                   {assocCategory === 'empresas' &&
                     pickerCompanies
@@ -389,50 +582,97 @@ export function TaskFormDialog({
                         const rowId = c.id ?? c.name;
                         const isSelected = associations.some((a) => a.type === 'empresa' && a.id === rowId);
                         return (
-                          <button
+                          <label
                             key={rowId}
-                            type="button"
-                            className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-muted/60 ${isSelected ? 'bg-muted/50' : ''}`}
-                            onClick={() => {
-                              if (isSelected) {
-                                setAssociations((prev) => prev.filter((a) => !(a.type === 'empresa' && a.id === rowId)));
-                              } else {
-                                setAssociations((prev) => [...prev, { type: 'empresa', id: rowId, name: c.name }]);
-                              }
-                            }}
+                            className={`flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-muted/60 ${isSelected ? 'bg-muted/50' : ''}`}
                           >
-                            <Checkbox checked={isSelected} className="size-3.5" />
+                            <Checkbox
+                              checked={isSelected}
+                              className="size-3.5 shrink-0"
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setAssociations((prev) => {
+                                    const withoutLinked = prev.filter(
+                                      (a) =>
+                                        a.type !== 'empresa' &&
+                                        a.type !== 'contacto' &&
+                                        a.type !== 'negocio',
+                                    );
+                                    return [...withoutLinked, { type: 'empresa', id: rowId, name: c.name }];
+                                  });
+                                  setAssocCategory('contactos');
+                                  setAssocSearch('');
+                                } else {
+                                  setAssociations((prev) =>
+                                    prev.filter(
+                                      (a) =>
+                                        !(a.type === 'empresa' && a.id === rowId) &&
+                                        a.type !== 'contacto' &&
+                                        a.type !== 'negocio',
+                                    ),
+                                  );
+                                }
+                              }}
+                            />
                             <Building2 className="size-3.5 text-muted-foreground" />
                             <span className="truncate">{c.name}</span>
-                          </button>
+                          </label>
                         );
                       })}
 
+                  {assocCategory === 'negocios' && !usesLinkedFetch && pickerOpportunities.length === 0 && (
+                    <p className="px-2 py-6 text-center text-xs text-muted-foreground">
+                      Selecciona una empresa para ver sus negocios vinculados.
+                    </p>
+                  )}
+                  {assocCategory === 'negocios' && usesLinkedFetch && linkedLoading && (
+                    <div className="flex items-center justify-center gap-2 px-2 py-6 text-xs text-muted-foreground">
+                      <Loader2 className="size-4 animate-spin" />
+                      Cargando negocios…
+                    </div>
+                  )}
                   {assocCategory === 'negocios' &&
-                    opportunities
-                      .filter((o) => o.title.toLowerCase().includes(assocSearch.toLowerCase()))
+                    !linkedLoading &&
+                    filteredPickerOpportunities
                       .slice(0, ASSOCIATION_PICKER_PAGE_SIZE)
                       .map((o) => {
                         const isSelected = associations.some((a) => a.type === 'negocio' && a.id === o.id);
                         return (
-                          <button
+                          <label
                             key={o.id}
-                            type="button"
-                            className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-muted/60 ${isSelected ? 'bg-muted/50' : ''}`}
-                            onClick={() => {
-                              if (isSelected) {
-                                setAssociations((prev) => prev.filter((a) => !(a.type === 'negocio' && a.id === o.id)));
-                              } else {
-                                setAssociations((prev) => [...prev, { type: 'negocio', id: o.id, name: o.title }]);
-                              }
-                            }}
+                            className={`flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-muted/60 ${isSelected ? 'bg-muted/50' : ''}`}
                           >
-                            <Checkbox checked={isSelected} className="size-3.5" />
+                            <Checkbox
+                              checked={isSelected}
+                              className="size-3.5 shrink-0"
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setAssociations((prev) => [
+                                    ...prev,
+                                    { type: 'negocio', id: o.id, name: o.title },
+                                  ]);
+                                } else {
+                                  setAssociations((prev) =>
+                                    prev.filter((a) => !(a.type === 'negocio' && a.id === o.id)),
+                                  );
+                                }
+                              }}
+                            />
                             <Briefcase className="size-3.5 text-muted-foreground" />
                             <span className="truncate">{o.title}</span>
-                          </button>
+                          </label>
                         );
                       })}
+                  {assocCategory === 'negocios' &&
+                    !linkedLoading &&
+                    usesLinkedFetch &&
+                    filteredPickerOpportunities.length === 0 && (
+                      <p className="px-2 py-6 text-center text-xs text-muted-foreground">
+                        {selectedCompanyName
+                          ? `No hay negocios vinculados a ${selectedCompanyName}.`
+                          : 'No hay negocios vinculados a esta empresa.'}
+                      </p>
+                    )}
                 </div>
               </div>
             </PopoverContent>

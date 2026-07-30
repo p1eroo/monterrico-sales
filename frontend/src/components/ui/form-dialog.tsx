@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { ChevronLeft, X } from 'lucide-react';
+import { ChevronLeft, Loader2, X } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -154,6 +154,7 @@ export function FormDialogActions({
         onClick={onSubmit}
         disabled={submitting || submitDisabled}
       >
+        {submitting ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
         {submitLabel}
       </Button>
     </div>

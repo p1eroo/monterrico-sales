@@ -461,15 +461,30 @@ export function TaskDetailDialog({
                         <div className="max-h-36 overflow-y-auto space-y-0.5">
                           {editAssocCategory === 'contactos' && contacts.filter((l) => l.name.toLowerCase().includes(editAssocSearch.toLowerCase())).slice(0, ASSOCIATION_PICKER_PAGE_SIZE).map((l) => {
                             const isSelected = editAssociations.some((a) => a.type === 'contacto' && a.id === l.id);
-                            return (<button key={l.id} type="button" className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted ${isSelected ? 'bg-muted' : ''}`} onClick={() => { if (isSelected) { setEditAssociations((prev) => prev.filter((a) => !(a.type === 'contacto' && a.id === l.id))); } else { setEditAssociations((prev) => [...prev, { type: 'contacto' as const, id: l.id, name: l.name }]); } }}><Checkbox checked={isSelected} className="size-3.5" /><User className="size-3.5 text-muted-foreground" /><span className="truncate">{l.name}</span></button>);
+                            return (
+                              <label key={l.id} className={`flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted ${isSelected ? 'bg-muted' : ''}`}>
+                                <Checkbox checked={isSelected} className="size-3.5 shrink-0" onCheckedChange={(checked) => { if (checked) { setEditAssociations((prev) => [...prev, { type: 'contacto' as const, id: l.id, name: l.name }]); } else { setEditAssociations((prev) => prev.filter((a) => !(a.type === 'contacto' && a.id === l.id))); } }} />
+                                <User className="size-3.5 text-muted-foreground" /><span className="truncate">{l.name}</span>
+                              </label>
+                            );
                           })}
                           {editAssocCategory === 'empresas' && companies.filter((c) => c.name.toLowerCase().includes(editAssocSearch.toLowerCase())).slice(0, ASSOCIATION_PICKER_PAGE_SIZE).map((c) => {
                             const isSelected = editAssociations.some((a) => a.type === 'empresa' && a.id === c.name);
-                            return (<button key={c.name} type="button" className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted ${isSelected ? 'bg-muted' : ''}`} onClick={() => { if (isSelected) { setEditAssociations((prev) => prev.filter((a) => !(a.type === 'empresa' && a.id === c.name))); } else { setEditAssociations((prev) => [...prev, { type: 'empresa' as const, id: c.name, name: c.name }]); } }}><Checkbox checked={isSelected} className="size-3.5" /><Building2 className="size-3.5 text-muted-foreground" /><span className="truncate">{c.name}</span></button>);
+                            return (
+                              <label key={c.name} className={`flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted ${isSelected ? 'bg-muted' : ''}`}>
+                                <Checkbox checked={isSelected} className="size-3.5 shrink-0" onCheckedChange={(checked) => { if (checked) { setEditAssociations((prev) => [...prev, { type: 'empresa' as const, id: c.name, name: c.name }]); } else { setEditAssociations((prev) => prev.filter((a) => !(a.type === 'empresa' && a.id === c.name))); } }} />
+                                <Building2 className="size-3.5 text-muted-foreground" /><span className="truncate">{c.name}</span>
+                              </label>
+                            );
                           })}
                           {editAssocCategory === 'negocios' && opportunities.filter((o) => o.title.toLowerCase().includes(editAssocSearch.toLowerCase())).slice(0, ASSOCIATION_PICKER_PAGE_SIZE).map((o) => {
                             const isSelected = editAssociations.some((a) => a.type === 'negocio' && a.id === o.id);
-                            return (<button key={o.id} type="button" className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted ${isSelected ? 'bg-muted' : ''}`} onClick={() => { if (isSelected) { setEditAssociations((prev) => prev.filter((a) => !(a.type === 'negocio' && a.id === o.id))); } else { setEditAssociations((prev) => [...prev, { type: 'negocio' as const, id: o.id, name: o.title }]); } }}><Checkbox checked={isSelected} className="size-3.5" /><Briefcase className="size-3.5 text-muted-foreground" /><span className="truncate">{o.title}</span></button>);
+                            return (
+                              <label key={o.id} className={`flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted ${isSelected ? 'bg-muted' : ''}`}>
+                                <Checkbox checked={isSelected} className="size-3.5 shrink-0" onCheckedChange={(checked) => { if (checked) { setEditAssociations((prev) => [...prev, { type: 'negocio' as const, id: o.id, name: o.title }]); } else { setEditAssociations((prev) => prev.filter((a) => !(a.type === 'negocio' && a.id === o.id))); } }} />
+                                <Briefcase className="size-3.5 text-muted-foreground" /><span className="truncate">{o.title}</span>
+                              </label>
+                            );
                           })}
                         </div>
                       </div>

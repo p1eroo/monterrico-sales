@@ -110,21 +110,28 @@ export function ActivityFormDialog({
 
   const config = typeConfig[type];
   const Icon = config.icon;
+  const [saving, setSaving] = useState(false);
 
   function handleOpenChange(value: boolean) {
+    if (!value && saving) return;
     onOpenChange(value);
     if (!value) {
       setForm(createEmptyForm());
+      setSaving(false);
     }
   }
 
   async function handleSave() {
+    if (saving) return;
+    setSaving(true);
     try {
       await Promise.resolve(onSave(form));
       toast.success(`${config.label} registrad${config.labelFem} exitosamente`);
       setForm(createEmptyForm());
     } catch {
       /* el padre ya mostró el error */
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -150,7 +157,8 @@ export function ActivityFormDialog({
       footer={(
         <FormDialogActions
           cancelLabel={showSkip ? 'Omitir' : 'Cancelar'}
-          submitLabel="Guardar actividad"
+          submitLabel={saving ? 'Guardando…' : 'Guardar actividad'}
+          submitting={saving}
           onCancel={() => handleOpenChange(false)}
           onSubmit={() => void handleSave()}
         />
