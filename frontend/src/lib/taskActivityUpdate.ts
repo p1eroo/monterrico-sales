@@ -43,6 +43,9 @@ export function associationIdsFromTaskAssociations(assocs?: TaskAssociation[]) {
     clienteEmpresaIds: normalized
       .filter((a) => a.type === 'cliente_empresa')
       .map((a) => a.id),
+    contactoClienteIds: normalized
+      .filter((a) => a.type === 'cliente_contacto')
+      .map((a) => a.id),
   };
 }
 
@@ -53,6 +56,7 @@ function associationLinkKey(assocs?: TaskAssociation[]): string {
     companyIds: [...ids.companyIds].sort(),
     opportunityIds: [...ids.opportunityIds].sort(),
     clienteEmpresaIds: [...ids.clienteEmpresaIds].sort(),
+    contactoClienteIds: [...ids.contactoClienteIds].sort(),
   });
 }
 
@@ -71,7 +75,8 @@ export function taskFormHasEntityLinks(data: TaskFormResult): boolean {
     links.contactIds.length > 0 ||
     links.companyIds.length > 0 ||
     links.opportunityIds.length > 0 ||
-    links.clienteEmpresaIds.length > 0
+    links.clienteEmpresaIds.length > 0 ||
+    links.contactoClienteIds.length > 0
   );
 }
 
@@ -97,6 +102,7 @@ export function buildCreateTaskPayloadFromForm(data: TaskFormResult): CreateActi
     companyIds: links.companyIds,
     opportunityIds: links.opportunityIds,
     clienteEmpresaIds: links.clienteEmpresaIds,
+    contactoClienteIds: links.contactoClienteIds,
   };
 }
 
@@ -135,6 +141,7 @@ export function buildTaskDetailUpdatePayload(
     payload.companyIds = links.companyIds;
     payload.opportunityIds = links.opportunityIds;
     payload.clienteEmpresaIds = links.clienteEmpresaIds;
+    payload.contactoClienteIds = links.contactoClienteIds;
   }
 
   return payload;

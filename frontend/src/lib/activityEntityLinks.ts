@@ -28,6 +28,13 @@ export function clienteEmpresaIdsFromActivity(a: Activity): string[] {
   return a.clienteEmpresaId ? [a.clienteEmpresaId] : [];
 }
 
+export function contactoClienteIdsFromActivity(a: Activity): string[] {
+  if (a.linkedContactosCliente?.length) {
+    return a.linkedContactosCliente.map((c) => c.id).filter(Boolean);
+  }
+  return a.contactoClienteId ? [a.contactoClienteId] : [];
+}
+
 export function activityIsLinkedToContact(a: Activity, contactId: string): boolean {
   return contactIdsFromActivity(a).includes(contactId);
 }
@@ -47,18 +54,23 @@ export function activityIsLinkedToClienteEmpresa(
   return clienteEmpresaIdsFromActivity(a).includes(clienteEmpresaId);
 }
 
+export function activityIsLinkedToContactoCliente(
+  a: Activity,
+  contactoClienteId: string,
+): boolean {
+  return contactoClienteIdsFromActivity(a).includes(contactoClienteId);
+}
+
 export interface ActivityEntityFilterCtx {
   contactId?: string;
   companyId?: string;
   opportunityId?: string;
   clienteEmpresaId?: string;
-  /** Empresa principal del contacto (actividades vinculadas a esa empresa). */
+  contactoClienteId?: string;
   primaryCompanyId?: string;
-  /** Contactos de la empresa (actividades vinculadas a cualquiera de ellos). */
   companyContactIds?: string[];
 }
 
-/** Indica si la actividad está vinculada al contexto de entidad dado (incluye vínculos múltiples). */
 export function activityMatchesEntityFilter(
   a: Activity,
   ctx: ActivityEntityFilterCtx,
@@ -67,6 +79,9 @@ export function activityMatchesEntityFilter(
   if (ctx.companyId && activityIsLinkedToCompany(a, ctx.companyId)) return true;
   if (ctx.opportunityId && activityIsLinkedToOpportunity(a, ctx.opportunityId)) return true;
   if (ctx.clienteEmpresaId && activityIsLinkedToClienteEmpresa(a, ctx.clienteEmpresaId)) {
+    return true;
+  }
+  if (ctx.contactoClienteId && activityIsLinkedToContactoCliente(a, ctx.contactoClienteId)) {
     return true;
   }
   if (ctx.primaryCompanyId && activityIsLinkedToCompany(a, ctx.primaryCompanyId)) {
@@ -79,19 +94,19 @@ export function activityMatchesEntityFilter(
   return false;
 }
 
-/** Filtro de TasksTab: requiere al menos un id de contexto y coincide con cualquier vínculo. */
 export function activityMatchesTasksTabContext(
   a: Activity,
   ctx: Pick<
     ActivityEntityFilterCtx,
-    'contactId' | 'companyId' | 'opportunityId' | 'clienteEmpresaId'
+    'contactId' | 'companyId' | 'opportunityId' | 'clienteEmpresaId' | 'contactoClienteId'
   >,
 ): boolean {
   const hasScope = !!(
     ctx.contactId ||
     ctx.companyId ||
     ctx.opportunityId ||
-    ctx.clienteEmpresaId
+    ctx.clienteEmpresaId ||
+    ctx.contactoClienteId
   );
   if (!hasScope) return false;
   return activityMatchesEntityFilter(a, ctx);
@@ -102,11 +117,13 @@ export function linkIdsFromActivity(a: Activity): {
   companyIds: string[];
   opportunityIds: string[];
   clienteEmpresaIds: string[];
+  contactoClienteIds: string[];
 } {
   return {
     contactIds: contactIdsFromActivity(a),
     companyIds: companyIdsFromActivity(a),
     opportunityIds: opportunityIdsFromActivity(a),
     clienteEmpresaIds: clienteEmpresaIdsFromActivity(a),
+    contactoClienteIds: contactoClienteIdsFromActivity(a),
   };
 }

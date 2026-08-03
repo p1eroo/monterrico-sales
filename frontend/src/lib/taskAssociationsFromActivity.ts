@@ -59,6 +59,23 @@ export function taskAssociationsFromActivity(a: Activity): TaskAssociation[] {
     });
   }
 
+  const contactosCliente =
+    a.linkedContactosCliente?.length
+      ? a.linkedContactosCliente
+      : a.contactoClienteId
+        ? [{
+            id: a.contactoClienteId,
+            name: a.contactoClienteName?.trim() || 'Contacto cliente',
+          }]
+        : [];
+  for (const cc of contactosCliente) {
+    out.push({
+      type: 'cliente_contacto',
+      id: cc.id,
+      name: cc.name?.trim() || 'Contacto cliente',
+    });
+  }
+
   const opportunities =
     a.linkedOpportunities?.length
       ? a.linkedOpportunities
@@ -83,6 +100,8 @@ export function taskAssociationsFromEntityCtx(
     companyId?: string;
     opportunityId?: string;
     clienteEmpresaId?: string;
+    contactoClienteId?: string;
+    contactoClienteName?: string;
   } | null | undefined,
   contacts: Contact[],
   companies: { name: string; id?: string }[],
@@ -121,6 +140,13 @@ export function taskAssociationsFromEntityCtx(
       type: 'cliente_empresa',
       id: ctx.clienteEmpresaId,
       name: c?.name ?? 'Empresa cliente',
+    });
+  }
+  if (ctx.contactoClienteId) {
+    out.push({
+      type: 'cliente_contacto',
+      id: ctx.contactoClienteId,
+      name: ctx.contactoClienteName ?? 'Contacto cliente',
     });
   }
   return out;
@@ -186,6 +212,8 @@ export function contactLineFromTaskAssociations(assocs: TaskAssociation[] | unde
     return `${contactNames.join(', ')} - ${companyNames[0]}`.trim();
   }
   if (contactNames.length) return contactNames.join(', ');
+  const cc = assocs.find((a) => a.type === 'cliente_contacto');
+  if (cc) return cc.name;
   const ce = assocs.find((a) => a.type === 'cliente_empresa');
   if (ce) return ce.name;
   const e = assocs.find((a) => a.type === 'empresa');

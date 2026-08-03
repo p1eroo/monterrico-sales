@@ -58,6 +58,7 @@ export class ActivitiesController {
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('linkedToClienteEmpresa') linkedToClienteEmpresa?: string,
+    @Query('linkedToClienteCartera') linkedToClienteCartera?: string,
   ) {
     const scope = await this.crmDataScope.buildScope(
       req.user.userId,
@@ -77,6 +78,7 @@ export class ActivitiesController {
         from: from?.trim() || undefined,
         to: to?.trim() || undefined,
         linkedToClienteEmpresa: linkedToClienteEmpresa?.trim() || undefined,
+        linkedToClienteCartera: linkedToClienteCartera === 'true' || linkedToClienteCartera === '1',
       },
       scope,
     );

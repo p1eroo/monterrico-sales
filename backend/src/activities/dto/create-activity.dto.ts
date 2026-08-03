@@ -17,9 +17,11 @@ export class CreateActivityDto {
   companyId?: string;
   opportunityId?: string;
   clienteEmpresaId?: string;
+  contactoClienteId?: string;
   /** Vínculos múltiples */
   contactIds?: string[];
   companyIds?: string[];
   opportunityIds?: string[];
   clienteEmpresaIds?: string[];
+  contactoClienteIds?: string[];
 }

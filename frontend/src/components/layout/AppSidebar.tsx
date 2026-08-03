@@ -79,6 +79,7 @@ const navItems: NavDef[] = [
     children: [
       { to: APP_PATHS.clientCompanies, label: 'Empresas', icon: Briefcase },
       { to: APP_PATHS.clientContacts, label: 'Contactos', icon: UserPlus },
+      { to: APP_PATHS.clientTasks, label: 'Tareas', icon: DocumentAddSvgIcon },
     ],
   },
   { to: '/reports', label: 'Reportes', icon: ChatSquare2SvgIcon, permission: 'reportes.ver' },

@@ -116,6 +116,7 @@ import {
   taskAssociationsFromActivity,
   taskLinkBadgesFromActivity,
 } from '@/lib/taskAssociationsFromActivity';
+import { activityIsClienteCartera } from '@/lib/clienteCarteraActivityLinks';
 import { completeTaskWithActivityForm } from '@/lib/activityPayloadFromForm';
 
 const taskKindIcons: Record<TaskKind, ComponentType<{ className?: string }>> = {
@@ -218,7 +219,9 @@ function activityCompanyDisplayName(a: Activity): string | undefined {
   return undefined;
 }
 
-export default function TareasPage() {
+export type TareasPageScope = 'all' | 'clienteCartera';
+
+export default function TareasPage({ scope = 'all' }: { scope?: TareasPageScope }) {
   const navigate = useNavigate();
   const {
     activities,
@@ -242,8 +245,14 @@ export default function TareasPage() {
   } = useMultiAdvisorFilter();
 
   const allTasks = useMemo(
-    () => activities.filter(isTaskRow),
-    [activities],
+    () => {
+      const rows = activities.filter(isTaskRow);
+      if (scope === 'clienteCartera') {
+        return rows.filter(activityIsClienteCartera);
+      }
+      return rows;
+    },
+    [activities, scope],
   );
 
   const [search, setSearch] = useState('');
@@ -777,10 +786,14 @@ export default function TareasPage() {
         size: 160,
         cell: ({ row }) => {
           const task = row.original;
-          if (!task.companyName) return <span className={CRM_CELL_EMPTY}>—</span>;
+          const displayCompany =
+            task.clienteEmpresaName?.trim() ||
+            task.companyName?.trim() ||
+            taskAssociationsFromActivity(task).find((a) => a.type === 'cliente_empresa')?.name;
+          if (!displayCompany) return <span className={CRM_CELL_EMPTY}>—</span>;
           return (
-            <span className={cn('block truncate', CRM_CELL_MUTED)} title={task.companyName}>
-              {task.companyName}
+            <span className={cn('block truncate', CRM_CELL_MUTED)} title={displayCompany}>
+              {displayCompany}
             </span>
           );
         },
@@ -873,7 +886,7 @@ export default function TareasPage() {
   return (
     <TooltipProvider>
       <div className={viewMode === 'kanban' ? 'flex h-full min-h-0 min-w-0 flex-col gap-5' : 'min-w-0 max-w-full space-y-6'}>
-      <PageHeader title="Tareas">
+      <PageHeader title={scope === 'clienteCartera' ? 'Tareas — Clientes' : 'Tareas'}>
         {viewMode === 'kanban' ? (
           <div className="flex items-center gap-2">
             <div className={TASK_VIEW_TOGGLE_SHELL}>

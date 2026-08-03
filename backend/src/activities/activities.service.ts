@@ -29,6 +29,13 @@ const activityInclude = {
       clienteEmpresa: { select: { id: true, empresa: true } },
     },
   },
+  contactosCliente: {
+    include: {
+      contactoCliente: {
+        select: { id: true, nombres: true, apellidos: true },
+      },
+    },
+  },
 } as const;
 
 /** Select slim para listado: omite assignedTo (=user.id) */
@@ -54,6 +61,13 @@ const activitySelectListSlim = {
   clienteEmpresas: {
     include: { clienteEmpresa: { select: { id: true, empresa: true } } },
   },
+  contactosCliente: {
+    include: {
+      contactoCliente: {
+        select: { id: true, nombres: true, apellidos: true },
+      },
+    },
+  },
 } as const;
 
 type ActivityRowForHistoryLog = {
@@ -64,6 +78,7 @@ type ActivityRowForHistoryLog = {
   companies: { company: { id: string } }[];
   opportunities: { opportunity: { id: string } }[];
   clienteEmpresas: { clienteEmpresa: { id: string } }[];
+  contactosCliente: { contactoCliente: { id: string; nombres: string; apellidos: string | null } }[];
 };
 
 @Injectable()
@@ -159,11 +174,15 @@ export class ActivitiesService {
     const clienteEmpresaIds = [
       ...new Set(row.clienteEmpresas.map((c) => c.clienteEmpresa.id)),
     ];
+    const contactoClienteIds = [
+      ...new Set(row.contactosCliente.map((c) => c.contactoCliente.id)),
+    ];
     if (
       contactIds.length === 0 &&
       companyIds.length === 0 &&
       opportunityIds.length === 0 &&
-      clienteEmpresaIds.length === 0
+      clienteEmpresaIds.length === 0 &&
+      contactoClienteIds.length === 0
     ) {
       return;
     }
@@ -217,7 +236,39 @@ export class ActivitiesService {
         }),
       );
     }
+    for (const link of row.contactosCliente) {
+      const cc = link.contactoCliente;
+      const name = [cc.nombres, cc.apellidos].filter(Boolean).join(' ').trim() || row.title;
+      tasks.push(
+        this.activityLogs.record(actor, {
+          action,
+          module: 'actividades',
+          entityType: 'ContactoCliente',
+          entityId: cc.id,
+          entityName: name,
+          description,
+        }),
+      );
+    }
     await Promise.all(tasks);
+  }
+
+  private async assertContactoClienteAccess(
+    contactoClienteId: string,
+    scope?: CrmDataScope,
+  ) {
+    const row = await this.prisma.contactoCliente.findUnique({
+      where: { id: contactoClienteId },
+    });
+    if (!row) {
+      throw new BadRequestException('El contacto cliente indicado no existe');
+    }
+    if (scope && !scope.unrestricted) {
+      if (row.assignedTo !== scope.viewerUserId) {
+        throw new BadRequestException('El contacto cliente indicado no existe');
+      }
+    }
+    return row;
   }
 
   private async assertClienteEmpresaAccess(
@@ -266,10 +317,12 @@ export class ActivitiesService {
       'companyId' in dto ||
       'opportunityId' in dto ||
       'clienteEmpresaId' in dto ||
+      'contactoClienteId' in dto ||
       'contactIds' in dto ||
       'companyIds' in dto ||
       'opportunityIds' in dto ||
-      'clienteEmpresaIds' in dto
+      'clienteEmpresaIds' in dto ||
+      'contactoClienteIds' in dto
     );
   }
 
@@ -279,10 +332,12 @@ export class ActivitiesService {
       companyId?: string | null;
       opportunityId?: string | null;
       clienteEmpresaId?: string | null;
+      contactoClienteId?: string | null;
       contactIds?: string[] | null;
       companyIds?: string[] | null;
       opportunityIds?: string[] | null;
       clienteEmpresaIds?: string[] | null;
+      contactoClienteIds?: string[] | null;
     },
     scope?: CrmDataScope,
     actor?: ActivityActor,
@@ -296,12 +351,17 @@ export class ActivitiesService {
       raw.clienteEmpresaId,
       raw.clienteEmpresaIds,
     );
+    const contactoClienteIds = this.mergeLinkIds(
+      raw.contactoClienteId,
+      raw.contactoClienteIds,
+    );
 
     const hasExplicitArrays =
       (raw.contactIds?.length ?? 0) > 0 ||
       (raw.companyIds?.length ?? 0) > 0 ||
       (raw.opportunityIds?.length ?? 0) > 0 ||
-      (raw.clienteEmpresaIds?.length ?? 0) > 0;
+      (raw.clienteEmpresaIds?.length ?? 0) > 0 ||
+      (raw.contactoClienteIds?.length ?? 0) > 0;
 
     if (autoLink && !hasExplicitArrays) {
       if (opportunityIds.length === 1 && companyIds.length === 0) {
@@ -332,10 +392,11 @@ export class ActivitiesService {
       contactIds.length === 0 &&
       companyIds.length === 0 &&
       opportunityIds.length === 0 &&
-      clienteEmpresaIds.length === 0
+      clienteEmpresaIds.length === 0 &&
+      contactoClienteIds.length === 0
     ) {
       throw new BadRequestException(
-        'Debe vincularse a al menos un contacto, empresa, oportunidad o empresa cliente',
+        'Debe vincularse a al menos un contacto, empresa, oportunidad, empresa cliente o contacto cliente',
       );
     }
 
@@ -382,8 +443,11 @@ export class ActivitiesService {
         actor?.username,
       );
     }
+    for (const contactoClienteId of contactoClienteIds) {
+      await this.assertContactoClienteAccess(contactoClienteId, scope);
+    }
 
-    return { contactIds, companyIds, opportunityIds, clienteEmpresaIds };
+    return { contactIds, companyIds, opportunityIds, clienteEmpresaIds, contactoClienteIds };
   }
 
   private async syncActivityLinks(
@@ -395,6 +459,7 @@ export class ActivitiesService {
     await tx.companyActivity.deleteMany({ where: { activityId } });
     await tx.opportunityActivity.deleteMany({ where: { activityId } });
     await tx.clienteEmpresaActivity.deleteMany({ where: { activityId } });
+    await tx.contactoClienteActivity.deleteMany({ where: { activityId } });
 
     for (const contactId of links.contactIds) {
       await tx.contactActivity.create({ data: { contactId, activityId } });
@@ -410,6 +475,11 @@ export class ActivitiesService {
     for (const clienteEmpresaId of links.clienteEmpresaIds) {
       await tx.clienteEmpresaActivity.create({
         data: { clienteEmpresaId, activityId },
+      });
+    }
+    for (const contactoClienteId of links.contactoClienteIds) {
+      await tx.contactoClienteActivity.create({
+        data: { contactoClienteId, activityId },
       });
     }
   }
@@ -455,10 +525,12 @@ export class ActivitiesService {
         companyId: dto.companyId,
         opportunityId: dto.opportunityId,
         clienteEmpresaId: dto.clienteEmpresaId,
+        contactoClienteId: dto.contactoClienteId,
         contactIds: dto.contactIds,
         companyIds: dto.companyIds,
         opportunityIds: dto.opportunityIds,
         clienteEmpresaIds: dto.clienteEmpresaIds,
+        contactoClienteIds: dto.contactoClienteIds,
       },
       scope,
       actor,
@@ -503,6 +575,7 @@ export class ActivitiesService {
       from?: string;
       to?: string;
       linkedToClienteEmpresa?: string;
+      linkedToClienteCartera?: boolean;
     },
     scope?: CrmDataScope,
   ) {
@@ -527,6 +600,12 @@ export class ActivitiesService {
       where.clienteEmpresas = {
         some: { clienteEmpresaId: opts.linkedToClienteEmpresa.trim() },
       };
+    }
+    if (opts?.linkedToClienteCartera) {
+      where.OR = [
+        { clienteEmpresas: { some: {} } },
+        { contactosCliente: { some: {} } },
+      ];
     }
 
     const [rows, total] = await Promise.all([
@@ -656,10 +735,12 @@ export class ActivitiesService {
           companyId: dto.companyId,
           opportunityId: dto.opportunityId,
           clienteEmpresaId: dto.clienteEmpresaId,
+          contactoClienteId: dto.contactoClienteId,
           contactIds: dto.contactIds,
           companyIds: dto.companyIds,
           opportunityIds: dto.opportunityIds,
           clienteEmpresaIds: dto.clienteEmpresaIds,
+          contactoClienteIds: dto.contactoClienteIds,
         },
         scope,
         actor,

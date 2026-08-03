@@ -557,6 +557,7 @@ model ContactoCliente {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   empresas           ClienteEmpresaContacto[]
+  activities         ContactoClienteActivity[]
 
   @@index([assignedTo])
 }
@@ -628,6 +629,7 @@ model Activity {
   companies     CompanyActivity[]
   opportunities OpportunityActivity[]
   clienteEmpresas ClienteEmpresaActivity[]
+  contactosCliente ContactoClienteActivity[]
 
   @@index([assignedTo])
   @@index([dueDate])
@@ -730,6 +732,18 @@ model ClienteEmpresaActivity {
 
   @@unique([clienteEmpresaId, activityId])
   @@index([clienteEmpresaId])
+  @@index([activityId])
+}
+
+model ContactoClienteActivity {
+  id                String          @id @default(cuid())
+  contactoClienteId String
+  activityId        String
+  contactoCliente   ContactoCliente @relation(fields: [contactoClienteId], references: [id], onDelete: Cascade)
+  activity          Activity        @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@unique([contactoClienteId, activityId])
+  @@index([contactoClienteId])
   @@index([activityId])
 }
 

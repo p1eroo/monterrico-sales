@@ -31,6 +31,9 @@ export type ApiActivity = {
   companies?: { company: { id: string; name: string } }[];
   opportunities?: { opportunity: { id: string; title: string } }[];
   clienteEmpresas?: { clienteEmpresa: { id: string; empresa: string } }[];
+  contactosCliente?: {
+    contactoCliente: { id: string; nombres: string; apellidos: string | null };
+  }[];
 };
 
 const VALID_TYPES: ActivityType[] = [
@@ -82,11 +85,17 @@ export function mapApiActivityToActivity(row: ApiActivity): Activity {
     row.opportunities?.map((o) => o.opportunity).filter(Boolean) ?? [];
   const linkedClienteEmpresas =
     row.clienteEmpresas?.map((c) => c.clienteEmpresa).filter(Boolean) ?? [];
+  const linkedContactosCliente =
+    row.contactosCliente?.map((c) => c.contactoCliente).filter(Boolean) ?? [];
 
   const contact = linkedContacts[0];
   const company = linkedCompanies[0];
   const opportunity = linkedOpportunities[0];
   const clienteEmpresa = linkedClienteEmpresas[0];
+  const contactoCliente = linkedContactosCliente[0];
+  const contactoClienteName = contactoCliente
+    ? [contactoCliente.nombres, contactoCliente.apellidos].filter(Boolean).join(' ').trim()
+    : undefined;
 
   return {
     id: row.id,
@@ -101,6 +110,8 @@ export function mapApiActivityToActivity(row: ApiActivity): Activity {
     companyName: company?.name,
     clienteEmpresaId: clienteEmpresa?.id,
     clienteEmpresaName: clienteEmpresa?.empresa,
+    contactoClienteId: contactoCliente?.id,
+    contactoClienteName,
     opportunityId: opportunity?.id,
     opportunityTitle: opportunity?.title,
     linkedContacts: linkedContacts.map((c) => ({
@@ -116,6 +127,10 @@ export function mapApiActivityToActivity(row: ApiActivity): Activity {
     linkedClienteEmpresas: linkedClienteEmpresas.map((c) => ({
       id: c.id,
       name: c.empresa,
+    })),
+    linkedContactosCliente: linkedContactosCliente.map((c) => ({
+      id: c.id,
+      name: [c.nombres, c.apellidos].filter(Boolean).join(' ').trim() || 'Contacto cliente',
     })),
     assignedTo: row.user?.id ?? row.assignedTo ?? '',
     assignedToName: row.user?.name ?? 'Sin asignar',
@@ -145,10 +160,12 @@ export type CreateActivityPayload = {
   companyId?: string;
   opportunityId?: string;
   clienteEmpresaId?: string;
+  contactoClienteId?: string;
   contactIds?: string[];
   companyIds?: string[];
   opportunityIds?: string[];
   clienteEmpresaIds?: string[];
+  contactoClienteIds?: string[];
 };
 
 export type UpdateActivityPayload = {
@@ -167,10 +184,12 @@ export type UpdateActivityPayload = {
   companyId?: string | null;
   opportunityId?: string | null;
   clienteEmpresaId?: string | null;
+  contactoClienteId?: string | null;
   contactIds?: string[];
   companyIds?: string[];
   opportunityIds?: string[];
   clienteEmpresaIds?: string[];
+  contactoClienteIds?: string[];
 };
 
 export async function fetchActivities(): Promise<Activity[]> {

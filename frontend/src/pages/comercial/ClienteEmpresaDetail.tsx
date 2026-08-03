@@ -45,7 +45,8 @@ import {
   type ContactoClienteRow,
 } from '@/lib/clienteCarteraApi';
 import { newContactDataToClienteBody } from '@/lib/clienteContactoFormUtils';
-import { APP_PATHS, clienteEmpresaDetailHref } from '@/lib/detailRoutes';
+import { APP_PATHS, clienteContactoDetailHref, clienteEmpresaDetailHref } from '@/lib/detailRoutes';
+import { navigateOnClick } from '@/lib/navigateOnClick';
 
 const TIMELINE_PAGE_SIZE = 8;
 
@@ -178,8 +179,6 @@ export default function ClienteEmpresaDetailPage() {
     () => (empresa?.contactos ?? []).map(mapToLinkedContact),
     [empresa?.contactos],
   );
-
-  const primaryContact = empresa?.contactos.find((c) => c.isPrimary) ?? empresa?.contactos[0];
 
   const followUpAssociations = useMemo(() => {
     if (!empresa) return [];
@@ -455,8 +454,8 @@ export default function ClienteEmpresaDetailPage() {
             onCreate={() => setCreateDialogOpen(true)}
             onAddExisting={() => setLinkDialogOpen(true)}
             onRemove={(c) => void handleUnlink(c)}
-            onContactNavigate={() => {
-              toast.info('Gestiona este contacto desde Clientes → Contactos.');
+            onContactNavigate={(c, e) => {
+              navigateOnClick(e, clienteContactoDetailHref({ id: c.id }), navigate);
             }}
           />
         )}
@@ -554,7 +553,6 @@ export default function ClienteEmpresaDetailPage() {
               ref={tasksTabRef}
               defaultAssigneeId={empresa.assignedTo}
               clienteEmpresaId={empresa.id}
-              contactId={primaryContact?.id}
             />
           </TabsContent>
 

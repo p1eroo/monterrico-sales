@@ -48,7 +48,7 @@ export type ActivityStatus = 'pendiente' | 'completada' | 'en_progreso' | 'venci
 
 /** Asociación de tarea con contacto, empresa u oportunidad */
 export interface TaskAssociation {
-  type: 'contacto' | 'empresa' | 'negocio' | 'cliente_empresa';
+  type: 'contacto' | 'empresa' | 'negocio' | 'cliente_empresa' | 'cliente_contacto';
   id: string;
   name: string;
 }
@@ -211,6 +211,8 @@ export interface Activity {
   companyName?: string;
   clienteEmpresaId?: string;
   clienteEmpresaName?: string;
+  contactoClienteId?: string;
+  contactoClienteName?: string;
   opportunityId?: string;
   opportunityTitle?: string;
   /** Todos los vínculos devueltos por la API (tareas con asociaciones múltiples). */
@@ -218,6 +220,7 @@ export interface Activity {
   linkedCompanies?: Array<{ id: string; name: string }>;
   linkedOpportunities?: Array<{ id: string; title: string }>;
   linkedClienteEmpresas?: Array<{ id: string; name: string }>;
+  linkedContactosCliente?: Array<{ id: string; name: string }>;
   assignedTo: string;
   assignedToName: string;
   status: ActivityStatus;

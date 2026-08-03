@@ -9,6 +9,7 @@ export type ActivityEntityContext = {
   companyId?: string;
   opportunityId?: string;
   clienteEmpresaId?: string;
+  contactoClienteId?: string;
 };
 
 export function entityContextFromActivity(
@@ -30,6 +31,7 @@ export function entityContextFromActivity(
     companyId: links.companyIds[0],
     opportunityId: links.opportunityIds[0],
     clienteEmpresaId: links.clienteEmpresaIds[0],
+    contactoClienteId: links.contactoClienteIds[0],
   };
 }
 
@@ -47,7 +49,7 @@ export function entityLinkIdsFromActivity(
   >,
 ): Pick<
   CreateActivityPayload,
-  'contactIds' | 'companyIds' | 'opportunityIds' | 'clienteEmpresaIds'
+  'contactIds' | 'companyIds' | 'opportunityIds' | 'clienteEmpresaIds' | 'contactoClienteIds'
 > {
   const links = linkIdsFromActivity(activity as Activity);
   return {
@@ -55,6 +57,7 @@ export function entityLinkIdsFromActivity(
     companyIds: links.companyIds,
     opportunityIds: links.opportunityIds,
     clienteEmpresaIds: links.clienteEmpresaIds,
+    contactoClienteIds: links.contactoClienteIds,
   };
 }
 

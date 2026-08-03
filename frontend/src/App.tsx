@@ -24,6 +24,8 @@ const OportunidadDetail = lazy(() => import('@/pages/comercial/OportunidadDetail
 const ClienteEmpresas = lazy(() => import('@/pages/comercial/ClienteEmpresas'));
 const ClienteEmpresaDetail = lazy(() => import('@/pages/comercial/ClienteEmpresaDetail'));
 const ClienteContactos = lazy(() => import('@/pages/comercial/ClienteContactos'));
+const ClienteContactoDetail = lazy(() => import('@/pages/comercial/ClienteContactoDetail'));
+const ClienteTareas = lazy(() => import('@/pages/comercial/ClienteTareas'));
 const Reports = lazy(() => import('@/pages/comercial/Reports'));
 const Team = lazy(() => import('@/pages/comercial/Team'));
 const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard'));
@@ -161,6 +163,8 @@ function MainRoutes() {
         <Route path="/clients/companies" element={<ClienteEmpresas />} />
         <Route path="/clients/companies/:id" element={<ClienteEmpresaDetail />} />
         <Route path="/clients/contacts" element={<ClienteContactos />} />
+        <Route path="/clients/contacts/:id" element={<ClienteContactoDetail />} />
+        <Route path="/clients/tareas" element={<ClienteTareas />} />
         <Route path="/clientes" element={<Navigate to="/clients/companies" replace />} />
         <Route path="/clientes/empresas" element={<Navigate to="/clients/companies" replace />} />
         <Route path="/clientes/empresas/:id" element={<LegacyDetailRedirect basePath="/clients/companies" />} />

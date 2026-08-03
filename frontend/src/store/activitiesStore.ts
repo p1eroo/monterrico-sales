@@ -48,6 +48,7 @@ function buildOptimisticTask(
     contactName: display.contactNameLine,
     companyId: payload.companyId,
     clienteEmpresaId: payload.clienteEmpresaId,
+    contactoClienteId: payload.contactoClienteId,
     opportunityId: payload.opportunityId,
     assignedTo: payload.assignedTo,
     assignedToName: display.assigneeName,
@@ -125,6 +126,16 @@ function mergeActivityOptimistic(activity: Activity, payload: UpdateActivityPayl
   } else if (payload.clienteEmpresaId !== undefined) {
     next.clienteEmpresaId = payload.clienteEmpresaId ?? undefined;
     if (!payload.clienteEmpresaId) next.clienteEmpresaName = undefined;
+  }
+  if (payload.contactoClienteIds !== undefined) {
+    next.contactoClienteId = payload.contactoClienteIds[0];
+    if (payload.contactoClienteIds.length === 0) {
+      next.contactoClienteId = undefined;
+      next.contactoClienteName = undefined;
+    }
+  } else if (payload.contactoClienteId !== undefined) {
+    next.contactoClienteId = payload.contactoClienteId ?? undefined;
+    if (!payload.contactoClienteId) next.contactoClienteName = undefined;
   }
   return next;
 }

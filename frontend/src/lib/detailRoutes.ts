@@ -6,6 +6,7 @@ export const APP_PATHS = {
   opportunities: '/opportunities',
   clientCompanies: '/clients/companies',
   clientContacts: '/clients/contacts',
+  clientTasks: '/clients/tareas',
 } as const;
 
 /**
@@ -83,8 +84,17 @@ export function clienteEmpresaDetailHref(row: { empresa: string }): string {
   return clienteEmpresaDetailPath(row);
 }
 
+export function clienteContactoDetailPath(row: { id: string }): string {
+  return `${APP_PATHS.clientContacts}/${encodeURIComponent(row.id)}`;
+}
+
+export function clienteContactoDetailHref(row: { id: string }): string {
+  return clienteContactoDetailPath(row);
+}
+
 /** Rutas de ficha (detalle) donde conviene menos padding superior respecto al Topbar global. */
 export function isCrmEntityDetailPath(pathname: string): boolean {
   if (/^\/clients\/companies\/[^/]+$/.test(pathname)) return true;
+  if (/^\/clients\/contacts\/[^/]+$/.test(pathname)) return true;
   return /^\/(contacts|companies|opportunities|users)\/[^/]+$/.test(pathname);
 }

@@ -27,6 +27,7 @@ export const ACCESSIBLE_PATH_ORDER: PathRule[] = [
   { path: '/campaigns', permission: 'campanas.ver' },
   { path: APP_PATHS.clientCompanies, permission: 'clientes.ver' },
   { path: APP_PATHS.clientContacts, permission: 'clientes.ver' },
+  { path: APP_PATHS.clientTasks, permission: 'actividades.ver' },
   { path: '/reports', permission: 'reportes.ver' },
   { path: '/archivos', permission: 'archivos.ver' },
   { path: '/team', permission: 'equipo.ver' },
@@ -63,6 +64,7 @@ export function getRequiredPermissionForPath(
   if (pathname.startsWith('/inbox')) return 'correo.ver';
   if (pathname.startsWith('/campaigns')) return 'campanas.ver';
   if (pathname.startsWith('/clientes')) return 'clientes.ver';
+  if (pathname.startsWith('/clients/tareas')) return 'actividades.ver';
   if (pathname.startsWith('/clients')) return 'clientes.ver';
   if (pathname.startsWith('/reports')) return 'reportes.ver';
   if (pathname.startsWith('/archivos')) return 'archivos.ver';

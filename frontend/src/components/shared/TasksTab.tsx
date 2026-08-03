@@ -123,6 +123,9 @@ interface TasksTabProps {
   companyId?: string;
   opportunityId?: string;
   clienteEmpresaId?: string;
+  contactoClienteId?: string;
+  contactoClienteName?: string;
+  clienteEmpresaName?: string;
 }
 
 function isTaskActivity(a: Activity): boolean {
@@ -188,6 +191,9 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
   companyId,
   opportunityId,
   clienteEmpresaId,
+  contactoClienteId,
+  contactoClienteName,
+  clienteEmpresaName,
 }, ref) {
   const { users, activeAdvisors } = useUsers();
   const currentUser = useAppStore((s) => s.currentUser);
@@ -203,10 +209,11 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
         companyId,
         opportunityId,
         clienteEmpresaId,
+        contactoClienteId,
       });
     });
     return filtered.map(activityToMockTask);
-  }, [activities, contactId, companyId, opportunityId, clienteEmpresaId]);
+  }, [activities, contactId, companyId, opportunityId, clienteEmpresaId, contactoClienteId]);
 
   useImperativeHandle(ref, () => ({
     addTask: async (task) => {
@@ -264,7 +271,17 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
           fallbackAssocs.push({
             type: 'cliente_empresa',
             id: clienteEmpresaId,
-            name: 'Empresa cliente',
+            name: clienteEmpresaName ?? 'Empresa cliente',
+          });
+        }
+        if (
+          contactoClienteId &&
+          !fallbackAssocs.some((a) => a.type === 'cliente_contacto' && a.id === contactoClienteId)
+        ) {
+          fallbackAssocs.push({
+            type: 'cliente_contacto',
+            id: contactoClienteId,
+            name: contactoClienteName ?? 'Contacto cliente',
           });
         }
         formLike.associations = fallbackAssocs;
@@ -650,7 +667,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
             <Button className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={async () => {
               if (!linkedTaskTitle.trim()) { toast.error('El título es requerido'); return; }
               const dueDate = linkedTaskDueDate || new Date().toISOString().slice(0, 10);
-              if (!contactId && !companyId && !opportunityId && !clienteEmpresaId) {
+              if (!contactId && !companyId && !opportunityId && !clienteEmpresaId && !contactoClienteId) {
                 toast.error('No hay entidad vinculada para la tarea');
                 return;
               }
@@ -659,6 +676,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
                   ...(contactId ? { contactIds: [contactId] } : {}),
                   ...(companyId ? { companyIds: [companyId] } : {}),
                   ...(clienteEmpresaId ? { clienteEmpresaIds: [clienteEmpresaId] } : {}),
+                  ...(contactoClienteId ? { contactoClienteIds: [contactoClienteId] } : {}),
                   ...(opportunityId ? { opportunityIds: [opportunityId] } : {}),
                 };
                 await createActivity({

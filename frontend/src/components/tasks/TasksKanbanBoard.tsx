@@ -174,6 +174,8 @@ const TaskKanbanCard = memo(function TaskKanbanCard({
   const hasContact = task.contactId && task.contactName?.trim();
   const hasCompany = task.companyId && task.companyName?.trim();
   const hasOpportunity = task.opportunityId && task.opportunityTitle?.trim();
+  const hasClienteEmpresa = !!task.clienteEmpresaName?.trim();
+  const hasContactoCliente = !!task.contactoClienteName?.trim();
 
   return (
     <div
@@ -215,6 +217,18 @@ const TaskKanbanCard = memo(function TaskKanbanCard({
               {task.contactName?.trim()}
               {task.contactPhone ? ` · ${task.contactPhone}` : ''}
             </span>
+          </div>
+        )}
+        {hasContactoCliente && (
+          <div className="flex items-center gap-2">
+            <UsersGroupTwoRoundedSvgIcon className={kanbanMetaIconClass} aria-hidden />
+            <span className="truncate">{task.contactoClienteName?.trim()}</span>
+          </div>
+        )}
+        {hasClienteEmpresa && (
+          <div className="flex items-center gap-2">
+            <Buildings2SvgIcon className={kanbanMetaIconClass} aria-hidden />
+            <span className="truncate">{task.clienteEmpresaName?.trim()}</span>
           </div>
         )}
         {hasCompany && (

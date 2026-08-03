@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { DateRange } from 'react-day-picker';
 import { navigateOnAuxClick, navigateOnClick } from '@/lib/navigateOnClick';
-import { clienteEmpresaDetailHref } from '@/lib/detailRoutes';
+import { clienteContactoDetailHref } from '@/lib/detailRoutes';
 import {
   flexRender,
   getCoreRowModel,
@@ -12,7 +12,7 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import {
-  Search, Users, X, Plus, Pencil, Trash2, Loader2, MoreVertical, ChevronDown, ChevronUp, ChevronsUpDown,
+  Search, Users, X, Plus, Pencil, Trash2, Loader2, MoreVertical, ChevronDown, ChevronUp, ChevronsUpDown, Eye,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import {
@@ -419,6 +419,14 @@ export default function ClienteContactos() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(clienteContactoDetailHref({ id: row.original.id }));
+                }}
+              >
+                <Eye /> Ver detalle
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation();
@@ -983,28 +991,22 @@ export default function ClienteContactos() {
                 ))}
               </thead>
               <tbody>
-                {table.getRowModel().rows.map((row) => {
-                  const primaryEmpresa = row.original.empresas[0];
-                  return (
+                {table.getRowModel().rows.map((row) => (
                     <tr
                       key={row.id}
                       className={cn('h-[48px] last:border-b-0', crmTableBodyRowClassInteractive)}
                       onClick={(e) => {
-                        if (primaryEmpresa) {
-                          navigateOnClick(
-                            e,
-                            clienteEmpresaDetailHref({ empresa: primaryEmpresa.empresa }),
-                            navigate,
-                          );
-                        }
+                        navigateOnClick(
+                          e,
+                          clienteContactoDetailHref({ id: row.original.id }),
+                          navigate,
+                        );
                       }}
                       onAuxClick={(e) => {
-                        if (primaryEmpresa) {
-                          navigateOnAuxClick(
-                            e,
-                            clienteEmpresaDetailHref({ empresa: primaryEmpresa.empresa }),
-                          );
-                        }
+                        navigateOnAuxClick(
+                          e,
+                          clienteContactoDetailHref({ id: row.original.id }),
+                        );
                       }}
                     >
                       {row.getVisibleCells().map((cell) => (
@@ -1024,8 +1026,7 @@ export default function ClienteContactos() {
                         </td>
                       ))}
                     </tr>
-                  );
-                })}
+                ))}
               </tbody>
             </table>
           </div>

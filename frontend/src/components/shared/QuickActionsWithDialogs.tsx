@@ -136,6 +136,8 @@ interface QuickActionsWithDialogsProps {
   inline?: boolean;
   clienteEmpresaId?: string;
   clienteEmpresaName?: string;
+  contactoClienteId?: string;
+  contactoClienteName?: string;
 }
 
 export function QuickActionsWithDialogs({
@@ -149,6 +151,8 @@ export function QuickActionsWithDialogs({
   inline = false,
   clienteEmpresaId,
   clienteEmpresaName,
+  contactoClienteId,
+  contactoClienteName,
 }: QuickActionsWithDialogsProps) {
   const { createActivity } = useActivities();
   const [activeDialog, setActiveDialog] = useState<string | null>(null);
@@ -160,10 +164,20 @@ export function QuickActionsWithDialogs({
   const [linkedTaskFormOpen, setLinkedTaskFormOpen] = useState(false);
 
   const visibleOptions = MENU_OPTIONS.filter((opt) => !excludeActions.includes(opt.type));
-  const lockedClienteAssociations: TaskAssociation[] | undefined =
-    clienteEmpresaId && clienteEmpresaName
-      ? [{ type: 'cliente_empresa', id: clienteEmpresaId, name: clienteEmpresaName }]
-      : undefined;
+  const lockedClienteAssociations: TaskAssociation[] | undefined = (() => {
+    const out: TaskAssociation[] = [];
+    if (clienteEmpresaId && clienteEmpresaName) {
+      out.push({ type: 'cliente_empresa', id: clienteEmpresaId, name: clienteEmpresaName });
+    }
+    if (contactoClienteId && (contactoClienteName || entityName)) {
+      out.push({
+        type: 'cliente_contacto',
+        id: contactoClienteId,
+        name: contactoClienteName ?? entityName,
+      });
+    }
+    return out.length > 0 ? out : undefined;
+  })();
   const taskDefaultAssociations =
     lockedClienteAssociations ??
     (followUpAssociations.length > 0 ? followUpAssociations : undefined);
