@@ -43,7 +43,7 @@ import { toast } from '@/lib/notify';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { formatCurrency, formatDate } from '@/lib/formatters';
+import { formatCurrency, formatDate, completedAtNowIso } from '@/lib/formatters';
 import { ENTITY_DETAIL_SECTION_TAB_OPTIONS } from '@/lib/entityDetailSectionTabs';
 import { api } from '@/lib/api';
 import { type ApiCompanyRecord, isLikelyCompanyCuid } from '@/lib/companyApi';
@@ -242,7 +242,7 @@ export default function OportunidadDetailPage() {
         dueDate: draft.dueDate,
         startDate: draft.startDate,
         startTime: draft.startTime,
-        completedAt: draft.dueDate,
+        completedAt: completedAtNowIso(),
         createdAt: new Date().toISOString().slice(0, 10),
         contactId: persistedContactId ?? linkedContact?.id ?? opp.contactId,
         companyId: persistedCompanyId,
@@ -261,7 +261,7 @@ export default function OportunidadDetailPage() {
       dueDate: draft.dueDate,
       startDate: draft.startDate,
       startTime: draft.startTime,
-      completedAt: draft.dueDate,
+      completedAt: completedAtNowIso(),
       contactId: persistedContactId,
       companyId: persistedCompanyId,
       opportunityId: persistedOpportunityId,

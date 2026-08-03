@@ -29,7 +29,7 @@ import { TasksTab, type TasksTabHandle } from '@/components/shared/TasksTab';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { formatDate } from '@/lib/formatters';
+import { formatDate, completedAtNowIso } from '@/lib/formatters';
 import { toast } from '@/lib/notify';
 import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLogsApi';
 import { useActivities } from '@/hooks/useActivities';
@@ -214,7 +214,7 @@ export default function ClienteEmpresaDetailPage() {
         dueDate: draft.dueDate,
         startDate: draft.startDate,
         startTime: draft.startTime,
-        completedAt: draft.dueDate,
+        completedAt: completedAtNowIso(),
         createdAt: new Date().toISOString().slice(0, 10),
         clienteEmpresaId: empresa.id,
         clienteEmpresaName: empresa.empresa,
@@ -231,7 +231,7 @@ export default function ClienteEmpresaDetailPage() {
       dueDate: draft.dueDate,
       startDate: draft.startDate,
       startTime: draft.startTime,
-      completedAt: draft.dueDate,
+      completedAt: completedAtNowIso(),
       clienteEmpresaId: empresa.id,
     })
       .then((saved) => {

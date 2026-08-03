@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -54,16 +54,53 @@ type CompanyEditDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (payload: CompanyEditSavePayload) => void | Promise<void>;
+  /** Empresa ya cargada (p. ej. ficha detalle): evita re-fetch y bucles de loading. */
+  initialRecord?: ApiCompanyRecord | null;
 };
+
+function editFormFromApiRecord(
+  rec: ApiCompanyRecord,
+  currentUser: { id: string },
+  activeAdvisors: { id: string }[],
+) {
+  return {
+    name: rec.name,
+    domain: rec.domain ?? '',
+    telefono: rec.telefono ?? '',
+    rubro: (rec.rubro?.trim() ?? '') as CompanyRubro | '',
+    tipo: (rec.tipo && (rec.tipo === 'A' || rec.tipo === 'B' || rec.tipo === 'C') ? rec.tipo : '') as CompanyTipo | '',
+    ruc: rec.ruc ?? '',
+    razonSocial: rec.razonSocial ?? '',
+    assignedTo: resolveAdvisorAssigneeId(rec.assignedTo ?? activeAdvisors[0]?.id, currentUser),
+    fuente: (rec.fuente as ContactSource) || 'base',
+  };
+}
+
+function editFormFromSummaryRow(row: CompanyEditSummaryRow) {
+  return {
+    name: row.name,
+    domain: '',
+    telefono: '',
+    rubro: (row.rubro?.trim() ?? '') as CompanyRubro | '',
+    tipo: (row.tipo && (row.tipo === 'A' || row.tipo === 'B' || row.tipo === 'C') ? row.tipo : '') as CompanyTipo | '',
+    ruc: '',
+    razonSocial: '',
+    assignedTo: '',
+    fuente: (row.fuente as ContactSource) || 'base',
+  };
+}
 
 export function CompanyEditDialog({
   row,
   open,
   onOpenChange,
   onSave,
+  initialRecord,
 }: CompanyEditDialogProps) {
+  const rowId = row?.id;
+  const rowIsLocalOnly = row?.isLocalOnly === true;
   const standalone = useCompaniesStore((s) =>
-    row?.isLocalOnly ? s.companies.find((c) => c.id === row.id) : undefined,
+    rowIsLocalOnly && rowId ? s.companies.find((c) => c.id === rowId) : undefined,
   );
   const { users, activeAdvisors } = useUsers();
   const currentUserRole = useAppStore((s) => s.currentUser.role ?? '');
@@ -85,11 +122,21 @@ export function CompanyEditDialog({
   });
   const [saving, setSaving] = useState(false);
   const [loadingApi, setLoadingApi] = useState(false);
+  const loadedSessionKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!open || !row) return;
+    if (!open || !row || !rowId) {
+      loadedSessionKeyRef.current = null;
+      setLoadingApi(false);
+      return;
+    }
 
-    if (row.isLocalOnly && standalone) {
+    const sessionKey = `${rowId}:${rowIsLocalOnly ? 'local' : 'api'}:${initialRecord?.id ?? 'fetch'}`;
+    if (loadedSessionKeyRef.current === sessionKey) return;
+    loadedSessionKeyRef.current = sessionKey;
+
+    if (rowIsLocalOnly && standalone) {
+      setLoadingApi(false);
       setEditForm({
         name: standalone.name,
         domain: standalone.domain ?? '',
@@ -104,66 +151,34 @@ export function CompanyEditDialog({
       return;
     }
 
-    if (row.isLocalOnly) {
-      setEditForm({
-        name: row.name,
-        domain: '',
-        telefono: '',
-        rubro: (row.rubro?.trim() ?? '') as CompanyRubro | '',
-        tipo: (row.tipo && (row.tipo === 'A' || row.tipo === 'B' || row.tipo === 'C') ? row.tipo : '') as CompanyTipo | '',
-        ruc: '',
-        razonSocial: '',
-        assignedTo: '',
-        fuente: 'base',
-      });
+    if (rowIsLocalOnly) {
+      setLoadingApi(false);
+      setEditForm(editFormFromSummaryRow(row));
       return;
     }
 
-    if (!isLikelyCompanyCuid(row.id)) {
-      setEditForm({
-        name: row.name,
-        domain: '',
-        telefono: '',
-        rubro: (row.rubro?.trim() ?? '') as CompanyRubro | '',
-        tipo: (row.tipo && (row.tipo === 'A' || row.tipo === 'B' || row.tipo === 'C') ? row.tipo : '') as CompanyTipo | '',
-        ruc: '',
-        razonSocial: '',
-        assignedTo: '',
-        fuente: (row.fuente as ContactSource) || 'base',
-      });
+    if (!isLikelyCompanyCuid(rowId)) {
+      setLoadingApi(false);
+      setEditForm(editFormFromSummaryRow(row));
+      return;
+    }
+
+    if (initialRecord && initialRecord.id === rowId) {
+      setLoadingApi(false);
+      setEditForm(editFormFromApiRecord(initialRecord, currentUser, activeAdvisors));
       return;
     }
 
     let cancelled = false;
     setLoadingApi(true);
-    void api<ApiCompanyRecord>(`/companies/${row.id}`)
+    void api<ApiCompanyRecord>(`/companies/${rowId}`)
       .then((rec) => {
         if (cancelled) return;
-        setEditForm({
-          name: rec.name,
-          domain: rec.domain ?? '',
-          telefono: rec.telefono ?? '',
-          rubro: (rec.rubro?.trim() ?? '') as CompanyRubro | '',
-          tipo: (rec.tipo && (rec.tipo === 'A' || rec.tipo === 'B' || rec.tipo === 'C') ? rec.tipo : '') as CompanyTipo | '',
-          ruc: rec.ruc ?? '',
-          razonSocial: rec.razonSocial ?? '',
-          assignedTo: resolveAdvisorAssigneeId(rec.assignedTo ?? activeAdvisors[0]?.id, currentUser),
-          fuente: (rec.fuente as ContactSource) || 'base',
-        });
+        setEditForm(editFormFromApiRecord(rec, currentUser, activeAdvisors));
       })
       .catch(() => {
         if (!cancelled) {
-          setEditForm({
-            name: row.name,
-            domain: '',
-            telefono: '',
-            rubro: (row.rubro?.trim() ?? '') as CompanyRubro | '',
-            tipo: (row.tipo && (row.tipo === 'A' || row.tipo === 'B' || row.tipo === 'C') ? row.tipo : '') as CompanyTipo | '',
-            ruc: '',
-            razonSocial: '',
-            assignedTo: '',
-            fuente: (row.fuente as ContactSource) || 'base',
-          });
+          setEditForm(editFormFromSummaryRow(row));
         }
       })
       .finally(() => {
@@ -172,7 +187,15 @@ export function CompanyEditDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, row, standalone]);
+  }, [
+    open,
+    rowId,
+    rowIsLocalOnly,
+    initialRecord?.id,
+    standalone?.id,
+    activeAdvisors,
+    currentUser,
+  ]);
 
   function handleSave() {
     if (!row || !editForm.name.trim()) return;

@@ -64,7 +64,7 @@ import { ContactHeader } from '@/components/contact-detail/ContactHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { formatCurrency, formatDate } from '@/lib/formatters';
+import { formatCurrency, formatDate, completedAtNowIso } from '@/lib/formatters';
 import { api } from '@/lib/api';
 import { APP_PATHS, contactDetailHref, isEntityDetailApiParam } from '@/lib/detailRoutes';
 import {
@@ -407,7 +407,7 @@ export default function ContactoDetailPage() {
         dueDate: draft.dueDate,
         startDate: draft.startDate,
         startTime: draft.startTime,
-        completedAt: draft.dueDate,
+        completedAt: completedAtNowIso(),
         createdAt: new Date().toISOString().slice(0, 10),
         contactId: persistedContactId ?? contact.id,
       },
@@ -423,7 +423,7 @@ export default function ContactoDetailPage() {
       dueDate: draft.dueDate,
       startDate: draft.startDate,
       startTime: draft.startTime,
-      completedAt: draft.dueDate,
+      completedAt: completedAtNowIso(),
       contactId: persistedContactId,
       companyId: persistedCompanyId,
     })

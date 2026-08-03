@@ -1,5 +1,6 @@
 import type { CreateActivityPayload, UpdateActivityPayload } from '@/lib/activityApi';
 import { isLikelyCompanyCuid } from '@/lib/companyApi';
+import { completedAtNowIso, formatTodayPeruYmd } from '@/lib/formatters';
 import type { TaskDetailTask } from '@/components/shared/TaskDetailDialog';
 import type { TaskFormResult } from '@/components/shared/TaskFormDialog';
 import type { TaskAssociation } from '@/types';
@@ -96,7 +97,7 @@ export function buildCreateTaskPayloadFromForm(data: TaskFormResult): CreateActi
     startDate: data.startDate,
     startTime: data.startTime,
     ...(data.status === 'completada'
-      ? { completedAt: new Date().toISOString().slice(0, 10) }
+      ? { completedAt: completedAtNowIso() }
       : {}),
     contactIds: links.contactIds,
     companyIds: links.companyIds,
@@ -117,7 +118,7 @@ export function buildTaskDetailUpdatePayload(
   if (next.status !== oldDetail.status) {
     payload.status = next.status;
     if (next.status === 'completada') {
-      payload.completedAt = new Date().toISOString().slice(0, 10);
+      payload.completedAt = completedAtNowIso();
     }
   }
   if (next.type !== oldDetail.type) payload.taskKind = next.type;

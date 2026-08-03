@@ -111,6 +111,11 @@ export function formatTodayPeruYmd(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: CRM_TIMEZONE_PERU });
 }
 
+/** Instant ISO al completar actividad/tarea (reportes + historial alineados). */
+export function completedAtNowIso(): string {
+  return new Date().toISOString();
+}
+
 /** Suma días al calendario Lima y devuelve `YYYY-MM-DD`. */
 export function addCalendarDaysLocalIso(days: number): string {
   const base = formatTodayPeruYmd();

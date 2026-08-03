@@ -12,8 +12,14 @@ import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { ActivityActor } from '../activity-logs/activity-logs.types';
+import {
+  parseDateFilterEndLima,
+  parseDateFilterStartLima,
+  parseDayStartLima,
+} from '../common/crm-timezone.util';
 
 const TASK_KINDS = new Set(['llamada', 'reunion', 'correo', 'whatsapp']);
+const YMD_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
 const activityInclude = {
   user: { select: { id: true, name: true } },
@@ -91,8 +97,39 @@ export class ActivitiesService {
 
   private parseDate(s: string | null | undefined): Date | null {
     if (!s || typeof s !== 'string') return null;
-    const d = new Date(s.trim());
+    const t = s.trim();
+    if (YMD_ONLY.test(t)) {
+      try {
+        return parseDayStartLima(t);
+      } catch {
+        return null;
+      }
+    }
+    const d = new Date(t);
     return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  private isCompletedStatus(status: string | null | undefined): boolean {
+    const s = (status ?? '').trim().toLowerCase();
+    return s === 'completada' || s === 'completado';
+  }
+
+  /**
+   * Reportes agrupan por `completedAt` (semanas Lima). Si el cliente manda solo
+   * YYYY-MM-DD al completar, usamos el instante actual — alineado con historial
+   * (ActivityLog.createdAt) y sin leer tablas extra.
+   */
+  private resolveCompletedAt(
+    raw: string | null | undefined,
+    status: string,
+    now = new Date(),
+  ): Date | null {
+    if (!this.isCompletedStatus(status)) {
+      return raw?.trim() ? this.parseDate(raw) : null;
+    }
+    if (!raw?.trim()) return now;
+    if (YMD_ONLY.test(raw.trim())) return now;
+    return this.parseDate(raw);
   }
 
   private normalizePriority(raw: string | null | undefined): string {
@@ -515,8 +552,8 @@ export class ActivitiesService {
       throw new BadRequestException('La fecha de vencimiento es obligatoria');
     }
     const startDate = this.parseDate(dto.startDate);
-    const completedAt = this.parseDate(dto.completedAt);
     const status = dto.status?.trim() || 'pendiente';
+    const completedAt = this.resolveCompletedAt(dto.completedAt, status);
     const priority = this.normalizePriority(dto.priority);
 
     const links = await this.resolveActivityLinks(
@@ -588,8 +625,14 @@ export class ActivitiesService {
     if (opts?.status?.trim()) where.status = opts.status.trim();
     if (opts?.from?.trim() || opts?.to?.trim()) {
       where.completedAt = {};
-      if (opts.from?.trim()) where.completedAt.gte = new Date(opts.from.trim());
-      if (opts.to?.trim()) where.completedAt.lte = new Date(opts.to.trim() + 'T23:59:59.999Z');
+      if (opts.from?.trim()) {
+        where.completedAt.gte =
+          parseDateFilterStartLima(opts.from.trim()) ?? undefined;
+      }
+      if (opts.to?.trim()) {
+        where.completedAt.lte =
+          parseDateFilterEndLima(opts.to.trim()) ?? undefined;
+      }
     }
     if (scope && !scope.unrestricted) {
       where.assignedTo = scope.viewerUserId;
@@ -720,8 +763,25 @@ export class ActivitiesService {
     if (dto.startTime !== undefined) {
       data.startTime = dto.startTime?.trim() || null;
     }
+    const nextStatus =
+      dto.status !== undefined
+        ? String(data.status ?? dto.status).trim()
+        : existingRow.status;
+
     if ('completedAt' in dto && dto.completedAt !== undefined) {
-      data.completedAt = this.parseDate(String(dto.completedAt));
+      const raw = String(dto.completedAt);
+      if (!raw.trim()) {
+        data.completedAt = null;
+      } else {
+        data.completedAt = this.resolveCompletedAt(raw, nextStatus);
+      }
+    } else if (
+      dto.status !== undefined &&
+      this.isCompletedStatus(nextStatus) &&
+      !this.isCompletedStatus(existingRow.status) &&
+      !existingRow.completedAt
+    ) {
+      data.completedAt = new Date();
     }
 
     const linkUpdate = this.hasLinkFields(dto);

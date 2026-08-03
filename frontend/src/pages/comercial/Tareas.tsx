@@ -99,7 +99,7 @@ import type { TaskFormResult } from '@/components/shared/TaskFormDialog';
 import { contactListAll, mapApiContactRowToContact } from '@/lib/contactApi';
 import { companyListAll } from '@/lib/companyApi';
 import { opportunityListAll, mapApiOpportunityToOpportunity } from '@/lib/opportunityApi';
-import { formatTodayPeruYmd, formatDate } from '@/lib/formatters';
+import { formatTodayPeruYmd, formatDate, completedAtNowIso } from '@/lib/formatters';
 import {
   countTasksByDueUrgency,
   effectiveTaskStatus,
@@ -580,7 +580,7 @@ export default function TareasPage({ scope = 'all' }: { scope?: TareasPageScope 
     }
     const payload: UpdateActivityPayload = { status: next };
     if (next === 'completada') {
-      payload.completedAt = new Date().toISOString().slice(0, 10);
+      payload.completedAt = completedAtNowIso();
     } else if (task.status === 'completada') {
       payload.completedAt = '';
     }
@@ -607,7 +607,7 @@ export default function TareasPage({ scope = 'all' }: { scope?: TareasPageScope 
     }
     const payload: { status: string; completedAt?: string } = { status: newStatus };
     if (newStatus === 'completada') {
-      payload.completedAt = new Date().toISOString().slice(0, 10);
+      payload.completedAt = completedAtNowIso();
     } else if (task.status === 'completada') {
       payload.completedAt = '';
     }

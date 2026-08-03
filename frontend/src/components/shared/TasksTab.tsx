@@ -38,7 +38,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { formatDate, formatTodayPeruYmd } from '@/lib/formatters';
+import { formatDate, formatTodayPeruYmd, completedAtNowIso } from '@/lib/formatters';
 import { effectiveTaskStatus } from '@/lib/taskStatus';
 import { taskAssociationsFromActivity } from '@/lib/taskAssociationsFromActivity';
 import {
@@ -356,7 +356,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
     }
     const payload: { status: string; completedAt?: string } = { status: newStatus };
     if (newStatus === 'completada') {
-      payload.completedAt = new Date().toISOString().slice(0, 10);
+      payload.completedAt = completedAtNowIso();
     } else if (task.status === 'completada') {
       payload.completedAt = '';
     }
