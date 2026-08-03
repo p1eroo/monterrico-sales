@@ -3,8 +3,25 @@ import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 import { slugifyForUrl } from '../common/url-slug.util';
 import { CrmConfigService } from '../crm-config/crm-config.service';
+import { AuditDetailService } from '../audit-detail/audit-detail.service';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import type { ActivityActor } from '../activity-logs/activity-logs.types';
+import {
+  COMPANY_FIELD_LABELS,
+  CONTACT_FIELD_LABELS,
+  OPPORTUNITY_FIELD_LABELS,
+} from '../audit-detail/audit-field-labels';
 
 type Tx = Prisma.TransactionClient;
+
+type EtapaSyncRecord = {
+  module: 'empresas' | 'contactos' | 'oportunidades';
+  entityType: 'Empresa' | 'Contacto' | 'Oportunidad';
+  entityId: string;
+  entityName: string;
+  oldEtapa: string;
+  newEtapa: string;
+};
 
 /**
  * Sincronización empresa ↔ contactos ↔ oportunidad principal vinculada.
@@ -21,6 +38,8 @@ export class EntitySyncService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly crmConfig: CrmConfigService,
+    private readonly auditDetail: AuditDetailService,
+    private readonly activityLogs: ActivityLogsService,
   ) {}
 
   private lockCompany(companyId: string): boolean {
@@ -33,10 +52,91 @@ export class EntitySyncService {
     this.inFlight.delete(companyId);
   }
 
+  private queueEtapaChange(
+    pending: EtapaSyncRecord[],
+    row: Omit<EtapaSyncRecord, 'oldEtapa' | 'newEtapa'> & {
+      oldEtapa: string;
+      newEtapa: string;
+    },
+  ) {
+    const oldEtapa = row.oldEtapa.trim();
+    const newEtapa = row.newEtapa.trim();
+    if (!oldEtapa && !newEtapa) return;
+    if (oldEtapa === newEtapa) return;
+    pending.push({ ...row, oldEtapa, newEtapa });
+  }
+
+  private etapaDescription(
+    entityType: EtapaSyncRecord['entityType'],
+    oldEtapa: string,
+    newEtapa: string,
+  ): string {
+    switch (entityType) {
+      case 'Empresa':
+        return `Etapa de la empresa: ${oldEtapa} → ${newEtapa}`;
+      case 'Contacto':
+        return `Etapa del contacto: ${oldEtapa} → ${newEtapa}`;
+      case 'Oportunidad':
+        return `Etapa de la oportunidad: ${oldEtapa} → ${newEtapa}`;
+    }
+  }
+
+  private fieldLabel(entityType: EtapaSyncRecord['entityType']): string {
+    switch (entityType) {
+      case 'Empresa':
+        return COMPANY_FIELD_LABELS.etapa;
+      case 'Contacto':
+        return CONTACT_FIELD_LABELS.etapa;
+      case 'Oportunidad':
+        return OPPORTUNITY_FIELD_LABELS.etapa;
+    }
+  }
+
+  private async recordPendingEtapaChanges(
+    actor: ActivityActor | null | undefined,
+    pending: EtapaSyncRecord[],
+  ): Promise<void> {
+    for (const row of pending) {
+      const description = this.etapaDescription(
+        row.entityType,
+        row.oldEtapa,
+        row.newEtapa,
+      );
+      await this.auditDetail.record(actor ?? null, {
+        action: 'cambiar_etapa',
+        module: row.module,
+        entityType: row.entityType,
+        entityId: row.entityId,
+        entityName: row.entityName,
+        entries: [
+          {
+            fieldKey: 'etapa',
+            fieldLabel: this.fieldLabel(row.entityType),
+            oldValue: row.oldEtapa,
+            newValue: row.newEtapa,
+          },
+        ],
+      });
+      await this.activityLogs.record(actor ?? null, {
+        action: 'cambiar_etapa',
+        module: row.module,
+        entityType: row.entityType,
+        entityId: row.entityId,
+        entityName: row.entityName,
+        description,
+      });
+    }
+  }
+
   /** Tras crear/editar un contacto vinculado: empresa y demás contactos/opps alinean a ese contacto. */
-  async propagateFromContact(companyId: string, contactId: string): Promise<void> {
+  async propagateFromContact(
+    companyId: string,
+    contactId: string,
+    actor?: ActivityActor | null,
+  ): Promise<void> {
     if (!this.lockCompany(companyId)) return;
     try {
+      const pending: EtapaSyncRecord[] = [];
       await this.prisma.$transaction(async (tx) => {
         const contact = await tx.contact.findUnique({ where: { id: contactId } });
         if (!contact) return;
@@ -47,22 +147,28 @@ export class EntitySyncService {
         });
         if (!link) return;
 
-        await this.applyContactSnapshot(tx, companyId, contact);
+        await this.applyContactSnapshot(tx, companyId, contact, pending);
       });
+      await this.recordPendingEtapaChanges(actor, pending);
     } finally {
       this.unlockCompany(companyId);
     }
   }
 
   /** Tras editar empresa: contacto principal (o único) y oportunidad principal alinean campos comerciales. */
-  async propagateFromCompany(companyId: string): Promise<void> {
+  async propagateFromCompany(
+    companyId: string,
+    actor?: ActivityActor | null,
+  ): Promise<void> {
     if (!this.lockCompany(companyId)) return;
     try {
+      const pending: EtapaSyncRecord[] = [];
       await this.prisma.$transaction(async (tx) => {
         const company = await tx.company.findUnique({ where: { id: companyId } });
         if (!company) return;
-        await this.applyCompanySnapshot(tx, companyId, company);
+        await this.applyCompanySnapshot(tx, companyId, company, pending);
       });
+      await this.recordPendingEtapaChanges(actor, pending);
     } finally {
       this.unlockCompany(companyId);
     }
@@ -72,9 +178,11 @@ export class EntitySyncService {
   async propagateFromOpportunity(
     companyId: string,
     opportunityId: string,
+    actor?: ActivityActor | null,
   ): Promise<void> {
     if (!this.lockCompany(companyId)) return;
     try {
+      const pending: EtapaSyncRecord[] = [];
       await this.prisma.$transaction(async (tx) => {
         const opp = await tx.opportunity.findUnique({ where: { id: opportunityId } });
         if (!opp) return;
@@ -85,21 +193,25 @@ export class EntitySyncService {
         });
         if (!link) return;
 
-        await this.applyOpportunitySnapshot(tx, companyId, opp);
+        await this.applyOpportunitySnapshot(tx, companyId, opp, pending);
       });
+      await this.recordPendingEtapaChanges(actor, pending);
     } finally {
       this.unlockCompany(companyId);
     }
   }
 
   /** Todas las empresas vinculadas a la oportunidad (por si hay varias). */
-  async propagateFromOpportunityAllCompanies(opportunityId: string): Promise<void> {
+  async propagateFromOpportunityAllCompanies(
+    opportunityId: string,
+    actor?: ActivityActor | null,
+  ): Promise<void> {
     const links = await this.prisma.companyOpportunity.findMany({
       where: { opportunityId },
       select: { companyId: true },
     });
     for (const { companyId } of links) {
-      await this.propagateFromOpportunity(companyId, opportunityId);
+      await this.propagateFromOpportunity(companyId, opportunityId, actor);
     }
   }
 
@@ -179,7 +291,9 @@ export class EntitySyncService {
       fuente: string;
       assignedTo: string | null;
       estimatedValue: number;
+      name: string;
     },
+    pending: EtapaSyncRecord[],
   ) {
     const fact = contact.estimatedValue;
     const etapa = contact.etapa;
@@ -196,21 +310,40 @@ export class EntitySyncService {
       fuenteForCompany = await this.crmConfig.normalizeLeadSourceOrDefault(po?.fuente);
     }
 
-    await tx.company.update({
+    const companyBefore = await tx.company.findUnique({
       where: { id: companyId },
-      data: {
-        ...(fact > 0 && { facturacionEstimada: fact }),
-        fuente: fuenteForCompany,
-        etapa,
-        assignedTo,
-      },
+      select: { etapa: true, name: true },
     });
+    if (companyBefore) {
+      await tx.company.update({
+        where: { id: companyId },
+        data: {
+          ...(fact > 0 && { facturacionEstimada: fact }),
+          fuente: fuenteForCompany,
+          etapa,
+          assignedTo,
+        },
+      });
+      this.queueEtapaChange(pending, {
+        module: 'empresas',
+        entityType: 'Empresa',
+        entityId: companyId,
+        entityName: companyBefore.name,
+        oldEtapa: companyBefore.etapa,
+        newEtapa: etapa,
+      });
+    }
 
     const ccRows = await tx.companyContact.findMany({
       where: { companyId },
       select: { contactId: true },
     });
     for (const { contactId: cid } of ccRows) {
+      const contactBefore = await tx.contact.findUnique({
+        where: { id: cid },
+        select: { etapa: true, name: true },
+      });
+      if (!contactBefore) continue;
       await tx.contact.update({
         where: { id: cid },
         data: {
@@ -219,6 +352,14 @@ export class EntitySyncService {
           assignedTo,
           estimatedValue: fact,
         },
+      });
+      this.queueEtapaChange(pending, {
+        module: 'contactos',
+        entityType: 'Contacto',
+        entityId: cid,
+        entityName: contactBefore.name,
+        oldEtapa: contactBefore.etapa,
+        newEtapa: etapa,
       });
     }
 
@@ -229,7 +370,7 @@ export class EntitySyncService {
         amount: fact,
         etapa,
         assignedTo,
-      });
+      }, pending);
     }
   }
 
@@ -241,7 +382,9 @@ export class EntitySyncService {
       fuente: string | null;
       etapa: string;
       assignedTo: string | null;
+      name: string;
     },
+    pending: EtapaSyncRecord[],
   ) {
     const fact = company.facturacionEstimada;
     const etapa = company.etapa;
@@ -253,15 +396,29 @@ export class EntitySyncService {
     const primaryContactId =
       await this.resolvePrimaryContactIdForCompanyTx(tx, companyId);
     if (primaryContactId) {
-      await tx.contact.update({
+      const contactBefore = await tx.contact.findUnique({
         where: { id: primaryContactId },
-        data: {
-          etapa,
-          fuente: syncFuente,
-          assignedTo,
-          estimatedValue: fact,
-        },
+        select: { etapa: true, name: true },
       });
+      if (contactBefore) {
+        await tx.contact.update({
+          where: { id: primaryContactId },
+          data: {
+            etapa,
+            fuente: syncFuente,
+            assignedTo,
+            estimatedValue: fact,
+          },
+        });
+        this.queueEtapaChange(pending, {
+          module: 'contactos',
+          entityType: 'Contacto',
+          entityId: primaryContactId,
+          entityName: contactBefore.name,
+          oldEtapa: contactBefore.etapa,
+          newEtapa: etapa,
+        });
+      }
     }
 
     const primaryOppId =
@@ -272,7 +429,7 @@ export class EntitySyncService {
         etapa,
         assignedTo,
         fuente: syncFuente,
-      });
+      }, pending);
     }
   }
 
@@ -285,6 +442,7 @@ export class EntitySyncService {
       etapa: string;
       assignedTo: string | null;
     },
+    pending: EtapaSyncRecord[],
   ) {
     const primaryId =
       await this.resolvePrimaryOpportunityIdForCompanyTx(tx, companyId);
@@ -307,21 +465,40 @@ export class EntitySyncService {
     const assignedTo = opp.assignedTo;
     const fuente = await this.crmConfig.normalizeLeadSourceOrDefault(opp.fuente);
 
-    await tx.company.update({
+    const companyBefore = await tx.company.findUnique({
       where: { id: companyId },
-      data: {
-        facturacionEstimada: fact,
-        fuente,
-        etapa,
-        assignedTo,
-      },
+      select: { etapa: true, name: true },
     });
+    if (companyBefore) {
+      await tx.company.update({
+        where: { id: companyId },
+        data: {
+          facturacionEstimada: fact,
+          fuente,
+          etapa,
+          assignedTo,
+        },
+      });
+      this.queueEtapaChange(pending, {
+        module: 'empresas',
+        entityType: 'Empresa',
+        entityId: companyId,
+        entityName: companyBefore.name,
+        oldEtapa: companyBefore.etapa,
+        newEtapa: etapa,
+      });
+    }
 
     const ccRows = await tx.companyContact.findMany({
       where: { companyId },
       select: { contactId: true },
     });
     for (const { contactId: cid } of ccRows) {
+      const contactBefore = await tx.contact.findUnique({
+        where: { id: cid },
+        select: { etapa: true, name: true },
+      });
+      if (!contactBefore) continue;
       await tx.contact.update({
         where: { id: cid },
         data: {
@@ -330,6 +507,14 @@ export class EntitySyncService {
           assignedTo,
           estimatedValue: fact,
         },
+      });
+      this.queueEtapaChange(pending, {
+        module: 'contactos',
+        entityType: 'Contacto',
+        entityId: cid,
+        entityName: contactBefore.name,
+        oldEtapa: contactBefore.etapa,
+        newEtapa: etapa,
       });
     }
   }
@@ -343,7 +528,14 @@ export class EntitySyncService {
       assignedTo: string | null;
       fuente?: string;
     },
+    pending: EtapaSyncRecord[],
   ) {
+    const oppBefore = await tx.opportunity.findUnique({
+      where: { id: opportunityId },
+      select: { etapa: true, title: true },
+    });
+    if (!oppBefore) return;
+
     const status = this.statusFromEtapa(patch.etapa);
     const probability = await this.crmConfig.resolveOpportunityProbability(
       patch.etapa,
@@ -358,6 +550,14 @@ export class EntitySyncService {
         probability,
         ...(patch.fuente !== undefined ? { fuente: patch.fuente } : {}),
       },
+    });
+    this.queueEtapaChange(pending, {
+      module: 'oportunidades',
+      entityType: 'Oportunidad',
+      entityId: opportunityId,
+      entityName: oppBefore.title,
+      oldEtapa: oppBefore.etapa,
+      newEtapa: patch.etapa,
     });
   }
 
@@ -450,5 +650,4 @@ export class EntitySyncService {
       data: { contactId, opportunityId },
     });
   }
-
 }

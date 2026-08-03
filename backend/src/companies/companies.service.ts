@@ -399,7 +399,7 @@ export class CompaniesService {
       },
     });
 
-    await this.entitySync.propagateFromCompany(company.id);
+    await this.entitySync.propagateFromCompany(company.id, actor);
     // Workaround: @prisma/adapter-pg no envía facturacionEstimada en el INSERT real
     if (facturacionEstimada > 0) {
       await this.prisma.$executeRaw`UPDATE "Company" SET "facturacionEstimada" = ${facturacionEstimada} WHERE id = ${company.id}`;
@@ -1162,7 +1162,7 @@ export class CompaniesService {
       dto.etapa !== undefined ||
       dto.assignedTo !== undefined;
     if (touchedCommercial) {
-      await this.entitySync.propagateFromCompany(id);
+      await this.entitySync.propagateFromCompany(id, actor);
     }
 
     const etapaChanged =

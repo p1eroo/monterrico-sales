@@ -432,7 +432,7 @@ export class ContactsService {
     );
 
     if (effectiveCompanyId) {
-      await this.entitySync.propagateFromContact(effectiveCompanyId, row.id);
+      await this.entitySync.propagateFromContact(effectiveCompanyId, row.id, actor);
     }
 
     await this.activityLogs.record(actor ?? null, {
@@ -968,7 +968,7 @@ export class ContactsService {
       select: { companyId: true },
     });
     for (const { companyId } of links) {
-      await this.entitySync.propagateFromContact(companyId, id);
+      await this.entitySync.propagateFromContact(companyId, id, actor);
     }
 
     const etapaChanged =
@@ -1175,7 +1175,7 @@ export class ContactsService {
     await this.prisma.companyContact.create({
       data: { contactId, companyId, isPrimary },
     });
-    await this.entitySync.propagateFromContact(companyId, contactId);
+    await this.entitySync.propagateFromContact(companyId, contactId, actor);
     if (actor) {
       const contactRow = await this.prisma.contact.findUnique({
         where: { id: contactId },

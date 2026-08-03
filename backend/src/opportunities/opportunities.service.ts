@@ -351,7 +351,7 @@ export class OpportunitiesService {
             fuente: fuenteResolved,
           },
         });
-        await this.entitySync.propagateFromOpportunityAllCompanies(existing.id);
+        await this.entitySync.propagateFromOpportunityAllCompanies(existing.id, actor);
         return this.findOne(existing.id, scope);
       }
     }
@@ -405,7 +405,7 @@ export class OpportunitiesService {
       },
     );
 
-    await this.entitySync.propagateFromOpportunityAllCompanies(created.id);
+    await this.entitySync.propagateFromOpportunityAllCompanies(created.id, actor);
 
     await this.activityLogs.record(actor ?? null, {
       action: 'crear',
@@ -791,8 +791,8 @@ export class OpportunitiesService {
           await this.prisma.companyOpportunity.create({
             data: { companyId: comp.id, opportunityId: id },
           });
-          await this.entitySync.propagateFromCompany(comp.id);
-          await this.entitySync.propagateFromOpportunityAllCompanies(id);
+          await this.entitySync.propagateFromCompany(comp.id, actor);
+          await this.entitySync.propagateFromOpportunityAllCompanies(id, actor);
         }
       }
     }
@@ -802,7 +802,7 @@ export class OpportunitiesService {
       dto.etapa !== undefined ||
       dto.assignedTo !== undefined;
     if (touchedCommercial) {
-      await this.entitySync.propagateFromOpportunityAllCompanies(id);
+      await this.entitySync.propagateFromOpportunityAllCompanies(id, actor);
     }
 
     const auditPatch: Record<string, unknown> = { ...data };
@@ -984,8 +984,8 @@ export class OpportunitiesService {
       );
     }
 
-    await this.entitySync.propagateFromCompany(companyBasic.id);
-    await this.entitySync.propagateFromOpportunityAllCompanies(opportunityId);
+    await this.entitySync.propagateFromCompany(companyBasic.id, actor);
+    await this.entitySync.propagateFromOpportunityAllCompanies(opportunityId, actor);
 
     await this.activityLogs.record(actor, {
       action: 'actualizar',
