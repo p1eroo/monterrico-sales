@@ -300,7 +300,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
   const [completedTask, setCompletedTask] = useState<MockTask | null>(null);
   const [activityFromTaskOpen, setActivityFromTaskOpen] = useState(false);
   const [linkedTaskPromptOpen, setLinkedTaskPromptOpen] = useState(false);
-  const [, setLinkPromptSource] = useState<MockTask | null>(null);
+  const [linkPromptSourceTaskId, setLinkPromptSourceTaskId] = useState<string | null>(null);
   const [linkedTaskOpen, setLinkedTaskOpen] = useState(false);
   const [linkedTaskTitle, setLinkedTaskTitle] = useState('');
   const [linkedTaskType, setLinkedTaskType] = useState<TaskType | ''>('');
@@ -505,7 +505,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
                 createActivity,
                 updateActivity,
               });
-              setLinkPromptSource(t);
+              setLinkPromptSourceTaskId(t.id);
               setActivityFromTaskOpen(false);
               setLinkedTaskPromptOpen(true);
               onActivityCreated?.({
@@ -545,7 +545,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
           setLinkedTaskPromptOpen(open);
           if (!open) {
             setCompletedTask(null);
-            setLinkPromptSource(null);
+            setLinkPromptSourceTaskId(null);
           }
         }}
       >
@@ -562,7 +562,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
               onClick={() => {
                 setLinkedTaskPromptOpen(false);
                 setCompletedTask(null);
-                setLinkPromptSource(null);
+                setLinkPromptSourceTaskId(null);
               }}
             >
               No, gracias
@@ -572,7 +572,6 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
               onClick={() => {
                 setLinkedTaskPromptOpen(false);
                 resetLinkedTaskForm();
-                setLinkPromptSource(null);
                 setLinkedTaskOpen(true);
               }}
             >
@@ -583,7 +582,13 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
       </Dialog>
 
       {/* Formulario de tarea vinculada */}
-      <Dialog open={linkedTaskOpen} onOpenChange={(open) => { setLinkedTaskOpen(open); if (!open) setCompletedTask(null); }}>
+      <Dialog open={linkedTaskOpen} onOpenChange={(open) => {
+        setLinkedTaskOpen(open);
+        if (!open) {
+          setCompletedTask(null);
+          setLinkPromptSourceTaskId(null);
+        }
+      }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -691,11 +696,13 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
                   dueDate,
                   startDate: linkedTaskStartDate || undefined,
                   startTime: linkedTaskTime || undefined,
+                  ...(linkPromptSourceTaskId ? { sourceTaskId: linkPromptSourceTaskId } : {}),
                   ...linkPayload,
                 });
                 toast.success(`Tarea "${linkedTaskTitle}" creada`);
                 setLinkedTaskOpen(false);
                 setCompletedTask(null);
+                setLinkPromptSourceTaskId(null);
                 resetLinkedTaskForm();
               } catch (e) {
                 toast.error(e instanceof Error ? e.message : 'Error al crear');

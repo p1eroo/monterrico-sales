@@ -81,7 +81,10 @@ export function taskFormHasEntityLinks(data: TaskFormResult): boolean {
   );
 }
 
-export function buildCreateTaskPayloadFromForm(data: TaskFormResult): CreateActivityPayload {
+export function buildCreateTaskPayloadFromForm(
+  data: TaskFormResult,
+  options?: { sourceTaskId?: string; sourceActivityId?: string },
+): CreateActivityPayload {
   const links = associationIdsFromTaskAssociations(
     normalizeTaskAssociations(data.associations),
   );
@@ -104,6 +107,8 @@ export function buildCreateTaskPayloadFromForm(data: TaskFormResult): CreateActi
     opportunityIds: links.opportunityIds,
     clienteEmpresaIds: links.clienteEmpresaIds,
     contactoClienteIds: links.contactoClienteIds,
+    ...(options?.sourceTaskId ? { sourceTaskId: options.sourceTaskId } : {}),
+    ...(options?.sourceActivityId ? { sourceActivityId: options.sourceActivityId } : {}),
   };
 }
 

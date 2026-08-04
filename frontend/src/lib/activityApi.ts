@@ -168,6 +168,8 @@ export type CreateActivityPayload = {
   contactoClienteIds?: string[];
   /** Completar tarea: el backend confía en vínculos de la tarea asignada al asesor. */
   sourceTaskId?: string;
+  /** Tarea vinculada: hereda vínculos de una actividad ya asignada al asesor. */
+  sourceActivityId?: string;
 };
 
 export type UpdateActivityPayload = {

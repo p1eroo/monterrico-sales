@@ -272,6 +272,8 @@ export default function TareasPage({ scope = 'all' }: { scope?: TareasPageScope 
   const [linkedTaskPromptOpen, setLinkedTaskPromptOpen] = useState(false);
   /** Copia al guardar actividad para el aviso "tarea vinculada" (completedTask se limpia al cerrar el modal). */
   const [linkPromptSourceActivity, setLinkPromptSourceActivity] = useState<Activity | null>(null);
+  /** Tarea origen al abrir formulario de tarea vinculada (hereda permisos de cartera). */
+  const [linkedTaskSourceTaskId, setLinkedTaskSourceTaskId] = useState<string | null>(null);
   const [newTaskDefaultTitle, setNewTaskDefaultTitle] = useState('');
   const [newTaskDefaultAssociations, setNewTaskDefaultAssociations] = useState<
     TaskAssociation[] | undefined
@@ -646,11 +648,17 @@ export default function TareasPage({ scope = 'all' }: { scope?: TareasPageScope 
       throw new Error('TASK_FORM_VALIDATION');
     }
     try {
-      await createActivity(buildCreateTaskPayloadFromForm(data), {
-        assigneeName: data.assigneeName,
-        contactNameLine: contactLineFromTaskAssociations(data.associations),
-      });
+      await createActivity(
+        buildCreateTaskPayloadFromForm(data, {
+          ...(linkedTaskSourceTaskId ? { sourceTaskId: linkedTaskSourceTaskId } : {}),
+        }),
+        {
+          assigneeName: data.assigneeName,
+          contactNameLine: contactLineFromTaskAssociations(data.associations),
+        },
+      );
       toast.success('Tarea creada');
+      setLinkedTaskSourceTaskId(null);
     } catch (e) {
       if (e instanceof Error && e.message === 'TASK_FORM_VALIDATION') return;
       toast.error(e instanceof Error ? e.message : 'Error al crear tarea');
@@ -1432,6 +1440,7 @@ export default function TareasPage({ scope = 'all' }: { scope?: TareasPageScope 
                 setNewTaskDefaultAssociations(
                   source ? taskAssociationsFromActivity(source) : undefined,
                 );
+                setLinkedTaskSourceTaskId(source?.id ?? null);
                 setCompletedTask(null);
                 setLinkPromptSourceActivity(null);
                 setNewTaskOpen(true);
@@ -1451,6 +1460,7 @@ export default function TareasPage({ scope = 'all' }: { scope?: TareasPageScope 
             setNewTaskDefaultTitle('');
             setNewTaskColumnStatus(undefined);
             setNewTaskDefaultAssociations(undefined);
+            setLinkedTaskSourceTaskId(null);
           }
         }}
         title="Nueva Tarea"

@@ -26,4 +26,6 @@ export class CreateActivityDto {
   contactoClienteIds?: string[];
   /** Al completar una tarea: valida vínculos heredados sin re-aplicar cartera (agenteSync). */
   sourceTaskId?: string;
+  /** Tarea vinculada tras registrar actividad: hereda vínculos de la actividad asignada al asesor. */
+  sourceActivityId?: string;
 }

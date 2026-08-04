@@ -467,6 +467,65 @@ export class ActivitiesService {
     return trust;
   }
 
+  /**
+   * Tarea vinculada tras actividad: hereda vínculos de la actividad del asesor sin re-validar agenteSync.
+   */
+  private async resolveLinkTrustFromAssignedActivity(
+    sourceActivityId: string,
+    scope: CrmDataScope,
+    raw: {
+      contactId?: string | null;
+      companyId?: string | null;
+      opportunityId?: string | null;
+      clienteEmpresaId?: string | null;
+      contactoClienteId?: string | null;
+      contactIds?: string[] | null;
+      companyIds?: string[] | null;
+      opportunityIds?: string[] | null;
+      clienteEmpresaIds?: string[] | null;
+      contactoClienteIds?: string[] | null;
+    },
+  ): Promise<AssignedTaskLinkTrust | null> {
+    const activity = await this.prisma.activity.findUnique({
+      where: { id: sourceActivityId },
+      include: {
+        contacts: { select: { contactId: true } },
+        companies: { select: { companyId: true } },
+        opportunities: { select: { opportunityId: true } },
+        clienteEmpresas: { select: { clienteEmpresaId: true } },
+        contactosCliente: { select: { contactoClienteId: true } },
+      },
+    });
+    if (!activity || activity.assignedTo !== scope.viewerUserId) {
+      return null;
+    }
+
+    const requested = this.collectLinkIdsFromRaw(raw);
+    const trust: AssignedTaskLinkTrust = {
+      contactIds: new Set(activity.contacts.map((c) => c.contactId)),
+      companyIds: new Set(activity.companies.map((c) => c.companyId)),
+      opportunityIds: new Set(activity.opportunities.map((o) => o.opportunityId)),
+      clienteEmpresaIds: new Set(
+        activity.clienteEmpresas.map((c) => c.clienteEmpresaId),
+      ),
+      contactoClienteIds: new Set(
+        activity.contactosCliente.map((c) => c.contactoClienteId),
+      ),
+    };
+
+    if (
+      !this.linkIdsAreSubset(requested.contactIds, trust.contactIds) ||
+      !this.linkIdsAreSubset(requested.companyIds, trust.companyIds) ||
+      !this.linkIdsAreSubset(requested.opportunityIds, trust.opportunityIds) ||
+      !this.linkIdsAreSubset(requested.clienteEmpresaIds, trust.clienteEmpresaIds) ||
+      !this.linkIdsAreSubset(requested.contactoClienteIds, trust.contactoClienteIds)
+    ) {
+      return null;
+    }
+
+    return trust;
+  }
+
   private async resolveActivityLinks(
     raw: {
       contactId?: string | null;
@@ -683,12 +742,22 @@ export class ActivitiesService {
 
     let assignedTaskLinkTrust: AssignedTaskLinkTrust | null = null;
     const sourceTaskId = dto.sourceTaskId?.trim();
-    if (sourceTaskId && scope && !scope.unrestricted) {
-      assignedTaskLinkTrust = await this.resolveLinkTrustFromAssignedTask(
-        sourceTaskId,
-        scope,
-        linkRaw,
-      );
+    const sourceActivityId = dto.sourceActivityId?.trim();
+    if (scope && !scope.unrestricted) {
+      if (sourceTaskId) {
+        assignedTaskLinkTrust = await this.resolveLinkTrustFromAssignedTask(
+          sourceTaskId,
+          scope,
+          linkRaw,
+        );
+      }
+      if (!assignedTaskLinkTrust && sourceActivityId) {
+        assignedTaskLinkTrust = await this.resolveLinkTrustFromAssignedActivity(
+          sourceActivityId,
+          scope,
+          linkRaw,
+        );
+      }
     }
 
     const links = await this.resolveActivityLinks(
