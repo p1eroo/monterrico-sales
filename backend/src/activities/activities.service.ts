@@ -87,6 +87,15 @@ type ActivityRowForHistoryLog = {
   contactosCliente: { contactoCliente: { id: string; nombres: string; apellidos: string | null } }[];
 };
 
+/** Vínculos de una tarea asignada al asesor: omiten re-validación de cartera al completar. */
+type AssignedTaskLinkTrust = {
+  clienteEmpresaIds: Set<string>;
+  contactoClienteIds: Set<string>;
+  contactIds: Set<string>;
+  companyIds: Set<string>;
+  opportunityIds: Set<string>;
+};
+
 @Injectable()
 export class ActivitiesService {
   constructor(
@@ -293,6 +302,7 @@ export class ActivitiesService {
   private async assertContactoClienteAccess(
     contactoClienteId: string,
     scope?: CrmDataScope,
+    options?: { skipScopeCheck?: boolean },
   ) {
     const row = await this.prisma.contactoCliente.findUnique({
       where: { id: contactoClienteId },
@@ -300,6 +310,7 @@ export class ActivitiesService {
     if (!row) {
       throw new BadRequestException('El contacto cliente indicado no existe');
     }
+    if (options?.skipScopeCheck) return row;
     if (scope && !scope.unrestricted) {
       if (row.assignedTo !== scope.viewerUserId) {
         throw new BadRequestException('El contacto cliente indicado no existe');
@@ -312,6 +323,7 @@ export class ActivitiesService {
     clienteEmpresaId: string,
     scope?: CrmDataScope,
     username?: string,
+    options?: { skipScopeCheck?: boolean },
   ) {
     const row = await this.prisma.clienteEmpresa.findUnique({
       where: { id: clienteEmpresaId },
@@ -319,6 +331,7 @@ export class ActivitiesService {
     if (!row) {
       throw new BadRequestException('La empresa cliente indicada no existe');
     }
+    if (options?.skipScopeCheck) return row;
     if (scope && !scope.unrestricted) {
       const agente = username?.trim().toLowerCase() ?? '';
       if (!agente || row.agenteSync !== agente) {
@@ -363,6 +376,97 @@ export class ActivitiesService {
     );
   }
 
+  private linkIdsAreSubset(requested: string[], allowed: Set<string>): boolean {
+    return requested.every((id) => allowed.has(id));
+  }
+
+  private collectLinkIdsFromRaw(raw: {
+    contactId?: string | null;
+    companyId?: string | null;
+    opportunityId?: string | null;
+    clienteEmpresaId?: string | null;
+    contactoClienteId?: string | null;
+    contactIds?: string[] | null;
+    companyIds?: string[] | null;
+    opportunityIds?: string[] | null;
+    clienteEmpresaIds?: string[] | null;
+    contactoClienteIds?: string[] | null;
+  }) {
+    return {
+      contactIds: this.mergeLinkIds(raw.contactId, raw.contactIds),
+      companyIds: this.mergeLinkIds(raw.companyId, raw.companyIds),
+      opportunityIds: this.mergeLinkIds(raw.opportunityId, raw.opportunityIds),
+      clienteEmpresaIds: this.mergeLinkIds(
+        raw.clienteEmpresaId,
+        raw.clienteEmpresaIds,
+      ),
+      contactoClienteIds: this.mergeLinkIds(
+        raw.contactoClienteId,
+        raw.contactoClienteIds,
+      ),
+    };
+  }
+
+  /**
+   * Completar tarea asignada al asesor: hereda vínculos de la tarea sin re-validar agenteSync.
+   * Solo aplica si los IDs solicitados son subconjunto de los de la tarea.
+   */
+  private async resolveLinkTrustFromAssignedTask(
+    sourceTaskId: string,
+    scope: CrmDataScope,
+    raw: {
+      contactId?: string | null;
+      companyId?: string | null;
+      opportunityId?: string | null;
+      clienteEmpresaId?: string | null;
+      contactoClienteId?: string | null;
+      contactIds?: string[] | null;
+      companyIds?: string[] | null;
+      opportunityIds?: string[] | null;
+      clienteEmpresaIds?: string[] | null;
+      contactoClienteIds?: string[] | null;
+    },
+  ): Promise<AssignedTaskLinkTrust | null> {
+    const task = await this.prisma.activity.findUnique({
+      where: { id: sourceTaskId },
+      include: {
+        contacts: { select: { contactId: true } },
+        companies: { select: { companyId: true } },
+        opportunities: { select: { opportunityId: true } },
+        clienteEmpresas: { select: { clienteEmpresaId: true } },
+        contactosCliente: { select: { contactoClienteId: true } },
+      },
+    });
+    if (!task || task.type !== 'tarea' || task.assignedTo !== scope.viewerUserId) {
+      return null;
+    }
+
+    const requested = this.collectLinkIdsFromRaw(raw);
+    const trust: AssignedTaskLinkTrust = {
+      contactIds: new Set(task.contacts.map((c) => c.contactId)),
+      companyIds: new Set(task.companies.map((c) => c.companyId)),
+      opportunityIds: new Set(task.opportunities.map((o) => o.opportunityId)),
+      clienteEmpresaIds: new Set(
+        task.clienteEmpresas.map((c) => c.clienteEmpresaId),
+      ),
+      contactoClienteIds: new Set(
+        task.contactosCliente.map((c) => c.contactoClienteId),
+      ),
+    };
+
+    if (
+      !this.linkIdsAreSubset(requested.contactIds, trust.contactIds) ||
+      !this.linkIdsAreSubset(requested.companyIds, trust.companyIds) ||
+      !this.linkIdsAreSubset(requested.opportunityIds, trust.opportunityIds) ||
+      !this.linkIdsAreSubset(requested.clienteEmpresaIds, trust.clienteEmpresaIds) ||
+      !this.linkIdsAreSubset(requested.contactoClienteIds, trust.contactoClienteIds)
+    ) {
+      return null;
+    }
+
+    return trust;
+  }
+
   private async resolveActivityLinks(
     raw: {
       contactId?: string | null;
@@ -378,9 +482,10 @@ export class ActivitiesService {
     },
     scope?: CrmDataScope,
     actor?: ActivityActor,
-    options?: { autoLink?: boolean },
+    options?: { autoLink?: boolean; assignedTaskLinkTrust?: AssignedTaskLinkTrust | null },
   ) {
     const autoLink = options?.autoLink !== false;
+    const linkTrust = options?.assignedTaskLinkTrust ?? null;
     let contactIds = this.mergeLinkIds(raw.contactId, raw.contactIds);
     let companyIds = this.mergeLinkIds(raw.companyId, raw.companyIds);
     let opportunityIds = this.mergeLinkIds(raw.opportunityId, raw.opportunityIds);
@@ -445,15 +550,18 @@ export class ActivitiesService {
       if (
         scope &&
         !scope.unrestricted &&
+        !linkTrust?.contactIds.has(contactId) &&
         c.assignedTo !== scope.viewerUserId
       ) {
         throw new BadRequestException('El contacto indicado no existe');
       }
     }
     for (const companyId of companyIds) {
-      const c = await this.prisma.company.findFirst({
-        where: mergeCompanyScope({ id: companyId }, scope),
-      });
+      const c = linkTrust?.companyIds.has(companyId)
+        ? await this.prisma.company.findUnique({ where: { id: companyId } })
+        : await this.prisma.company.findFirst({
+            where: mergeCompanyScope({ id: companyId }, scope),
+          });
       if (!c) {
         throw new BadRequestException('La empresa indicada no existe');
       }
@@ -468,6 +576,7 @@ export class ActivitiesService {
       if (
         scope &&
         !scope.unrestricted &&
+        !linkTrust?.opportunityIds.has(opportunityId) &&
         o.assignedTo !== scope.viewerUserId
       ) {
         throw new BadRequestException('La oportunidad indicada no existe');
@@ -478,10 +587,13 @@ export class ActivitiesService {
         clienteEmpresaId,
         scope,
         actor?.username,
+        { skipScopeCheck: linkTrust?.clienteEmpresaIds.has(clienteEmpresaId) },
       );
     }
     for (const contactoClienteId of contactoClienteIds) {
-      await this.assertContactoClienteAccess(contactoClienteId, scope);
+      await this.assertContactoClienteAccess(contactoClienteId, scope, {
+        skipScopeCheck: linkTrust?.contactoClienteIds.has(contactoClienteId),
+      });
     }
 
     return { contactIds, companyIds, opportunityIds, clienteEmpresaIds, contactoClienteIds };
@@ -556,22 +668,34 @@ export class ActivitiesService {
     const completedAt = this.resolveCompletedAt(dto.completedAt, status);
     const priority = this.normalizePriority(dto.priority);
 
+    const linkRaw = {
+      contactId: dto.contactId,
+      companyId: dto.companyId,
+      opportunityId: dto.opportunityId,
+      clienteEmpresaId: dto.clienteEmpresaId,
+      contactoClienteId: dto.contactoClienteId,
+      contactIds: dto.contactIds,
+      companyIds: dto.companyIds,
+      opportunityIds: dto.opportunityIds,
+      clienteEmpresaIds: dto.clienteEmpresaIds,
+      contactoClienteIds: dto.contactoClienteIds,
+    };
+
+    let assignedTaskLinkTrust: AssignedTaskLinkTrust | null = null;
+    const sourceTaskId = dto.sourceTaskId?.trim();
+    if (sourceTaskId && scope && !scope.unrestricted) {
+      assignedTaskLinkTrust = await this.resolveLinkTrustFromAssignedTask(
+        sourceTaskId,
+        scope,
+        linkRaw,
+      );
+    }
+
     const links = await this.resolveActivityLinks(
-      {
-        contactId: dto.contactId,
-        companyId: dto.companyId,
-        opportunityId: dto.opportunityId,
-        clienteEmpresaId: dto.clienteEmpresaId,
-        contactoClienteId: dto.contactoClienteId,
-        contactIds: dto.contactIds,
-        companyIds: dto.companyIds,
-        opportunityIds: dto.opportunityIds,
-        clienteEmpresaIds: dto.clienteEmpresaIds,
-        contactoClienteIds: dto.contactoClienteIds,
-      },
+      linkRaw,
       scope,
       actor,
-      { autoLink: true },
+      { autoLink: true, assignedTaskLinkTrust },
     );
 
     const row = await this.prisma.$transaction(async (tx) => {

@@ -166,6 +166,8 @@ export type CreateActivityPayload = {
   opportunityIds?: string[];
   clienteEmpresaIds?: string[];
   contactoClienteIds?: string[];
+  /** Completar tarea: el backend confía en vínculos de la tarea asignada al asesor. */
+  sourceTaskId?: string;
 };
 
 export type UpdateActivityPayload = {

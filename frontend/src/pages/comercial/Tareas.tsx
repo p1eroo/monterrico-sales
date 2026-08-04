@@ -250,7 +250,7 @@ export default function TareasPage({ scope = 'all' }: { scope?: TareasPageScope 
       if (scope === 'clienteCartera') {
         return rows.filter(activityIsClienteCartera);
       }
-      return rows;
+      return rows.filter((task) => !activityIsClienteCartera(task));
     },
     [activities, scope],
   );

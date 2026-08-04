@@ -24,4 +24,6 @@ export class CreateActivityDto {
   opportunityIds?: string[];
   clienteEmpresaIds?: string[];
   contactoClienteIds?: string[];
+  /** Al completar una tarea: valida vínculos heredados sin re-aplicar cartera (agenteSync). */
+  sourceTaskId?: string;
 }

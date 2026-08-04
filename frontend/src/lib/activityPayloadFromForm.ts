@@ -143,6 +143,7 @@ export async function completeTaskWithActivityForm(params: {
       assignedTo,
     ),
     ...entityLinkIdsFromActivity(params.task),
+    sourceTaskId: params.task.id,
     status: 'completada',
     completedAt,
   };
