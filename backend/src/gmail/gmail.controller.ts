@@ -172,6 +172,51 @@ export class GmailController {
     return this.gmailService.linkEmail(body.to, body.subject, req.user.userId);
   }
 
+  @Get('register-activity/preview')
+  async previewRegisterEmailActivity(@Query('counterparty') counterparty?: string) {
+    if (!counterparty?.trim()) {
+      throw new BadRequestException('counterparty es obligatorio');
+    }
+    return this.gmailService.previewRegisterEmailActivity(counterparty.trim());
+  }
+
+  @Post('register-activity')
+  async registerEmailAsActivity(
+    @Req() req: AuthedReq,
+    @Body()
+    body: {
+      counterparty: string;
+      subject: string;
+      direction?: 'inbound' | 'outbound';
+      title?: string;
+      description?: string;
+      dueDate?: string;
+      startDate?: string;
+      startTime?: string;
+    },
+  ) {
+    if (!body?.counterparty?.trim()) {
+      throw new BadRequestException('counterparty es obligatorio');
+    }
+    if (!body?.subject?.trim()) {
+      throw new BadRequestException('subject es obligatorio');
+    }
+    const direction = body.direction === 'outbound' ? 'outbound' : 'inbound';
+    return this.gmailService.registerEmailAsActivity(
+      body.counterparty,
+      body.subject,
+      direction,
+      req.user.userId,
+      {
+        title: body.title,
+        description: body.description,
+        dueDate: body.dueDate,
+        startDate: body.startDate,
+        startTime: body.startTime,
+      },
+    );
+  }
+
   @Get('signature')
   async getSignature(@Req() req: AuthedReq) {
     return this.emailSignature.getSignature(req.user.userId);

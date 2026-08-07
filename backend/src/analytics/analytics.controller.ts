@@ -59,6 +59,7 @@ export class AnalyticsController {
     @Query('source') source?: string,
     @Query('area') area?: string,
     @Query('sparklineWeeks') sparklineWeeks?: string,
+    @Query('chartGranularity') chartGranularity?: string,
   ) {
     const crmScope = await this.crmDataScope.buildScope(
       req.user.userId,
@@ -75,6 +76,10 @@ export class AnalyticsController {
       area,
       crmScope,
       sparklineWeeks: sparklineWeeks ? Number(sparklineWeeks) : undefined,
+      chartGranularity:
+        chartGranularity === 'day' || chartGranularity === 'week'
+          ? chartGranularity
+          : undefined,
     });
   }
 
@@ -153,6 +158,8 @@ export class AnalyticsController {
     @Query('excludeAssignedTo') excludeAssignedTo?: string,
     @Query('advisorPool') advisorPool?: string,
     @Query('source') source?: string,
+    @Query('activityType') activityType?: string,
+    @Query('callOutcome') callOutcome?: string,
   ) {
     const crmScope = await this.crmDataScope.buildScope(
       req.user.userId,
@@ -170,6 +177,8 @@ export class AnalyticsController {
       excludeAssignedTo,
       advisorPool,
       source,
+      activityType,
+      callOutcome,
       crmScope,
     });
   }
@@ -190,6 +199,8 @@ export class AnalyticsController {
     @Query('excludeAssignedTo') excludeAssignedTo?: string,
     @Query('advisorPool') advisorPool?: string,
     @Query('source') source?: string,
+    @Query('activityType') activityType?: string,
+    @Query('callOutcome') callOutcome?: string,
   ) {
     const crmScope = await this.crmDataScope.buildScope(
       req.user.userId,
@@ -207,6 +218,8 @@ export class AnalyticsController {
       excludeAssignedTo,
       advisorPool,
       source,
+      activityType,
+      callOutcome,
       crmScope,
     });
   }

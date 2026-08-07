@@ -52,3 +52,15 @@ export function callInteractionTypeKey(
   if (t === 'correo') return 'correos';
   return null;
 }
+
+/** Filtro Prisma por resultado de llamada parseado desde `description`. */
+export function callOutcomeDescriptionWhere(outcome: CallOutcomeGroup): {
+  description: { contains: string; mode: 'insensitive' };
+} | {
+  NOT: { description: { contains: string; mode: 'insensitive' } };
+} {
+  const contactado = {
+    description: { contains: 'Resultado: contactado', mode: 'insensitive' as const },
+  };
+  return outcome === 'contacto' ? contactado : { NOT: contactado };
+}

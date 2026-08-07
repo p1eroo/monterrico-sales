@@ -1,6 +1,6 @@
 import { api } from '@/lib/api';
 import type { DateRange } from 'react-day-picker';
-import { calendarDateToLimaYmd } from '@/lib/crmTimezone';
+import { calendarDateToLimaYmd, parseDayStartLima } from '@/lib/crmTimezone';
 import { addCalendarDaysLocalIso, formatTodayPeruYmd } from '@/lib/formatters';
 
 export type AnalyticsSummary = {
@@ -366,6 +366,18 @@ export function analyticsYearToDateRange(now = new Date()): { from: string; to: 
   };
 }
 
+/** Dashboard: estadísticas operativas del día actual (Lima), sin selector de periodo. */
+export function dashboardTodayRange(): { from: string; to: string } {
+  const today = formatTodayPeruYmd();
+  return { from: today, to: today };
+}
+
+export function dashboardDefaultDateRange(): DateRange {
+  const todayYmd = formatTodayPeruYmd();
+  const today = parseDayStartLima(todayYmd);
+  return { from: today, to: today };
+}
+
 export function analyticsRangeFromPreset(
   preset: '7d' | '1m' | '3m' | '1y' | 'custom',
   custom?: DateRange,
@@ -418,6 +430,8 @@ export type AnalyticsQueryFilters = {
   area?: string;
   /** Semanas para sparklines KPI (8 dashboard, 10 reportes). */
   sparklineWeeks?: number;
+  /** day = gráficos de actividades/tareas por día (dashboard). */
+  chartGranularity?: 'day' | 'week';
 };
 
 function appendAnalyticsFilters(q: URLSearchParams, params: AnalyticsQueryFilters) {
@@ -430,6 +444,7 @@ function appendAnalyticsFilters(q: URLSearchParams, params: AnalyticsQueryFilter
   if (params.source) q.set('source', params.source);
   if (params.area) q.set('area', params.area);
   if (params.sparklineWeeks != null) q.set('sparklineWeeks', String(params.sparklineWeeks));
+  if (params.chartGranularity) q.set('chartGranularity', params.chartGranularity);
 }
 
 export async function fetchAnalyticsKPIs(
@@ -547,6 +562,10 @@ export type ActivitiesByAdvisorDetailsQuery = AnalyticsQueryFilters & {
   weekEnd: string;
   page?: number;
   limit?: number;
+  /** llamada | reunion | correo */
+  activityType?: string;
+  /** contacto | no_contacto (solo llamadas) */
+  callOutcome?: string;
 };
 
 export async function fetchActivitiesByAdvisorDetails(
@@ -559,6 +578,8 @@ export async function fetchActivitiesByAdvisorDetails(
   q.set('weekEnd', params.weekEnd);
   if (params.page != null) q.set('page', String(params.page));
   if (params.limit != null) q.set('limit', String(params.limit));
+  if (params.activityType?.trim()) q.set('activityType', params.activityType.trim());
+  if (params.callOutcome?.trim()) q.set('callOutcome', params.callOutcome.trim());
   return api<ActivitiesByAdvisorDetailsPage>(
     `/analytics/activities-by-advisor/details?${q.toString()}`,
   );
@@ -574,6 +595,8 @@ export async function fetchTasksByAdvisorDetails(
   q.set('weekEnd', params.weekEnd);
   if (params.page != null) q.set('page', String(params.page));
   if (params.limit != null) q.set('limit', String(params.limit));
+  if (params.activityType?.trim()) q.set('activityType', params.activityType.trim());
+  if (params.callOutcome?.trim()) q.set('callOutcome', params.callOutcome.trim());
   return api<ActivitiesByAdvisorDetailsPage>(
     `/analytics/tasks-by-advisor/details?${q.toString()}`,
   );

@@ -28,7 +28,8 @@ function formatValue(n: number): string {
   return Math.round(n).toLocaleString('es-PE');
 }
 
-function shortWeekLabel(name: string): string {
+function formatCategoryLabel(name: string, granularity: 'week' | 'day'): string {
+  if (granularity === 'day') return name;
   const weekNum = parseIsoWeekNumberFromLabel(name);
   return weekNum != null ? formatIsoWeekLabel(weekNum) : name;
 }
@@ -49,6 +50,7 @@ interface ActivitiesByTypeWeeklyStackedChartProps {
   className?: string;
   chartHeight?: number;
   showLegend?: boolean;
+  axisGranularity?: 'week' | 'day';
 }
 
 export function ActivitiesByTypeWeeklyStackedChart({
@@ -57,13 +59,14 @@ export function ActivitiesByTypeWeeklyStackedChart({
   className,
   chartHeight = 380,
   showLegend = true,
+  axisGranularity = 'week',
 }: ActivitiesByTypeWeeklyStackedChartProps) {
   const chartTheme = useChartTheme();
   const isEmpty = !activitiesByTypeHeatmapHasData(data);
 
   const categories = useMemo(
-    () => data.weeks.map((week) => shortWeekLabel(week)),
-    [data.weeks],
+    () => data.weeks.map((week) => formatCategoryLabel(week, axisGranularity)),
+    [data.weeks, axisGranularity],
   );
 
   const series = useMemo(() => {

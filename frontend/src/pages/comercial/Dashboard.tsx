@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 
-import { subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import { Target } from 'lucide-react';
 import { SquareBottomUpSvgIcon } from '@/components/icons/SquareBottomUpSvgIcon';
@@ -40,6 +39,7 @@ import { MultiAdvisorFilter } from '@/components/shared/MultiAdvisorFilter';
 import {
   fetchAnalyticsSummary,
   fetchAnalyticsKPIs,
+  dashboardDefaultDateRange,
   formatLocalISODate,
   type AnalyticsSummary,
   type AnalyticsKPIs,
@@ -47,7 +47,7 @@ import {
 } from '@/lib/analyticsApi';
 import {
   activityGoalTotal,
-  fetchCrmActivityGoals,
+  fetchCrmDailyActivityGoals,
   type ActivityGoalTargets,
 } from '@/lib/crmConfigApi';
 import {
@@ -92,6 +92,9 @@ import {
   dashboardKpiDescriptions,
 } from '@/lib/dashboardChartDescriptions';
 
+/** Dashboard operativo: actividades/tareas y metas por día (Reportes sigue semanal). */
+const DASHBOARD_CHART_GRANULARITY = 'day' as const;
+
 function changeTone(s: string): 'positive' | 'negative' | 'neutral' {
   const t = s.trim();
   if (t.startsWith('-')) return 'negative';
@@ -112,10 +115,7 @@ export default function Dashboard() {
     queryParams: advisorListParams,
   } = useMultiAdvisorFilter();
   const canEditActivityGoals = bundle?.permissions.canEditActivityGoals ?? false;
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: startOfMonth(subMonths(new Date(), 1)),
-    to: endOfMonth(new Date()),
-  });
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => dashboardDefaultDateRange());
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [kpis, setKpis] = useState<AnalyticsKPIs | null>(null);
@@ -137,23 +137,24 @@ export default function Dashboard() {
     useState<ActivitiesByAdvisorStackedRow | null>(null);
   const [tasksChartModalOpen, setTasksChartModalOpen] = useState(false);
 
-  const latestActivityWeek = summary?.activitiesByAdvisorWeekly?.weeks?.[0] ?? null;
+  const latestActivityPeriod = useMemo(() => {
+    const periods = summary?.activitiesByAdvisorWeekly?.weeks;
+    if (!periods?.length) return null;
+    return periods[periods.length - 1];
+  }, [summary?.activitiesByAdvisorWeekly?.weeks]);
 
   useEffect(() => {
     if (!dateRange?.from || !dateRange?.to) {
       setSummary(null);
-      setKpis(null);
       return;
     }
     const from = formatLocalISODate(dateRange.from);
     const to = formatLocalISODate(dateRange.to);
     let cancelled = false;
 
-    // Cargar KPIs primero (rápido)
+    // KPIs acumulativos / rolling: sin acotar al rango del calendario.
     setKpisLoading(true);
     void fetchAnalyticsKPIs({
-      from,
-      to,
       assignedTo: advisorListParams.assignedTo,
       excludeAssignedTo: advisorListParams.excludeAssignedTo,
       advisorPool: advisorListParams.advisorPool,
@@ -169,7 +170,6 @@ export default function Dashboard() {
         if (!cancelled) setKpisLoading(false);
       });
 
-    // Cargar charts después (más pesado)
     setSummaryLoading(true);
     void fetchAnalyticsSummary({
       from,
@@ -178,6 +178,7 @@ export default function Dashboard() {
       excludeAssignedTo: advisorListParams.excludeAssignedTo,
       advisorPool: advisorListParams.advisorPool,
       area: 'comercial',
+      chartGranularity: DASHBOARD_CHART_GRANULARITY,
     })
       .then((data) => {
         if (!cancelled) setSummary(data);
@@ -332,13 +333,13 @@ export default function Dashboard() {
   );
 
   useEffect(() => {
-    const weekStart = activitiesAdvisorSelectedWeek?.weekStart;
-    if (!weekStart) {
+    const dayStart = activitiesAdvisorSelectedWeek?.weekStart;
+    if (!dayStart) {
       setActivityGoalsByUserId({});
       return;
     }
     let cancelled = false;
-    void fetchCrmActivityGoals(weekStart.slice(0, 10))
+    void fetchCrmDailyActivityGoals(dayStart.slice(0, 10))
       .then((data) => {
         if (!cancelled) setActivityGoalsByUserId(data.byUserId ?? {});
       })
@@ -351,13 +352,13 @@ export default function Dashboard() {
   }, [activitiesAdvisorSelectedWeek?.weekStart]);
 
   useEffect(() => {
-    const weekStart = latestActivityWeek?.weekStart;
-    if (!weekStart) {
+    const dayStart = latestActivityPeriod?.weekStart;
+    if (!dayStart) {
       setActivityGoalsLatestWeek({});
       return;
     }
     let cancelled = false;
-    void fetchCrmActivityGoals(weekStart.slice(0, 10))
+    void fetchCrmDailyActivityGoals(dayStart.slice(0, 10))
       .then((data) => {
         if (!cancelled) setActivityGoalsLatestWeek(data.byUserId ?? {});
       })
@@ -367,11 +368,20 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [latestActivityWeek?.weekStart]);
+  }, [latestActivityPeriod?.weekStart]);
+
+  const latestActivityPeriodIndex = Math.max(
+    0,
+    (summary?.activitiesByAdvisorWeekly?.weeks?.length ?? 1) - 1,
+  );
 
   const activitiesByAdvisorLatestWeek = useMemo(
-    () => buildActivitiesByAdvisorStackedData(summary?.activitiesByAdvisorWeekly, 0),
-    [summary?.activitiesByAdvisorWeekly],
+    () =>
+      buildActivitiesByAdvisorStackedData(
+        summary?.activitiesByAdvisorWeekly,
+        latestActivityPeriodIndex,
+      ),
+    [summary?.activitiesByAdvisorWeekly, latestActivityPeriodIndex],
   );
 
   const myActivityGoalProgress = useMemo(() => {
@@ -383,13 +393,13 @@ export default function Dashboard() {
     return {
       row,
       target,
-      weekLabel: latestActivityWeek?.name ?? activitiesByAdvisorLatestWeek.weekLabel ?? '—',
+      weekLabel: latestActivityPeriod?.name ?? activitiesByAdvisorLatestWeek.weekLabel ?? '—',
     };
   }, [
     activitiesByAdvisorLatestWeek,
     activityGoalsLatestWeek,
     canSeeAllAdvisors,
-    latestActivityWeek?.name,
+    latestActivityPeriod?.name,
   ]);
 
   const activitiesAdvisorDetailQuery = useMemo((): Omit<
@@ -463,7 +473,7 @@ export default function Dashboard() {
   const handleExport = useCallback(
     (format: 'PDF' | 'Excel') => {
       if (summaryLoading || !summary) {
-        toast.error('Espera a que carguen las métricas o elige un periodo válido.');
+        toast.error('Espera a que carguen las métricas.');
         return;
       }
       const payload: ReportsExportInput = {
@@ -600,6 +610,7 @@ export default function Dashboard() {
           data={activitiesByTypeHeatmap}
           scopeLabel={activitiesScopeLabel}
           chartHeight={height}
+          axisGranularity={DASHBOARD_CHART_GRANULARITY}
         />
       );
     }
@@ -607,7 +618,7 @@ export default function Dashboard() {
       return (
         <p className="py-8 text-center text-sm text-muted-foreground">
           Sin actividades en{' '}
-          {activitiesByAdvisorStackedView.weekLabel ?? 'esta semana'}.
+          {activitiesByAdvisorStackedView.weekLabel ?? 'este día'}.
         </p>
       );
     }
@@ -726,7 +737,7 @@ export default function Dashboard() {
                 />
               </CardHeader>
               <CardContent className="flex min-h-0 flex-1 flex-col items-center justify-center pb-4 pt-0 text-sm text-muted-foreground">
-                Sin oportunidades por fuente en este periodo.
+                Sin oportunidades por fuente hoy.
               </CardContent>
             </Card>
           ) : (
@@ -763,7 +774,7 @@ export default function Dashboard() {
               loading={summaryLoading}
               isEmpty={funnelChartEmpty}
               variant="bar"
-              emptyMessage="Sin datos de embudo en este periodo."
+              emptyMessage="Sin datos de embudo hoy."
               chartHeight={weeklyChartHeight}
               className="flex-1 py-3 max-md:py-1"
             >
@@ -833,7 +844,7 @@ export default function Dashboard() {
               loading={summaryLoading}
               isEmpty={activitiesTypeChartEmpty}
               variant="stackedBar"
-              emptyMessage="Sin actividades registradas en las últimas 6 semanas."
+              emptyMessage="Sin actividades registradas en el periodo."
               chartHeight={weeklyChartHeight}
               className="flex-1"
             >
@@ -841,6 +852,7 @@ export default function Dashboard() {
                 data={activitiesByTypeHeatmap}
                 scopeLabel={activitiesScopeLabel}
                 chartHeight={weeklyChartHeight}
+                axisGranularity={DASHBOARD_CHART_GRANULARITY}
               />
             </ChartCardBody>
           </CardContent>
@@ -869,7 +881,7 @@ export default function Dashboard() {
               loading={summaryLoading}
               isEmpty={tasksChartEmpty}
               variant="stackedBar"
-              emptyMessage="Sin tareas registradas en las últimas 6 semanas."
+              emptyMessage="Sin tareas completadas en el periodo."
               chartHeight={weeklyChartHeight}
               className="flex-1"
             >
@@ -877,6 +889,7 @@ export default function Dashboard() {
                 data={tasksByKindHeatmap}
                 scopeLabel="Equipo completo"
                 chartHeight={weeklyChartHeight}
+                axisGranularity={DASHBOARD_CHART_GRANULARITY}
               />
             </ChartCardBody>
           </CardContent>
@@ -989,8 +1002,9 @@ export default function Dashboard() {
       <ActivityGoalsDialog
         open={activityGoalsDialogOpen}
         onOpenChange={setActivityGoalsDialogOpen}
-        weekStart={activitiesAdvisorSelectedWeek?.weekStart ?? null}
-        weekLabel={
+        goalPeriod="day"
+        dayStart={activitiesAdvisorSelectedWeek?.weekStart ?? null}
+        dayLabel={
           activitiesAdvisorSelectedWeek?.name ??
           activitiesByAdvisorStackedView.weekLabel ??
           null
@@ -1010,6 +1024,7 @@ export default function Dashboard() {
                 data={tasksByKindHeatmap}
                 scopeLabel="Equipo completo"
                 chartHeight={520}
+                axisGranularity={DASHBOARD_CHART_GRANULARITY}
               />
             ) : null}
           </div>

@@ -12,7 +12,9 @@ import {
 import { Input } from '@/components/ui/input';
 import {
   fetchCrmActivityGoals,
+  fetchCrmDailyActivityGoals,
   putCrmActivityGoals,
+  putCrmDailyActivityGoals,
   type ActivityGoalTargets,
 } from '@/lib/crmConfigApi';
 import { toast } from '@/lib/notify';
@@ -37,8 +39,12 @@ const COLUMNS: { key: keyof ActivityGoalTargets; label: string }[] = [
 interface ActivityGoalsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  weekStart: string | null;
-  weekLabel: string | null;
+  /** week = reportes / semanal; day = dashboard operativo. */
+  goalPeriod?: 'week' | 'day';
+  weekStart?: string | null;
+  weekLabel?: string | null;
+  dayStart?: string | null;
+  dayLabel?: string | null;
   advisors: AdvisorOption[];
   onSaved?: (goals: Record<string, ActivityGoalTargets>) => void;
 }
@@ -55,8 +61,11 @@ function normalizeTargets(raw: Partial<ActivityGoalTargets> | undefined): Activi
 export function ActivityGoalsDialog({
   open,
   onOpenChange,
-  weekStart,
-  weekLabel,
+  goalPeriod = 'week',
+  weekStart = null,
+  weekLabel = null,
+  dayStart = null,
+  dayLabel = null,
   advisors,
   onSaved,
 }: ActivityGoalsDialogProps) {
@@ -65,7 +74,11 @@ export function ActivityGoalsDialog({
   const [canEdit, setCanEdit] = useState(false);
   const [draft, setDraft] = useState<Record<string, ActivityGoalTargets>>({});
 
-  const weekStartKey = weekStart?.slice(0, 10) ?? '';
+  const periodKey =
+    goalPeriod === 'day'
+      ? dayStart?.slice(0, 10) ?? ''
+      : weekStart?.slice(0, 10) ?? '';
+  const periodLabel = goalPeriod === 'day' ? dayLabel : weekLabel;
 
   const advisorRows = useMemo(() => {
     const byId = new Map(advisors.map((a) => [a.id, a.name]));
@@ -79,10 +92,13 @@ export function ActivityGoalsDialog({
   }, [advisors, draft]);
 
   const loadGoals = useCallback(async () => {
-    if (!weekStartKey) return;
+    if (!periodKey) return;
     setLoading(true);
     try {
-      const data = await fetchCrmActivityGoals(weekStartKey);
+      const data =
+        goalPeriod === 'day'
+          ? await fetchCrmDailyActivityGoals(periodKey)
+          : await fetchCrmActivityGoals(periodKey);
       setCanEdit(data.canEdit);
       setDraft(data.byUserId ?? {});
     } catch (err) {
@@ -94,12 +110,12 @@ export function ActivityGoalsDialog({
     } finally {
       setLoading(false);
     }
-  }, [weekStartKey]);
+  }, [goalPeriod, periodKey]);
 
   useEffect(() => {
-    if (!open || !weekStartKey) return;
+    if (!open || !periodKey) return;
     void loadGoals();
-  }, [open, weekStartKey, loadGoals]);
+  }, [open, periodKey, loadGoals]);
 
   useEffect(() => {
     if (!open) {
@@ -125,20 +141,24 @@ export function ActivityGoalsDialog({
   };
 
   const save = async () => {
-    if (!weekStartKey || !canEdit) return;
+    if (!periodKey || !canEdit) return;
     setSaving(true);
     try {
       const byUserId: Record<string, ActivityGoalTargets> = {};
       for (const row of advisorRows) {
         byUserId[row.id] = normalizeTargets(draft[row.id]);
       }
-      const data = await putCrmActivityGoals({
-        weekStart: weekStartKey,
-        byUserId,
-      });
+      const data =
+        goalPeriod === 'day'
+          ? await putCrmDailyActivityGoals({ dayStart: periodKey, byUserId })
+          : await putCrmActivityGoals({ weekStart: periodKey, byUserId });
       setDraft(data.byUserId ?? {});
       onSaved?.(data.byUserId ?? {});
-      toast.success('Metas de actividades guardadas');
+      toast.success(
+        goalPeriod === 'day'
+          ? 'Metas diarias guardadas'
+          : 'Metas de actividades guardadas',
+      );
       onOpenChange(false);
     } catch (err) {
       toast.error(
@@ -155,9 +175,13 @@ export function ActivityGoalsDialog({
         <DialogHeader>
           <DialogTitle>Metas de actividades</DialogTitle>
           <DialogDescription>
-            {weekLabel
-              ? `Semana ${weekLabel} · objetivos semanales por asesor`
-              : 'Objetivos semanales por asesor'}
+            {periodLabel
+              ? goalPeriod === 'day'
+                ? `${periodLabel} · objetivos diarios por asesor`
+                : `Semana ${periodLabel} · objetivos semanales por asesor`
+              : goalPeriod === 'day'
+                ? 'Objetivos diarios por asesor'
+                : 'Objetivos semanales por asesor'}
           </DialogDescription>
         </DialogHeader>
 

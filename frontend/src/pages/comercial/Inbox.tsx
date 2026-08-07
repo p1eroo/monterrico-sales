@@ -36,16 +36,22 @@ import {
   contactDetailHref,
   opportunityDetailHref,
 } from '@/lib/detailRoutes';
-import { fetchGmailMessages, fetchGmailThread, sendGmailMessage, filesToGmailAttachments, linkEmailToCRM, downloadGmailAttachment, markGmailThreadRead, setGmailThreadStarred, archiveGmailThread, trashGmailThread, markGmailThreadUnread } from '@/lib/gmailApi';
+import { fetchGmailMessages, fetchGmailThread, sendGmailMessage, filesToGmailAttachments, linkEmailToCRM, registerGmailEmailAsActivity, fetchGmailRegisterActivityPreview, downloadGmailAttachment, markGmailThreadRead, setGmailThreadStarred, archiveGmailThread, trashGmailThread, markGmailThreadUnread } from '@/lib/gmailApi';
+import type { GmailRegisterActivityPreview } from '@/lib/gmailApi';
 import { fetchEmailSignature, resolveSignatureHtmlForEditor, prepareBodyHtmlForSend } from '@/lib/emailSignatureApi';
 import { filterValidAttachmentFiles, ingestComposeFiles } from '@/lib/composeFiles';
 import { EmailSignatureSettingsDialog } from '@/components/shared/EmailSignatureSettingsDialog';
 import { ComposeEmailPanel } from '@/components/shared/ComposeEmailPanel';
 import { GmailMessageBody } from '@/components/shared/GmailMessageBody';
 import {
+  ActivityFormDialog,
+  type ActivityFormData,
+} from '@/components/shared/ActivityFormDialog';
+import {
   InboxThreadContextMenu,
   useInboxThreadContextMenu,
 } from '@/components/shared/InboxThreadContextMenu';
+import { formatTodayPeruYmd } from '@/lib/formatters';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -178,10 +184,42 @@ function extractEmailFromHeader(from: string): string {
   return match ? match[1].trim() : from.trim();
 }
 
+function counterpartyDisplayName(header: string): string {
+  const trimmed = header.trim();
+  const match = trimmed.match(/^([^<]+)</);
+  if (match?.[1]?.trim()) return match[1].trim();
+  return extractEmailFromHeader(trimmed);
+}
+
 function replySubject(subject: string): string {
   const trimmed = subject.trim();
   if (/^re:/i.test(trimmed)) return trimmed;
   return `Re: ${trimmed}`;
+}
+
+function getEmailRegisterTarget(messages: GmailMessageDetail[]): {
+  counterparty: string;
+  subject: string;
+  direction: 'inbound' | 'outbound';
+} | null {
+  if (!messages.length) return null;
+  const inbound = [...messages]
+    .reverse()
+    .find((m) => !(m.labelIds ?? []).includes('SENT'));
+  if (inbound) {
+    return {
+      counterparty: inbound.from,
+      subject: inbound.subject || messages[0]?.subject || '(Sin asunto)',
+      direction: 'inbound',
+    };
+  }
+  const last = messages[messages.length - 1];
+  if (!last) return null;
+  return {
+    counterparty: last.to || last.from,
+    subject: last.subject || messages[0]?.subject || '(Sin asunto)',
+    direction: 'outbound',
+  };
 }
 
 function GmailMessageItem({
@@ -267,6 +305,7 @@ function GmailMessageItem({
 export default function InboxPage() {
   const navigate = useNavigate();
   const googleConnected = useAppStore((s) => s.googleConnected);
+  const currentUser = useAppStore((s) => s.currentUser);
   const [activeFolder, setActiveFolder] = useState<EmailFolder>('inbox');
   const [search, setSearch] = useState('');
   const [layoutMode, setLayoutMode] = useState<InboxLayoutMode>(readInboxLayoutMode);
@@ -284,6 +323,9 @@ export default function InboxPage() {
   const [composeAttachments, setComposeAttachments] = useState<File[]>([]);
   const [composeResetKey, setComposeResetKey] = useState(0);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [registerActivityDialogOpen, setRegisterActivityDialogOpen] = useState(false);
+  const [emailRegisterPlan, setEmailRegisterPlan] = useState<GmailRegisterActivityPreview | null>(null);
+  const [emailRegisterPlanLoading, setEmailRegisterPlanLoading] = useState(false);
   const [composeMinimized, setComposeMinimized] = useState(false);
   const [composeFullscreen, setComposeFullscreen] = useState(false);
   const [composeShowCc, setComposeShowCc] = useState(false);
@@ -964,6 +1006,85 @@ export default function InboxPage() {
     return inbound ?? selectedThreadMessages[selectedThreadMessages.length - 1];
   }, [selectedThreadMessages]);
 
+  const emailRegisterTarget = useMemo(() => {
+    if (googleConnected && selectedThreadMessages.length > 0) {
+      return getEmailRegisterTarget(selectedThreadMessages);
+    }
+    if (!selectedThread?.messages.length) return null;
+    const last = selectedThread.messages[selectedThread.messages.length - 1];
+    return {
+      counterparty: last.fromName ? `${last.fromName} <${last.from}>` : last.from,
+      subject: selectedThread.subject || '(Sin asunto)',
+      direction: last.folder === 'sent' ? ('outbound' as const) : ('inbound' as const),
+    };
+  }, [googleConnected, selectedThread, selectedThreadMessages]);
+
+  const emailRegisterMeta = useMemo(() => {
+    if (!emailRegisterTarget) return null;
+    const email = extractEmailFromHeader(emailRegisterTarget.counterparty);
+    return {
+      counterpartyLabel: counterpartyDisplayName(emailRegisterTarget.counterparty) || email,
+      counterpartyEmail: email,
+      emailSubject: emailRegisterTarget.subject,
+    };
+  }, [emailRegisterTarget]);
+
+  useEffect(() => {
+    if (!registerActivityDialogOpen || !emailRegisterTarget?.counterparty) {
+      setEmailRegisterPlan(null);
+      setEmailRegisterPlanLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setEmailRegisterPlanLoading(true);
+    void fetchGmailRegisterActivityPreview(emailRegisterTarget.counterparty)
+      .then((plan) => {
+        if (!cancelled) setEmailRegisterPlan(plan);
+      })
+      .catch(() => {
+        if (!cancelled) setEmailRegisterPlan(null);
+      })
+      .finally(() => {
+        if (!cancelled) setEmailRegisterPlanLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [registerActivityDialogOpen, emailRegisterTarget?.counterparty]);
+
+  const openRegisterActivityDialog = () => {
+    if (!emailRegisterTarget) {
+      notify.error('No hay un correo seleccionado para registrar');
+      return;
+    }
+    if (!googleConnected) {
+      notify.error('Conecta Gmail para registrar actividades desde el Inbox');
+      return;
+    }
+    setRegisterActivityDialogOpen(true);
+  };
+
+  const handleRegisterActivitySave = async (data: ActivityFormData) => {
+    if (!emailRegisterTarget) return;
+    const dueDate = data.date || formatTodayPeruYmd();
+    try {
+      const res = await registerGmailEmailAsActivity({
+        ...emailRegisterTarget,
+        title: data.title?.trim() || 'Correo',
+        description: data.description?.trim(),
+        dueDate,
+        startDate: dueDate,
+      });
+      if (!res.linked[0]) {
+        throw new Error('No se pudo registrar la actividad');
+      }
+      setRegisterActivityDialogOpen(false);
+    } catch (e) {
+      notify.error(e instanceof Error ? e.message : 'No se pudo registrar la actividad');
+      throw e;
+    }
+  };
+
   const handleSendReply = async () => {
     if (!replyTarget) return;
     const bodyText = replyHtml.replace(/<[^>]*>/g, '').trim();
@@ -1335,10 +1456,12 @@ export default function InboxPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem>Registrar como actividad</DropdownMenuItem>
-                    <DropdownMenuItem>Vincular a contacto</DropdownMenuItem>
-                    <DropdownMenuItem>Vincular a empresa</DropdownMenuItem>
-                    <DropdownMenuItem>Vincular a oportunidad</DropdownMenuItem>
+                    <DropdownMenuItem
+                      disabled={!emailRegisterTarget}
+                      onClick={openRegisterActivityDialog}
+                    >
+                      Registrar como actividad
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -1722,6 +1845,37 @@ export default function InboxPage() {
         onOpenChange={setSignatureSettingsOpen}
         onSaved={setUserSignatureHtml}
       />
+
+      {emailRegisterMeta && emailRegisterTarget ? (
+        <ActivityFormDialog
+          key={`${selectedGmailThreadId ?? selectedThread?.id ?? 'thread'}-register`}
+          type="correo"
+          open={registerActivityDialogOpen}
+          onOpenChange={setRegisterActivityDialogOpen}
+          onSave={handleRegisterActivitySave}
+          defaultTitle=""
+          defaultDescription=""
+          defaultDate={formatTodayPeruYmd()}
+          defaultAssigneeId={currentUser.id}
+          dialogDescription="Completa el asunto y el resumen que quieras registrar. Al guardar se creará la actividad de correo y se vinculará según el plan indicado."
+          registerLinkPlan={{
+            emailSubject: emailRegisterMeta.emailSubject,
+            assignee: currentUser.name,
+            email: emailRegisterMeta.counterpartyEmail,
+            loading: emailRegisterPlanLoading,
+            excluded: emailRegisterPlan?.excluded,
+            contact: emailRegisterPlan?.contact ?? {
+              action: 'skip',
+              name: emailRegisterMeta.counterpartyLabel,
+            },
+            company: emailRegisterPlan?.company ?? {
+              action: 'skip',
+              name: emailRegisterMeta.counterpartyEmail.split('@')[1] ?? '—',
+            },
+            opportunity: emailRegisterPlan?.opportunity ?? { action: 'skip', name: '—' },
+          }}
+        />
+      ) : null}
     </div>
   );
 }

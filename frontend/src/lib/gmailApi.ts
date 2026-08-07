@@ -142,19 +142,56 @@ export async function fetchGmailProfile(): Promise<{ emailAddress: string; messa
   return api('/gmail/profile');
 }
 
-export async function linkEmailToCRM(to: string, subject: string): Promise<{
-  linked: {
-    email: string;
-    contactId: string;
-    companyId?: string;
-    opportunityId?: string;
-    activityId: string;
-    created: { contact: boolean; company: boolean; opportunity: boolean };
-  }[];
-}> {
+export type GmailLinkResult = {
+  email: string;
+  contactId: string;
+  companyId?: string;
+  opportunityId?: string;
+  activityId: string;
+  created: { contact: boolean; company: boolean; opportunity: boolean };
+};
+
+export async function linkEmailToCRM(to: string, subject: string): Promise<{ linked: GmailLinkResult[] }> {
   return api('/gmail/link', {
     method: 'POST',
     body: JSON.stringify({ to, subject }),
+  });
+}
+
+export type GmailRegisterPlanEntity = {
+  action: 'create' | 'link' | 'skip';
+  name: string;
+};
+
+export type GmailRegisterActivityPreview = {
+  email: string;
+  domain: string;
+  excluded: boolean;
+  contact: GmailRegisterPlanEntity;
+  company: GmailRegisterPlanEntity;
+  opportunity: GmailRegisterPlanEntity;
+};
+
+export async function fetchGmailRegisterActivityPreview(
+  counterparty: string,
+): Promise<GmailRegisterActivityPreview> {
+  const params = new URLSearchParams({ counterparty });
+  return api(`/gmail/register-activity/preview?${params.toString()}`);
+}
+
+export async function registerGmailEmailAsActivity(params: {
+  counterparty: string;
+  subject: string;
+  direction: 'inbound' | 'outbound';
+  title?: string;
+  description?: string;
+  dueDate?: string;
+  startDate?: string;
+  startTime?: string;
+}): Promise<{ linked: GmailLinkResult[] }> {
+  return api('/gmail/register-activity', {
+    method: 'POST',
+    body: JSON.stringify(params),
   });
 }
 

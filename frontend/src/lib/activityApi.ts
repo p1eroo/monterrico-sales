@@ -239,6 +239,11 @@ export async function createActivity(payload: CreateActivityPayload): Promise<Ac
   return mapApiActivityToActivity(row);
 }
 
+export async function fetchActivityById(id: string): Promise<Activity> {
+  const row = await api<ApiActivity>(`/activities/${encodeURIComponent(id)}`);
+  return mapApiActivityToActivity(row);
+}
+
 export async function updateActivity(
   id: string,
   payload: UpdateActivityPayload,

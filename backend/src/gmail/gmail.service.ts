@@ -430,6 +430,26 @@ export class GmailService {
     return contactOpp?.opportunityId;
   }
 
+  private parseEmailAddresses(header: string): { name?: string; email: string }[] {
+    const emailRegex = /([^<]+)?\s*<([^>]+)>|([^\s,;]+)/g;
+    const recipients: { name?: string; email: string }[] = [];
+    let match: RegExpExecArray | null;
+    while ((match = emailRegex.exec(header)) !== null) {
+      if (match[2]) {
+        recipients.push({ name: match[1]?.trim(), email: match[2] });
+      } else if (match[3]) {
+        recipients.push({ email: match[3] });
+      }
+    }
+    return recipients;
+  }
+
+  private parseActivityDate(value?: string): Date | undefined {
+    if (!value?.trim()) return undefined;
+    const parsed = new Date(`${value.trim()}T12:00:00.000Z`);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  }
+
   private async createEmailActivity(
     assignedTo: string,
     subject: string,
@@ -437,21 +457,40 @@ export class GmailService {
     contactId: string,
     companyId?: string,
     opportunityId?: string,
+    direction: 'inbound' | 'outbound' = 'outbound',
+    overrides?: {
+      title?: string;
+      description?: string;
+      dueDate?: string;
+      startDate?: string;
+      startTime?: string;
+    },
   ): Promise<string> {
     const now = new Date();
-    const title = subject.trim() || `Correo a ${email}`;
+    const dueDate = this.parseActivityDate(overrides?.dueDate) ?? now;
+    const startDate = this.parseActivityDate(overrides?.startDate) ?? dueDate;
+    const title =
+      overrides?.title?.trim() ||
+      subject.trim() ||
+      (direction === 'inbound' ? `Correo de ${email}` : `Correo a ${email}`);
+    const description =
+      overrides?.description?.trim() ||
+      (direction === 'inbound'
+        ? `Correo recibido de ${email}`
+        : `Correo enviado a ${email}`);
     const activity = await this.prisma.$transaction(async (tx) => {
       const row = await tx.activity.create({
         data: {
           type: 'correo',
           title,
-          description: `Correo enviado a ${email}`,
+          description,
           assignedTo,
           status: 'completada',
           priority: 'media',
-          dueDate: now,
-          startDate: now,
-          completedAt: now,
+          dueDate,
+          startDate,
+          startTime: overrides?.startTime?.trim() || undefined,
+          completedAt: dueDate,
         },
       });
       await tx.contactActivity.create({
@@ -473,21 +512,124 @@ export class GmailService {
     return activity.id;
   }
 
+  async previewRegisterEmailActivity(counterparty: string) {
+    const parsed = this.parseEmailAddresses(counterparty)[0];
+    if (!parsed) {
+      throw new BadRequestException('Dirección de correo inválida');
+    }
+    return this.buildRegisterEmailPlan(parsed.name, parsed.email);
+  }
+
+  private async buildRegisterEmailPlan(name: string | undefined, rawEmail: string) {
+    const email = rawEmail.trim().toLowerCase();
+    const domain = email.split('@')[1]?.trim().toLowerCase() ?? '';
+    const excluded = !domain || CRM_LINK_EXCLUDED_DOMAINS.has(domain);
+
+    if (excluded) {
+      return {
+        email,
+        domain,
+        excluded: true,
+        contact: { action: 'skip' as const, name: name?.trim() || email },
+        company: { action: 'skip' as const, name: domain || '—' },
+        opportunity: { action: 'skip' as const, name: '—' },
+      };
+    }
+
+    const existingContact = await this.prisma.contact.findFirst({
+      where: { correo: email },
+    });
+
+    if (existingContact) {
+      const company = await this.resolveCompanyForEmail(existingContact.id, domain);
+      const opportunityId = await this.resolveOpportunityForEmail(
+        existingContact.id,
+        company?.id,
+      );
+      let opportunityName = '—';
+      if (opportunityId) {
+        const opp = await this.prisma.opportunity.findUnique({
+          where: { id: opportunityId },
+          select: { title: true },
+        });
+        opportunityName = opp?.title?.trim() || 'Oportunidad existente';
+      }
+
+      return {
+        email,
+        domain,
+        excluded: false,
+        contact: { action: 'link' as const, name: existingContact.name?.trim() || email },
+        company: company
+          ? { action: 'link' as const, name: company.name?.trim() || domain }
+          : { action: 'skip' as const, name: domain },
+        opportunity: opportunityId
+          ? { action: 'link' as const, name: opportunityName }
+          : { action: 'skip' as const, name: '—' },
+      };
+    }
+
+    const contactLabel = name?.trim() || email;
+    const existingCompany = await this.prisma.company.findFirst({
+      where: { domain: { equals: domain, mode: 'insensitive' } },
+    });
+
+    return {
+      email,
+      domain,
+      excluded: false,
+      contact: { action: 'create' as const, name: contactLabel },
+      company: existingCompany
+        ? { action: 'link' as const, name: existingCompany.name?.trim() || domain }
+        : { action: 'create' as const, name: domain },
+      opportunity: { action: 'create' as const, name: domain },
+    };
+  }
+
+  async registerEmailAsActivity(
+    counterparty: string,
+    subject: string,
+    direction: 'inbound' | 'outbound',
+    assignedTo?: string,
+    activityOverrides?: {
+      title?: string;
+      description?: string;
+      dueDate?: string;
+      startDate?: string;
+      startTime?: string;
+    },
+  ) {
+    return this.linkCounterpartyEmails(
+      counterparty,
+      subject,
+      direction,
+      assignedTo,
+      activityOverrides,
+    );
+  }
+
   async linkEmail(to: string, subject: string, assignedTo?: string) {
+    return this.linkCounterpartyEmails(to, subject, 'outbound', assignedTo);
+  }
+
+  private async linkCounterpartyEmails(
+    header: string,
+    subject: string,
+    direction: 'inbound' | 'outbound',
+    assignedTo?: string,
+    activityOverrides?: {
+      title?: string;
+      description?: string;
+      dueDate?: string;
+      startDate?: string;
+      startTime?: string;
+    },
+  ) {
     if (!assignedTo) {
       throw new BadRequestException('Usuario no autenticado');
     }
 
-    const emailRegex = /([^<]+)?\s*<([^>]+)>|([^\s,;]+)/g;
-    const recipients: { name?: string; email: string }[] = [];
-    let match: RegExpExecArray | null;
-    while ((match = emailRegex.exec(to)) !== null) {
-      if (match[2]) {
-        recipients.push({ name: match[1]?.trim(), email: match[2] });
-      } else if (match[3]) {
-        recipients.push({ email: match[3] });
-      }
-    }
+    const recipients = this.parseEmailAddresses(header);
 
     const results: {
       email: string;
@@ -601,9 +743,17 @@ export class GmailService {
         contactId,
         companyId,
         opportunityId,
+        direction,
+        activityOverrides,
       );
 
       results.push({ email, contactId, companyId, opportunityId, activityId, created });
+    }
+
+    if (results.length === 0) {
+      throw new BadRequestException(
+        'No se pudo vincular el correo (dominio excluido o dirección inválida)',
+      );
     }
 
     return { linked: results };

@@ -19,14 +19,11 @@ import {
 } from 'lucide-react';
 import type { Activity, ActivityStatus, ActivityType, ContactPriority, TaskKind } from '@/types';
 import { TASK_KINDS } from '@/types';
-import { CalendarSvgIcon } from '@/components/icons/CalendarSvgIcon';
-import { UsersGroupTwoRoundedSvgIcon } from '@/components/icons/UsersGroupTwoRoundedSvgIcon';
-import { Buildings2SvgIcon } from '@/components/icons/Buildings2SvgIcon';
-import { SuitcaseSvgIcon } from '@/components/icons/SuitcaseSvgIcon';
-import { LlamadaSvgIcon } from '@/components/icons/LlamadaSvgIcon';
-import { ReunionSvgIcon } from '@/components/icons/ReunionSvgIcon';
-import { CorreoSvgIcon } from '@/components/icons/CorreoSvgIcon';
-import { WhatsAppSvgIcon } from '@/components/icons/WhatsAppSvgIcon';
+import {
+  ACTIVITY_TYPE_SVG_ICONS,
+  TASK_META_ICON_CLASS,
+  TaskEntityMetaIcons,
+} from '@/lib/activityTypeSvgIcons';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -38,15 +35,10 @@ import {
   taskDueRowHighlightClass,
 } from '@/lib/taskStatus';
 
-const activityIcons: Record<ActivityType, React.ComponentType<{ className?: string }>> = {
-  llamada: LlamadaSvgIcon,
-  reunion: ReunionSvgIcon,
-  tarea: CheckSquare,
-  correo: CorreoSvgIcon,
-  whatsapp: WhatsAppSvgIcon,
-};
+const activityIcons: Record<ActivityType, React.ComponentType<{ className?: string }>> =
+  ACTIVITY_TYPE_SVG_ICONS as Record<ActivityType, React.ComponentType<{ className?: string }>>;
 
-const kanbanMetaIconClass = 'size-4 shrink-0 text-[#72808f] dark:text-gray-500';
+const kanbanMetaIconClass = TASK_META_ICON_CLASS;
 
 const kanbanPriorityBadgeClass: Record<ContactPriority, string> = {
   alta: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300',
@@ -205,14 +197,14 @@ const TaskKanbanCard = memo(function TaskKanbanCard({
 
       <div className="mt-2 space-y-2 text-xs text-muted-foreground">
         <div className="flex items-center gap-2">
-          <CalendarSvgIcon className={kanbanMetaIconClass} aria-hidden />
+          <TaskEntityMetaIcons.calendar className={kanbanMetaIconClass} aria-hidden />
           <span className={cn('min-w-0 break-words', dateTextClass)}>
             {formatDueDate(task.dueDate, task.startTime)}
           </span>
         </div>
         {hasContact && (
           <div className="flex items-center gap-2">
-            <UsersGroupTwoRoundedSvgIcon className={kanbanMetaIconClass} aria-hidden />
+            <TaskEntityMetaIcons.contact className={kanbanMetaIconClass} aria-hidden />
             <span className="truncate">
               {task.contactName?.trim()}
               {task.contactPhone ? ` · ${task.contactPhone}` : ''}
@@ -221,25 +213,25 @@ const TaskKanbanCard = memo(function TaskKanbanCard({
         )}
         {hasContactoCliente && (
           <div className="flex items-center gap-2">
-            <UsersGroupTwoRoundedSvgIcon className={kanbanMetaIconClass} aria-hidden />
+            <TaskEntityMetaIcons.contact className={kanbanMetaIconClass} aria-hidden />
             <span className="truncate">{task.contactoClienteName?.trim()}</span>
           </div>
         )}
         {hasClienteEmpresa && (
           <div className="flex items-center gap-2">
-            <Buildings2SvgIcon className={kanbanMetaIconClass} aria-hidden />
+            <TaskEntityMetaIcons.company className={kanbanMetaIconClass} aria-hidden />
             <span className="truncate">{task.clienteEmpresaName?.trim()}</span>
           </div>
         )}
         {hasCompany && (
           <div className="flex items-center gap-2">
-            <Buildings2SvgIcon className={kanbanMetaIconClass} aria-hidden />
+            <TaskEntityMetaIcons.company className={kanbanMetaIconClass} aria-hidden />
             <span className="truncate">{task.companyName?.trim()}</span>
           </div>
         )}
         {hasOpportunity && (
           <div className="flex items-center gap-2">
-            <SuitcaseSvgIcon className={kanbanMetaIconClass} aria-hidden />
+            <TaskEntityMetaIcons.opportunity className={kanbanMetaIconClass} aria-hidden />
             <span className="truncate">{task.opportunityTitle?.trim()}</span>
           </div>
         )}

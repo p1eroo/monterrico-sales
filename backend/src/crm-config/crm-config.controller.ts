@@ -171,4 +171,38 @@ export class CrmConfigController {
     }
     return this.crmConfig.putActivityGoals(req.user.userId, body);
   }
+
+  @Get('daily-activity-goals')
+  getDailyActivityGoals(
+    @Req() req: AuthedReq,
+    @Query('dayStart') dayStart: string,
+  ) {
+    if (!dayStart?.trim()) {
+      throw new BadRequestException('dayStart requerido');
+    }
+    return this.crmConfig.getDailyActivityGoals(req.user.userId, dayStart);
+  }
+
+  @Put('daily-activity-goals')
+  putDailyActivityGoals(
+    @Req() req: AuthedReq,
+    @Body()
+    body: {
+      dayStart: string;
+      byUserId: Record<
+        string,
+        {
+          contacto?: number;
+          noContacto?: number;
+          reuniones?: number;
+          correos?: number;
+        }
+      >;
+    },
+  ) {
+    if (!body?.dayStart?.trim()) {
+      throw new BadRequestException('dayStart requerido');
+    }
+    return this.crmConfig.putDailyActivityGoals(req.user.userId, body);
+  }
 }

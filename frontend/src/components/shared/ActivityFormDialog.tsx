@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Phone, Users, Mail, MessageCircle, User, Building2, Briefcase, Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Phone, Users, Mail, MessageCircle, User, Building2, Briefcase, Plus, Loader2 } from 'lucide-react';
 import { toast } from '@/lib/notify';
 import type { ActivityType, ActivityStatus, TaskAssociation } from '@/types';
 import { formatNowPeruTimeHHmm, formatTodayPeruYmd } from '@/lib/formatters';
@@ -7,34 +7,15 @@ import { isLikelyCompanyCuid } from '@/lib/companyApi';
 import { NewContactWizard, type NewContactData } from '@/components/shared/NewContactWizard';
 import { createContactFromWizardForCompany } from '@/lib/createContactFromWizard';
 
+import { ActivityTypeFormFields, type ActivityFormFieldsData } from '@/components/shared/ActivityTypeFormFields';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import {
   FormDialogActions,
-  FormDialogField,
-  FormDialogGrid,
   FormDialogShell,
-  formDialogInputClass,
-  formDialogSelectTriggerClass,
-  formDialogTextareaClass,
 } from '@/components/ui/form-dialog';
-import {
-  Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import { CALL_RESULT_OPTIONS } from '@/lib/callResult';
 
-export interface ActivityFormData {
-  title: string;
-  description: string;
-  date: string;
-  time: string;
-  duration: string;
-  result: string;
-  dateTime: string;
-  meetingType: string;
-}
+export type ActivityFormData = ActivityFormFieldsData;
 
 export interface ActivityFormSaveMeta {
   extraContactIds?: string[];
@@ -75,13 +56,32 @@ interface TaskSummary {
   linkBadges?: Pick<TaskAssociation, 'type' | 'name'>[];
 }
 
+export type RegisterLinkPlanEntity = {
+  action: 'create' | 'link' | 'skip';
+  name: string;
+};
+
+export type RegisterLinkPlan = {
+  emailSubject: string;
+  assignee: string;
+  email: string;
+  loading?: boolean;
+  excluded?: boolean;
+  contact: RegisterLinkPlanEntity;
+  company: RegisterLinkPlanEntity;
+  opportunity: RegisterLinkPlanEntity;
+};
+
 interface ActivityFormDialogProps {
   type: 'llamada' | 'reunion' | 'correo' | 'whatsapp';
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (data: ActivityFormData, meta?: ActivityFormSaveMeta) => void | Promise<void>;
   taskSummary?: TaskSummary;
+  registerLinkPlan?: RegisterLinkPlan;
+  dialogDescription?: string;
   defaultTitle?: string;
+  defaultDescription?: string;
   defaultDate?: string;
   defaultTime?: string;
   showSkip?: boolean;
@@ -104,7 +104,10 @@ export function ActivityFormDialog({
   onOpenChange,
   onSave,
   taskSummary,
+  registerLinkPlan,
+  dialogDescription,
   defaultTitle = '',
+  defaultDescription = '',
   defaultDate,
   defaultTime,
   showSkip = false,
@@ -118,11 +121,26 @@ export function ActivityFormDialog({
     return {
       ...base,
       title: defaultTitle,
+      description: defaultDescription,
       date: defaultDate ?? base.date,
       time,
       dateTime: defaultDate ? `${defaultDate}T${time}` : '',
     };
   });
+
+  useEffect(() => {
+    if (!open) return;
+    const base = createEmptyForm();
+    const time = defaultTime ?? base.time;
+    setForm({
+      ...base,
+      title: defaultTitle,
+      description: defaultDescription,
+      date: defaultDate ?? base.date,
+      time,
+      dateTime: defaultDate ? `${defaultDate}T${time}` : '',
+    });
+  }, [open, defaultTitle, defaultDescription, defaultDate, defaultTime]);
 
   const config = typeConfig[type];
   const Icon = config.icon;
@@ -209,6 +227,12 @@ export function ActivityFormDialog({
   const set = <K extends keyof ActivityFormData>(key: K, value: ActivityFormData[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
+  const planActionLabel = (action: RegisterLinkPlanEntity['action']) => {
+    if (action === 'create') return 'Se creará';
+    if (action === 'link') return 'Se vinculará a';
+    return 'No aplica';
+  };
+
   return (
     <>
     <FormDialogShell
@@ -222,22 +246,96 @@ export function ActivityFormDialog({
         </span>
       )}
       description={
-        taskSummary
+        dialogDescription ??
+        (taskSummary
           ? `Registra los detalles de la actividad. Al guardar, la tarea «${taskSummary.title}» quedará como completada.`
-          : `Registra los detalles de la ${type === 'correo' ? 'el correo' : type === 'llamada' ? 'llamada' : type === 'whatsapp' ? 'conversación de WhatsApp' : 'reunión'}.`
+          : `Registra los detalles de la ${type === 'correo' ? 'el correo' : type === 'llamada' ? 'llamada' : type === 'whatsapp' ? 'conversación de WhatsApp' : 'reunión'}.`)
       }
       footer={(
         <FormDialogActions
           cancelLabel={showSkip ? 'Omitir' : 'Cancelar'}
           submitLabel={saving ? 'Guardando…' : 'Guardar actividad'}
           submitting={saving}
+          submitDisabled={registerLinkPlan?.excluded || registerLinkPlan?.loading}
           onCancel={() => handleOpenChange(false)}
           onSubmit={() => void handleSave()}
         />
       )}
     >
       <div className="space-y-6">
-        {taskSummary && (
+        {registerLinkPlan ? (
+          <div className="space-y-3 rounded-xl border border-slate-300/80 bg-muted/20 p-4 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Correo</span>
+              <span className="max-w-[16rem] truncate text-right font-medium">
+                {registerLinkPlan.emailSubject}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Contraparte</span>
+              <span className="max-w-[16rem] truncate text-right">{registerLinkPlan.email}</span>
+            </div>
+            <div className="border-t border-border/60 pt-3">
+              <p className="mb-2 text-xs font-medium text-muted-foreground">
+                Al guardar en el CRM
+              </p>
+              {registerLinkPlan.loading ? (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" />
+                  Consultando registros…
+                </div>
+              ) : registerLinkPlan.excluded ? (
+                <p className="text-xs text-destructive">
+                  Este dominio no se puede vincular al CRM. No se creará la actividad.
+                </p>
+              ) : (
+                <ul className="space-y-2 text-xs">
+                  <li className="flex items-start gap-2">
+                    <User className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                    <span>
+                      <span className="text-muted-foreground">Contacto:</span>{' '}
+                      {planActionLabel(registerLinkPlan.contact.action)}{' '}
+                      <span className="font-medium">{registerLinkPlan.contact.name}</span>
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Building2 className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                    <span>
+                      <span className="text-muted-foreground">Empresa:</span>{' '}
+                      {planActionLabel(registerLinkPlan.company.action)}{' '}
+                      <span className="font-medium">{registerLinkPlan.company.name}</span>
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Briefcase className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                    <span>
+                      <span className="text-muted-foreground">Oportunidad:</span>{' '}
+                      {planActionLabel(registerLinkPlan.opportunity.action)}
+                      {registerLinkPlan.opportunity.action !== 'skip' ? (
+                        <>
+                          {' '}
+                          <span className="font-medium">{registerLinkPlan.opportunity.name}</span>
+                        </>
+                      ) : null}
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Mail className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                    <span>
+                      <span className="text-muted-foreground">Actividad:</span>{' '}
+                      <span className="font-medium">Se creará actividad tipo correo</span>
+                    </span>
+                  </li>
+                </ul>
+              )}
+            </div>
+            <div className="flex items-center justify-between gap-3 border-t border-border/60 pt-3">
+              <span className="text-muted-foreground">Responsable</span>
+              <span>{registerLinkPlan.assignee}</span>
+            </div>
+          </div>
+        ) : null}
+        {taskSummary && !registerLinkPlan && (
           <div className="space-y-2 rounded-xl border border-slate-300/80 bg-muted/20 p-4 text-sm">
             <div className="flex items-center justify-between gap-3">
               <span className="text-muted-foreground">Tarea</span>
@@ -284,104 +382,7 @@ export function ActivityFormDialog({
           </div>
         )}
 
-        {type === 'llamada' && (
-          <>
-            <FormDialogField label="Asunto">
-              <Input className={formDialogInputClass} placeholder="Asunto de la llamada" value={form.title} onChange={(e) => set('title', e.target.value)} />
-            </FormDialogField>
-            <FormDialogGrid className="sm:grid-cols-3">
-              <FormDialogField label="Fecha">
-                <Input type="date" className={formDialogInputClass} value={form.date} onChange={(e) => set('date', e.target.value)} />
-              </FormDialogField>
-              <FormDialogField label="Hora">
-                <Input type="time" className={formDialogInputClass} value={form.time} onChange={(e) => set('time', e.target.value)} />
-              </FormDialogField>
-              <FormDialogField label="Duración (min)">
-                <Input type="number" min={1} className={formDialogInputClass} placeholder="Ej: 15" value={form.duration} onChange={(e) => set('duration', e.target.value)} />
-              </FormDialogField>
-            </FormDialogGrid>
-            <FormDialogField label="Resultado">
-              <Select value={form.result} onValueChange={(v) => set('result', v)}>
-                <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectLabel>Contacto</SelectLabel>
-                    {CALL_RESULT_OPTIONS.filter((option) => option.group === 'contacto').map((option) => (
-                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                    ))}
-                  </SelectGroup>
-                  <SelectGroup>
-                    <SelectLabel>No contacto</SelectLabel>
-                    {CALL_RESULT_OPTIONS.filter((option) => option.group === 'no_contacto').map((option) => (
-                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </FormDialogField>
-            <FormDialogField label="Resumen" compactControl={false}>
-              <Textarea className={formDialogTextareaClass} placeholder="Resumen de la conversación..." rows={3} value={form.description} onChange={(e) => set('description', e.target.value)} />
-            </FormDialogField>
-          </>
-        )}
-
-        {type === 'reunion' && (
-          <>
-            <FormDialogField label="Título">
-              <Input className={formDialogInputClass} placeholder="Título de la reunión" value={form.title} onChange={(e) => set('title', e.target.value)} />
-            </FormDialogField>
-            <FormDialogGrid>
-              <FormDialogField label="Fecha y hora">
-                <Input type="datetime-local" className={formDialogInputClass} value={form.dateTime} onChange={(e) => set('dateTime', e.target.value)} />
-              </FormDialogField>
-              <FormDialogField label="Tipo de reunión">
-                <Select value={form.meetingType} onValueChange={(v) => set('meetingType', v)}>
-                  <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="presencial">Presencial</SelectItem>
-                    <SelectItem value="virtual">Virtual</SelectItem>
-                    <SelectItem value="telefonica">Telefónica</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormDialogField>
-            </FormDialogGrid>
-            <FormDialogField label="Resultado">
-              <Select value={form.result} onValueChange={(v) => set('result', v)}>
-                <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="efectiva">Efectiva</SelectItem>
-                  <SelectItem value="reprogramada">Reprogramada</SelectItem>
-                  <SelectItem value="cancelada">Cancelada</SelectItem>
-                </SelectContent>
-              </Select>
-            </FormDialogField>
-            <FormDialogField label="Notas de la reunión" compactControl={false}>
-              <Textarea className={formDialogTextareaClass} placeholder="Puntos tratados, acuerdos, próximos pasos..." rows={3} value={form.description} onChange={(e) => set('description', e.target.value)} />
-            </FormDialogField>
-          </>
-        )}
-
-        {type === 'correo' && (
-          <>
-            <FormDialogField label="Asunto">
-              <Input className={formDialogInputClass} placeholder="Asunto del correo" value={form.title} onChange={(e) => set('title', e.target.value)} />
-            </FormDialogField>
-            <FormDialogField label="Resumen del contenido" compactControl={false}>
-              <Textarea className={formDialogTextareaClass} placeholder="Resumen de lo enviado/recibido..." rows={3} value={form.description} onChange={(e) => set('description', e.target.value)} />
-            </FormDialogField>
-          </>
-        )}
-
-        {type === 'whatsapp' && (
-          <>
-            <FormDialogField label="Tema">
-              <Input className={formDialogInputClass} placeholder="Tema del seguimiento" value={form.title} onChange={(e) => set('title', e.target.value)} />
-            </FormDialogField>
-            <FormDialogField label="Resumen" compactControl={false}>
-              <Textarea className={formDialogTextareaClass} placeholder="Qué se acordó o conversó..." rows={3} value={form.description} onChange={(e) => set('description', e.target.value)} />
-            </FormDialogField>
-          </>
-        )}
+        <ActivityTypeFormFields type={type} form={form} onChange={set} />
       </div>
     </FormDialogShell>
 

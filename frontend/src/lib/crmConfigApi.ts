@@ -204,3 +204,29 @@ export async function putCrmActivityGoals(body: {
     }),
   });
 }
+
+export type CrmDailyActivityGoalsDto = {
+  dayStart: string;
+  byUserId: Record<string, ActivityGoalTargets>;
+  canEdit: boolean;
+};
+
+export async function fetchCrmDailyActivityGoals(
+  dayStart: string,
+): Promise<CrmDailyActivityGoalsDto> {
+  const q = new URLSearchParams({ dayStart: dayStart.slice(0, 10) });
+  return api<CrmDailyActivityGoalsDto>(`/crm-config/daily-activity-goals?${q}`);
+}
+
+export async function putCrmDailyActivityGoals(body: {
+  dayStart: string;
+  byUserId: Record<string, Partial<ActivityGoalTargets>>;
+}): Promise<CrmDailyActivityGoalsDto> {
+  return api<CrmDailyActivityGoalsDto>('/crm-config/daily-activity-goals', {
+    method: 'PUT',
+    body: JSON.stringify({
+      dayStart: body.dayStart.slice(0, 10),
+      byUserId: body.byUserId,
+    }),
+  });
+}

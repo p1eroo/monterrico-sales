@@ -1,10 +1,12 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import {
   callInteractionTypeKey,
+  callOutcomeDescriptionWhere,
   callOutcomeGroupFromResult,
   callOutcomeLabel,
   callResultDetailLabel,
   parseCallResultFromDescription,
+  type CallOutcomeGroup,
 } from '../activities/call-result.util';
 import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
@@ -399,6 +401,38 @@ const INTERACTION_ACTIVITY_TYPE_FILTER: Prisma.ActivityWhereInput = {
   ],
 };
 
+function parseAdvisorDetailActivityType(raw?: string): string | undefined {
+  const value = raw?.trim().toLowerCase();
+  if (!value || value === 'all') return undefined;
+  if (value === 'reunión') return 'reunion';
+  return value;
+}
+
+function parseAdvisorDetailCallOutcome(raw?: string): CallOutcomeGroup | undefined {
+  const value = raw?.trim().toLowerCase();
+  if (value === 'contacto' || value === 'no_contacto') return value;
+  return undefined;
+}
+
+function advisorDetailCallFilters(
+  activityType: string | undefined,
+  callOutcome: CallOutcomeGroup | undefined,
+  field: 'type' | 'taskKind',
+): Prisma.ActivityWhereInput {
+  const filters: Prisma.ActivityWhereInput[] = [];
+  if (callOutcome) {
+    filters.push(callOutcomeDescriptionWhere(callOutcome));
+    if (!activityType) {
+      filters.push({
+        [field]: { equals: 'llamada', mode: 'insensitive' },
+      });
+    }
+  }
+  if (filters.length === 0) return {};
+  if (filters.length === 1) return filters[0];
+  return { AND: filters };
+}
+
 /** Cartera Clientes (ClienteEmpresa): no alimenta dashboard ni reportes comerciales. */
 const EXCLUDE_CLIENTE_CARTERA_ACTIVITY_FILTER: Prisma.ActivityWhereInput = {
   clienteEmpresas: { none: {} },
@@ -437,6 +471,8 @@ const TASK_KIND_ANALYTICS_FILTER: Prisma.ActivityWhereInput = {
 };
 
 const COMPANY_WEEKLY_CHART_WEEKS = 6;
+/** Tope de días en gráficos diarios del dashboard (actividades / tareas). */
+const DAILY_CHART_MAX_DAYS = 31;
 /** Tope de semanas en gráficos semanales (empresas, actividades, tareas) cuando el rango es largo. */
 const WEEKLY_CHART_MAX_WEEKS = 20;
 const SOURCES_WEEKLY_CHART_WEEKS = 6;
@@ -584,6 +620,63 @@ function weekTargetsForChartRange(
   }
   if (targets.length > maxWeeks) {
     return targets.slice(-maxWeeks);
+  }
+  return targets;
+}
+
+const LIMA_DAY_LABEL_MONTHS = [
+  'ene',
+  'feb',
+  'mar',
+  'abr',
+  'may',
+  'jun',
+  'jul',
+  'ago',
+  'sep',
+  'oct',
+  'nov',
+  'dic',
+] as const;
+
+function limaYmdFromInstant(d: Date): string {
+  const { year, month, day } = instantToLimaParts(d);
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function addLimaDays(dayStart: Date, days: number): Date {
+  const { year, month, day } = instantToLimaParts(dayStart);
+  return limaDayStart(year, month, day + days);
+}
+
+function formatDayLabelLima(dayStart: Date): string {
+  const { month, day } = instantToLimaParts(dayStart);
+  return `${String(day).padStart(2, '0')} ${LIMA_DAY_LABEL_MONTHS[month]}`;
+}
+
+/** Días calendario (Lima) dentro del rango del filtro. */
+function dayTargetsForChartRange(
+  from: Date,
+  to: Date,
+  maxDays: number = DAILY_CHART_MAX_DAYS,
+): WeekTarget[] {
+  const targets: WeekTarget[] = [];
+  const fromParts = instantToLimaParts(from);
+  const toParts = instantToLimaParts(to);
+  let cur = limaDayStart(fromParts.year, fromParts.month, fromParts.day);
+  const end = limaDayStart(toParts.year, toParts.month, toParts.day);
+
+  while (cur.getTime() <= end.getTime()) {
+    const ymd = limaYmdFromInstant(cur);
+    targets.push({
+      name: formatDayLabelLima(cur),
+      weekStart: cur,
+      weekEnd: parseDayEndLima(ymd),
+    });
+    cur = addLimaDays(cur, 1);
+  }
+  if (targets.length > maxDays) {
+    return targets.slice(-maxDays);
   }
   return targets;
 }
@@ -2223,6 +2316,8 @@ export class AnalyticsService {
     excludeAssignedTo?: string;
     advisorPool?: string;
     source?: string;
+    activityType?: string;
+    callOutcome?: string;
     page?: number;
     limit?: number;
     crmScope: CrmDataScope;
@@ -2258,13 +2353,19 @@ export class AnalyticsService {
       viewerUserId: opts.crmScope.viewerUserId,
     });
 
+    const activityType = parseAdvisorDetailActivityType(opts.activityType);
+    const callOutcome = parseAdvisorDetailCallOutcome(opts.callOutcome);
+
     const where = this.activityWhereForAnalytics(
       {
-        ...INTERACTION_ACTIVITY_TYPE_FILTER,
+        ...(activityType
+          ? { type: { equals: activityType, mode: 'insensitive' } }
+          : INTERACTION_ACTIVITY_TYPE_FILTER),
         completedAt: { gte: weekStart, lte: weekEnd },
         ...(advisorId === UNASSIGNED_ADVISOR_ID
           ? { assignedTo: '' }
           : { assignedTo: advisorId }),
+        ...advisorDetailCallFilters(activityType, callOutcome, 'type'),
       },
       filters,
       unrestricted,
@@ -2381,6 +2482,8 @@ export class AnalyticsService {
     excludeAssignedTo?: string;
     advisorPool?: string;
     source?: string;
+    activityType?: string;
+    callOutcome?: string;
     page?: number;
     limit?: number;
     crmScope: CrmDataScope;
@@ -2416,14 +2519,20 @@ export class AnalyticsService {
       viewerUserId: opts.crmScope.viewerUserId,
     });
 
+    const taskKind = parseAdvisorDetailActivityType(opts.activityType);
+    const callOutcome = parseAdvisorDetailCallOutcome(opts.callOutcome);
+
     const where = this.activityWhereForAnalytics(
       {
         ...TASK_ACTIVITY_FILTER,
-        ...TASK_KIND_ANALYTICS_FILTER,
+        ...(taskKind
+          ? { taskKind: { equals: taskKind, mode: 'insensitive' } }
+          : TASK_KIND_ANALYTICS_FILTER),
         completedAt: { gte: weekStart, lte: weekEnd },
         ...(advisorId === UNASSIGNED_ADVISOR_ID
           ? { assignedTo: '' }
           : { assignedTo: advisorId }),
+        ...advisorDetailCallFilters(taskKind, callOutcome, 'taskKind'),
       },
       filters,
       unrestricted,
@@ -3535,8 +3644,9 @@ export class AnalyticsService {
     to: Date,
     filters: AnalyticsScopeFilters,
     unrestricted: boolean,
+    periodTargets?: WeekTarget[],
   ): Promise<ActivitiesByTypeWeeklySnapshot> {
-    const weekTargets = weekTargetsForChartRange(from, to);
+    const weekTargets = periodTargets ?? weekTargetsForChartRange(from, to);
 
     const acts = await this.prisma.activity.findMany({
       where: this.activityWhereForAnalytics(
@@ -3621,8 +3731,9 @@ export class AnalyticsService {
     filters: AnalyticsScopeFilters,
     unrestricted: boolean,
     userRows: { id: string; name: string }[],
+    periodTargets?: WeekTarget[],
   ): Promise<ActivitiesByAdvisorWeeklySnapshot> {
-    const weekTargets = weekTargetsForChartRange(from, to);
+    const weekTargets = periodTargets ?? weekTargetsForChartRange(from, to);
 
     const acts = await this.prisma.activity.findMany({
       where: this.activityWhereForAnalytics(
@@ -3778,8 +3889,9 @@ export class AnalyticsService {
     to: Date,
     filters: AnalyticsScopeFilters,
     unrestricted: boolean,
+    periodTargets?: WeekTarget[],
   ): Promise<TasksByKindWeeklySnapshot> {
-    const weekTargets = weekTargetsForChartRange(from, to);
+    const weekTargets = periodTargets ?? weekTargetsForChartRange(from, to);
 
     const tasks = await this.prisma.activity.findMany({
       where: this.activityWhereForAnalytics(
@@ -4065,6 +4177,8 @@ export class AnalyticsService {
     crmScope: CrmDataScope;
     /** Semanas para series sparkline KPI; dashboard 8, reportes 10. */
     sparklineWeeks?: number;
+    /** day = buckets diarios en actividades/tareas (dashboard operativo). */
+    chartGranularity?: 'day' | 'week';
   }) {
     const { from, to } = this.resolveRange(opts.from, opts.to);
     const unrestricted = opts.crmScope.unrestricted;
@@ -4596,6 +4710,22 @@ export class AnalyticsService {
       }),
     );
 
+    const isSingleDayRange =
+      Boolean(opts.from?.trim()) &&
+      Boolean(opts.to?.trim()) &&
+      opts.from!.trim() === opts.to!.trim();
+    const companiesWeeklyFrom = isSingleDayRange
+      ? addLimaWeeks(
+          startOfWeekMondayLima(to),
+          -(COMPANY_WEEKLY_CHART_WEEKS - 1),
+        )
+      : from;
+
+    const chartPeriodTargets =
+      opts.chartGranularity === 'day'
+        ? dayTargetsForChartRange(from, to)
+        : undefined;
+
     const [
       companiesWeeklyProgress,
       activeProspectsWeekly,
@@ -4612,7 +4742,7 @@ export class AnalyticsService {
       tasksByAdvisorWeekly,
     ] = await Promise.all([
       this.buildCompaniesWeeklyProgress(
-        from,
+        companiesWeeklyFrom,
         to,
         filters,
         unrestricted,
@@ -4671,9 +4801,22 @@ export class AnalyticsService {
         unrestricted,
         opts.crmScope,
       ),
-      this.buildActivitiesByTypeWeekly(from, to, filters, unrestricted),
-      this.buildActivitiesByAdvisorWeekly(from, to, filters, unrestricted, userRows),
-      this.buildTasksByKindWeekly(from, to, filters, unrestricted),
+      this.buildActivitiesByTypeWeekly(
+        from,
+        to,
+        filters,
+        unrestricted,
+        chartPeriodTargets,
+      ),
+      this.buildActivitiesByAdvisorWeekly(
+        from,
+        to,
+        filters,
+        unrestricted,
+        userRows,
+        chartPeriodTargets,
+      ),
+      this.buildTasksByKindWeekly(from, to, filters, unrestricted, chartPeriodTargets),
       this.buildTasksByAdvisorWeekly(from, to, filters, unrestricted, userRows),
     ]);
 

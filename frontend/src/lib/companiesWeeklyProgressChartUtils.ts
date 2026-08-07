@@ -10,8 +10,21 @@ import {
 } from '@/lib/crmTimezone';
 
 export const COMPANIES_WEEKLY_PROGRESS_CHART_MAX_WEEKS = 20;
+/** Mismo lookback que el dashboard backend cuando el rango es un solo día. */
+export const COMPANIES_DASHBOARD_SINGLE_DAY_WEEKS = 6;
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 type WeeklyProgressRow = WeeklyPortfolioProgressPoint & { weekStartMs: number };
+
+function chartRangeFromMon(summary: AnalyticsSummary): Date {
+  const toD = parseDayEndLima(summary.range.to);
+  const toMon = startOfWeekMondayLima(toD);
+  // Empresas: siempre últimas N semanas al cierre del rango (no acotar al from del filtro).
+  return new Date(
+    toMon.getTime() - (COMPANIES_DASHBOARD_SINGLE_DAY_WEEKS - 1) * WEEK_MS,
+  );
+}
 
 function buildCompaniesWeeklyProgressExtended(
   summary: AnalyticsSummary | null | undefined,
@@ -19,9 +32,8 @@ function buildCompaniesWeeklyProgressExtended(
   if (!summary?.range?.from || !summary?.range?.to) return [];
 
   const apiRows = summary.companiesWeeklyProgress ?? [];
-  const fromD = parseDayStartLima(summary.range.from);
   const toD = parseDayEndLima(summary.range.to);
-  const fromMon = startOfWeekMondayLima(fromD);
+  const fromMon = chartRangeFromMon(summary);
   const toMon = startOfWeekMondayLima(toD);
 
   const apiByWeek = new Map(

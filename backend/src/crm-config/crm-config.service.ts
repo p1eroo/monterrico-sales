@@ -1046,6 +1046,121 @@ export class CrmConfigService implements OnModuleInit {
     return this.getActivityGoals(userId, body.weekStart);
   }
 
+  private parseActivityGoalDayStart(dayStartRaw: string): Date {
+    return this.parseActivityGoalWeekStart(dayStartRaw);
+  }
+
+  async getDailyActivityGoals(userId: string, dayStartRaw: string) {
+    await this.ensureReady();
+    const dayStart = this.parseActivityGoalDayStart(dayStartRaw);
+
+    const hasConfigVer = await this.userHasPermission(userId, 'configuracion.ver');
+    const hasOppEdit = await this.userHasPermission(userId, 'oportunidades.editar');
+    const hasTeamData = await this.userHasPermission(userId, 'equipo.datos_completos');
+    const orgRow = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: { select: { slug: true, name: true } } },
+    });
+    const slug = orgRow?.role?.slug?.toLowerCase().trim() ?? '';
+    const name = orgRow?.role?.name?.toLowerCase().trim() ?? '';
+    const supervisorLike =
+      slug.includes('supervisor') ||
+      slug.includes('gerente') ||
+      name.includes('supervisor') ||
+      name.includes('gerente');
+    const canSeeTeam =
+      hasConfigVer || hasTeamData || (supervisorLike && hasOppEdit);
+
+    const rows = await this.prisma.crmUserDailyActivityTarget.findMany({
+      where: {
+        dayStart,
+        ...(canSeeTeam ? {} : { userId }),
+      },
+      select: {
+        userId: true,
+        contactoTarget: true,
+        noContactoTarget: true,
+        reunionesTarget: true,
+        correosTarget: true,
+      },
+    });
+
+    const byUserId: Record<string, ActivityGoalTargetsDto> = {};
+    for (const row of rows) {
+      byUserId[row.userId] = {
+        contacto: row.contactoTarget,
+        noContacto: row.noContactoTarget,
+        reuniones: row.reunionesTarget,
+        correos: row.correosTarget,
+      };
+    }
+
+    return {
+      dayStart: dayStart.toISOString(),
+      byUserId,
+      canEdit: await this.canEditActivityGoals(userId),
+    };
+  }
+
+  async putDailyActivityGoals(
+    userId: string,
+    body: {
+      dayStart: string;
+      byUserId: Record<string, Partial<ActivityGoalTargetsDto>>;
+    },
+  ) {
+    await this.ensureReady();
+    await this.assertCanEditActivityGoals(userId);
+    const dayStart = this.parseActivityGoalDayStart(body.dayStart);
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const [uid, targets] of Object.entries(body.byUserId ?? {})) {
+        if (!targets) continue;
+        const exists = await tx.user.findUnique({
+          where: { id: uid },
+          select: { id: true },
+        });
+        if (!exists) continue;
+
+        const normalized = this.normalizeActivityGoalTargets(targets);
+        const total =
+          normalized.contacto +
+          normalized.noContacto +
+          normalized.reuniones +
+          normalized.correos;
+
+        if (total <= 0) {
+          await tx.crmUserDailyActivityTarget.deleteMany({
+            where: { userId: uid, dayStart },
+          });
+          continue;
+        }
+
+        await tx.crmUserDailyActivityTarget.upsert({
+          where: {
+            userId_dayStart: { userId: uid, dayStart },
+          },
+          create: {
+            userId: uid,
+            dayStart,
+            contactoTarget: normalized.contacto,
+            noContactoTarget: normalized.noContacto,
+            reunionesTarget: normalized.reuniones,
+            correosTarget: normalized.correos,
+          },
+          update: {
+            contactoTarget: normalized.contacto,
+            noContactoTarget: normalized.noContacto,
+            reunionesTarget: normalized.reuniones,
+            correosTarget: normalized.correos,
+          },
+        });
+      }
+    });
+
+    return this.getDailyActivityGoals(userId, body.dayStart);
+  }
+
   /** Filas de etapa para importación CSV (solo habilitadas). */
   async listEnabledStagesForImport(): Promise<
     {
