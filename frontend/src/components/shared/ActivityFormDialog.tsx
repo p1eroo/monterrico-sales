@@ -1,10 +1,14 @@
 import { useState } from 'react';
-import { Phone, Users, Mail, MessageCircle, User, Building2, Briefcase } from 'lucide-react';
+import { Phone, Users, Mail, MessageCircle, User, Building2, Briefcase, Plus } from 'lucide-react';
 import { toast } from '@/lib/notify';
 import type { ActivityType, ActivityStatus, TaskAssociation } from '@/types';
 import { formatNowPeruTimeHHmm, formatTodayPeruYmd } from '@/lib/formatters';
+import { isLikelyCompanyCuid } from '@/lib/companyApi';
+import { NewContactWizard, type NewContactData } from '@/components/shared/NewContactWizard';
+import { createContactFromWizardForCompany } from '@/lib/createContactFromWizard';
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -17,8 +21,9 @@ import {
   formDialogTextareaClass,
 } from '@/components/ui/form-dialog';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { CALL_RESULT_OPTIONS } from '@/lib/callResult';
 
 export interface ActivityFormData {
   title: string;
@@ -29,6 +34,10 @@ export interface ActivityFormData {
   result: string;
   dateTime: string;
   meetingType: string;
+}
+
+export interface ActivityFormSaveMeta {
+  extraContactIds?: string[];
 }
 
 export interface ActivityResult {
@@ -70,12 +79,16 @@ interface ActivityFormDialogProps {
   type: 'llamada' | 'reunion' | 'correo' | 'whatsapp';
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (data: ActivityFormData) => void | Promise<void>;
+  onSave: (data: ActivityFormData, meta?: ActivityFormSaveMeta) => void | Promise<void>;
   taskSummary?: TaskSummary;
   defaultTitle?: string;
   defaultDate?: string;
   defaultTime?: string;
   showSkip?: boolean;
+  /** Empresa vinculada a la tarea; habilita crear contacto sin salir del flujo. */
+  linkedCompanyId?: string;
+  linkedCompanyName?: string;
+  defaultAssigneeId?: string;
 }
 
 const typeConfig = {
@@ -95,6 +108,9 @@ export function ActivityFormDialog({
   defaultDate,
   defaultTime,
   showSkip = false,
+  linkedCompanyId,
+  linkedCompanyName,
+  defaultAssigneeId = '',
 }: ActivityFormDialogProps) {
   const [form, setForm] = useState<ActivityFormData>(() => {
     const base = createEmptyForm();
@@ -111,6 +127,26 @@ export function ActivityFormDialog({
   const config = typeConfig[type];
   const Icon = config.icon;
   const [saving, setSaving] = useState(false);
+  const [newContactWizardOpen, setNewContactWizardOpen] = useState(false);
+  const [creatingContact, setCreatingContact] = useState(false);
+  const [extraContactIds, setExtraContactIds] = useState<string[]>([]);
+  const [extraLinkBadges, setExtraLinkBadges] = useState<Pick<TaskAssociation, 'type' | 'name'>[]>([]);
+
+  const canCreateLinkedContact = Boolean(
+    linkedCompanyId && isLikelyCompanyCuid(linkedCompanyId),
+  );
+
+  const displayLinkBadges = [
+    ...(taskSummary?.linkBadges ?? []),
+    ...extraLinkBadges,
+  ];
+
+  function resetContactCreationState() {
+    setNewContactWizardOpen(false);
+    setCreatingContact(false);
+    setExtraContactIds([]);
+    setExtraLinkBadges([]);
+  }
 
   function handleOpenChange(value: boolean) {
     if (!value && saving) return;
@@ -118,6 +154,38 @@ export function ActivityFormDialog({
     if (!value) {
       setForm(createEmptyForm());
       setSaving(false);
+      resetContactCreationState();
+    }
+  }
+
+  async function handleCreateContactFromWizard(data: NewContactData) {
+    if (!linkedCompanyId || !isLikelyCompanyCuid(linkedCompanyId)) {
+      toast.error('No hay empresa vinculada para crear el contacto');
+      return;
+    }
+    setCreatingContact(true);
+    const LOADING_ID = 'activity-form-create-contact';
+    toast.loading('Guardando contacto…', { id: LOADING_ID });
+    try {
+      const contact = await createContactFromWizardForCompany(data, linkedCompanyId, {
+        defaultAssignedTo: defaultAssigneeId,
+      });
+      setExtraContactIds((prev) =>
+        prev.includes(contact.id) ? prev : [...prev, contact.id],
+      );
+      setExtraLinkBadges((prev) => {
+        if (prev.some((b) => b.type === 'contacto' && b.name === contact.name)) return prev;
+        return [...prev, { type: 'contacto', name: contact.name }];
+      });
+      setNewContactWizardOpen(false);
+      toast.success(`Contacto "${contact.name}" creado`, { id: LOADING_ID });
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : 'No se pudo crear el contacto',
+        { id: LOADING_ID },
+      );
+    } finally {
+      setCreatingContact(false);
     }
   }
 
@@ -125,9 +193,12 @@ export function ActivityFormDialog({
     if (saving) return;
     setSaving(true);
     try {
-      await Promise.resolve(onSave(form));
+      await Promise.resolve(
+        onSave(form, extraContactIds.length > 0 ? { extraContactIds } : undefined),
+      );
       toast.success(`${config.label} registrad${config.labelFem} exitosamente`);
       setForm(createEmptyForm());
+      resetContactCreationState();
     } catch {
       /* el padre ya mostró el error */
     } finally {
@@ -139,6 +210,7 @@ export function ActivityFormDialog({
     setForm((f) => ({ ...f, [key]: value }));
 
   return (
+    <>
     <FormDialogShell
       open={open}
       onOpenChange={handleOpenChange}
@@ -177,11 +249,11 @@ export function ActivityFormDialog({
                 <span className="font-medium text-right">{taskSummary.company}</span>
               </div>
             )}
-            {taskSummary.linkBadges && taskSummary.linkBadges.length > 0 && (
+            {displayLinkBadges.length > 0 && (
               <div className="pt-0.5">
                 <p className="mb-2 text-xs text-muted-foreground">Vinculado a</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {taskSummary.linkBadges.map((row, idx) => (
+                  {displayLinkBadges.map((row, idx) => (
                     <Badge key={`${row.type}-${idx}-${row.name}`} variant="secondary" className="gap-1 rounded-md border border-border/60 bg-muted/40 pr-1.5 text-xs">
                       {row.type === 'contacto' && <User className="size-3" />}
                       {(row.type === 'empresa' || row.type === 'cliente_empresa') && <Building2 className="size-3" />}
@@ -191,6 +263,19 @@ export function ActivityFormDialog({
                   ))}
                 </div>
               </div>
+            )}
+            {canCreateLinkedContact && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-1 h-8 gap-1.5 text-xs"
+                disabled={creatingContact}
+                onClick={() => setNewContactWizardOpen(true)}
+              >
+                <Plus className="size-3.5" />
+                Crear contacto
+              </Button>
             )}
             <div className="flex items-center justify-between gap-3">
               <span className="text-muted-foreground">Responsable</span>
@@ -219,10 +304,18 @@ export function ActivityFormDialog({
               <Select value={form.result} onValueChange={(v) => set('result', v)}>
                 <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="contactado">Contactado</SelectItem>
-                  <SelectItem value="no_contesta">No contesta</SelectItem>
-                  <SelectItem value="ocupado">Ocupado</SelectItem>
-                  <SelectItem value="mensaje">Dejó mensaje</SelectItem>
+                  <SelectGroup>
+                    <SelectLabel>Contacto</SelectLabel>
+                    {CALL_RESULT_OPTIONS.filter((option) => option.group === 'contacto').map((option) => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    ))}
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>No contacto</SelectLabel>
+                    {CALL_RESULT_OPTIONS.filter((option) => option.group === 'no_contacto').map((option) => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </FormDialogField>
@@ -291,5 +384,27 @@ export function ActivityFormDialog({
         )}
       </div>
     </FormDialogShell>
+
+    <NewContactWizard
+      open={newContactWizardOpen}
+      onOpenChange={setNewContactWizardOpen}
+      onSubmit={(data) => { void handleCreateContactFromWizard(data); }}
+      title="Nuevo contacto"
+      description={
+        linkedCompanyName
+          ? `Crea un contacto vinculado a ${linkedCompanyName}.`
+          : 'Crea un contacto vinculado a la empresa de la tarea.'
+      }
+      submitLabel="Crear y vincular"
+      lockCompanySelection
+      defaultCompanyId={linkedCompanyId}
+      defaultValues={{
+        company: linkedCompanyName ?? '',
+        companyId: linkedCompanyId,
+        etapaCiclo: 'lead',
+        assignedTo: defaultAssigneeId,
+      }}
+    />
+    </>
   );
 }

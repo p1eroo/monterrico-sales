@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-  User, Building2, Briefcase, Search, Link2, ChevronDown, Loader2,
+  User, Building2, Briefcase, Search, Link2, ChevronDown, Loader2, Plus,
 } from 'lucide-react';
 import { toast } from '@/lib/notify';
 import { priorityLabels } from '@/data/mock';
@@ -36,6 +36,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
+import { NewContactWizard, type NewContactData } from '@/components/shared/NewContactWizard';
+import { createContactFromWizardForCompany } from '@/lib/createContactFromWizard';
 import {
   FormDialogActions,
   FormDialogField,
@@ -163,6 +165,8 @@ export function TaskFormDialog({
   const [linkedOpportunities, setLinkedOpportunities] = useState<Opportunity[]>([]);
   const [linkedLoading, setLinkedLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [newContactWizardOpen, setNewContactWizardOpen] = useState(false);
+  const [creatingContact, setCreatingContact] = useState(false);
 
   const selectedCompanyId = useMemo(
     () => resolveSelectedCompanyId(associations),
@@ -281,6 +285,10 @@ export function TaskFormDialog({
 
   const usesLinkedFetch = Boolean(selectedCompanyId);
 
+  const canCreateLinkedContact = Boolean(
+    selectedCompanyId && isLikelyCompanyCuid(selectedCompanyId),
+  );
+
   const assocCounts = {
     contactos: pickerContacts.length,
     empresas: pickerCompanies.length,
@@ -318,6 +326,45 @@ export function TaskFormDialog({
     setLinkedContacts([]);
     setLinkedOpportunities([]);
     setLinkedLoading(false);
+    setNewContactWizardOpen(false);
+    setCreatingContact(false);
+  }
+
+  async function handleCreateContactFromWizard(data: NewContactData) {
+    if (!selectedCompanyId || !isLikelyCompanyCuid(selectedCompanyId)) {
+      toast.error('Selecciona una empresa antes de crear el contacto');
+      return;
+    }
+    setCreatingContact(true);
+    const LOADING_ID = 'task-form-create-contact';
+    toast.loading('Guardando contacto…', { id: LOADING_ID });
+    try {
+      const contact = await createContactFromWizardForCompany(data, selectedCompanyId, {
+        defaultAssignedTo: formAssignee,
+      });
+      setLinkedContacts((prev) => {
+        if (prev.some((c) => c.id === contact.id)) return prev;
+        return [contact, ...prev];
+      });
+      setAssociations((prev) =>
+        toggleTaskAssociation(
+          prev,
+          { type: 'contacto', id: contact.id, name: contact.name },
+          true,
+        ),
+      );
+      setNewContactWizardOpen(false);
+      setAssocCategory('contactos');
+      setAssocPanelOpen(true);
+      toast.success(`Contacto "${contact.name}" creado y vinculado`, { id: LOADING_ID });
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : 'No se pudo crear el contacto',
+        { id: LOADING_ID },
+      );
+    } finally {
+      setCreatingContact(false);
+    }
   }
 
   async function handleSave() {
@@ -384,6 +431,7 @@ export function TaskFormDialog({
   }
 
   return (
+    <>
     <FormDialogShell
       open={open}
       onOpenChange={handleOpenChange}
@@ -504,6 +552,23 @@ export function TaskFormDialog({
                   />
                 </div>
 
+                {assocCategory === 'contactos' && canCreateLinkedContact && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mb-3 h-8 w-full gap-1.5 text-xs"
+                    disabled={creatingContact}
+                    onClick={() => {
+                      setAssocPanelOpen(false);
+                      setNewContactWizardOpen(true);
+                    }}
+                  >
+                    <Plus className="size-3.5" />
+                    Crear contacto
+                  </Button>
+                )}
+
                 <div className="max-h-52 space-y-0.5 overflow-y-auto">
                   {assocCategory === 'contactos' && !usesLinkedFetch && pickerContacts.length === 0 && (
                     <p className="px-2 py-6 text-center text-xs text-muted-foreground">
@@ -551,8 +616,8 @@ export function TaskFormDialog({
                     filteredPickerContacts.length === 0 && (
                       <p className="px-2 py-6 text-center text-xs text-muted-foreground">
                         {selectedCompanyName
-                          ? `No hay contactos vinculados a ${selectedCompanyName}.`
-                          : 'No hay contactos vinculados a esta empresa.'}
+                          ? `No hay contactos vinculados a ${selectedCompanyName}. Usa «Crear contacto» para añadir uno.`
+                          : 'No hay contactos vinculados a esta empresa. Usa «Crear contacto» para añadir uno.'}
                       </p>
                     )}
 
@@ -712,5 +777,27 @@ export function TaskFormDialog({
         </FormDialogGrid>
       </div>
     </FormDialogShell>
+
+    <NewContactWizard
+      open={newContactWizardOpen}
+      onOpenChange={setNewContactWizardOpen}
+      onSubmit={(data) => { void handleCreateContactFromWizard(data); }}
+      title="Nuevo contacto"
+      description={
+        selectedCompanyName
+          ? `Crea un contacto vinculado a ${selectedCompanyName}.`
+          : 'Crea un contacto vinculado a la empresa seleccionada.'
+      }
+      submitLabel="Crear y vincular"
+      lockCompanySelection
+      defaultCompanyId={selectedCompanyId ?? undefined}
+      defaultValues={{
+        company: selectedCompanyName ?? '',
+        companyId: selectedCompanyId ?? undefined,
+        etapaCiclo: 'lead',
+        assignedTo: formAssignee,
+      }}
+    />
+    </>
   );
 }

@@ -29,6 +29,7 @@ import {
 } from 'recharts';
 import {
   Loader2,
+  Target,
 } from 'lucide-react';
 import { SquareBottomUpSvgIcon } from '@/components/icons/SquareBottomUpSvgIcon';
 import { chartExpandIconClass, chartCardHeaderClass } from '@/components/shared/ChartExpandToggleIcon';
@@ -73,6 +74,10 @@ import {
   getStageLabelFromCatalog,
   useLeadSourceOptions,
 } from '@/store/crmConfigStore';
+import {
+  fetchCrmActivityGoals,
+  type ActivityGoalTargets,
+} from '@/lib/crmConfigApi';
 import { ChartCardBody } from '@/components/shared/ChartCardBody';
 import { chartHasAnyValue } from '@/lib/chartEmpty';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -89,6 +94,7 @@ import {
 } from '@/lib/activitiesByTypeHeatmapUtils';
 import { ActivitiesByAdvisorStackedBarChart } from '@/components/shared/ActivitiesByAdvisorStackedBarChart';
 import { ActivitiesByAdvisorDetailSheet } from '@/components/shared/ActivitiesByAdvisorDetailSheet';
+import { ActivityGoalsDialog } from '@/components/shared/ActivityGoalsDialog';
 import {
   buildActivitiesByAdvisorStackedData,
   activitiesByAdvisorStackedHasData,
@@ -189,6 +195,7 @@ export default function Reports() {
   const currentUser = useAppStore((s) => s.currentUser);
   const { hasPermission } = usePermissions();
   const bundle = useCrmConfigStore((s) => s.bundle);
+  const canEditActivityGoals = bundle?.permissions.canEditActivityGoals ?? false;
   const leadSourceOptions = useLeadSourceOptions();
   const {
     selectedIds: advisorFilter,
@@ -219,6 +226,10 @@ export default function Reports() {
   const [activitiesAdvisorDetailOpen, setActivitiesAdvisorDetailOpen] = useState(false);
   const [activitiesAdvisorDetailSelection, setActivitiesAdvisorDetailSelection] =
     useState<ActivitiesByAdvisorStackedRow | null>(null);
+  const [activityGoalsDialogOpen, setActivityGoalsDialogOpen] = useState(false);
+  const [activityGoalsByUserId, setActivityGoalsByUserId] = useState<
+    Record<string, ActivityGoalTargets>
+  >({});
   const [weeklyCompaniesModalOpen, setWeeklyCompaniesModalOpen] = useState(false);
   const [weeklyOpportunitiesModalOpen, setWeeklyOpportunitiesModalOpen] = useState(false);
   const [companiesWeeklyModalView, setCompaniesWeeklyModalView] =
@@ -634,6 +645,34 @@ export default function Reports() {
     if (activitiesAdvisorSelectedWeekIndex < 0) return null;
     return summary?.activitiesByAdvisorWeekly?.weeks?.[activitiesAdvisorSelectedWeekIndex] ?? null;
   }, [activitiesAdvisorSelectedWeekIndex, summary?.activitiesByAdvisorWeekly?.weeks]);
+
+  const activityGoalsAdvisors = useMemo(
+    () =>
+      activeAdvisors.map((u) => ({
+        id: u.id,
+        name: u.name?.trim() || u.email || 'Asesor',
+      })),
+    [activeAdvisors],
+  );
+
+  useEffect(() => {
+    const weekStart = activitiesAdvisorSelectedWeek?.weekStart;
+    if (!weekStart) {
+      setActivityGoalsByUserId({});
+      return;
+    }
+    let cancelled = false;
+    void fetchCrmActivityGoals(weekStart.slice(0, 10))
+      .then((data) => {
+        if (!cancelled) setActivityGoalsByUserId(data.byUserId ?? {});
+      })
+      .catch(() => {
+        if (!cancelled) setActivityGoalsByUserId({});
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activitiesAdvisorSelectedWeek?.weekStart]);
 
   const activitiesAdvisorDetailQuery = useMemo((): Omit<
     ActivitiesByAdvisorDetailsQuery,
@@ -1481,12 +1520,26 @@ export default function Reports() {
                   </Button>
                 </div>
                 {activitiesChartView === 'advisor' ? (
-                  <WeeklyPillFilter
-                    weeks={activitiesAdvisorWeekOptions}
-                    selectedIndex={activitiesAdvisorWeekPillIndex}
-                    onChange={setActivitiesAdvisorWeekPillIndex}
-                    className="justify-end"
-                  />
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    {canEditActivityGoals ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 gap-1.5 px-2.5 text-xs"
+                        onClick={() => setActivityGoalsDialogOpen(true)}
+                      >
+                        <Target className="size-3.5" aria-hidden />
+                        Metas
+                      </Button>
+                    ) : null}
+                    <WeeklyPillFilter
+                      weeks={activitiesAdvisorWeekOptions}
+                      selectedIndex={activitiesAdvisorWeekPillIndex}
+                      onChange={setActivitiesAdvisorWeekPillIndex}
+                      className="justify-end"
+                    />
+                  </div>
                 ) : null}
               </div>
             </DialogHeader>
@@ -1501,6 +1554,7 @@ export default function Reports() {
                 ) : activitiesByAdvisorStackedHasData(activitiesByAdvisorStackedModal) ? (
                   <ActivitiesByAdvisorStackedBarChart
                     data={activitiesByAdvisorStackedModal}
+                    goalByAdvisorId={activityGoalsByUserId}
                     chartHeight={Math.max(
                       320,
                       activitiesByAdvisorStackedModal.advisors.length * 44 + 96,
@@ -1534,6 +1588,35 @@ export default function Reports() {
           weekStart={activitiesAdvisorSelectedWeek?.weekStart ?? null}
           weekEnd={activitiesAdvisorSelectedWeek?.weekEnd ?? null}
           detailQuery={activitiesAdvisorDetailQuery}
+          actualCounts={
+            activitiesAdvisorDetailSelection
+              ? {
+                  contacto: activitiesAdvisorDetailSelection.llamadasContacto,
+                  noContacto: activitiesAdvisorDetailSelection.llamadasNoContacto,
+                  reuniones: activitiesAdvisorDetailSelection.reuniones,
+                  correos: activitiesAdvisorDetailSelection.correos,
+                }
+              : null
+          }
+          goalTargets={
+            activitiesAdvisorDetailSelection
+              ? activityGoalsByUserId[activitiesAdvisorDetailSelection.advisorId] ??
+                null
+              : null
+          }
+        />
+
+        <ActivityGoalsDialog
+          open={activityGoalsDialogOpen}
+          onOpenChange={setActivityGoalsDialogOpen}
+          weekStart={activitiesAdvisorSelectedWeek?.weekStart ?? null}
+          weekLabel={
+            activitiesAdvisorSelectedWeek?.name ??
+            activitiesByAdvisorStackedModal.weekLabel ??
+            null
+          }
+          advisors={activityGoalsAdvisors}
+          onSaved={setActivityGoalsByUserId}
         />
 
         <Dialog open={weeklyCompaniesModalOpen} onOpenChange={setWeeklyCompaniesModalOpen}>

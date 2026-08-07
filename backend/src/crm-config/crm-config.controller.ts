@@ -5,6 +5,7 @@ import {
   Get,
   Patch,
   Put,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -135,5 +136,39 @@ export class CrmConfigController {
     },
   ) {
     return this.crmConfig.putSalesGoals(req.user.userId, body);
+  }
+
+  @Get('activity-goals')
+  getActivityGoals(
+    @Req() req: AuthedReq,
+    @Query('weekStart') weekStart: string,
+  ) {
+    if (!weekStart?.trim()) {
+      throw new BadRequestException('weekStart requerido');
+    }
+    return this.crmConfig.getActivityGoals(req.user.userId, weekStart);
+  }
+
+  @Put('activity-goals')
+  putActivityGoals(
+    @Req() req: AuthedReq,
+    @Body()
+    body: {
+      weekStart: string;
+      byUserId: Record<
+        string,
+        {
+          contacto?: number;
+          noContacto?: number;
+          reuniones?: number;
+          correos?: number;
+        }
+      >;
+    },
+  ) {
+    if (!body?.weekStart?.trim()) {
+      throw new BadRequestException('weekStart requerido');
+    }
+    return this.crmConfig.putActivityGoals(req.user.userId, body);
   }
 }

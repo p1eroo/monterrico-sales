@@ -75,6 +75,7 @@ model User {
   crmFilesUploaded     CrmFile[]
   crmSalesGoal              CrmUserSalesGoal?
   crmUserMonthlySalesTargets CrmUserMonthlySalesTarget[]
+  crmWeeklyActivityTargets   CrmUserWeeklyActivityTarget[]
   aiConversations      AiConversation[]
   aiKnowledgeBases     AiKnowledgeBase[]
   activityLogs         ActivityLog[]
@@ -376,6 +377,23 @@ model CrmUserMonthlySalesTarget {
 
   @@unique([userId, periodStart])
   @@index([userId, periodStart])
+}
+
+/** Meta semanal de actividades completadas por asesor (contacto, no contacto, reuniones, correos). */
+model CrmUserWeeklyActivityTarget {
+  id              String   @id @default(cuid())
+  userId          String
+  weekStart       DateTime @db.Date
+  contactoTarget  Int      @default(0)
+  noContactoTarget Int     @default(0)
+  reunionesTarget Int      @default(0)
+  correosTarget   Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, weekStart])
+  @@index([weekStart])
 }
 
 model Contact {

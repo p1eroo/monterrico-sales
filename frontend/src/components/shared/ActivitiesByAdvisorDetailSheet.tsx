@@ -29,7 +29,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import type { ActivityGoalTargets } from '@/lib/crmConfigApi';
 
 const PAGE_SIZE = 25;
 
@@ -93,6 +95,9 @@ interface ActivitiesByAdvisorDetailSheetProps {
     ActivitiesByAdvisorDetailsQuery,
     'advisorId' | 'weekStart' | 'weekEnd' | 'page' | 'limit'
   >;
+  /** Conteo semanal del gráfico (solo actividades). */
+  actualCounts?: ActivityGoalTargets | null;
+  goalTargets?: ActivityGoalTargets | null;
 }
 
 export function ActivitiesByAdvisorDetailSheet({
@@ -105,6 +110,8 @@ export function ActivitiesByAdvisorDetailSheet({
   weekStart,
   weekEnd,
   detailQuery,
+  actualCounts,
+  goalTargets,
 }: ActivitiesByAdvisorDetailSheetProps) {
   const copy = SHEET_COPY[kind];
   const [page, setPage] = useState(1);
@@ -178,6 +185,13 @@ export function ActivitiesByAdvisorDetailSheet({
           </SheetDescription>
         </SheetHeader>
 
+        {kind === 'activities' && goalTargets && hasAnyGoalTarget(goalTargets) ? (
+          <ActivityGoalSummary
+            actual={actualCounts ?? EMPTY_GOAL_TARGETS}
+            target={goalTargets}
+          />
+        ) : null}
+
         <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
@@ -217,6 +231,111 @@ export function ActivitiesByAdvisorDetailSheet({
   );
 }
 
+const EMPTY_GOAL_TARGETS: ActivityGoalTargets = {
+  contacto: 0,
+  noContacto: 0,
+  reuniones: 0,
+  correos: 0,
+};
+
+const GOAL_ROWS: { key: keyof ActivityGoalTargets; label: string }[] = [
+  { key: 'contacto', label: 'Contacto' },
+  { key: 'noContacto', label: 'No contacto' },
+  { key: 'reuniones', label: 'Reuniones' },
+  { key: 'correos', label: 'Correos' },
+];
+
+function hasAnyGoalTarget(target: ActivityGoalTargets): boolean {
+  return (
+    target.contacto +
+      target.noContacto +
+      target.reuniones +
+      target.correos >
+    0
+  );
+}
+
+function goalTotal(target: ActivityGoalTargets): number {
+  return target.contacto + target.noContacto + target.reuniones + target.correos;
+}
+
+export function ActivityGoalSummary({
+  actual,
+  target,
+}: {
+  actual: ActivityGoalTargets;
+  target: ActivityGoalTargets;
+}) {
+  const actualTotal = goalTotal(actual);
+  const targetTotal = goalTotal(target);
+  const allMet =
+    targetTotal > 0 &&
+    GOAL_ROWS.every(({ key }) => actual[key] >= target[key]);
+  const totalMet = targetTotal > 0 && actualTotal >= targetTotal;
+
+  return (
+    <div className="shrink-0 border-b border-border/60 px-5 py-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Meta semanal
+        </p>
+        <Badge
+          variant="secondary"
+          className={cn(
+            'rounded-md text-[10px] font-medium',
+            allMet || totalMet
+              ? 'bg-primary/10 text-primary'
+              : 'bg-muted text-muted-foreground',
+          )}
+        >
+          {allMet
+            ? 'Meta cumplida'
+            : totalMet
+              ? 'Total alcanzado'
+              : 'En progreso'}
+        </Badge>
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {GOAL_ROWS.map(({ key, label }) => {
+          const t = target[key];
+          if (t <= 0) return null;
+          const a = actual[key];
+          const met = a >= t;
+          return (
+            <div
+              key={key}
+              className="rounded-lg border border-border/60 bg-muted/20 px-2.5 py-2"
+            >
+              <p className="text-[10px] text-muted-foreground">{label}</p>
+              <p
+                className={cn(
+                  'text-sm font-semibold tabular-nums',
+                  met ? 'text-primary' : 'text-foreground',
+                )}
+              >
+                {a}/{t}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+      {targetTotal > 0 ? (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Total:{' '}
+          <span
+            className={cn(
+              'font-semibold tabular-nums',
+              totalMet ? 'text-primary' : 'text-foreground',
+            )}
+          >
+            {actualTotal}/{targetTotal}
+          </span>
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function ActivityDetailItem({ row }: { row: ActivitiesByAdvisorDetailRow }) {
   const typeKey = row.type?.toLowerCase().trim() ?? '';
   const Icon = TYPE_ICON[typeKey] ?? Phone;
@@ -232,6 +351,20 @@ function ActivityDetailItem({ row }: { row: ActivitiesByAdvisorDetailRow }) {
             <span className="text-xs font-semibold uppercase tracking-wide text-primary">
               {row.typeLabel}
             </span>
+            {row.callOutcomeLabel ? (
+              <Badge
+                variant="secondary"
+                className={cn(
+                  'rounded-md px-1.5 py-0 text-[10px] font-medium',
+                  row.callOutcome === 'contacto'
+                    ? 'bg-primary/10 text-primary'
+                    : 'bg-muted text-muted-foreground',
+                )}
+              >
+                {row.callOutcomeLabel}
+                {row.callResultLabel ? ` · ${row.callResultLabel}` : ''}
+              </Badge>
+            ) : null}
             <span className="text-[11px] text-muted-foreground">
               {formatCompletedAt(row.completedAt)}
             </span>

@@ -17,6 +17,14 @@ import {
   SYSTEM_STAGE_SLUGS,
 } from './crm-config.constants';
 import { resolveLeadSourceSlug } from './lead-source-normalize.util';
+import { parseDayStartLima } from '../common/crm-timezone.util';
+
+export type ActivityGoalTargetsDto = {
+  contacto: number;
+  noContacto: number;
+  reuniones: number;
+  correos: number;
+};
 
 const ORG_ID = 'default';
 
@@ -144,6 +152,42 @@ export class CrmConfigService implements OnModuleInit {
     return !!row;
   }
 
+  private async assertCanEditActivityGoals(userId: string) {
+    if (await this.userHasPermission(userId, 'configuracion.editar')) {
+      return;
+    }
+    if (await this.userHasPermission(userId, 'equipo.datos_completos')) {
+      return;
+    }
+    const row = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: { select: { slug: true, name: true } } },
+    });
+    const slug = row?.role?.slug?.toLowerCase().trim() ?? '';
+    const name = row?.role?.name?.toLowerCase().trim() ?? '';
+    const supervisorLike =
+      slug.includes('supervisor') ||
+      slug.includes('gerente') ||
+      name.includes('supervisor') ||
+      name.includes('gerente');
+    if (
+      supervisorLike &&
+      (await this.userHasPermission(userId, 'oportunidades.editar'))
+    ) {
+      return;
+    }
+    throw new BadRequestException('Sin permiso para editar metas de actividades');
+  }
+
+  private async canEditActivityGoals(userId: string): Promise<boolean> {
+    try {
+      await this.assertCanEditActivityGoals(userId);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   private async assertCanEditSalesGoals(userId: string) {
     if (await this.userHasPermission(userId, 'configuracion.editar')) {
       return;
@@ -196,6 +240,7 @@ export class CrmConfigService implements OnModuleInit {
     const canSeeTeamGoals =
       hasConfigVer || (supervisorLike && hasOppEdit);
     const canEditSalesGoals = hasConfigEdit || (supervisorLike && hasOppEdit);
+    const canEditActivityGoalsFlag = await this.canEditActivityGoals(userId);
 
     const [
       org,
@@ -349,6 +394,7 @@ export class CrmConfigService implements OnModuleInit {
         canEditConfig: hasConfigEdit,
         canViewTeamGoals: canSeeTeamGoals,
         canEditSalesGoals,
+        canEditActivityGoals: canEditActivityGoalsFlag,
       },
     };
   }
@@ -868,6 +914,136 @@ export class CrmConfigService implements OnModuleInit {
       }
     });
     return this.getBundle(userId);
+  }
+
+  private parseActivityGoalWeekStart(weekStartRaw: string): Date {
+    const trimmed = weekStartRaw?.trim().slice(0, 10) ?? '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      throw new BadRequestException('weekStart inválido (YYYY-MM-DD)');
+    }
+    return parseDayStartLima(trimmed);
+  }
+
+  private normalizeActivityGoalTargets(
+    raw: Partial<ActivityGoalTargetsDto> | undefined,
+  ): ActivityGoalTargetsDto {
+    return {
+      contacto: Math.max(0, Math.round(Number(raw?.contacto) || 0)),
+      noContacto: Math.max(0, Math.round(Number(raw?.noContacto) || 0)),
+      reuniones: Math.max(0, Math.round(Number(raw?.reuniones) || 0)),
+      correos: Math.max(0, Math.round(Number(raw?.correos) || 0)),
+    };
+  }
+
+  async getActivityGoals(userId: string, weekStartRaw: string) {
+    await this.ensureReady();
+    const weekStart = this.parseActivityGoalWeekStart(weekStartRaw);
+
+    const hasConfigVer = await this.userHasPermission(userId, 'configuracion.ver');
+    const hasOppEdit = await this.userHasPermission(userId, 'oportunidades.editar');
+    const hasTeamData = await this.userHasPermission(userId, 'equipo.datos_completos');
+    const orgRow = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: { select: { slug: true, name: true } } },
+    });
+    const slug = orgRow?.role?.slug?.toLowerCase().trim() ?? '';
+    const name = orgRow?.role?.name?.toLowerCase().trim() ?? '';
+    const supervisorLike =
+      slug.includes('supervisor') ||
+      slug.includes('gerente') ||
+      name.includes('supervisor') ||
+      name.includes('gerente');
+    const canSeeTeam =
+      hasConfigVer || hasTeamData || (supervisorLike && hasOppEdit);
+
+    const rows = await this.prisma.crmUserWeeklyActivityTarget.findMany({
+      where: {
+        weekStart,
+        ...(canSeeTeam ? {} : { userId }),
+      },
+      select: {
+        userId: true,
+        contactoTarget: true,
+        noContactoTarget: true,
+        reunionesTarget: true,
+        correosTarget: true,
+      },
+    });
+
+    const byUserId: Record<string, ActivityGoalTargetsDto> = {};
+    for (const row of rows) {
+      byUserId[row.userId] = {
+        contacto: row.contactoTarget,
+        noContacto: row.noContactoTarget,
+        reuniones: row.reunionesTarget,
+        correos: row.correosTarget,
+      };
+    }
+
+    return {
+      weekStart: weekStart.toISOString(),
+      byUserId,
+      canEdit: await this.canEditActivityGoals(userId),
+    };
+  }
+
+  async putActivityGoals(
+    userId: string,
+    body: {
+      weekStart: string;
+      byUserId: Record<string, Partial<ActivityGoalTargetsDto>>;
+    },
+  ) {
+    await this.ensureReady();
+    await this.assertCanEditActivityGoals(userId);
+    const weekStart = this.parseActivityGoalWeekStart(body.weekStart);
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const [uid, targets] of Object.entries(body.byUserId ?? {})) {
+        if (!targets) continue;
+        const exists = await tx.user.findUnique({
+          where: { id: uid },
+          select: { id: true },
+        });
+        if (!exists) continue;
+
+        const normalized = this.normalizeActivityGoalTargets(targets);
+        const total =
+          normalized.contacto +
+          normalized.noContacto +
+          normalized.reuniones +
+          normalized.correos;
+
+        if (total <= 0) {
+          await tx.crmUserWeeklyActivityTarget.deleteMany({
+            where: { userId: uid, weekStart },
+          });
+          continue;
+        }
+
+        await tx.crmUserWeeklyActivityTarget.upsert({
+          where: {
+            userId_weekStart: { userId: uid, weekStart },
+          },
+          create: {
+            userId: uid,
+            weekStart,
+            contactoTarget: normalized.contacto,
+            noContactoTarget: normalized.noContacto,
+            reunionesTarget: normalized.reuniones,
+            correosTarget: normalized.correos,
+          },
+          update: {
+            contactoTarget: normalized.contacto,
+            noContactoTarget: normalized.noContacto,
+            reunionesTarget: normalized.reuniones,
+            correosTarget: normalized.correos,
+          },
+        });
+      }
+    });
+
+    return this.getActivityGoals(userId, body.weekStart);
   }
 
   /** Filas de etapa para importación CSV (solo habilitadas). */

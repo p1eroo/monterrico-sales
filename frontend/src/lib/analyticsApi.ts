@@ -119,7 +119,7 @@ export type AnalyticsSummary = {
   activitiesByTypeWeekly: {
     weeks: { name: string; weekStart: string; weekEnd: string }[];
     types: {
-      key: 'llamadas' | 'reuniones' | 'correos';
+      key: 'llamadas_contacto' | 'llamadas_no_contacto' | 'reuniones' | 'correos';
       label: string;
       counts: number[];
       total: number;
@@ -133,12 +133,16 @@ export type AnalyticsSummary = {
       advisorId: string;
       advisorName: string;
       llamadas: number;
+      llamadasContacto: number;
+      llamadasNoContacto: number;
       reuniones: number;
       correos: number;
       notas: number;
       total: number;
       byWeek: {
         llamadas: number;
+        llamadasContacto: number;
+        llamadasNoContacto: number;
         reuniones: number;
         correos: number;
         notas: number;
@@ -193,6 +197,14 @@ export type AnalyticsSummary = {
         probability: number;
         count: number;
       }[];
+      /** Solo en activeProspectsWeekly: actividad de la semana (altas/cambios de etapa). */
+      activityTotal?: number;
+      activityByStage?: {
+        slug: string;
+        name: string;
+        probability: number;
+        count: number;
+      }[];
     }[];
     currentTotal: number;
     changePct: number | null;
@@ -211,9 +223,17 @@ export type AnalyticsSummary = {
         countsByAdvisor: Record<string, number>;
       }[];
       estimatedBillingByAdvisor: Record<string, number>;
+      /** Solo en activeProspectsByAdvisorWeekly: actividad de la semana. */
+      activityStages?: {
+        slug: string;
+        name: string;
+        probability: number;
+        countsByAdvisor: Record<string, number>;
+      }[];
+      activityBillingByAdvisor?: Record<string, number>;
     }[];
   };
-  /** Movimiento del embudo por asesor (últimas 4 parejas de semanas ISO). */
+  /** Movimiento del embudo por asesor (parejas consecutivas de semanas ISO, hasta 6 hacia atrás). */
   companiesAdvisorFunnelMovement: {
     currentWeekLabel: string;
     periods: {
@@ -503,6 +523,9 @@ export type ActivitiesByAdvisorDetailRow = {
   typeLabel: string;
   title: string;
   completedAt: string;
+  callOutcome?: 'contacto' | 'no_contacto';
+  callOutcomeLabel?: string;
+  callResultLabel?: string;
   companies: ActivitiesByAdvisorDetailEntity[];
   contacts: ActivitiesByAdvisorDetailEntity[];
   opportunities: { id: string; title: string; urlSlug: string }[];

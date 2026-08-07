@@ -73,7 +73,7 @@ export function CompaniesStageExpandedPanel({
 
   const funnelStages =
     view === 'compare'
-      ? totalFunnelStages
+      ? currentWeek.funnelStages
       : view === 'previous'
         ? previousWeek.funnelStages
         : currentWeek.funnelStages;

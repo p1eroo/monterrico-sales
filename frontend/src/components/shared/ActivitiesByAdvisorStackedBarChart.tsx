@@ -2,7 +2,12 @@ import { useEffect, useMemo, useRef } from 'react';
 import Chart from 'react-apexcharts';
 import type { ApexOptions } from 'apexcharts';
 import { useChartTheme } from '@/hooks/useChartTheme';
+import { applyActivityGoalDecorations } from '@/lib/activityGoalChartMarkers';
 import { buildAdvisorStackedBarTooltipHtml } from '@/lib/advisorStackedBarTooltip';
+import {
+  type ActivityGoalTargets,
+  activityGoalTotal,
+} from '@/lib/crmConfigApi';
 import {
   type ActivitiesByAdvisorStackedData,
   type ActivitiesByAdvisorStackedRow,
@@ -11,13 +16,15 @@ import {
 import { cn } from '@/lib/utils';
 
 const ACTIVITY_SERIES = [
-  { key: 'llamadas' as const, label: 'Llamadas', color: '#13944C' },
+  { key: 'llamadasContacto' as const, label: 'Contacto', color: '#0E6B40' },
+  { key: 'llamadasNoContacto' as const, label: 'No contacto', color: '#6ee7b7' },
   { key: 'reuniones' as const, label: 'Reuniones', color: '#34d399' },
   { key: 'correos' as const, label: 'Correos', color: '#065f46' },
 ] as const;
 
 const ACTIVITY_COUNT_BY_LABEL: Record<string, [singular: string, plural: string]> = {
-  Llamadas: ['llamada', 'llamadas'],
+  Contacto: ['llamada con contacto', 'llamadas con contacto'],
+  'No contacto': ['llamada sin contacto', 'llamadas sin contacto'],
   Reuniones: ['reunión', 'reuniones'],
   Correos: ['correo', 'correos'],
 };
@@ -47,6 +54,8 @@ interface ActivitiesByAdvisorStackedBarChartProps {
   chartHeight?: number;
   showLegend?: boolean;
   onAdvisorSelect?: (advisor: ActivitiesByAdvisorStackedRow) => void;
+  /** Metas semanales por userId (Contacto, No contacto, Reuniones, Correos). */
+  goalByAdvisorId?: Record<string, ActivityGoalTargets>;
 }
 
 export function ActivitiesByAdvisorStackedBarChart({
@@ -55,12 +64,50 @@ export function ActivitiesByAdvisorStackedBarChart({
   chartHeight,
   showLegend = true,
   onAdvisorSelect,
+  goalByAdvisorId,
 }: ActivitiesByAdvisorStackedBarChartProps) {
   const chartTheme = useChartTheme();
   const hoverIndexRef = useRef(-1);
   const onAdvisorSelectRef = useRef(onAdvisorSelect);
   const chartWrapRef = useRef<HTMLDivElement>(null);
+  const goalByAdvisorIdRef = useRef(goalByAdvisorId);
   onAdvisorSelectRef.current = onAdvisorSelect;
+  goalByAdvisorIdRef.current = goalByAdvisorId;
+
+  const hasGoals = useMemo(() => {
+    if (!goalByAdvisorId) return false;
+    return Object.values(goalByAdvisorId).some((targets) => activityGoalTotal(targets) > 0);
+  }, [goalByAdvisorId]);
+
+  const xAxisBounds = useMemo(() => {
+    const actualMax = Math.max(...data.advisors.map((row) => row.total), 0);
+    const goalMax = data.advisors.reduce((max, row) => {
+      const targets = goalByAdvisorId?.[row.advisorId];
+      if (!targets) return max;
+      return Math.max(max, activityGoalTotal(targets));
+    }, 0);
+    const min = 0;
+    const peak = Math.max(actualMax, goalMax);
+    const max =
+      peak > 0 && goalMax > actualMax
+        ? Math.ceil(peak * 1.08)
+        : undefined;
+    return { min, max };
+  }, [data.advisors, goalByAdvisorId]);
+
+  const defaultTotalLabelColor = chartTheme.isDark ? '#e2e8f0' : '#334155';
+
+  const applyGoalDecorations = (chartContext: unknown) => {
+    applyActivityGoalDecorations(
+      chartContext as Parameters<typeof applyActivityGoalDecorations>[0],
+      data.advisors,
+      goalByAdvisorIdRef.current,
+      {
+        isDark: chartTheme.isDark,
+        defaultLabelColor: defaultTotalLabelColor,
+      },
+    );
+  };
 
   useEffect(() => {
     if (!onAdvisorSelect) return;
@@ -108,34 +155,45 @@ export function ActivitiesByAdvisorStackedBarChart({
         fontFamily: 'inherit',
         animations: { enabled: true, speed: 450 },
         background: 'transparent',
-        events: onAdvisorSelect
-          ? {
-              mouseMove(_event, _chartContext, config) {
-                if (!config) return;
-                const idx = config.dataPointIndex;
-                if (idx != null && idx >= 0) hoverIndexRef.current = idx;
-              },
-              click(_event, _chartContext, config) {
-                if (!config || !onAdvisorSelectRef.current) return;
-                const idx =
-                  config.dataPointIndex >= 0
-                    ? config.dataPointIndex
-                    : hoverIndexRef.current;
-                const advisor = data.advisors[idx];
-                if (advisor && advisor.total > 0) {
-                  onAdvisorSelectRef.current(advisor);
-                }
-              },
-              dataPointSelection(_event, _chartContext, config) {
-                if (!config || !onAdvisorSelectRef.current) return;
-                const idx = config.dataPointIndex;
-                const advisor = data.advisors[idx ?? -1];
-                if (advisor && advisor.total > 0) {
-                  onAdvisorSelectRef.current(advisor);
-                }
-              },
-            }
-          : {},
+        events: {
+          mounted(chartContext) {
+            applyGoalDecorations(chartContext);
+          },
+          updated(chartContext) {
+            applyGoalDecorations(chartContext);
+          },
+          animationEnd(chartContext) {
+            applyGoalDecorations(chartContext);
+          },
+          ...(onAdvisorSelect
+            ? {
+                mouseMove(_event, _chartContext, config) {
+                  if (!config) return;
+                  const idx = config.dataPointIndex;
+                  if (idx != null && idx >= 0) hoverIndexRef.current = idx;
+                },
+                click(_event, _chartContext, config) {
+                  if (!config || !onAdvisorSelectRef.current) return;
+                  const idx =
+                    config.dataPointIndex >= 0
+                      ? config.dataPointIndex
+                      : hoverIndexRef.current;
+                  const advisor = data.advisors[idx];
+                  if (advisor && advisor.total > 0) {
+                    onAdvisorSelectRef.current(advisor);
+                  }
+                },
+                dataPointSelection(_event, _chartContext, config) {
+                  if (!config || !onAdvisorSelectRef.current) return;
+                  const idx = config.dataPointIndex;
+                  const advisor = data.advisors[idx ?? -1];
+                  if (advisor && advisor.total > 0) {
+                    onAdvisorSelectRef.current(advisor);
+                  }
+                },
+              }
+            : {}),
+        },
       },
       colors: ACTIVITY_SERIES.map((item) => item.color),
       plotOptions: {
@@ -152,12 +210,28 @@ export function ActivitiesByAdvisorStackedBarChart({
               style: {
                 fontSize: '11px',
                 fontWeight: 600,
-                color: chartTheme.isDark ? '#e2e8f0' : '#334155',
+                color: defaultTotalLabelColor,
               },
-              formatter: (total) =>
-                total != null && Number(total) > 0
-                  ? formatValue(Number(total))
-                  : '',
+              formatter: (total, opts) => {
+                const totalNum = Number(total);
+                const idx = opts?.dataPointIndex ?? -1;
+                const advisor = data.advisors[idx];
+                const goalTotal = advisor
+                  ? activityGoalTotal(goalByAdvisorId?.[advisor.advisorId] ?? {
+                      contacto: 0,
+                      noContacto: 0,
+                      reuniones: 0,
+                      correos: 0,
+                    })
+                  : 0;
+
+                if (totalNum <= 0 && goalTotal <= 0) return '';
+                if (goalTotal > 0) {
+                  const met = totalNum >= goalTotal;
+                  return `${formatValue(totalNum)}/${formatValue(goalTotal)}${met ? ' ✓' : ''}`;
+                }
+                return totalNum > 0 ? formatValue(totalNum) : '';
+              },
             },
           },
         },
@@ -173,6 +247,8 @@ export function ActivitiesByAdvisorStackedBarChart({
       },
       xaxis: {
         categories,
+        min: xAxisBounds.min,
+        ...(xAxisBounds.max != null ? { max: xAxisBounds.max } : {}),
         labels: {
           style: { colors: chartTheme.axisColor, fontSize: '11px', fontWeight: 500 },
           formatter: (value) => formatValue(Number(value)),
@@ -209,7 +285,9 @@ export function ActivitiesByAdvisorStackedBarChart({
           if (dataPointIndex == null || dataPointIndex < 0) return '';
           const advisor = data.advisors[dataPointIndex];
           if (!advisor) return '';
-          return buildAdvisorStackedBarTooltipHtml({
+          const targets = goalByAdvisorId?.[advisor.advisorId];
+          const goalTotal = targets ? activityGoalTotal(targets) : 0;
+          const base = buildAdvisorStackedBarTooltipHtml({
             title: advisor.advisorName,
             weekLabel: data.weekLabel,
             seriesItems: ACTIVITY_SERIES.map((item) => ({
@@ -218,6 +296,12 @@ export function ActivitiesByAdvisorStackedBarChart({
               formatValue: formatActivityCountByLabel,
             })),
           });
+          if (goalTotal <= 0) return base;
+          const goalLine = `<div class="mt-1.5 border-t border-border/40 pt-1.5 text-[10px] text-muted-foreground">
+                  Meta total: <span class="font-semibold tabular-nums text-foreground">${formatValue(goalTotal)}</span>
+                  · Avance: <span class="font-semibold tabular-nums ${advisor.total >= goalTotal ? 'text-emerald-600' : 'text-foreground'}">${formatValue(advisor.total)}/${formatValue(goalTotal)}</span>
+                </div>`;
+          return base.replace(/<\/div>\s*$/, `${goalLine}</div>`);
         },
       },
       fill: { opacity: 1 },
@@ -229,8 +313,11 @@ export function ActivitiesByAdvisorStackedBarChart({
       chartTheme.isDark,
       data.advisors,
       data.weekLabel,
+      goalByAdvisorId,
       onAdvisorSelect,
       showLegend,
+      xAxisBounds,
+      defaultTotalLabelColor,
     ],
   );
 
@@ -265,6 +352,24 @@ export function ActivitiesByAdvisorStackedBarChart({
       >
         <Chart options={options} series={series} type="bar" height={height} />
       </div>
+      {hasGoals ? (
+        <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="inline-block h-3 w-0 border-l-2 border-dashed border-amber-600 dark:border-amber-400"
+              aria-hidden
+            />
+            Meta semanal
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="inline-block size-2 rounded-sm bg-emerald-500/25 ring-1 ring-emerald-500/40"
+              aria-hidden
+            />
+            Meta cumplida
+          </span>
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -36,10 +36,30 @@ import {
 import {
   mapApiCompanyRecordToNewCompanyData,
 } from '@/lib/companyWizardMap';
+import { useUsersStore } from '@/store/usersStore';
 
 export type { NewCompanyData };
 
 const emptyForm = emptyNewCompanyForm;
+
+function domainConflictCopy(
+  company: ApiCompanyRecord,
+  getUserName: (userId: string) => string,
+) {
+  const companyName = company.name?.trim() || 'Empresa sin nombre';
+  const advisorName = company.assignedTo
+    ? getUserName(company.assignedTo) || 'Sin asignar'
+    : 'Sin asignar';
+  return { companyName, advisorName };
+}
+
+function domainConflictToastMessage(
+  company: ApiCompanyRecord,
+  getUserName: (userId: string) => string,
+): string {
+  const { companyName, advisorName } = domainConflictCopy(company, getUserName);
+  return `Este dominio ya está registrado en «${companyName}» (asesor: ${advisorName}).`;
+}
 
 export type NewCompanyWizardSubmitMeta = {
   mode: 'create' | 'update';
@@ -90,6 +110,7 @@ export function NewCompanyWizard({
   confirmButtonLabel = 'Crear Empresa',
 }: NewCompanyWizardProps) {
   const currentUser = useAppStore((s) => s.currentUser);
+  const getUserName = useUsersStore((s) => s.getUserName);
   const canReassign = canUserReassignCommercialAdvisor(currentUser.role);
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<NewCompanyData>(() => mergeCompanyForm(defaultValues, currentUser));
@@ -368,7 +389,7 @@ export function NewCompanyWizard({
         return;
       }
       if (domainMatches.length > 0) {
-        toast.error('Este dominio ya existe. Usa otro dominio o actualiza la empresa existente.');
+        toast.error(domainConflictToastMessage(domainMatches[0], getUserName));
         return;
       }
     }
@@ -396,7 +417,7 @@ export function NewCompanyWizard({
       return;
     }
     if (domainMatches.length > 0) {
-      toast.error('Este dominio ya existe. Usa otro dominio o actualiza la empresa existente.');
+      toast.error(domainConflictToastMessage(domainMatches[0], getUserName));
       return;
     }
     const nombreNegocio = form.nombreNegocio.trim() || form.nombreComercial.trim();
@@ -803,9 +824,18 @@ export function NewCompanyWizard({
           </svg>
           <div className="text-sm">
             <span className="font-semibold text-yellow-800">Este dominio ya existe</span>
-            <span className="block text-yellow-700">
-              {domainMatches[0].name}{domainMatches[0].ruc ? ` — RUC ${domainMatches[0].ruc}` : ''}
-            </span>
+            {(() => {
+              const { companyName, advisorName } = domainConflictCopy(domainMatches[0], getUserName);
+              return (
+                <>
+                  <span className="block text-yellow-700">
+                    Empresa: {companyName}
+                    {domainMatches[0].ruc ? ` · RUC ${domainMatches[0].ruc}` : ''}
+                  </span>
+                  <span className="block text-yellow-700">Asesor: {advisorName}</span>
+                </>
+              );
+            })()}
           </div>
         </div>
       </div>,

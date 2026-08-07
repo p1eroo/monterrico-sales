@@ -1,4 +1,5 @@
 import type { Activity, Contact, Opportunity, TaskAssociation } from '@/types';
+import { isLikelyCompanyCuid } from '@/lib/companyApi';
 
 /**
  * Reconstruye asociaciones del formulario de tarea a partir de la actividad
@@ -221,4 +222,74 @@ export function contactLineFromTaskAssociations(assocs: TaskAssociation[] | unde
   const n = assocs.find((a) => a.type === 'negocio');
   if (n) return n.name;
   return undefined;
+}
+
+/** Empresa vinculada usable para crear contacto desde formularios de tarea/actividad. */
+export function resolveLinkedCompanyFromTaskContext(
+  associations: TaskAssociation[],
+  fallbackCompanyId?: string,
+  fallbackCompanyName?: string,
+): { id?: string; name?: string } {
+  const fromAssoc = associations.find(
+    (a) => a.type === 'empresa' && a.id && isLikelyCompanyCuid(a.id),
+  );
+  if (fromAssoc) {
+    return { id: fromAssoc.id, name: fromAssoc.name };
+  }
+  if (fallbackCompanyId && isLikelyCompanyCuid(fallbackCompanyId)) {
+    return { id: fallbackCompanyId, name: fallbackCompanyName ?? 'Empresa' };
+  }
+  return {};
+}
+
+/** Asociaciones mínimas cuando la tarea no trae vínculos explícitos (p. ej. pestaña de entidad). */
+export function fallbackTaskAssociationsFromEntityContext(ctx: {
+  contactId?: string;
+  contactName?: string;
+  companyId?: string;
+  companyName?: string;
+  opportunityId?: string;
+  opportunityTitle?: string;
+  clienteEmpresaId?: string;
+  clienteEmpresaName?: string;
+  contactoClienteId?: string;
+  contactoClienteName?: string;
+}): TaskAssociation[] {
+  const out: TaskAssociation[] = [];
+  if (ctx.companyId && isLikelyCompanyCuid(ctx.companyId)) {
+    out.push({
+      type: 'empresa',
+      id: ctx.companyId,
+      name: ctx.companyName ?? 'Empresa',
+    });
+  }
+  if (ctx.contactId) {
+    out.push({
+      type: 'contacto',
+      id: ctx.contactId,
+      name: ctx.contactName ?? 'Contacto',
+    });
+  }
+  if (ctx.opportunityId) {
+    out.push({
+      type: 'negocio',
+      id: ctx.opportunityId,
+      name: ctx.opportunityTitle ?? 'Oportunidad',
+    });
+  }
+  if (ctx.clienteEmpresaId) {
+    out.push({
+      type: 'cliente_empresa',
+      id: ctx.clienteEmpresaId,
+      name: ctx.clienteEmpresaName ?? 'Empresa cliente',
+    });
+  }
+  if (ctx.contactoClienteId) {
+    out.push({
+      type: 'cliente_contacto',
+      id: ctx.contactoClienteId,
+      name: ctx.contactoClienteName ?? 'Contacto cliente',
+    });
+  }
+  return out;
 }

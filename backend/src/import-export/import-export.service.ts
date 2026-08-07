@@ -614,7 +614,7 @@ export class ImportExportService {
       name: params.empresaNombre,
       contactoVista: params.contactoVista,
       action: 'blocked',
-      detail: `Dominio «${params.domain}» ya asignado a ${params.currentAdvisorLabel}`,
+      detail: `Dominio «${params.domain}» ya registrado en «${params.existingCompanyName}» (asesor: ${params.currentAdvisorLabel})`,
       changes: [],
       unchanged: [
         `Empresa existente: ${params.existingCompanyName}`,
@@ -3344,7 +3344,7 @@ export class ImportExportService {
           facturacionEstimada: w.facturacionEstimada,
           ok: false,
           blocked: true,
-          error: `Dominio ya asignado a ${currentLabel} (importación: ${incomingLabel}). No se modificará.`,
+          error: `Dominio ya registrado en «${existingDomain.name}» (asesor: ${currentLabel}). Importación: ${incomingLabel}. No se modificará.`,
           csvColumns: w.csvColumns,
         });
         continue;

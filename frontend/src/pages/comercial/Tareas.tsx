@@ -115,6 +115,7 @@ import {
   contactLineFromTaskAssociations,
   taskAssociationsFromActivity,
   taskLinkBadgesFromActivity,
+  resolveLinkedCompanyFromTaskContext,
 } from '@/lib/taskAssociationsFromActivity';
 import { activityIsClienteCartera } from '@/lib/clienteCarteraActivityLinks';
 import { completeTaskWithActivityForm } from '@/lib/activityPayloadFromForm';
@@ -287,6 +288,11 @@ export default function TareasPage({ scope = 'all' }: { scope?: TareasPageScope 
   } | null>(null);
   /** Tarea mostrada como completada mientras se registra la actividad; se revierte al cerrar sin guardar. */
   const [taskCompletionPreviewId, setTaskCompletionPreviewId] = useState<string | null>(null);
+
+  const completedTaskLinkedCompany = useMemo(() => {
+    if (!completedTask) return { id: undefined, name: undefined };
+    return resolveLinkedCompanyFromTaskContext(taskAssociationsFromActivity(completedTask));
+  }, [completedTask]);
 
   const [crmContacts, setCrmContacts] = useState<Contact[]>([]);
   const [crmOpportunities, setCrmOpportunities] = useState<Opportunity[]>([]);
@@ -1367,7 +1373,7 @@ export default function TareasPage({ scope = 'all' }: { scope?: TareasPageScope 
                 setTaskCompletionPreviewId(null);
               }
             }}
-            onSave={async (data) => {
+            onSave={async (data, meta) => {
               if (!completedTask?.taskKind || !TASK_KINDS.includes(completedTask.taskKind)) return;
               const t = completedTask;
               const kind = completedTask.taskKind!;
@@ -1376,6 +1382,7 @@ export default function TareasPage({ scope = 'all' }: { scope?: TareasPageScope 
                   kind,
                   form: data,
                   task: t,
+                  extraContactIds: meta?.extraContactIds,
                   createActivity,
                   updateActivity,
                 });
@@ -1396,6 +1403,9 @@ export default function TareasPage({ scope = 'all' }: { scope?: TareasPageScope 
               dueDate: completedTask.dueDate,
               linkBadges: taskLinkBadgesFromActivity(completedTask),
             }}
+            linkedCompanyId={completedTaskLinkedCompany.id}
+            linkedCompanyName={completedTaskLinkedCompany.name}
+            defaultAssigneeId={completedTask.assignedTo}
             defaultTitle={completedTask.title}
             defaultDate={formatTodayPeruYmd()}
             showSkip

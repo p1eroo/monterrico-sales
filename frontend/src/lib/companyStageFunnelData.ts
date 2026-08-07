@@ -374,11 +374,14 @@ function weekMetaFromStart(weekStartIso: string, weekName?: string): { weekNumbe
 export function buildFunnelStagesFromProspectWeek(
   week: ProspectWeekRow | null | undefined,
   bundle: CrmConfigBundle | null,
+  mode: 'snapshot' | 'activity' = 'snapshot',
 ): FunnelStage[] {
   if (!week) return [];
 
   const catalogBySlug = new Map((bundle?.catalog?.stages ?? []).map((s) => [s.slug, s]));
-  const countBySlug = new Map(week.byStage.map((row) => [row.slug, row.count]));
+  const stageRows =
+    mode === 'activity' ? (week.activityByStage ?? []) : week.byStage;
+  const countBySlug = new Map(stageRows.map((row) => [row.slug, row.count]));
 
   const stages: FunnelStage[] = [];
   const seen = new Set<string>();
@@ -395,7 +398,7 @@ export function buildFunnelStagesFromProspectWeek(
     });
   }
 
-  for (const row of week.byStage) {
+  for (const row of stageRows) {
     if (seen.has(row.slug) || row.count <= 0) continue;
     const cat = catalogBySlug.get(row.slug);
     stages.push({
@@ -436,6 +439,7 @@ type AdvisorWeekRow = ActiveProspectsByAdvisorWeekly['weeks'][number];
 export function buildAdvisorStageTableFromWeek(
   week: AdvisorWeekRow | null | undefined,
   bundle: CrmConfigBundle | null,
+  mode: 'snapshot' | 'activity' = 'snapshot',
 ): CompaniesByAdvisorStageTableData {
   if (!week || week.advisors.length === 0) {
     return { advisors: [], stages: [], estimatedBillingByAdvisor: {} };
@@ -443,8 +447,14 @@ export function buildAdvisorStageTableFromWeek(
 
   const catalogBySlug = new Map((bundle?.catalog?.stages ?? []).map((s) => [s.slug, s]));
   const advisors = buildAdvisorColumnsFromApi(week.advisors);
+  const stageSource =
+    mode === 'activity' ? (week.activityStages ?? week.stages) : week.stages;
+  const billingSource =
+    mode === 'activity'
+      ? (week.activityBillingByAdvisor ?? week.estimatedBillingByAdvisor)
+      : week.estimatedBillingByAdvisor;
 
-  const stages: CompaniesByAdvisorStageRow[] = week.stages.map((row) => {
+  const stages: CompaniesByAdvisorStageRow[] = stageSource.map((row) => {
     const cat = catalogBySlug.get(row.slug);
     const fullName = row.name || cat?.name || etapaLabels[row.slug] || row.slug;
     const probability = row.probability ?? cat?.probability ?? etapaProbabilidad[row.slug] ?? 0;
@@ -461,7 +471,7 @@ export function buildAdvisorStageTableFromWeek(
   return {
     advisors,
     stages,
-    estimatedBillingByAdvisor: { ...week.estimatedBillingByAdvisor },
+    estimatedBillingByAdvisor: { ...billingSource },
   };
 }
 
@@ -474,7 +484,8 @@ function findAdvisorWeekByStart(
 }
 
 /**
- * Embudo (total + semanas W-1 / W-2) desde analytics; tabla por asesora desde el API.
+ * Embudo de la semana anterior (W-1) respecto al corte del API + comparación W-1 vs W-2
+ * con actividad de cada semana (altas y cambios de etapa).
  */
 export function buildCompaniesStagePanelData(
   activeProspects: ActiveProspectsWeekly | null | undefined,
@@ -482,8 +493,14 @@ export function buildCompaniesStagePanelData(
   bundle: CrmConfigBundle | null,
 ): CompaniesStagePanelData {
   const weeks = activeProspects?.weeks ?? [];
-  const totalWeek = weeks.length > 0 ? weeks[weeks.length - 1] : undefined;
-  const totalFunnelStages = buildFunnelStagesFromProspectWeek(totalWeek, bundle);
+  const referenceWeek = weeks.length > 0 ? weeks[weeks.length - 1] : undefined;
+  /** Semana anterior al corte (p. ej. W31 si el API cierra en W32). */
+  const previewWeek = weeks.length >= 2 ? weeks[weeks.length - 2] : referenceWeek;
+  const totalFunnelStages = buildFunnelStagesFromProspectWeek(
+    previewWeek,
+    bundle,
+    weeks.length >= 2 ? 'activity' : 'snapshot',
+  );
 
   if (weeks.length < 2) {
     return { totalFunnelStages, weeklyComparison: null };
@@ -507,25 +524,38 @@ export function buildCompaniesStagePanelData(
         weekLabel: formatIsoWeekLabel(primaryMeta.weekNumber - 1),
       };
 
-  const referenceWeekNumber = isoWeekNumberLima(new Date());
+  const referenceWeekNumber = referenceWeek
+    ? weekMetaFromStart(referenceWeek.weekStart, referenceWeek.name).weekNumber
+    : isoWeekNumberLima(new Date());
+  const previewMeta = previewWeek
+    ? weekMetaFromStart(previewWeek.weekStart, previewWeek.name)
+    : { weekNumber: referenceWeekNumber, weekLabel: formatIsoWeekLabel(referenceWeekNumber) };
 
   return {
     totalFunnelStages,
     weeklyComparison: {
       referenceWeekNumber,
-      referenceWeekLabel: formatIsoWeekLabel(referenceWeekNumber),
+      referenceWeekLabel: previewMeta.weekLabel,
       totalFunnelStages,
       currentWeek: {
         weekNumber: primaryMeta.weekNumber,
         weekLabel: primaryMeta.weekLabel,
-        funnelStages: buildFunnelStagesFromProspectWeek(comparePrimaryWeek, bundle),
-        table: buildAdvisorStageTableFromWeek(primaryAdvisorWeek, bundle),
+        funnelStages: buildFunnelStagesFromProspectWeek(
+          comparePrimaryWeek,
+          bundle,
+          'activity',
+        ),
+        table: buildAdvisorStageTableFromWeek(primaryAdvisorWeek, bundle, 'activity'),
       },
       previousWeek: {
         weekNumber: previousMeta.weekNumber,
         weekLabel: previousMeta.weekLabel,
-        funnelStages: buildFunnelStagesFromProspectWeek(comparePreviousWeek, bundle),
-        table: buildAdvisorStageTableFromWeek(previousAdvisorWeek, bundle),
+        funnelStages: buildFunnelStagesFromProspectWeek(
+          comparePreviousWeek,
+          bundle,
+          'activity',
+        ),
+        table: buildAdvisorStageTableFromWeek(previousAdvisorWeek, bundle, 'activity'),
       },
     },
   };

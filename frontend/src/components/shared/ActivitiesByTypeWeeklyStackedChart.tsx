@@ -9,15 +9,17 @@ import {
 import { formatIsoWeekLabel, parseIsoWeekNumberFromLabel } from '@/lib/crmTimezone';
 import { cn } from '@/lib/utils';
 
-/** Paleta verde escalonada: oscuro (base) → claro (tope) para mejor lectura en columnas apiladas. */
+/** Paleta verde escalonada: contacto → no contacto → reuniones → correos. */
 const ACTIVITY_SERIES = [
-  { label: 'Llamadas', color: '#0E6B40' },
+  { label: 'Contacto', color: '#0E6B40' },
+  { label: 'No contacto', color: '#6ee7b7' },
   { label: 'Reuniones', color: '#2ECC87' },
   { label: 'Correos', color: '#064E31' },
 ] as const;
 
 const ACTIVITY_COUNT_FORMS: Record<string, [singular: string, plural: string]> = {
-  Llamadas: ['llamada', 'llamadas'],
+  Contacto: ['llamada con contacto', 'llamadas con contacto'],
+  'No contacto': ['llamada sin contacto', 'llamadas sin contacto'],
   Reuniones: ['reunión', 'reuniones'],
   Correos: ['correo', 'correos'],
 };

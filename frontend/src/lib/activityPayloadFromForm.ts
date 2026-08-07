@@ -124,7 +124,12 @@ export async function completeTaskWithActivityForm(params: {
     | 'companyId'
     | 'opportunityId'
     | 'clienteEmpresaId'
+    | 'linkedContacts'
+    | 'linkedCompanies'
+    | 'linkedOpportunities'
+    | 'linkedClienteEmpresas'
   >;
+  extraContactIds?: string[];
   createActivity: (payload: CreateActivityPayload) => Promise<Activity>;
   updateActivity: (id: string, payload: UpdateActivityPayload) => Promise<Activity>;
 }): Promise<{ savedActivity: Activity; updatedTask: Activity }> {
@@ -135,6 +140,13 @@ export async function completeTaskWithActivityForm(params: {
 
   const completedAt = formatTodayPeruYmd();
   const summary = params.form.description?.trim() || '';
+  const entityLinks = entityLinkIdsFromActivity(params.task);
+  const contactIds = [
+    ...new Set([
+      ...(entityLinks.contactIds ?? []),
+      ...(params.extraContactIds ?? []),
+    ]),
+  ];
   const activityPayload: CreateActivityPayload = {
     ...activityPayloadFromForm(
       params.kind,
@@ -142,7 +154,8 @@ export async function completeTaskWithActivityForm(params: {
       entityContextFromActivity(params.task),
       assignedTo,
     ),
-    ...entityLinkIdsFromActivity(params.task),
+    ...entityLinks,
+    ...(contactIds.length > 0 ? { contactIds } : {}),
     sourceTaskId: params.task.id,
     status: 'completada',
     completedAt,

@@ -64,7 +64,7 @@ export const reportsChartDescriptions = {
   estimatedBilling:
     'Suma de facturación estimada de empresas creadas en el año que están en etapas 10%–100%, con tendencia en las últimas 6 semanas.',
   companiesByStage:
-    'Embudo de empresas en etapas de prospecto activas (10%–100%) al cierre de la última semana del periodo, según la cartera filtrada.',
+    'Actividad de empresas del año en etapas 10%–100% durante la semana anterior al corte (altas y cambios de etapa). Al ampliar, compara las dos semanas previas con el mismo criterio.',
   companiesWeekly: dashboardChartDescriptions.companies,
   contactsOpportunities:
     'Evolución mensual de contactos y oportunidades creados en el periodo filtrado, agrupados por mes.',

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 
 import { subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
+import { Target } from 'lucide-react';
 import { SquareBottomUpSvgIcon } from '@/components/icons/SquareBottomUpSvgIcon';
 import { chartExpandIconClass, chartCardHeaderClass } from '@/components/shared/ChartExpandToggleIcon';
 import { toast } from '@/lib/notify';
@@ -42,7 +43,13 @@ import {
   formatLocalISODate,
   type AnalyticsSummary,
   type AnalyticsKPIs,
+  type ActivitiesByAdvisorDetailsQuery,
 } from '@/lib/analyticsApi';
+import {
+  activityGoalTotal,
+  fetchCrmActivityGoals,
+  type ActivityGoalTargets,
+} from '@/lib/crmConfigApi';
 import {
   downloadReport,
   dashboardExportBaseFilename,
@@ -55,6 +62,19 @@ import {
   companiesWeeklyProgressChartHasData,
 } from '@/lib/companiesWeeklyProgressChartUtils';
 import { ActivitiesByTypeWeeklyStackedChart } from '@/components/shared/ActivitiesByTypeWeeklyStackedChart';
+import { ActivitiesByAdvisorStackedBarChart } from '@/components/shared/ActivitiesByAdvisorStackedBarChart';
+import {
+  ActivitiesByAdvisorDetailSheet,
+  ActivityGoalSummary,
+} from '@/components/shared/ActivitiesByAdvisorDetailSheet';
+import { ActivityGoalsDialog } from '@/components/shared/ActivityGoalsDialog';
+import { WeeklyPillFilter } from '@/components/shared/WeeklyPillFilter';
+import { buildWeeklyPillOptions } from '@/lib/weeklyAdvisorFilterUtils';
+import {
+  buildActivitiesByAdvisorStackedData,
+  activitiesByAdvisorStackedHasData,
+  type ActivitiesByAdvisorStackedRow,
+} from '@/lib/activitiesByAdvisorStackedUtils';
 import {
   buildActivitiesByTypeHeatmapData,
   activitiesByTypeHeatmapHasData,
@@ -91,6 +111,7 @@ export default function Dashboard() {
     isActive: advisorFilterIsActive,
     queryParams: advisorListParams,
   } = useMultiAdvisorFilter();
+  const canEditActivityGoals = bundle?.permissions.canEditActivityGoals ?? false;
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfMonth(subMonths(new Date(), 1)),
     to: endOfMonth(new Date()),
@@ -102,7 +123,21 @@ export default function Dashboard() {
   const [funnelChartModalOpen, setFunnelChartModalOpen] = useState(false);
   const [weeklyCompaniesModalOpen, setWeeklyCompaniesModalOpen] = useState(false);
   const [activitiesChartModalOpen, setActivitiesChartModalOpen] = useState(false);
+  const [activitiesChartView, setActivitiesChartView] = useState<'type' | 'advisor'>('type');
+  const [activitiesAdvisorWeekPillIndex, setActivitiesAdvisorWeekPillIndex] = useState(0);
+  const [activityGoalsDialogOpen, setActivityGoalsDialogOpen] = useState(false);
+  const [activityGoalsByUserId, setActivityGoalsByUserId] = useState<
+    Record<string, ActivityGoalTargets>
+  >({});
+  const [activityGoalsLatestWeek, setActivityGoalsLatestWeek] = useState<
+    Record<string, ActivityGoalTargets>
+  >({});
+  const [activitiesAdvisorDetailOpen, setActivitiesAdvisorDetailOpen] = useState(false);
+  const [activitiesAdvisorDetailSelection, setActivitiesAdvisorDetailSelection] =
+    useState<ActivitiesByAdvisorStackedRow | null>(null);
   const [tasksChartModalOpen, setTasksChartModalOpen] = useState(false);
+
+  const latestActivityWeek = summary?.activitiesByAdvisorWeekly?.weeks?.[0] ?? null;
 
   useEffect(() => {
     if (!dateRange?.from || !dateRange?.to) {
@@ -258,9 +293,136 @@ export default function Dashboard() {
     () => buildActivitiesByTypeHeatmapData(summary?.activitiesByTypeWeekly),
     [summary?.activitiesByTypeWeekly],
   );
-  const activitiesChartEmpty =
+
+  const activitiesAdvisorWeekOptions = useMemo(
+    () => buildWeeklyPillOptions(summary?.activitiesByAdvisorWeekly?.weeks),
+    [summary?.activitiesByAdvisorWeekly?.weeks],
+  );
+
+  const activitiesAdvisorSelectedWeekIndex = useMemo(
+    () =>
+      activitiesAdvisorWeekOptions[activitiesAdvisorWeekPillIndex]?.sourceIndex ??
+      -1,
+    [activitiesAdvisorWeekOptions, activitiesAdvisorWeekPillIndex],
+  );
+
+  const activitiesByAdvisorStackedView = useMemo(
+    () =>
+      buildActivitiesByAdvisorStackedData(
+        summary?.activitiesByAdvisorWeekly,
+        activitiesAdvisorSelectedWeekIndex >= 0
+          ? activitiesAdvisorSelectedWeekIndex
+          : undefined,
+      ),
+    [summary?.activitiesByAdvisorWeekly, activitiesAdvisorSelectedWeekIndex],
+  );
+
+  const activitiesAdvisorSelectedWeek = useMemo(() => {
+    if (activitiesAdvisorSelectedWeekIndex < 0) return null;
+    return summary?.activitiesByAdvisorWeekly?.weeks?.[activitiesAdvisorSelectedWeekIndex] ?? null;
+  }, [activitiesAdvisorSelectedWeekIndex, summary?.activitiesByAdvisorWeekly?.weeks]);
+
+  const activityGoalsAdvisors = useMemo(
+    () =>
+      activeAdvisors.map((u) => ({
+        id: u.id,
+        name: u.name?.trim() || u.email || 'Asesor',
+      })),
+    [activeAdvisors],
+  );
+
+  useEffect(() => {
+    const weekStart = activitiesAdvisorSelectedWeek?.weekStart;
+    if (!weekStart) {
+      setActivityGoalsByUserId({});
+      return;
+    }
+    let cancelled = false;
+    void fetchCrmActivityGoals(weekStart.slice(0, 10))
+      .then((data) => {
+        if (!cancelled) setActivityGoalsByUserId(data.byUserId ?? {});
+      })
+      .catch(() => {
+        if (!cancelled) setActivityGoalsByUserId({});
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activitiesAdvisorSelectedWeek?.weekStart]);
+
+  useEffect(() => {
+    const weekStart = latestActivityWeek?.weekStart;
+    if (!weekStart) {
+      setActivityGoalsLatestWeek({});
+      return;
+    }
+    let cancelled = false;
+    void fetchCrmActivityGoals(weekStart.slice(0, 10))
+      .then((data) => {
+        if (!cancelled) setActivityGoalsLatestWeek(data.byUserId ?? {});
+      })
+      .catch(() => {
+        if (!cancelled) setActivityGoalsLatestWeek({});
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [latestActivityWeek?.weekStart]);
+
+  const activitiesByAdvisorLatestWeek = useMemo(
+    () => buildActivitiesByAdvisorStackedData(summary?.activitiesByAdvisorWeekly, 0),
+    [summary?.activitiesByAdvisorWeekly],
+  );
+
+  const myActivityGoalProgress = useMemo(() => {
+    if (canSeeAllAdvisors) return null;
+    const row = activitiesByAdvisorLatestWeek.advisors[0];
+    if (!row) return null;
+    const target = activityGoalsLatestWeek[row.advisorId];
+    if (!target || activityGoalTotal(target) <= 0) return null;
+    return {
+      row,
+      target,
+      weekLabel: latestActivityWeek?.name ?? activitiesByAdvisorLatestWeek.weekLabel ?? '—',
+    };
+  }, [
+    activitiesByAdvisorLatestWeek,
+    activityGoalsLatestWeek,
+    canSeeAllAdvisors,
+    latestActivityWeek?.name,
+  ]);
+
+  const activitiesAdvisorDetailQuery = useMemo((): Omit<
+    ActivitiesByAdvisorDetailsQuery,
+    'advisorId' | 'weekStart' | 'weekEnd' | 'page' | 'limit'
+  > => {
+    const from = dateRange?.from ? formatLocalISODate(dateRange.from) : '';
+    const to = dateRange?.to ? formatLocalISODate(dateRange.to) : '';
+    return {
+      from,
+      to,
+      assignedTo: advisorListParams.assignedTo,
+      excludeAssignedTo: advisorListParams.excludeAssignedTo,
+      advisorPool: advisorListParams.advisorPool,
+      area: 'comercial',
+    };
+  }, [
+    dateRange?.from,
+    dateRange?.to,
+    advisorListParams.assignedTo,
+    advisorListParams.excludeAssignedTo,
+    advisorListParams.advisorPool,
+  ]);
+
+  const activitiesTypeChartEmpty =
     !summaryLoading &&
     (!summary || !activitiesByTypeHeatmapHasData(activitiesByTypeHeatmap));
+
+  const activitiesChartEmpty =
+    !summaryLoading &&
+    (activitiesChartView === 'type'
+      ? !summary || !activitiesByTypeHeatmapHasData(activitiesByTypeHeatmap)
+      : !summary || !activitiesByAdvisorStackedHasData(activitiesByAdvisorStackedView));
 
   const tasksByKindHeatmap = useMemo(
     () => buildTasksByKindHeatmapData(summary?.tasksByKindWeekly),
@@ -291,6 +453,12 @@ export default function Dashboard() {
     advisorFilter,
     activeAdvisors,
   ]);
+
+  const activitiesScopeLabel = useMemo(() => {
+    if (!canSeeAllAdvisors) return 'Mi cartera';
+    if (!advisorFilterIsActive) return 'Equipo completo';
+    return advisorExportLabel;
+  }, [advisorExportLabel, advisorFilterIsActive, canSeeAllAdvisors]);
 
   const handleExport = useCallback(
     (format: 'PDF' | 'Excel') => {
@@ -339,6 +507,119 @@ export default function Dashboard() {
 
   const dashboardChartModalClass =
     'max-h-[min(90vh,900px)] w-full max-w-[min(100vw-2rem,56rem)] gap-0 p-0 sm:max-w-[min(100vw-2rem,56rem)]';
+
+  const activitiesAdvisorChartHeight = useMemo(
+    () =>
+      Math.max(
+        200,
+        activitiesByAdvisorStackedView.advisors.length * 44 + 96,
+      ),
+    [activitiesByAdvisorStackedView.advisors.length],
+  );
+
+  const activitiesModalGoalDetail = useMemo(() => {
+    if (canSeeAllAdvisors || !myActivityGoalProgress) return null;
+    return {
+      actual: {
+        contacto: myActivityGoalProgress.row.llamadasContacto,
+        noContacto: myActivityGoalProgress.row.llamadasNoContacto,
+        reuniones: myActivityGoalProgress.row.reuniones,
+        correos: myActivityGoalProgress.row.correos,
+      },
+      target: myActivityGoalProgress.target,
+    };
+  }, [canSeeAllAdvisors, myActivityGoalProgress]);
+
+  const openActivitiesAdvisorDetail = useCallback((advisor: ActivitiesByAdvisorStackedRow) => {
+    setActivitiesAdvisorDetailSelection(advisor);
+    setActivitiesAdvisorDetailOpen(true);
+  }, []);
+
+  const openActivitiesModal = useCallback(() => {
+    setActivitiesChartView(canSeeAllAdvisors ? 'type' : 'advisor');
+    setActivitiesChartModalOpen(true);
+  }, [canSeeAllAdvisors]);
+
+  const renderActivitiesChartControls = () => (
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pt-1">
+      <div className="flex w-fit rounded-md border border-border/80 bg-muted/30 p-0.5">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className={cn(
+            'h-7 rounded px-2.5 text-xs font-medium',
+            activitiesChartView === 'type' && 'bg-background shadow-sm',
+          )}
+          onClick={() => setActivitiesChartView('type')}
+        >
+          Por tipo
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className={cn(
+            'h-7 rounded px-2.5 text-xs font-medium',
+            activitiesChartView === 'advisor' && 'bg-background shadow-sm',
+          )}
+          onClick={() => setActivitiesChartView('advisor')}
+        >
+          Por asesor
+        </Button>
+      </div>
+      {activitiesChartView === 'advisor' ? (
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {canEditActivityGoals ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 px-2.5 text-xs"
+              onClick={() => setActivityGoalsDialogOpen(true)}
+            >
+              <Target className="size-3.5" aria-hidden />
+              Metas
+            </Button>
+          ) : null}
+          <WeeklyPillFilter
+            weeks={activitiesAdvisorWeekOptions}
+            selectedIndex={activitiesAdvisorWeekPillIndex}
+            onChange={setActivitiesAdvisorWeekPillIndex}
+            className="justify-end"
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+
+  const renderActivitiesChart = (height: number) => {
+    if (activitiesChartView === 'type') {
+      return (
+        <ActivitiesByTypeWeeklyStackedChart
+          data={activitiesByTypeHeatmap}
+          scopeLabel={activitiesScopeLabel}
+          chartHeight={height}
+        />
+      );
+    }
+    if (!activitiesByAdvisorStackedHasData(activitiesByAdvisorStackedView)) {
+      return (
+        <p className="py-8 text-center text-sm text-muted-foreground">
+          Sin actividades en{' '}
+          {activitiesByAdvisorStackedView.weekLabel ?? 'esta semana'}.
+        </p>
+      );
+    }
+    return (
+      <ActivitiesByAdvisorStackedBarChart
+        data={activitiesByAdvisorStackedView}
+        goalByAdvisorId={activityGoalsByUserId}
+        chartHeight={height}
+        onAdvisorSelect={openActivitiesAdvisorDetail}
+      />
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -540,8 +821,8 @@ export default function Dashboard() {
               variant="ghost"
               size="icon"
               className="h-8 w-8 shrink-0 text-muted-foreground"
-              onClick={() => setActivitiesChartModalOpen(true)}
-              disabled={summaryLoading || activitiesChartEmpty}
+              onClick={openActivitiesModal}
+              disabled={summaryLoading || activitiesTypeChartEmpty}
               aria-label="Ampliar actividades"
             >
               <SquareBottomUpSvgIcon className={chartExpandIconClass} />
@@ -550,7 +831,7 @@ export default function Dashboard() {
           <CardContent className="flex flex-1 flex-col px-5 pt-2 pb-5">
             <ChartCardBody
               loading={summaryLoading}
-              isEmpty={activitiesChartEmpty}
+              isEmpty={activitiesTypeChartEmpty}
               variant="stackedBar"
               emptyMessage="Sin actividades registradas en las últimas 6 semanas."
               chartHeight={weeklyChartHeight}
@@ -558,7 +839,7 @@ export default function Dashboard() {
             >
               <ActivitiesByTypeWeeklyStackedChart
                 data={activitiesByTypeHeatmap}
-                scopeLabel="Equipo completo"
+                scopeLabel={activitiesScopeLabel}
                 chartHeight={weeklyChartHeight}
               />
             </ChartCardBody>
@@ -636,22 +917,87 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={activitiesChartModalOpen} onOpenChange={setActivitiesChartModalOpen}>
-        <DialogContent className={dashboardChartModalClass} showCloseButton closeButtonIcon="chart-reduce">
-          <DialogHeader className="px-6 pt-6 pb-0">
+      <Dialog
+        open={activitiesChartModalOpen}
+        onOpenChange={(open) => {
+          setActivitiesChartModalOpen(open);
+          if (!open && !canSeeAllAdvisors) {
+            setActivitiesChartView('advisor');
+          }
+        }}
+      >
+        <DialogContent
+          className={cn(dashboardChartModalClass, 'flex flex-col overflow-hidden')}
+          showCloseButton
+          closeButtonIcon="chart-reduce"
+        >
+          <DialogHeader className="shrink-0 px-6 pt-6 pb-0">
             <DialogTitle className="text-base">Actividades</DialogTitle>
+            <div className="pr-6">{renderActivitiesChartControls()}</div>
           </DialogHeader>
-          <div className="w-full px-6 pb-6 pt-4">
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-6 pb-6 pt-2">
+            {activitiesChartView === 'advisor' && activitiesModalGoalDetail ? (
+              <div className="mb-4 overflow-hidden rounded-lg border border-border/70 bg-muted/20">
+                <ActivityGoalSummary
+                  actual={activitiesModalGoalDetail.actual}
+                  target={activitiesModalGoalDetail.target}
+                />
+              </div>
+            ) : null}
             {!activitiesChartEmpty ? (
-              <ActivitiesByTypeWeeklyStackedChart
-                data={activitiesByTypeHeatmap}
-                scopeLabel="Equipo completo"
-                chartHeight={520}
-              />
+              renderActivitiesChart(
+                activitiesChartView === 'advisor'
+                  ? activitiesAdvisorChartHeight
+                  : 520,
+              )
             ) : null}
           </div>
         </DialogContent>
       </Dialog>
+
+      <ActivitiesByAdvisorDetailSheet
+        open={activitiesAdvisorDetailOpen}
+        onOpenChange={setActivitiesAdvisorDetailOpen}
+        advisorId={activitiesAdvisorDetailSelection?.advisorId ?? null}
+        advisorName={activitiesAdvisorDetailSelection?.advisorName ?? null}
+        weekLabel={
+          activitiesAdvisorSelectedWeek?.name ??
+          activitiesByAdvisorStackedView.weekLabel ??
+          null
+        }
+        weekStart={activitiesAdvisorSelectedWeek?.weekStart ?? null}
+        weekEnd={activitiesAdvisorSelectedWeek?.weekEnd ?? null}
+        detailQuery={activitiesAdvisorDetailQuery}
+        actualCounts={
+          activitiesAdvisorDetailSelection
+            ? {
+                contacto: activitiesAdvisorDetailSelection.llamadasContacto,
+                noContacto: activitiesAdvisorDetailSelection.llamadasNoContacto,
+                reuniones: activitiesAdvisorDetailSelection.reuniones,
+                correos: activitiesAdvisorDetailSelection.correos,
+              }
+            : null
+        }
+        goalTargets={
+          activitiesAdvisorDetailSelection
+            ? activityGoalsByUserId[activitiesAdvisorDetailSelection.advisorId] ??
+              null
+            : null
+        }
+      />
+
+      <ActivityGoalsDialog
+        open={activityGoalsDialogOpen}
+        onOpenChange={setActivityGoalsDialogOpen}
+        weekStart={activitiesAdvisorSelectedWeek?.weekStart ?? null}
+        weekLabel={
+          activitiesAdvisorSelectedWeek?.name ??
+          activitiesByAdvisorStackedView.weekLabel ??
+          null
+        }
+        advisors={activityGoalsAdvisors}
+        onSaved={setActivityGoalsByUserId}
+      />
 
       <Dialog open={tasksChartModalOpen} onOpenChange={setTasksChartModalOpen}>
         <DialogContent className={dashboardChartModalClass} showCloseButton closeButtonIcon="chart-reduce">

@@ -7,6 +7,8 @@ export type ActivitiesByAdvisorStackedRow = {
   advisorId: string;
   advisorName: string;
   llamadas: number;
+  llamadasContacto: number;
+  llamadasNoContacto: number;
   reuniones: number;
   correos: number;
   notas: number;
@@ -28,6 +30,8 @@ function mapActivitiesAdvisorRow(
       advisorId: advisor.advisorId,
       advisorName: advisor.advisorName,
       llamadas: advisor.llamadas,
+      llamadasContacto: advisor.llamadasContacto ?? 0,
+      llamadasNoContacto: advisor.llamadasNoContacto ?? 0,
       reuniones: advisor.reuniones,
       correos: advisor.correos,
       notas: advisor.notas,
@@ -40,6 +44,8 @@ function mapActivitiesAdvisorRow(
     advisorId: advisor.advisorId,
     advisorName: advisor.advisorName,
     llamadas: week?.llamadas ?? 0,
+    llamadasContacto: week?.llamadasContacto ?? 0,
+    llamadasNoContacto: week?.llamadasNoContacto ?? 0,
     reuniones: week?.reuniones ?? 0,
     correos: week?.correos ?? 0,
     notas: week?.notas ?? 0,

@@ -1,11 +1,10 @@
 import { useState, forwardRef, useImperativeHandle, useMemo } from 'react';
-import { CheckSquare, Phone, Mail, Users, MessageCircle } from 'lucide-react';
+import { Phone, Mail, Users, MessageCircle } from 'lucide-react';
 import { toast } from '@/lib/notify';
 import { priorityLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
 import { useAppStore } from '@/store';
-import { resolveAdvisorAssigneeId, canUserReassignCommercialAdvisor } from '@/lib/advisorAssigneeDefaults';
-import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
+import { resolveAdvisorAssigneeId } from '@/lib/advisorAssigneeDefaults';
 import { useActivities } from '@/hooks/useActivities';
 import type { Contact, Opportunity, TaskAssociation, Activity, TaskKind } from '@/types';
 import { TASK_KINDS } from '@/types';
@@ -17,12 +16,16 @@ import {
   normalizeTaskAssociations,
   taskFormHasEntityLinks,
 } from '@/lib/taskActivityUpdate';
+import {
+  fallbackTaskAssociationsFromEntityContext,
+  resolveLinkedCompanyFromTaskContext,
+  taskAssociationsFromActivity,
+  taskLinkBadgesFromActivity,
+} from '@/lib/taskAssociationsFromActivity';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -33,14 +36,10 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { formatDate, formatTodayPeruYmd, completedAtNowIso } from '@/lib/formatters';
 import { effectiveTaskStatus } from '@/lib/taskStatus';
-import { taskAssociationsFromActivity } from '@/lib/taskAssociationsFromActivity';
 import {
   activityTypeIconCircleClass,
   ACTIVITY_ICON_INHERIT,
@@ -48,6 +47,7 @@ import {
 import { cn } from '@/lib/utils';
 
 import { ActivityFormDialog } from './ActivityFormDialog';
+import { TaskFormDialog, type TaskFormResult } from './TaskFormDialog';
 import { TaskDetailDialog, type TaskDetailTask, type TaskComment as TaskDetailComment } from './TaskDetailDialog';
 
 type TaskStatus = 'pendiente' | 'completada' | 'en_progreso' | 'vencida';
@@ -197,7 +197,6 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
 }, ref) {
   const { users, activeAdvisors } = useUsers();
   const currentUser = useAppStore((s) => s.currentUser);
-  const canReassign = canUserReassignCommercialAdvisor(currentUser.role);
   const resolvedDefaultAssignee = resolveAdvisorAssigneeId(defaultAssigneeId, currentUser);
   const { activities, createActivity, updateActivity, deleteActivity } = useActivities();
 
@@ -302,14 +301,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
   const [linkedTaskPromptOpen, setLinkedTaskPromptOpen] = useState(false);
   const [linkPromptSourceTaskId, setLinkPromptSourceTaskId] = useState<string | null>(null);
   const [linkedTaskOpen, setLinkedTaskOpen] = useState(false);
-  const [linkedTaskTitle, setLinkedTaskTitle] = useState('');
-  const [linkedTaskType, setLinkedTaskType] = useState<TaskType | ''>('');
-  const [linkedTaskStatus, setLinkedTaskStatus] = useState<TaskStatus>('pendiente');
-  const [linkedTaskPriority, setLinkedTaskPriority] = useState<TaskPriority>('media');
-  const [linkedTaskAssignee, setLinkedTaskAssignee] = useState(resolvedDefaultAssignee);
-  const [linkedTaskTime, setLinkedTaskTime] = useState('');
-  const [linkedTaskStartDate, setLinkedTaskStartDate] = useState('');
-  const [linkedTaskDueDate, setLinkedTaskDueDate] = useState('');
+  const [linkedTaskDefaultAssociations, setLinkedTaskDefaultAssociations] = useState<TaskAssociation[] | undefined>();
   const [selectedTask, setSelectedTask] = useState<MockTask | null>(null);
   const [taskDetailOpen, setTaskDetailOpen] = useState(false);
   const [taskComments, setTaskComments] = useState<TaskComment[]>(initialComments);
@@ -329,15 +321,56 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
     description: t.description,
   })), [tasks]);
 
-  function resetLinkedTaskForm() {
-    setLinkedTaskTitle('');
-    setLinkedTaskType('');
-    setLinkedTaskStatus('pendiente');
-    setLinkedTaskPriority('media');
-    setLinkedTaskAssignee(resolvedDefaultAssignee);
-    setLinkedTaskTime('');
-    setLinkedTaskStartDate('');
-    setLinkedTaskDueDate('');
+  const completedTaskLinkedCompany = useMemo(() => {
+    if (!completedTask) return { id: undefined, name: undefined };
+    const assocs = completedTask.associations ?? [];
+    return resolveLinkedCompanyFromTaskContext(
+      assocs,
+      companyId,
+      completedTask.company ?? companies.find((c) => c.id === companyId)?.name,
+    );
+  }, [completedTask, companyId, companies]);
+
+  function buildLinkedTaskDefaultAssociations(source?: MockTask | null): TaskAssociation[] {
+    const fromTask = source?.associations?.length
+      ? source.associations.map((a) => ({ ...a }))
+      : [];
+    if (fromTask.length > 0) return fromTask;
+    return fallbackTaskAssociationsFromEntityContext({
+      contactId,
+      contactName: contacts.find((c) => c.id === contactId)?.name,
+      companyId,
+      companyName: companies.find((c) => c.id === companyId)?.name ?? source?.company,
+      opportunityId,
+      opportunityTitle: opportunities.find((o) => o.id === opportunityId)?.title,
+      clienteEmpresaId,
+      clienteEmpresaName,
+      contactoClienteId,
+      contactoClienteName,
+    });
+  }
+
+  async function handleLinkedTaskFormSave(data: TaskFormResult) {
+    if (!taskFormHasEntityLinks(data)) {
+      toast.error('Debes vincular la tarea a al menos un contacto, empresa u oportunidad');
+      throw new Error('TASK_FORM_VALIDATION');
+    }
+    try {
+      await createActivity(
+        buildCreateTaskPayloadFromForm(data, {
+          sourceTaskId: linkPromptSourceTaskId ?? undefined,
+        }),
+      );
+      toast.success(`Tarea "${data.title}" creada`);
+      setLinkedTaskOpen(false);
+      setCompletedTask(null);
+      setLinkPromptSourceTaskId(null);
+      setLinkedTaskDefaultAssociations(undefined);
+    } catch (e) {
+      if (e instanceof Error && e.message === 'TASK_FORM_VALIDATION') throw e;
+      toast.error(e instanceof Error ? e.message : 'Error al crear');
+      throw e;
+    }
   }
 
   function handleTaskToggle(taskId: string) {
@@ -488,7 +521,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
           type={completedTask.type}
           open={activityFromTaskOpen}
           onOpenChange={(open) => { setActivityFromTaskOpen(open); if (!open) setCompletedTask(null); }}
-          onSave={async (data) => {
+          onSave={async (data, meta) => {
             if (!completedTask?.type || !TASK_KINDS.includes(completedTask.type)) return;
             const t = completedTask;
             const kind = completedTask.type!;
@@ -502,6 +535,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
                 kind,
                 form: data,
                 task: sourceActivity,
+                extraContactIds: meta?.extraContactIds,
                 createActivity,
                 updateActivity,
               });
@@ -531,7 +565,18 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
             title: completedTask.title,
             company: completedTask.company,
             assignee: completedTask.assignee,
+            linkBadges: completedTask.associations?.length
+              ? completedTask.associations.map((x) => ({ type: x.type, name: x.name }))
+              : (() => {
+                  const act = activities.find((a) => a.id === completedTask.id);
+                  return act ? taskLinkBadgesFromActivity(act) : undefined;
+                })(),
           }}
+          linkedCompanyId={completedTaskLinkedCompany.id}
+          linkedCompanyName={completedTaskLinkedCompany.name}
+          defaultAssigneeId={
+            activities.find((a) => a.id === completedTask.id)?.assignedTo ?? resolvedDefaultAssignee
+          }
           defaultTitle={completedTask.title}
           defaultDate={formatTodayPeruYmd()}
           showSkip
@@ -570,8 +615,8 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
             <Button
               className="bg-[#13944C] hover:bg-[#0f7a3d]"
               onClick={() => {
+                setLinkedTaskDefaultAssociations(buildLinkedTaskDefaultAssociations(completedTask));
                 setLinkedTaskPromptOpen(false);
-                resetLinkedTaskForm();
                 setLinkedTaskOpen(true);
               }}
             >
@@ -581,138 +626,25 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
         </DialogContent>
       </Dialog>
 
-      {/* Formulario de tarea vinculada */}
-      <Dialog open={linkedTaskOpen} onOpenChange={(open) => {
-        setLinkedTaskOpen(open);
-        if (!open) {
-          setCompletedTask(null);
-          setLinkPromptSourceTaskId(null);
-        }
-      }}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CheckSquare className="size-5 text-amber-600" /> Nueva Tarea Vinculada
-            </DialogTitle>
-            <DialogDescription>
-              Crea una tarea para continuar con el proceso.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Título de la tarea *</Label>
-              <Input value={linkedTaskTitle} onChange={(e) => setLinkedTaskTitle(e.target.value)} placeholder="¿Qué necesitas hacer?" />
-            </div>
-            <div className="grid gap-4 grid-cols-2">
-              <AssignedAdvisorFormField
-                htmlId="linked-task-assignee"
-                value={linkedTaskAssignee}
-                onChange={setLinkedTaskAssignee}
-                disabled={!canReassign}
-                fallbackName={currentUser.name}
-                label="Asignar a"
-              />
-              <div className="space-y-2">
-                <Label>Tipo</Label>
-                <Select value={linkedTaskType} onValueChange={(v) => setLinkedTaskType(v as TaskType)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Seleccionar tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TASK_KINDS.map((key) => (
-                      <SelectItem key={key} value={key}>{taskTypeLabels[key]}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Estado</Label>
-                <Select value={linkedTaskStatus} onValueChange={(v) => setLinkedTaskStatus(v as TaskStatus)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(taskStatusLabels).map(([key, label]) => (
-                      <SelectItem key={key} value={key}>{label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Prioridad</Label>
-                <Select value={linkedTaskPriority} onValueChange={(v) => setLinkedTaskPriority(v as TaskPriority)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(priorityLabels).map(([key, label]) => (
-                      <SelectItem key={key} value={key}>{label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Hora estimada</Label>
-                <Input type="time" value={linkedTaskTime} onChange={(e) => setLinkedTaskTime(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Fecha de inicio</Label>
-                <Input type="date" value={linkedTaskStartDate} onChange={(e) => setLinkedTaskStartDate(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Fecha límite</Label>
-                <Input type="date" value={linkedTaskDueDate} onChange={(e) => setLinkedTaskDueDate(e.target.value)} />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setLinkedTaskOpen(false); setCompletedTask(null); resetLinkedTaskForm(); }}>
-              Cancelar
-            </Button>
-            <Button className="bg-[#13944C] hover:bg-[#0f7a3d]" onClick={async () => {
-              if (!linkedTaskTitle.trim()) { toast.error('El título es requerido'); return; }
-              const dueDate = linkedTaskDueDate || new Date().toISOString().slice(0, 10);
-              if (!contactId && !companyId && !opportunityId && !clienteEmpresaId && !contactoClienteId) {
-                toast.error('No hay entidad vinculada para la tarea');
-                return;
-              }
-              try {
-                const linkPayload = {
-                  ...(contactId ? { contactIds: [contactId] } : {}),
-                  ...(companyId ? { companyIds: [companyId] } : {}),
-                  ...(clienteEmpresaId ? { clienteEmpresaIds: [clienteEmpresaId] } : {}),
-                  ...(contactoClienteId ? { contactoClienteIds: [contactoClienteId] } : {}),
-                  ...(opportunityId ? { opportunityIds: [opportunityId] } : {}),
-                };
-                await createActivity({
-                  type: 'tarea',
-                  taskKind:
-                    linkedTaskType && TASK_KINDS.includes(linkedTaskType as TaskKind)
-                      ? linkedTaskType
-                      : 'llamada',
-                  title: linkedTaskTitle.trim(),
-                  description: '',
-                  assignedTo: linkedTaskAssignee || resolvedDefaultAssignee || activeAdvisors[0]?.id || '',
-                  dueDate,
-                  startDate: linkedTaskStartDate || undefined,
-                  startTime: linkedTaskTime || undefined,
-                  ...(linkPromptSourceTaskId ? { sourceTaskId: linkPromptSourceTaskId } : {}),
-                  ...linkPayload,
-                });
-                toast.success(`Tarea "${linkedTaskTitle}" creada`);
-                setLinkedTaskOpen(false);
-                setCompletedTask(null);
-                setLinkPromptSourceTaskId(null);
-                resetLinkedTaskForm();
-              } catch (e) {
-                toast.error(e instanceof Error ? e.message : 'Error al crear');
-              }
-            }}>
-              Crear tarea
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <TaskFormDialog
+        open={linkedTaskOpen}
+        onOpenChange={(open) => {
+          setLinkedTaskOpen(open);
+          if (!open) {
+            setCompletedTask(null);
+            setLinkPromptSourceTaskId(null);
+            setLinkedTaskDefaultAssociations(undefined);
+          }
+        }}
+        title="Nueva Tarea Vinculada"
+        description="Crea una tarea para continuar con el proceso."
+        contacts={contacts}
+        companies={companies}
+        opportunities={opportunities}
+        defaultAssigneeId={resolvedDefaultAssignee}
+        defaultAssociations={linkedTaskDefaultAssociations}
+        onSave={handleLinkedTaskFormSave}
+      />
 
       {/* Detalle de tarea */}
       <TaskDetailDialog

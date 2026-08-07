@@ -64,6 +64,28 @@ export type CrmSalesGoalsDto = {
   advisorMonthlyByYm?: Record<string, Record<string, number>>;
 };
 
+export type ActivityGoalTargets = {
+  contacto: number;
+  noContacto: number;
+  reuniones: number;
+  correos: number;
+};
+
+export function activityGoalTotal(targets: ActivityGoalTargets): number {
+  return (
+    targets.contacto +
+    targets.noContacto +
+    targets.reuniones +
+    targets.correos
+  );
+}
+
+export type CrmActivityGoalsDto = {
+  weekStart: string;
+  byUserId: Record<string, ActivityGoalTargets>;
+  canEdit: boolean;
+};
+
 export type CrmConfigBundle = {
   organization: CrmOrganizationDto | null;
   catalog: CrmCatalogDto;
@@ -72,6 +94,7 @@ export type CrmConfigBundle = {
     canEditConfig: boolean;
     canViewTeamGoals: boolean;
     canEditSalesGoals: boolean;
+    canEditActivityGoals: boolean;
   };
 };
 
@@ -159,5 +182,25 @@ export async function putCrmSalesGoals(body: {
   return api<CrmConfigBundle>('/crm-config/sales-goals', {
     method: 'PUT',
     body: JSON.stringify(body),
+  });
+}
+
+export async function fetchCrmActivityGoals(
+  weekStart: string,
+): Promise<CrmActivityGoalsDto> {
+  const q = new URLSearchParams({ weekStart: weekStart.slice(0, 10) });
+  return api<CrmActivityGoalsDto>(`/crm-config/activity-goals?${q}`);
+}
+
+export async function putCrmActivityGoals(body: {
+  weekStart: string;
+  byUserId: Record<string, Partial<ActivityGoalTargets>>;
+}): Promise<CrmActivityGoalsDto> {
+  return api<CrmActivityGoalsDto>('/crm-config/activity-goals', {
+    method: 'PUT',
+    body: JSON.stringify({
+      weekStart: body.weekStart.slice(0, 10),
+      byUserId: body.byUserId,
+    }),
   });
 }

@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type ComponentType } from 'react';
+import { type ComponentType } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { UserPlus, Briefcase, Users, Shield, Settings,
-  FileSearch, Bot, ArrowRightLeft, Search, ChevronDown,
+import { UserPlus, Users, Shield, Settings,
+  FileSearch, Bot, ArrowRightLeft, ChevronDown,
 } from 'lucide-react';
 import type { PermissionKey } from '@/types';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -24,8 +24,8 @@ import {
 
 import { useAppStore } from '@/store';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Popover, PopoverContent, PopoverAnchor } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { CollapsedSidebarFlyout } from '@/components/layout/CollapsedSidebarFlyout';
 import { APP_PATHS } from '@/lib/detailRoutes';
 import logoMark from '@/assets/logo.png';
 import tmWordmark from '@/assets/TM.png';
@@ -59,9 +59,6 @@ type NavDef = {
   children?: { to: string; label: string; icon: NavIcon }[];
 };
 
-const collapsedFlyoutClass =
-  'relative w-auto min-w-0 rounded-2xl border-0 bg-popover px-2 py-2 text-sm shadow-[0_4px_24px_rgba(15,23,42,0.1)] before:absolute before:-left-3 before:top-0 before:h-full before:w-3 before:content-[""]';
-
 const navItems: NavDef[] = [
   { to: '/dashboard', label: 'Dashboard', icon: DashboardSvgIcon, permission: 'dashboard.ver' },
   { to: APP_PATHS.contacts, label: 'Contactos', icon: UsersGroupTwoRoundedSvgIcon, permission: 'contactos.ver' },
@@ -77,8 +74,8 @@ const navItems: NavDef[] = [
     icon: SuitcaseSvgIcon,
     permission: 'clientes.ver',
     children: [
-      { to: APP_PATHS.clientCompanies, label: 'Empresas', icon: Briefcase },
-      { to: APP_PATHS.clientContacts, label: 'Contactos', icon: UserPlus },
+      { to: APP_PATHS.clientCompanies, label: 'Empresas', icon: Buildings2SvgIcon },
+      { to: APP_PATHS.clientContacts, label: 'Contactos', icon: UsersGroupTwoRoundedSvgIcon },
       { to: APP_PATHS.clientTasks, label: 'Tareas', icon: DocumentAddSvgIcon },
     ],
   },
@@ -89,7 +86,6 @@ const navItems: NavDef[] = [
     label: 'Integraciones',
     icon: CpuSvgIcon,
     children: [
-      { to: '/integraciones/apollo', label: 'Apollo', icon: Search },
       { to: '/agentes-ia', label: 'Agentes IA', icon: Bot },
     ],
   },
@@ -143,31 +139,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { logout, area, currentUser } = useAppStore();
   const { state: sidebarState } = useSidebar();
-  const [openPopover, setOpenPopover] = useState<string | null>(null);
-  const popoverCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isCollapsed = sidebarState === 'collapsed';
-
-  const clearPopoverCloseTimer = () => {
-    if (popoverCloseTimerRef.current) {
-      clearTimeout(popoverCloseTimerRef.current);
-      popoverCloseTimerRef.current = null;
-    }
-  };
-
-  const openCollapsedPopover = (key: string) => {
-    clearPopoverCloseTimer();
-    setOpenPopover(key);
-  };
-
-  const scheduleCollapsedPopoverClose = () => {
-    clearPopoverCloseTimer();
-    popoverCloseTimerRef.current = setTimeout(() => {
-      setOpenPopover(null);
-      popoverCloseTimerRef.current = null;
-    }, 120);
-  };
-
-  useEffect(() => () => clearPopoverCloseTimer(), []);
 
   const { hasPermission } = usePermissions();
   const allowedAreas = currentUser.allowedAreas || [];
@@ -217,70 +189,33 @@ export function AppSidebar() {
 
                 if (item.children) {
                   return isCollapsed ? (
-                    <SidebarMenuItem
+                    <CollapsedSidebarFlyout
                       key={item.to}
-                      className="relative"
-                      onMouseEnter={() => openCollapsedPopover(item.to)}
-                      onMouseLeave={scheduleCollapsedPopoverClose}
+                      itemKey={item.to}
+                      label={item.label}
+                      icon={item.icon}
+                      isActive={hasActiveChild}
                     >
-                        <Popover
-                          open={openPopover === item.to}
-                          onOpenChange={(open) => {
-                            if (open) openCollapsedPopover(item.to);
-                            else {
-                              clearPopoverCloseTimer();
-                              setOpenPopover(null);
-                            }
-                          }}
-                        >
-                          <PopoverAnchor asChild>
-                            <span
-                              aria-hidden
-                              className="pointer-events-none absolute top-1/2 right-0 size-px -translate-y-1/2"
-                            />
-                          </PopoverAnchor>
-                          <SidebarMenuButton
-                            isActive={hasActiveChild}
-                            className={cn('w-full outline-none focus-visible:outline-none focus-visible:ring-0', hasActiveChild && 'text-sidebar-accent-foreground')}
+                      {item.children.map((child) => {
+                        const isChildActive = location.pathname.startsWith(child.to);
+                        return (
+                          <NavLink
+                            key={child.to}
+                            to={child.to}
+                            className={cn(
+                              'group/flyout-item flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm whitespace-nowrap transition-colors',
+                              'text-popover-foreground/90 hover:bg-muted hover:text-foreground',
+                              'dark:hover:bg-white/10 dark:hover:text-popover-foreground',
+                              isChildActive &&
+                                'bg-muted font-medium text-primary dark:bg-primary/12 dark:text-primary',
+                            )}
                           >
-                            <item.icon />
-                            <span>{item.label}</span>
-                          </SidebarMenuButton>
-                          <PopoverContent
-                            side="right"
-                            align="center"
-                            sideOffset={0}
-                            className={cn('border-0 p-0', collapsedFlyoutClass)}
-                            onMouseEnter={() => openCollapsedPopover(item.to)}
-                            onMouseLeave={scheduleCollapsedPopoverClose}
-                          >
-                          <div className="flex flex-col gap-0.5">
-                          {item.children.map((child) => {
-                            const isChildActive = location.pathname.startsWith(child.to);
-                            return (
-                              <NavLink
-                                key={child.to}
-                                to={child.to}
-                                className={cn(
-                                  'flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm whitespace-nowrap transition-colors hover:bg-muted/60',
-                                  isChildActive && 'font-medium text-primary',
-                                )}
-                              >
-                                <span
-                                  className={cn(
-                                    'size-1.5 shrink-0 rounded-full',
-                                    isChildActive ? 'bg-primary' : 'bg-foreground/75',
-                                  )}
-                                  aria-hidden
-                                />
-                                {child.label}
-                              </NavLink>
-                            );
-                          })}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    </SidebarMenuItem>
+                            <child.icon className="size-4 shrink-0 opacity-70 transition-opacity group-hover/flyout-item:opacity-100" />
+                            {child.label}
+                          </NavLink>
+                        );
+                      })}
+                    </CollapsedSidebarFlyout>
                   ) : (
                     <Collapsible key={item.to} defaultOpen={hasActiveChild} className="group/collapsible">
                       <SidebarMenuItem>

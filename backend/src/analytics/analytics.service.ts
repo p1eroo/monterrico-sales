@@ -1,4 +1,11 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  callInteractionTypeKey,
+  callOutcomeGroupFromResult,
+  callOutcomeLabel,
+  callResultDetailLabel,
+  parseCallResultFromDescription,
+} from '../activities/call-result.util';
 import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
@@ -128,6 +135,9 @@ type ActiveProspectsWeekRow = {
   weekEnd: string;
   total: number;
   byStage: ActiveProspectStageRow[];
+  /** Empresas con actividad en la semana (alta o cambio de etapa), por etapa al cierre. */
+  activityTotal: number;
+  activityByStage: ActiveProspectStageRow[];
 };
 
 type ActiveProspectsWeeklySnapshot = {
@@ -175,6 +185,9 @@ type ActiveProspectsAdvisorWeekRow = {
   advisors: { id: string; name: string }[];
   stages: ActiveProspectsAdvisorStageRow[];
   estimatedBillingByAdvisor: Record<string, number>;
+  /** Matriz asesor × etapa solo para empresas con actividad en la semana. */
+  activityStages: ActiveProspectsAdvisorStageRow[];
+  activityBillingByAdvisor: Record<string, number>;
 };
 
 type ActiveProspectsByAdvisorWeeklySnapshot = {
@@ -243,6 +256,9 @@ type ActivitiesByAdvisorDetailRow = {
   typeLabel: string;
   title: string;
   completedAt: string;
+  callOutcome?: 'contacto' | 'no_contacto';
+  callOutcomeLabel?: string;
+  callResultLabel?: string;
   companies: ActivitiesByAdvisorDetailEntity[];
   contacts: ActivitiesByAdvisorDetailEntity[];
   opportunities: { id: string; title: string; urlSlug: string }[];
@@ -280,7 +296,7 @@ type CompaniesBySourceWeeklySnapshot = {
 };
 
 type ActivitiesByTypeWeeklyRow = {
-  key: 'llamadas' | 'reuniones' | 'correos';
+  key: 'llamadas_contacto' | 'llamadas_no_contacto' | 'reuniones' | 'correos';
   label: string;
   counts: number[];
   total: number;
@@ -296,12 +312,16 @@ type ActivitiesByAdvisorWeeklyRow = {
   advisorId: string;
   advisorName: string;
   llamadas: number;
+  llamadasContacto: number;
+  llamadasNoContacto: number;
   reuniones: number;
   correos: number;
   notas: number;
   total: number;
   byWeek: {
     llamadas: number;
+    llamadasContacto: number;
+    llamadasNoContacto: number;
     reuniones: number;
     correos: number;
     notas: number;
@@ -350,19 +370,17 @@ type TasksByAdvisorWeeklySnapshot = {
 };
 
 const ACTIVITY_TYPE_DEFINITIONS = [
-  { key: 'llamadas' as const, label: 'Llamadas' },
+  { key: 'llamadas_contacto' as const, label: 'Contacto' },
+  { key: 'llamadas_no_contacto' as const, label: 'No contacto' },
   { key: 'reuniones' as const, label: 'Reuniones' },
   { key: 'correos' as const, label: 'Correos' },
 ];
 
 function activityTypeKeyFromRaw(
   type: string | null | undefined,
+  description?: string | null,
 ): ActivitiesByTypeWeeklyRow['key'] | null {
-  const t = type?.toLowerCase() ?? '';
-  if (t === 'llamada') return 'llamadas';
-  if (t === 'reunion' || t === 'reunión') return 'reuniones';
-  if (t === 'correo') return 'correos';
-  return null;
+  return callInteractionTypeKey(type, description);
 }
 
 function activityTypeDisplayLabel(type: string | null | undefined): string {
@@ -423,7 +441,11 @@ const COMPANY_WEEKLY_CHART_WEEKS = 6;
 const WEEKLY_CHART_MAX_WEEKS = 20;
 const SOURCES_WEEKLY_CHART_WEEKS = 6;
 const SOURCES_DETAIL_WEEKLY_COUNT = 5;
-const ADVISOR_FUNNEL_MOVEMENT_WEEK_OFFSETS = [1, 3, 5, 7] as const;
+/** Semanas consecutivas hacia atrás desde la semana de referencia (W30→W31, W29→W30, …). */
+const ADVISOR_FUNNEL_MOVEMENT_WEEK_OFFSETS = Array.from(
+  { length: COMPANY_WEEKLY_CHART_WEEKS },
+  (_, index) => index + 1,
+);
 const UNASSIGNED_ADVISOR_ID = '__unassigned__';
 const UNASSIGNED_SOURCE_SLUG = '__sin_fuente__';
 const ACTIVE_PROSPECT_MIN_PROBABILITY = 10;
@@ -1531,6 +1553,17 @@ export class AnalyticsService {
     return this.classifyCompanyEtapaTransition(first.oldSlug, last.newSlug, getProb);
   }
 
+  /** Empresa creada o con cambio de etapa dentro del rango semanal. */
+  private companyHadStageActivityInWeek(
+    company: { createdAt: Date },
+    clipStart: Date,
+    clipEnd: Date,
+    etapaAudits: { at: Date }[],
+  ): boolean {
+    if (company.createdAt >= clipStart && company.createdAt <= clipEnd) return true;
+    return etapaAudits.some((e) => e.at >= clipStart && e.at <= clipEnd);
+  }
+
   private classifyCompanyMovementInWeekClip(
     company: { id: string; createdAt: Date },
     clipStart: Date,
@@ -1703,8 +1736,8 @@ export class AnalyticsService {
   }
 
   /**
-   * Movimiento del embudo por asesor en las últimas 4 parejas de semanas ISO
-   * (ej. W27→W28, W25→W26, W23→W24, W21→W22 si la semana en curso es W29).
+   * Movimiento del embudo por asesor: parejas consecutivas de semanas ISO
+   * (ej. W30→W31, W29→W30, … hasta 6 semanas atrás respecto a la referencia).
    */
   private async buildCompaniesAdvisorFunnelMovement(
     referenceTo: Date,
@@ -2248,6 +2281,7 @@ export class AnalyticsService {
           id: true,
           type: true,
           title: true,
+          description: true,
           completedAt: true,
           companies: {
             include: {
@@ -2280,28 +2314,47 @@ export class AnalyticsService {
         : advisorUser?.name?.trim() || 'Sin nombre';
     const weekLabel = formatIsoWeekLabel(isoWeekNumberLima(weekStart));
 
-    const data: ActivitiesByAdvisorDetailRow[] = rows.map((row) => ({
-      id: row.id,
-      type: row.type,
-      typeLabel: activityTypeDisplayLabel(row.type),
-      title: row.title.trim() || row.type,
-      completedAt: row.completedAt?.toISOString() ?? '',
-      companies: row.companies.map(({ company }) => ({
-        id: company.id,
-        name: company.name.trim() || 'Sin nombre',
-        urlSlug: company.urlSlug?.trim() || company.id,
-      })),
-      contacts: row.contacts.map(({ contact }) => ({
-        id: contact.id,
-        name: contact.name.trim() || 'Sin nombre',
-        urlSlug: contact.urlSlug?.trim() || contact.id,
-      })),
-      opportunities: row.opportunities.map(({ opportunity }) => ({
-        id: opportunity.id,
-        title: opportunity.title.trim() || 'Sin título',
-        urlSlug: opportunity.urlSlug?.trim() || opportunity.id,
-      })),
-    }));
+    const data: ActivitiesByAdvisorDetailRow[] = rows.map((row) => {
+      const typeKey = row.type?.toLowerCase().trim() ?? '';
+      const parsedResult =
+        typeKey === 'llamada'
+          ? parseCallResultFromDescription(row.description)
+          : null;
+      const callOutcome =
+        typeKey === 'llamada'
+          ? callOutcomeGroupFromResult(parsedResult)
+          : undefined;
+
+      return {
+        id: row.id,
+        type: row.type,
+        typeLabel: activityTypeDisplayLabel(row.type),
+        title: row.title.trim() || row.type,
+        completedAt: row.completedAt?.toISOString() ?? '',
+        ...(callOutcome
+          ? {
+              callOutcome,
+              callOutcomeLabel: callOutcomeLabel(callOutcome),
+              callResultLabel: callResultDetailLabel(parsedResult) ?? undefined,
+            }
+          : {}),
+        companies: row.companies.map(({ company }) => ({
+          id: company.id,
+          name: company.name.trim() || 'Sin nombre',
+          urlSlug: company.urlSlug?.trim() || company.id,
+        })),
+        contacts: row.contacts.map(({ contact }) => ({
+          id: contact.id,
+          name: contact.name.trim() || 'Sin nombre',
+          urlSlug: contact.urlSlug?.trim() || contact.id,
+        })),
+        opportunities: row.opportunities.map(({ opportunity }) => ({
+          id: opportunity.id,
+          title: opportunity.title.trim() || 'Sin título',
+          urlSlug: opportunity.urlSlug?.trim() || opportunity.id,
+        })),
+      };
+    });
 
     const totalPages = Math.max(1, Math.ceil(total / limit));
     const safePage = Math.min(page, totalPages);
@@ -2572,7 +2625,9 @@ export class AnalyticsService {
 
     const weeks: CompanyWeeklyStageRow[] = weekMondays.map((monday) => {
       const weekEnd = minInstant(endOfWeekSundayLima(monday), referenceTo);
+      const clipStart = monday;
       const counts = new Map<string, number>();
+      const activityCounts = new Map<string, number>();
 
       for (const company of portfolioCompanies) {
         if (company.createdAt < yearStart || company.createdAt > weekEnd) continue;
@@ -2581,6 +2636,18 @@ export class AnalyticsService {
         const slug = etapaFn(weekEnd).trim();
         if (!isQualifyingSlug(slug)) continue;
         counts.set(slug, (counts.get(slug) ?? 0) + 1);
+
+        const etapaAudits = auditsByCompany.get(company.id) ?? [];
+        if (
+          this.companyHadStageActivityInWeek(
+            company,
+            clipStart,
+            weekEnd,
+            etapaAudits,
+          )
+        ) {
+          activityCounts.set(slug, (activityCounts.get(slug) ?? 0) + 1);
+        }
       }
 
       const byStage: ActiveProspectStageRow[] = [...counts.entries()]
@@ -2599,7 +2666,24 @@ export class AnalyticsService {
           return oa - ob;
         });
 
+      const activityByStage: ActiveProspectStageRow[] = [...activityCounts.entries()]
+        .map(([slug, count]) => {
+          const meta = stageMeta.get(slug);
+          return {
+            slug,
+            name: meta?.name ?? slug,
+            probability: meta?.probability ?? getProbability(slug),
+            count,
+          };
+        })
+        .sort((a, b) => {
+          const oa = stageMeta.get(a.slug)?.sortOrder ?? 999_999;
+          const ob = stageMeta.get(b.slug)?.sortOrder ?? 999_999;
+          return oa - ob;
+        });
+
       const total = byStage.reduce((sum, row) => sum + row.count, 0);
+      const activityTotal = activityByStage.reduce((sum, row) => sum + row.count, 0);
 
       return {
         name: isoWeekLabelFromInstant(monday),
@@ -2607,6 +2691,8 @@ export class AnalyticsService {
         weekEnd: weekEnd.toISOString(),
         total,
         byStage,
+        activityTotal,
+        activityByStage,
       };
     });
 
@@ -2978,13 +3064,20 @@ export class AnalyticsService {
       countsBySlugAdvisor: Map<string, Map<string, number>>;
       billingByAdvisor: Map<string, number>;
       advisorIds: Set<string>;
+      activityCountsBySlugAdvisor: Map<string, Map<string, number>>;
+      activityBillingByAdvisor: Map<string, number>;
+      activityAdvisorIds: Set<string>;
     };
 
     const rawWeeks: WeekRaw[] = weekMondays.map((monday) => {
       const weekEnd = minInstant(endOfWeekSundayLima(monday), referenceTo);
+      const clipStart = monday;
       const countsBySlugAdvisor = new Map<string, Map<string, number>>();
       const billingByAdvisor = new Map<string, number>();
       const advisorIds = new Set<string>();
+      const activityCountsBySlugAdvisor = new Map<string, Map<string, number>>();
+      const activityBillingByAdvisor = new Map<string, number>();
+      const activityAdvisorIds = new Set<string>();
 
       for (const company of portfolioCompanies) {
         if (company.createdAt < yearStart || company.createdAt > weekEnd) continue;
@@ -3010,6 +3103,31 @@ export class AnalyticsService {
             (billingByAdvisor.get(advisorId) ?? 0) + amount,
           );
         }
+
+        const etapaAudits = auditsByCompanyField.get(`${company.id}:etapa`) ?? [];
+        if (
+          !this.companyHadStageActivityInWeek(
+            company,
+            clipStart,
+            weekEnd,
+            etapaAudits,
+          )
+        ) {
+          continue;
+        }
+
+        activityAdvisorIds.add(advisorId);
+        const activityByAdvisor =
+          activityCountsBySlugAdvisor.get(slug) ?? new Map<string, number>();
+        activityByAdvisor.set(advisorId, (activityByAdvisor.get(advisorId) ?? 0) + 1);
+        activityCountsBySlugAdvisor.set(slug, activityByAdvisor);
+
+        if (amount > 0) {
+          activityBillingByAdvisor.set(
+            advisorId,
+            (activityBillingByAdvisor.get(advisorId) ?? 0) + amount,
+          );
+        }
       }
 
       return {
@@ -3019,12 +3137,16 @@ export class AnalyticsService {
         countsBySlugAdvisor,
         billingByAdvisor,
         advisorIds,
+        activityCountsBySlugAdvisor,
+        activityBillingByAdvisor,
+        activityAdvisorIds,
       };
     });
 
     const globalAdvisorIds = new Set<string>();
     for (const w of rawWeeks) {
       for (const id of w.advisorIds) globalAdvisorIds.add(id);
+      for (const id of w.activityAdvisorIds) globalAdvisorIds.add(id);
     }
 
     const missingAdvisorIds = [...globalAdvisorIds].filter(
@@ -3067,6 +3189,9 @@ export class AnalyticsService {
       for (const slug of raw.countsBySlugAdvisor.keys()) {
         if (isQualifyingSlug(slug)) stageSlugs.add(slug);
       }
+      for (const slug of raw.activityCountsBySlugAdvisor.keys()) {
+        if (isQualifyingSlug(slug)) stageSlugs.add(slug);
+      }
 
       const orderedSlugs = [...stageSlugs].sort((a, b) => {
         const oa = stageMeta.get(a)?.sortOrder ?? 999_999;
@@ -3074,25 +3199,34 @@ export class AnalyticsService {
         return oa - ob;
       });
 
-      const stages: ActiveProspectsAdvisorStageRow[] = orderedSlugs.map((slug) => {
-        const byAdvisor = raw.countsBySlugAdvisor.get(slug);
-        const countsByAdvisor: Record<string, number> = {};
-        for (const advisorId of globalAdvisorOrder) {
-          countsByAdvisor[advisorId] = byAdvisor?.get(advisorId) ?? 0;
-        }
-        const meta = stageMeta.get(slug);
-        return {
-          slug,
-          name: meta?.name ?? slug,
-          probability: meta?.probability ?? getProbability(slug),
-          countsByAdvisor,
-        };
-      });
+      const buildStageRows = (
+        countsMap: Map<string, Map<string, number>>,
+      ): ActiveProspectsAdvisorStageRow[] =>
+        orderedSlugs.map((slug) => {
+          const byAdvisor = countsMap.get(slug);
+          const countsByAdvisor: Record<string, number> = {};
+          for (const advisorId of globalAdvisorOrder) {
+            countsByAdvisor[advisorId] = byAdvisor?.get(advisorId) ?? 0;
+          }
+          const meta = stageMeta.get(slug);
+          return {
+            slug,
+            name: meta?.name ?? slug,
+            probability: meta?.probability ?? getProbability(slug),
+            countsByAdvisor,
+          };
+        });
+
+      const stages = buildStageRows(raw.countsBySlugAdvisor);
+      const activityStages = buildStageRows(raw.activityCountsBySlugAdvisor);
 
       const estimatedBillingByAdvisor: Record<string, number> = {};
+      const activityBillingByAdvisor: Record<string, number> = {};
       for (const advisorId of globalAdvisorOrder) {
         estimatedBillingByAdvisor[advisorId] =
           raw.billingByAdvisor.get(advisorId) ?? 0;
+        activityBillingByAdvisor[advisorId] =
+          raw.activityBillingByAdvisor.get(advisorId) ?? 0;
       }
 
       return {
@@ -3102,6 +3236,8 @@ export class AnalyticsService {
         advisors,
         stages,
         estimatedBillingByAdvisor,
+        activityStages,
+        activityBillingByAdvisor,
       };
     });
 
@@ -3410,7 +3546,7 @@ export class AnalyticsService {
         filters,
         unrestricted,
       ),
-      select: { completedAt: true, type: true },
+      select: { completedAt: true, type: true, description: true },
     });
 
     const weekIndexByName = new Map(
@@ -3428,7 +3564,7 @@ export class AnalyticsService {
 
     for (const act of acts) {
       if (!act.completedAt) continue;
-      const typeKey = activityTypeKeyFromRaw(act.type);
+      const typeKey = activityTypeKeyFromRaw(act.type, act.description);
       if (!typeKey) continue;
 
       let weekIndex: number | null = null;
@@ -3496,18 +3632,20 @@ export class AnalyticsService {
         filters,
         unrestricted,
       ),
-      select: { completedAt: true, type: true, assignedTo: true },
+      select: { completedAt: true, type: true, description: true, assignedTo: true },
     });
 
     type AdvisorCounts = {
-      llamadas: number;
+      llamadasContacto: number;
+      llamadasNoContacto: number;
       reuniones: number;
       correos: number;
       notas: number;
     };
 
     const emptyCounts = (): AdvisorCounts => ({
-      llamadas: 0,
+      llamadasContacto: 0,
+      llamadasNoContacto: 0,
       reuniones: 0,
       correos: 0,
       notas: 0,
@@ -3525,7 +3663,7 @@ export class AnalyticsService {
 
     for (const act of acts) {
       if (!act.completedAt) continue;
-      const typeKey = activityTypeKeyFromRaw(act.type);
+      const typeKey = activityTypeKeyFromRaw(act.type, act.description);
       if (!typeKey) continue;
 
       let weekIndex: number | null = null;
@@ -3543,7 +3681,15 @@ export class AnalyticsService {
       const advisorId = act.assignedTo?.trim() || UNASSIGNED_ADVISOR_ID;
       const rows = ensureAdvisorWeeks(advisorId);
       const row = rows[weekIndex] ?? emptyCounts();
-      row[typeKey] = (row[typeKey] ?? 0) + 1;
+      if (typeKey === 'llamadas_contacto') {
+        row.llamadasContacto = (row.llamadasContacto ?? 0) + 1;
+      } else if (typeKey === 'llamadas_no_contacto') {
+        row.llamadasNoContacto = (row.llamadasNoContacto ?? 0) + 1;
+      } else if (typeKey === 'reuniones') {
+        row.reuniones = (row.reuniones ?? 0) + 1;
+      } else if (typeKey === 'correos') {
+        row.correos = (row.correos ?? 0) + 1;
+      }
       rows[weekIndex] = row;
     }
 
@@ -3572,32 +3718,36 @@ export class AnalyticsService {
       .map(([advisorId, byWeekRows]) => {
         const totals = emptyCounts();
         const byWeek = byWeekRows.map((weekRow) => {
-          totals.llamadas += weekRow.llamadas;
+          totals.llamadasContacto += weekRow.llamadasContacto;
+          totals.llamadasNoContacto += weekRow.llamadasNoContacto;
           totals.reuniones += weekRow.reuniones;
           totals.correos += weekRow.correos;
           totals.notas += weekRow.notas;
+          const weekLlamadas =
+            weekRow.llamadasContacto + weekRow.llamadasNoContacto;
           const weekTotal =
-            weekRow.llamadas +
-            weekRow.reuniones +
-            weekRow.correos +
-            weekRow.notas;
+            weekLlamadas + weekRow.reuniones + weekRow.correos + weekRow.notas;
           return {
-            llamadas: weekRow.llamadas,
+            llamadas: weekLlamadas,
+            llamadasContacto: weekRow.llamadasContacto,
+            llamadasNoContacto: weekRow.llamadasNoContacto,
             reuniones: weekRow.reuniones,
             correos: weekRow.correos,
             notas: weekRow.notas,
             total: weekTotal,
           };
         });
-        const total =
-          totals.llamadas +
-          totals.reuniones +
-          totals.correos +
-          totals.notas;
+        const llamadas = totals.llamadasContacto + totals.llamadasNoContacto;
+        const total = llamadas + totals.reuniones + totals.correos + totals.notas;
         return {
           advisorId,
           advisorName: resolveAdvisorName(advisorId),
-          ...totals,
+          llamadas,
+          llamadasContacto: totals.llamadasContacto,
+          llamadasNoContacto: totals.llamadasNoContacto,
+          reuniones: totals.reuniones,
+          correos: totals.correos,
+          notas: totals.notas,
           total,
           byWeek,
         };
