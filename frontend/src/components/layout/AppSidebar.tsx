@@ -203,14 +203,20 @@ export function AppSidebar() {
                             key={child.to}
                             to={child.to}
                             className={cn(
-                              'group/flyout-item flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm whitespace-nowrap transition-colors',
-                              'text-popover-foreground/90 hover:bg-muted hover:text-foreground',
-                              'dark:hover:bg-white/10 dark:hover:text-popover-foreground',
+                              'group/flyout-item flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-normal whitespace-nowrap transition-colors',
+                              'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                               isChildActive &&
-                                'bg-muted font-medium text-primary dark:bg-primary/12 dark:text-primary',
+                                'bg-sidebar-accent text-sidebar-accent-foreground',
                             )}
                           >
-                            <child.icon className="size-4 shrink-0 opacity-70 transition-opacity group-hover/flyout-item:opacity-100" />
+                            <child.icon
+                              className={cn(
+                                'size-4 shrink-0 transition-colors',
+                                isChildActive
+                                  ? 'text-sidebar-icon-active'
+                                  : 'text-sidebar-icon group-hover/flyout-item:text-sidebar-icon-active',
+                              )}
+                            />
                             {child.label}
                           </NavLink>
                         );

@@ -32,11 +32,6 @@ import {
   Info,
   RefreshCw,
   UserPlus,
-  Phone,
-  Mail,
-  Users,
-  MessageSquare,
-  CheckSquare,
   Search,
 } from "lucide-react";
 import { toast } from '@/lib/notify';
@@ -111,7 +106,7 @@ import { AssignDialog } from "@/components/shared/AssignDialog";
 import { cn } from "@/lib/utils";
 import { comercialFilterIconClass, comercialFilterIconLgClass, comercialProPopoverClass, comercialProCommandClass } from "@/lib/comercialFilterSurface";
 import { formatCurrencyShort, formatDateShortLocal } from "@/lib/formatters";
-import type { ActivityType } from "@/types";
+import { activityTypeSvgIcon } from "@/lib/activityTypeSvgIcons";
 
 export type PipelineStageColumnConfig = {
   id: Etapa;
@@ -267,14 +262,6 @@ const PIPELINE_VIRTUAL_MIN_CARDS = 16;
 /** Altura base por fila (px); `measureElement` ajusta con el contenido real. */
 const PIPELINE_CARD_ESTIMATE_PX = 150;
 const PIPELINE_CARD_GAP_PX = 8;
-
-const activityTypeIconMap: Record<ActivityType, typeof Phone> = {
-  llamada: Phone,
-  reunion: Users,
-  tarea: CheckSquare,
-  correo: Mail,
-  whatsapp: MessageSquare,
-};
 
 // --- Draggable card: useDraggable hace menos trabajo por frame que useSortable + SortableContext.
 //    Misma LeadCard en lista y en DragOverlay (UX); colisión solo contra columnas (pipelineCollisionDetection).
@@ -752,8 +739,7 @@ function CardDetailDialog({
                 </p>
                 <div className="space-y-1.5">
                   {recentActivities.map((act) => {
-                    const Icon =
-                      activityTypeIconMap[act.type as ActivityType] ?? Phone;
+                    const Icon = activityTypeSvgIcon(act.type);
                     return (
                       <div
                         key={act.id}

@@ -13,13 +13,11 @@ import { SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 const HOVER_OPEN_DELAY_MS = 120;
 const CLOSE_DELAY_MS = 200;
 
-/** Panel flyout del sidebar colapsado: fondo neutro en claro; sólido en oscuro. */
+/** Panel flyout del sidebar colapsado: mismo fondo que el sidebar. */
 const sidebarFlyoutSurfaceClass = cn(
-  'z-[200] w-auto min-w-[11rem] overflow-hidden rounded-2xl p-1.5 text-popover-foreground',
-  'border border-border bg-white',
-  'shadow-[0_12px_40px_rgba(15,23,42,0.12)]',
-  'dark:border-white/12 dark:bg-[#212b36]',
-  'dark:shadow-[0_10px_36px_rgba(0,0,0,0.42)]',
+  'z-[200] w-auto min-w-[11rem] overflow-hidden rounded-2xl p-1.5',
+  'border border-sidebar-border bg-sidebar text-sidebar-foreground',
+  'shadow-[0_12px_40px_rgba(0,0,0,0.22)]',
 );
 
 type CollapsedSidebarFlyoutProps = {

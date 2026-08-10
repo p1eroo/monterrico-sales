@@ -1,25 +1,25 @@
-import {
-  MessageSquare, Phone, Calendar, Mail, Paperclip, ClipboardList,
-} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { activityTypeSvgIcon } from '@/lib/activityTypeSvgIcons';
 
 interface QuickActionsBarProps {
   onAction: (type: string) => void;
 }
 
 const actions = [
-  { type: 'nota', icon: MessageSquare, label: 'Nota' },
-  { type: 'llamada', icon: Phone, label: 'Llamada' },
-  { type: 'reunion', icon: Calendar, label: 'Reunión' },
-  { type: 'correo', icon: Mail, label: 'Correo' },
-  { type: 'archivo', icon: Paperclip, label: 'Archivo' },
-  { type: 'tarea', icon: ClipboardList, label: 'Tarea' },
-];
+  { type: 'nota', label: 'Nota' },
+  { type: 'llamada', label: 'Llamada' },
+  { type: 'reunion', label: 'Reunión' },
+  { type: 'correo', label: 'Correo' },
+  { type: 'archivo', label: 'Archivo' },
+  { type: 'tarea', label: 'Tarea' },
+] as const;
 
 export function QuickActionsBar({ onAction }: QuickActionsBarProps) {
   return (
     <div className="flex flex-wrap gap-1 rounded-lg bg-muted/40 p-1.5 border border-border/40">
-      {actions.map((a) => (
+      {actions.map((a) => {
+        const Icon = activityTypeSvgIcon(a.type);
+        return (
         <Button
           key={a.type}
           variant="ghost"
@@ -27,9 +27,10 @@ export function QuickActionsBar({ onAction }: QuickActionsBarProps) {
           className="text-muted-foreground hover:text-foreground"
           onClick={() => onAction(a.type)}
         >
-          <a.icon className="size-4" /> {a.label}
+          <Icon className="size-4" /> {a.label}
         </Button>
-      ))}
+        );
+      })}
     </div>
   );
 }

@@ -1,14 +1,5 @@
 import { useState } from 'react';
-import type { LucideIcon } from 'lucide-react';
-import {
-  Plus,
-  Phone,
-  StickyNote,
-  CalendarPlus,
-  Mail,
-  Paperclip,
-  CheckSquare,
-} from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { toast } from '@/lib/notify';
 import type { Contact, Opportunity, TaskAssociation } from '@/types';
 import { useActivities } from '@/hooks/useActivities';
@@ -17,6 +8,7 @@ import {
   taskFormHasEntityLinks,
 } from '@/lib/taskActivityUpdate';
 import { contactLineFromTaskAssociations } from '@/lib/taskAssociationsFromActivity';
+import { activityTypeSvgIcon } from '@/lib/activityTypeSvgIcons';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -72,49 +64,36 @@ const MENU_OPTIONS: {
   type: QuickMenuType;
   label: string;
   description: string;
-  icon: LucideIcon;
-  shortcut?: string;
 }[] = [
   {
     type: 'llamada',
     label: 'Llamada',
     description: 'Registra una llamada realizada',
-    icon: Phone,
-    shortcut: 'L',
   },
   {
     type: 'nota',
     label: 'Nota',
     description: 'Añade una nota interna',
-    icon: StickyNote,
-    shortcut: 'N',
   },
   {
     type: 'reunion',
     label: 'Reunión',
     description: 'Agenda una reunión con el cliente',
-    icon: CalendarPlus,
-    shortcut: 'R',
   },
   {
     type: 'tarea',
     label: 'Tarea',
     description: 'Crea una tarea de seguimiento',
-    icon: CheckSquare,
-    shortcut: 'T',
   },
   {
     type: 'correo',
     label: 'Correo',
     description: 'Redacta y registra un correo',
-    icon: Mail,
-    shortcut: 'E',
   },
   {
     type: 'archivo',
     label: 'Archivo',
     description: 'Adjunta un archivo al registro',
-    icon: Paperclip,
   },
 ];
 
@@ -290,7 +269,7 @@ export function QuickActionsWithDialogs({
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {visibleOptions.map((option) => {
-                const Icon = option.icon;
+                const Icon = activityTypeSvgIcon(option.type);
                 return (
                   <DropdownMenuItem
                     key={option.type}
@@ -307,14 +286,7 @@ export function QuickActionsWithDialogs({
                       <Icon className="size-3.5" aria-hidden />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium text-foreground">{option.label}</span>
-                        {option.shortcut && (
-                          <kbd className="hidden h-5 items-center rounded border border-border bg-muted px-1.5 text-[10px] font-medium text-text-tertiary sm:inline-flex">
-                            {option.shortcut}
-                          </kbd>
-                        )}
-                      </div>
+                      <span className="text-sm font-medium text-foreground">{option.label}</span>
                       <p className="truncate text-xs text-text-tertiary">{option.description}</p>
                     </div>
                   </DropdownMenuItem>

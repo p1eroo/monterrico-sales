@@ -1,25 +1,19 @@
 import { useEffect, useState } from 'react';
 import {
-  Phone,
-  Mail,
-  Users,
-  CheckSquare,
-  MessageSquare,
   ClipboardList,
-  StickyNote,
   Calendar,
   User,
   Clock,
   Pencil,
   Trash2,
   Loader2,
-  MessageCircle,
 } from 'lucide-react';
 import type { Activity, ActivityType } from '@/types';
 import {
   activityTypeIconCircleClass,
   ACTIVITY_ICON_INHERIT,
 } from '@/lib/activityTypeCircleStyles';
+import { activityTypeSvgIcon } from '@/lib/activityTypeSvgIcons';
 import {
   activityToEditForm,
   buildActivityUpdatePayload,
@@ -51,15 +45,6 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from '@/lib/notify';
 import type { UpdateActivityPayload } from '@/lib/activityApi';
-
-const activityTypeIconMap: Record<string, typeof Phone> = {
-  nota: StickyNote,
-  llamada: Phone,
-  reunion: Users,
-  tarea: CheckSquare,
-  correo: Mail,
-  whatsapp: MessageSquare,
-};
 
 const activityTypeColorMap: Record<string, string> = {
   nota: 'text-slate-600',
@@ -231,8 +216,8 @@ export function ActivityDetailDialog({
 
   const stType = normType(currentActivity.type) as ActivityType;
   const editType = toFormFieldsType(editForm.type || currentActivity.type);
-  const Icon = activityTypeIconMap[stType] ?? ClipboardList;
-  const EditIcon = editType === 'whatsapp' ? MessageCircle : (activityTypeIconMap[editType] ?? ClipboardList);
+  const Icon = activityTypeSvgIcon(stType);
+  const EditIcon = activityTypeSvgIcon(editType);
   const circle = activityTypeIconCircleClass(stType);
   const typeLabel = activityTypeLabelMap[stType] ?? currentActivity.type;
   const typeColor = activityTypeColorMap[editType] ?? 'text-muted-foreground';
@@ -356,7 +341,7 @@ export function ActivityDetailDialog({
             </div>
             {currentActivity.completedAt && (
               <div className="flex items-center gap-2.5 rounded-lg border border-border bg-muted/25 p-3">
-                <CheckSquare className="size-4 shrink-0 text-stage-client" />
+                <Calendar className="size-4 shrink-0 text-stage-client" />
                 <div className="min-w-0">
                   <p className="text-xs text-text-secondary">Completada el</p>
                   <p className="truncate text-sm font-medium capitalize text-text-primary">

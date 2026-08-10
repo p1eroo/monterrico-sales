@@ -15,8 +15,8 @@ export const rightDrawerMaxWidth = {
   /** Panel notificaciones / empresas sin cambio de etapa */
   notifications: 'sm:max-w-[440px] md:max-w-[480px]',
   lg: 'sm:max-w-lg',
-  /** Resumen de hoy (ancho histórico del briefing) */
-  briefing: 'sm:w-[380px] sm:max-w-[380px]',
+  /** Resumen de hoy */
+  briefing: 'sm:w-[440px] sm:max-w-[440px]',
 } as const;
 
 export type RightDrawerWidthKey = keyof typeof rightDrawerMaxWidth;

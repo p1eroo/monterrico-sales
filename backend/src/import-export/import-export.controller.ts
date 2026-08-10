@@ -158,6 +158,8 @@ export class ImportExportController {
     @Query('tipo') tipo?: string,
     @Query('lastInteractionFrom') lastInteractionFrom?: string,
     @Query('lastInteractionTo') lastInteractionTo?: string,
+    @Query('createdFrom') createdFrom?: string,
+    @Query('createdTo') createdTo?: string,
   ) {
     const scope = await this.crmDataScope.buildScope(
       req.user.userId,
@@ -174,6 +176,8 @@ export class ImportExportController {
       tipo: tipo?.trim() || undefined,
       lastInteractionFrom: lastInteractionFrom?.trim() || undefined,
       lastInteractionTo: lastInteractionTo?.trim() || undefined,
+      createdFrom: createdFrom?.trim() || undefined,
+      createdTo: createdTo?.trim() || undefined,
     });
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader(

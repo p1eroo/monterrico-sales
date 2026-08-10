@@ -2928,10 +2928,10 @@ export class ImportExportService {
   }
 
   /**
-   * Export comercial (CSV): fecha de ingreso, empresa, origen, asesor y
+   * Export comercial (CSV): fecha de ingreso, empresa, facturación, origen, asesor y
    * columnas por semana ISO con cabecera en español (`Semana N`, o `Semana N (AAAA)`
    * si el rango cruza años ISO). Cada celda es porcentaje con sufijo `%` (p. ej. `40%`);
-   * semanas anteriores al alta o sin dato se exportan como `0%`.
+   * semanas anteriores al alta se exportan vacías; desde la semana de ingreso, porcentaje de etapa.
    * La reconstrucción de etapa usa auditoría de `etapa`; sin historial, etapa constante.
    * La plantilla de importación sigue usando {@link COMPANY_HEADERS}.
    */
@@ -2948,56 +2948,13 @@ export class ImportExportService {
       advisorPool?: string;
       lastInteractionFrom?: string;
       lastInteractionTo?: string;
+      createdFrom?: string;
+      createdTo?: string;
     },
   ): Promise<string> {
-    const where: Prisma.CompanyWhereInput = {};
-    if (opts?.search?.trim()) {
-      const q = opts.search.trim();
-      where.OR = [
-        { name: { contains: q, mode: 'insensitive' } },
-        { razonSocial: { contains: q, mode: 'insensitive' } },
-        { ruc: { contains: q } },
-        { domain: { contains: q, mode: 'insensitive' } },
-        {
-          contacts: {
-            some: {
-              contact: {
-                OR: [
-                  { name: { contains: q, mode: 'insensitive' } },
-                  { correo: { contains: q, mode: 'insensitive' } },
-                ],
-              },
-            },
-          },
-        },
-      ];
-    }
-    if (opts?.rubro?.trim()) where.rubro = opts.rubro.trim();
-    if (opts?.tipo?.trim()) where.tipo = opts.tipo.trim();
-    if (opts?.fuente?.trim()) {
-      const fuenteQ = await this.crmConfig.normalizeLeadSource(opts.fuente).catch(() => opts.fuente!.trim());
-      where.fuente = { equals: fuenteQ, mode: 'insensitive' };
-    }
-    const etapas = opts?.etapa?.split(',').map((s) => s.trim()).filter(Boolean) ?? [];
-    if (etapas.length === 1) where.etapa = etapas[0];
-    else if (etapas.length > 1) where.etapa = { in: etapas };
-    if (!(scope && !scope.unrestricted)) {
-      const advisorClause = companyAdvisorWhere(
-        parseAdvisorFilterQuery({
-          assignedTo: opts?.assignedTo,
-          excludeAssignedTo: opts?.excludeAssignedTo,
-          advisorPool: opts?.advisorPool,
-        }),
-      );
-      if (advisorClause) {
-        where.AND = [
-          ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
-          advisorClause,
-        ];
-      }
-    }
+    const where = await this.companiesService.buildCompanyListWhere(opts, scope);
     const list = await this.prisma.company.findMany({
-      where: mergeCompanyScope(where, scope),
+      where,
       take: 10_000,
       orderBy: { updatedAt: 'desc' },
       select: {
@@ -3006,6 +2963,7 @@ export class ImportExportService {
         fuente: true,
         etapa: true,
         createdAt: true,
+        facturacionEstimada: true,
         user: { select: { name: true } },
       },
     });
@@ -3020,6 +2978,7 @@ export class ImportExportService {
     const baseHeaders = [
       'Fecha de Ingreso',
       'Empresa / Cliente',
+      'Facturación',
       'Origen',
       'Asesor',
     ];
@@ -3109,6 +3068,11 @@ export class ImportExportService {
       return `${dd}/${mm}/${yyyy}`;
     };
 
+    const facturacionStr = (value: number) => {
+      const n = Number(value);
+      return Number.isFinite(n) && n > 0 ? String(n) : '';
+    };
+
     const lines: string[] = [stringifyCsvRow(headers)];
     for (const c of list) {
       const audits = auditsByCompany.get(c.id) ?? [];
@@ -3116,13 +3080,14 @@ export class ImportExportService {
       const row: string[] = [
         ingresoStr(c.createdAt),
         c.name,
+        facturacionStr(c.facturacionEstimada),
         fuenteLabel(c.fuente),
         c.user?.name ?? '',
       ];
       const createdMs = c.createdAt.getTime();
       for (const col of weekCols) {
         if (col.weekEnd.getTime() < createdMs) {
-          row.push('0%');
+          row.push('');
         } else {
           const p = resolveProb(etapaAt(col.weekEnd));
           row.push(`${p}%`);
@@ -4201,7 +4166,7 @@ export class ImportExportService {
       const createdMs = o.createdAt.getTime();
       for (const col of weekCols) {
         if (col.weekEnd.getTime() < createdMs) {
-          row.push('0%');
+          row.push('');
         } else {
           const p = resolveProb(etapaAt(col.weekEnd));
           row.push(`${p}%`);

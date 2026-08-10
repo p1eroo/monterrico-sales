@@ -124,27 +124,45 @@ export function NotificationCard({
 
   const actionsVisible = showActions && (variant === 'full' ? isHovered : true);
 
+  const isCompact = variant === 'compact';
+
   return (
     <div
       className={cn(
-        'group relative rounded-lg border bg-card p-3 transition-all duration-200',
-        !notification.read &&
-          'border-l-4 border-l-primary bg-primary/[0.02] dark:bg-primary/5',
-        notification.important &&
-          'ring-1 ring-amber-200 dark:ring-amber-800/60',
+        'group relative transition-colors',
+        isCompact
+          ? cn(
+              'px-4 py-3 hover:bg-muted/40',
+              !notification.read && 'bg-primary/[0.03]',
+            )
+          : cn(
+              'rounded-lg border bg-card p-3 duration-200',
+              !notification.read &&
+                'border-l-4 border-l-primary bg-primary/[0.02] dark:bg-primary/5',
+              notification.important &&
+                'ring-1 ring-amber-200 dark:ring-amber-800/60',
+            ),
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className="flex gap-3">
-        <div
-          className={cn(
-            'flex size-9 shrink-0 items-center justify-center rounded-lg text-sm',
-            typeConfig.bg,
-            typeConfig.text,
+        <div className="relative shrink-0">
+          {isCompact && !notification.read && (
+            <span
+              className="absolute -left-1 top-0 size-1.5 rounded-full bg-primary"
+              aria-hidden
+            />
           )}
-        >
-          {typeConfig.icon}
+          <div
+            className={cn(
+              'flex size-9 items-center justify-center rounded-lg text-sm',
+              typeConfig.bg,
+              typeConfig.text,
+            )}
+          >
+            {typeConfig.icon}
+          </div>
         </div>
 
         <div className="min-w-0 flex-1">

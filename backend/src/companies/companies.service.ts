@@ -815,7 +815,8 @@ export class CompaniesService {
     return { counts };
   }
 
-  private async buildSummaryWhere(
+  /** Mismos filtros que el listado summary (export, bulk, etc.). */
+  async buildCompanyListWhere(
     opts?: {
       search?: string;
       rubro?: string;
@@ -840,6 +841,27 @@ export class CompaniesService {
     const inner: Prisma.CompanyWhereInput =
       andParts.length > 0 ? { AND: andParts } : {};
     return mergeCompanyScope(inner, scope);
+  }
+
+  private async buildSummaryWhere(
+    opts?: {
+      search?: string;
+      rubro?: string;
+      tipo?: string;
+      etapa?: string;
+      fuente?: string;
+      assignedTo?: string;
+      excludeAssignedTo?: string;
+      advisorPool?: string;
+      lastInteraction?: string;
+      lastInteractionFrom?: string;
+      lastInteractionTo?: string;
+      createdFrom?: string;
+      createdTo?: string;
+    },
+    scope?: CrmDataScope,
+  ): Promise<Prisma.CompanyWhereInput> {
+    return this.buildCompanyListWhere(opts, scope);
   }
 
   /**

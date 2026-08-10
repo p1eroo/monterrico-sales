@@ -20,9 +20,9 @@ import {
 import type { Activity, ActivityStatus, ActivityType, ContactPriority, TaskKind } from '@/types';
 import { TASK_KINDS } from '@/types';
 import {
-  ACTIVITY_TYPE_SVG_ICONS,
   TASK_META_ICON_CLASS,
   TaskEntityMetaIcons,
+  activityTypeSvgIcon,
 } from '@/lib/activityTypeSvgIcons';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -35,8 +35,9 @@ import {
   taskDueRowHighlightClass,
 } from '@/lib/taskStatus';
 
-const activityIcons: Record<ActivityType, React.ComponentType<{ className?: string }>> =
-  ACTIVITY_TYPE_SVG_ICONS as Record<ActivityType, React.ComponentType<{ className?: string }>>;
+function taskKindIcon(kind: TaskKind | undefined | null) {
+  return activityTypeSvgIcon(kind ?? 'llamada');
+}
 
 const kanbanMetaIconClass = TASK_META_ICON_CLASS;
 
@@ -159,7 +160,7 @@ const TaskKanbanCard = memo(function TaskKanbanCard({
 }) {
   const kind: TaskKind =
     task.taskKind && TASK_KINDS.includes(task.taskKind) ? task.taskKind : 'llamada';
-  const TypeIcon = activityIcons[kind];
+  const TypeIcon = taskKindIcon(kind);
   const dateTextClass = taskDueDateTextClass(task);
   const priority: ContactPriority = task.priority ?? 'media';
 

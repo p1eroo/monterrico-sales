@@ -194,7 +194,7 @@ export function mergeCompaniesForTaskPicker(
     result.map((c) => (c.id?.trim() ? `id:${c.id.trim()}` : `n:${c.name.trim().toLowerCase()}`)),
   );
   for (const a of extraAssociations) {
-    if (a.type !== 'empresa' || !a.name?.trim()) continue;
+    if ((a.type !== 'empresa' && a.type !== 'cliente_empresa') || !a.name?.trim()) continue;
     const id = a.id?.trim();
     const key = id ? `id:${id}` : `n:${a.name.trim().toLowerCase()}`;
     if (keys.has(key)) continue;

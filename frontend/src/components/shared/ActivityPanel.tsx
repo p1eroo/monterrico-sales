@@ -1,18 +1,11 @@
 import { useMemo, useState } from 'react';
-import {
-  Phone,
-  Mail,
-  Users,
-  CheckSquare,
-  MessageSquare,
-  ClipboardList,
-  StickyNote,
-} from 'lucide-react';
+import { ClipboardList } from 'lucide-react';
 import type { Activity, ActivityType } from '@/types';
 import {
   activityTypeIconCircleClass,
   ACTIVITY_ICON_INHERIT,
 } from '@/lib/activityTypeCircleStyles';
+import { activityTypeSvgIcon } from '@/lib/activityTypeSvgIcons';
 import { ActivityDetailDialog } from '@/components/shared/ActivityDetailDialog';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Badge } from '@/components/ui/badge';
@@ -27,15 +20,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { UpdateActivityPayload } from '@/lib/activityApi';
-
-const activityTypeIconMap: Record<string, typeof Phone> = {
-  nota: StickyNote,
-  llamada: Phone,
-  reunion: Users,
-  tarea: CheckSquare,
-  correo: Mail,
-  whatsapp: MessageSquare,
-};
 
 const activityStatusLabelMap: Record<string, string> = {
   pendiente: 'Pendiente',
@@ -166,7 +150,7 @@ export function ActivityPanel({
               <TableBody>
                 {filtered.map((activity) => {
                   const typeKey = normType(activity.type) as ActivityType;
-                  const Icon = activityTypeIconMap[typeKey] ?? ClipboardList;
+                  const Icon = activityTypeSvgIcon(typeKey);
                   const circle = activityTypeIconCircleClass(typeKey);
                   return (
                     <TableRow

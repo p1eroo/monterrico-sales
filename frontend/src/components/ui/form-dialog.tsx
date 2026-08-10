@@ -236,6 +236,7 @@ export function FormDialogShell({
   contentClassName,
   appendContent,
   overlayClassName = 'z-[200]',
+  showHeaderCloseButton = true,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -250,6 +251,7 @@ export function FormDialogShell({
   contentClassName?: string;
   appendContent?: React.ReactNode;
   overlayClassName?: string;
+  showHeaderCloseButton?: boolean;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -275,17 +277,19 @@ export function FormDialogShell({
                 </DialogDescription>
               ) : null}
             </DialogHeader>
-            <DialogClose asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="size-9 shrink-0 rounded-full bg-muted/70 text-muted-foreground shadow-none hover:bg-muted"
-              >
-                <X className="size-4" />
-                <span className="sr-only">Cerrar</span>
-              </Button>
-            </DialogClose>
+            {showHeaderCloseButton ? (
+              <DialogClose asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-9 shrink-0 rounded-full bg-muted/70 text-muted-foreground shadow-none hover:bg-muted"
+                >
+                  <X className="size-4" />
+                  <span className="sr-only">Cerrar</span>
+                </Button>
+              </DialogClose>
+            ) : null}
           </div>
           <div className={cn('mt-6 pb-2', bodyClassName)}>{children}</div>
         </div>

@@ -17,6 +17,7 @@ import { es } from 'date-fns/locale';
 interface InactiveCompaniesPanelProps {
   onBack: () => void;
   onClose?: () => void;
+  onCompanyClick?: (row: CompanySinCambioEtapaAlertItem) => void;
 }
 
 const etapaBadgeColors: Record<string, string> = {
@@ -29,7 +30,7 @@ const etapaBadgeColors: Record<string, string> = {
   cierre_ganado: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
 };
 
-export function InactiveCompaniesPanel({ onBack, onClose }: InactiveCompaniesPanelProps) {
+export function InactiveCompaniesPanel({ onBack, onClose, onCompanyClick }: InactiveCompaniesPanelProps) {
   const navigate = useNavigate();
   const [items, setItems] = useState<CompanySinCambioEtapaAlertItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +54,10 @@ export function InactiveCompaniesPanel({ onBack, onClose }: InactiveCompaniesPan
   }, []);
 
   const handleCompanyClick = (row: CompanySinCambioEtapaAlertItem) => {
+    if (onCompanyClick) {
+      onCompanyClick(row);
+      return;
+    }
     navigate(companyDetailPath({ urlSlug: row.urlSlug, name: row.name }));
     onBack();
   };

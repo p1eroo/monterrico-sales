@@ -1,17 +1,10 @@
 import {
-  Phone,
-  Mail,
-  Users,
-  StickyNote,
   RefreshCw,
-  CheckSquare,
-  Paperclip,
   Plus,
   FileText,
   UserPlus,
   Settings,
   Trash2,
-  MessageCircle,
 } from 'lucide-react';
 import type { TimelineEvent } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,22 +18,34 @@ import {
   activityTypeIconCircleClass,
   ACTIVITY_ICON_INHERIT,
 } from '@/lib/activityTypeCircleStyles';
+import { activityTypeSvgIcon } from '@/lib/activityTypeSvgIcons';
 
-const timelineIconMap: Record<TimelineEvent['type'], typeof Phone> = {
-  llamada: Phone,
-  correo: Mail,
-  reunion: Users,
-  nota: StickyNote,
+const timelineSystemIconMap: Record<
+  Exclude<TimelineEvent['type'], 'llamada' | 'correo' | 'reunion' | 'nota' | 'tarea' | 'whatsapp' | 'archivo'>,
+  typeof Settings
+> = {
   cambio_estado: RefreshCw,
-  tarea: CheckSquare,
-  whatsapp: MessageCircle,
-  archivo: Paperclip,
   crear: Plus,
   actualizar: FileText,
   asignar: UserPlus,
   sistema: Settings,
   eliminar: Trash2,
 };
+
+function timelineEventIcon(type: TimelineEvent['type']) {
+  if (
+    type === 'llamada' ||
+    type === 'correo' ||
+    type === 'reunion' ||
+    type === 'nota' ||
+    type === 'tarea' ||
+    type === 'whatsapp' ||
+    type === 'archivo'
+  ) {
+    return activityTypeSvgIcon(type);
+  }
+  return timelineSystemIconMap[type as keyof typeof timelineSystemIconMap] ?? Settings;
+}
 
 /** Fondo + aro (glow suave) y color explícito del trazo del icono (Lucide usa currentColor). */
 const timelineStyles: Record<
@@ -112,7 +117,7 @@ export function TimelinePanel({ events, onEventClick }: TimelinePanelProps) {
       <CardContent className="p-0">
         <div className="space-y-1">
           {events.map((event) => {
-            const Icon = timelineIconMap[event.type] || Settings;
+            const Icon = timelineEventIcon(event.type);
             const style = timelineStyles[event.type] || timelineStyles['sistema'];
             const { wrap, icon } = style;
             const tintedCircle = activityTypeIconCircleClass(event.type);

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Phone, Users, Mail, MessageCircle, User, Building2, Briefcase, Plus, Loader2 } from 'lucide-react';
+import { User, Building2, Briefcase, Plus, Loader2 } from 'lucide-react';
 import { toast } from '@/lib/notify';
 import type { ActivityType, ActivityStatus, TaskAssociation } from '@/types';
 import { formatNowPeruTimeHHmm, formatTodayPeruYmd } from '@/lib/formatters';
 import { isLikelyCompanyCuid } from '@/lib/companyApi';
 import { NewContactWizard, type NewContactData } from '@/components/shared/NewContactWizard';
 import { createContactFromWizardForCompany } from '@/lib/createContactFromWizard';
+import { activityTypeSvgIcon } from '@/lib/activityTypeSvgIcons';
 
 import { ActivityTypeFormFields, type ActivityFormFieldsData } from '@/components/shared/ActivityTypeFormFields';
 import { Badge } from '@/components/ui/badge';
@@ -92,10 +93,10 @@ interface ActivityFormDialogProps {
 }
 
 const typeConfig = {
-  llamada: { icon: Phone, color: 'text-blue-600', label: 'Llamada', labelFem: 'a' },
-  reunion: { icon: Users, color: 'text-emerald-600', label: 'Reunión', labelFem: 'a' },
-  correo: { icon: Mail, color: 'text-purple-600', label: 'Correo', labelFem: 'o' },
-  whatsapp: { icon: MessageCircle, color: 'text-green-600', label: 'WhatsApp', labelFem: 'o' },
+  llamada: { icon: activityTypeSvgIcon('llamada'), color: 'text-emerald-600', label: 'Llamada', labelFem: 'a' },
+  reunion: { icon: activityTypeSvgIcon('reunion'), color: 'text-blue-600', label: 'Reunión', labelFem: 'a' },
+  correo: { icon: activityTypeSvgIcon('correo'), color: 'text-slate-600', label: 'Correo', labelFem: 'o' },
+  whatsapp: { icon: activityTypeSvgIcon('whatsapp'), color: 'text-green-600', label: 'WhatsApp', labelFem: 'o' },
 };
 
 export function ActivityFormDialog({
@@ -320,7 +321,12 @@ export function ActivityFormDialog({
                     </span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Mail className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                    {(() => {
+                      const CorreoIcon = activityTypeSvgIcon('correo');
+                      return (
+                        <CorreoIcon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                      );
+                    })()}
                     <span>
                       <span className="text-muted-foreground">Actividad:</span>{' '}
                       <span className="font-medium">Se creará actividad tipo correo</span>

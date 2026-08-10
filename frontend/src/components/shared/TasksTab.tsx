@@ -1,5 +1,5 @@
 import { useState, forwardRef, useImperativeHandle, useMemo } from 'react';
-import { Phone, Mail, Users, MessageCircle } from 'lucide-react';
+import type { ComponentType } from 'react';
 import { toast } from '@/lib/notify';
 import { priorityLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
@@ -44,6 +44,7 @@ import {
   activityTypeIconCircleClass,
   ACTIVITY_ICON_INHERIT,
 } from '@/lib/activityTypeCircleStyles';
+import { activityTypeSvgIcon } from '@/lib/activityTypeSvgIcons';
 import { cn } from '@/lib/utils';
 
 import { ActivityFormDialog } from './ActivityFormDialog';
@@ -105,11 +106,11 @@ const taskTypeLabels: Record<TaskType, string> = {
   whatsapp: 'WhatsApp',
 };
 
-const taskTypeIcons: Record<TaskType, typeof Phone> = {
-  llamada: Phone,
-  reunion: Users,
-  correo: Mail,
-  whatsapp: MessageCircle,
+const taskTypeIcons: Record<TaskType, ComponentType<{ className?: string }>> = {
+  llamada: activityTypeSvgIcon('llamada'),
+  reunion: activityTypeSvgIcon('reunion'),
+  correo: activityTypeSvgIcon('correo'),
+  whatsapp: activityTypeSvgIcon('whatsapp'),
 };
 
 interface TasksTabProps {
@@ -448,7 +449,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
                           onClick={(e) => e.stopPropagation()}
                           aria-label={taskTypeLabels[taskType]}
                         >
-                          <TypeIcon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                          <TypeIcon className="h-3.5 w-3.5" aria-hidden />
                         </button>
                       </TooltipTrigger>
                       <TooltipContent side="top">{taskTypeLabels[taskType]}</TooltipContent>

@@ -504,7 +504,7 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 
 const sidebarMenuButtonVariants = cva(
   [
-    "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:relative group-data-[collapsible=icon]:isolate group-data-[collapsible=icon]:h-10! group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:overflow-visible group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-2! group-data-[collapsible=icon]:hover:!bg-transparent group-data-[collapsible=icon]:active:!bg-transparent group-data-[collapsible=icon]:data-[active=true]:!bg-transparent group-data-[collapsible=icon]:data-[state=open]:!bg-transparent group-data-[collapsible=icon]:data-[state=open]:hover:!bg-transparent group-data-[collapsible=icon]:before:absolute group-data-[collapsible=icon]:before:top-1/2 group-data-[collapsible=icon]:before:left-1/2 group-data-[collapsible=icon]:before:size-10 group-data-[collapsible=icon]:before:-translate-x-1/2 group-data-[collapsible=icon]:before:-translate-y-1/2 group-data-[collapsible=icon]:before:rounded-md group-data-[collapsible=icon]:before:content-[''] group-data-[collapsible=icon]:before:z-0 group-data-[collapsible=icon]:before:pointer-events-none group-data-[collapsible=icon]:hover:before:bg-sidebar-accent group-data-[collapsible=icon]:active:before:bg-sidebar-accent group-data-[collapsible=icon]:data-[active=true]:before:bg-sidebar-accent group-data-[collapsible=icon]:data-[state=open]:before:bg-sidebar-accent group-data-[collapsible=icon]:data-[state=open]:hover:before:bg-sidebar-accent group-data-[collapsible=icon]:[&>span:last-child]:hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>svg]:relative [&>svg]:z-10 [&>svg]:size-4 [&>svg]:shrink-0 group-data-[collapsible=icon]:[&>svg]:size-[22px] group-data-[collapsible=icon]:[&>svg]:text-sidebar-icon group-data-[collapsible=icon]:hover:[&>svg]:text-sidebar-icon-active group-data-[collapsible=icon]:data-[active=true]:[&>svg]:text-sidebar-icon-active group-data-[collapsible=icon]:data-[state=open]:[&>svg]:text-sidebar-icon-active",
+    "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm font-normal ring-sidebar-ring outline-hidden transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:relative group-data-[collapsible=icon]:isolate group-data-[collapsible=icon]:h-10! group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:overflow-visible group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:p-2! group-data-[collapsible=icon]:hover:!bg-transparent group-data-[collapsible=icon]:active:!bg-transparent group-data-[collapsible=icon]:data-[active=true]:!bg-transparent group-data-[collapsible=icon]:data-[state=open]:!bg-transparent group-data-[collapsible=icon]:data-[state=open]:hover:!bg-transparent group-data-[collapsible=icon]:before:absolute group-data-[collapsible=icon]:before:top-1/2 group-data-[collapsible=icon]:before:left-1/2 group-data-[collapsible=icon]:before:size-10 group-data-[collapsible=icon]:before:-translate-x-1/2 group-data-[collapsible=icon]:before:-translate-y-1/2 group-data-[collapsible=icon]:before:rounded-md group-data-[collapsible=icon]:before:content-[''] group-data-[collapsible=icon]:before:z-0 group-data-[collapsible=icon]:before:pointer-events-none group-data-[collapsible=icon]:hover:before:bg-sidebar-accent group-data-[collapsible=icon]:active:before:bg-sidebar-accent group-data-[collapsible=icon]:data-[active=true]:before:bg-sidebar-accent group-data-[collapsible=icon]:data-[state=open]:before:bg-sidebar-accent group-data-[collapsible=icon]:data-[state=open]:hover:before:bg-sidebar-accent group-data-[collapsible=icon]:[&>span:last-child]:hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>svg]:relative [&>svg]:z-10 [&>svg]:size-4 [&>svg]:shrink-0 group-data-[collapsible=icon]:[&>svg]:size-[22px] group-data-[collapsible=icon]:[&>svg]:text-sidebar-icon group-data-[collapsible=icon]:hover:[&>svg]:text-sidebar-icon-active group-data-[collapsible=icon]:data-[active=true]:[&>svg]:text-sidebar-icon-active group-data-[collapsible=icon]:data-[state=open]:[&>svg]:text-sidebar-icon-active",
   ],
   {
     variants: {
@@ -600,25 +600,13 @@ function SidebarMenuButton({
         showArrow={false}
         hidden={state !== "collapsed" || isMobile}
         className={cn(
-          "min-w-0 rounded-2xl border-0 bg-popover px-2 py-2 text-sm shadow-[0_4px_24px_rgba(15,23,42,0.1)]",
+          "min-w-0 rounded-2xl border border-sidebar-border bg-sidebar px-2 py-2 text-sm text-sidebar-foreground shadow-[0_12px_40px_rgba(0,0,0,0.22)]",
           tooltipClassName,
         )}
         {...restTooltipProps}
       >
         {tooltipChildren ?? (
-          <span
-            className={cn(
-              "flex items-center gap-2.5 px-2 py-1 font-medium whitespace-nowrap",
-              isActive && "text-primary",
-            )}
-          >
-            <span
-              className={cn(
-                "size-1.5 shrink-0 rounded-full",
-                isActive ? "bg-primary" : "bg-foreground/75",
-              )}
-              aria-hidden
-            />
+          <span className="flex items-center px-2 py-1 font-normal whitespace-nowrap text-sidebar-foreground">
             {tooltipLabel}
           </span>
         )}
@@ -768,7 +756,7 @@ function SidebarMenuSubButton({
       data-size={size}
       data-active={isActive}
       className={cn(
-        "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground ring-sidebar-ring outline-hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground",
+        "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 font-normal text-sidebar-foreground ring-sidebar-ring outline-hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground",
         "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground",
         size === "sm" && "text-xs",
         size === "md" && "text-sm",

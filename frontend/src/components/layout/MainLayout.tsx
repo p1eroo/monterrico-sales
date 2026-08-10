@@ -54,15 +54,15 @@ export default function MainLayout() {
   const compactMainTop = isCrmEntityDetailPath(pathname);
 
   useUsers(); // Precarga usuarios de la API para selects de asignación
+  const area = useAppStore((s) => s.area);
   const [showBriefing, setShowBriefing] = useState(false);
   const [dontShowAgainToday, setDontShowAgainToday] = useState(false);
 
   useEffect(() => {
-    const area = useAppStore.getState().area;
     if (area === 'comercial' && shouldShowDailyBriefing()) {
       setShowBriefing(true);
     }
-  }, []);
+  }, [area]);
 
   /** Sincroniza permisos con Authority y catálogo CRM (/crm-config + metas). */
   useEffect(() => {

@@ -6,6 +6,50 @@ import {
 } from '@/lib/taskAssociationsFromActivity';
 
 export type TaskAssociationPickerCategory = 'contactos' | 'empresas' | 'negocios';
+export type TaskAssociationPickerVariant = 'crm' | 'cliente-cartera';
+
+export function taskPickerCompanyType(
+  variant: TaskAssociationPickerVariant,
+): TaskAssociation['type'] {
+  return variant === 'cliente-cartera' ? 'cliente_empresa' : 'empresa';
+}
+
+export function taskPickerContactType(
+  variant: TaskAssociationPickerVariant,
+): TaskAssociation['type'] {
+  return variant === 'cliente-cartera' ? 'cliente_contacto' : 'contacto';
+}
+
+export function resolveTaskPickerCompanyId(
+  associations: TaskAssociation[],
+  variant: TaskAssociationPickerVariant = 'crm',
+): string | undefined {
+  const companyType = taskPickerCompanyType(variant);
+  const empresas = associations.filter((a) => a.type === companyType && a.id?.trim());
+  if (variant === 'cliente-cartera') {
+    return empresas[0]?.id;
+  }
+  return empresas.find((a) => isLikelyCompanyCuid(a.id))?.id ?? empresas[0]?.id;
+}
+
+export function pickClienteContactosForAssociationPicker(
+  associations: TaskAssociation[],
+  linkedContactos: Contact[],
+): Contact[] {
+  const byId = new Map(linkedContactos.map((c) => [c.id, c]));
+  for (const assoc of associations) {
+    if (assoc.type !== 'cliente_contacto' || byId.has(assoc.id)) continue;
+    byId.set(assoc.id, { id: assoc.id, name: assoc.name, companies: [] } as unknown as Contact);
+  }
+  return [...byId.values()];
+}
+
+export function pickerTabsForVariant(variant: TaskAssociationPickerVariant) {
+  if (variant === 'cliente-cartera') {
+    return TASK_ASSOCIATION_PICKER_TABS.filter((tab) => tab.key !== 'negocios');
+  }
+  return TASK_ASSOCIATION_PICKER_TABS;
+}
 
 export const TASK_ASSOCIATION_PICKER_TABS: {
   key: TaskAssociationPickerCategory;
@@ -146,7 +190,9 @@ function mergeSelectedOpportunitiesIntoPicker(
 export function selectedCompanyNameFromAssociations(
   associations: TaskAssociation[],
   selectedCompanyId?: string,
+  variant: TaskAssociationPickerVariant = 'crm',
 ): string | undefined {
   if (!selectedCompanyId) return undefined;
-  return associations.find((a) => a.type === 'empresa' && a.id === selectedCompanyId)?.name;
+  const companyType = taskPickerCompanyType(variant);
+  return associations.find((a) => a.type === companyType && a.id === selectedCompanyId)?.name;
 }

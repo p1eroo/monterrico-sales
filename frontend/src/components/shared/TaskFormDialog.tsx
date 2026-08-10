@@ -15,18 +15,30 @@ import { isLikelyCompanyCuid } from '@/lib/companyApi';
 import { contactListPaginated, mapApiContactRowToContact } from '@/lib/contactApi';
 import { opportunityListPaginated, mapApiOpportunityToOpportunity } from '@/lib/opportunityApi';
 import {
+  createContactoCliente,
+  fetchClienteEmpresaById,
+} from '@/lib/clienteCarteraApi';
+import {
+  contactoClienteRowToContact,
+  newContactDataToClienteBody,
+} from '@/lib/clienteContactoFormUtils';
+import {
   associationIdsFromTaskAssociations,
   normalizeTaskAssociations,
   toggleTaskAssociation,
 } from '@/lib/taskActivityUpdate';
 import {
   TASK_ASSOCIATION_PICKER_PAGE_SIZE,
-  TASK_ASSOCIATION_PICKER_TABS,
   TASK_LINKED_ENTITY_FETCH_LIMIT,
+  pickClienteContactosForAssociationPicker,
   pickContactsForAssociationPicker,
   pickOpportunitiesForAssociationPicker,
-  resolveSelectedCompanyId,
+  pickerTabsForVariant,
+  resolveTaskPickerCompanyId,
   selectedCompanyNameFromAssociations,
+  taskPickerCompanyType,
+  taskPickerContactType,
+  type TaskAssociationPickerVariant,
 } from '@/lib/taskAssociationPicker';
 import type { Contact, Opportunity, TaskAssociation, TaskKind } from '@/types';
 import { TASK_KINDS } from '@/types';
@@ -107,6 +119,8 @@ export interface TaskFormDialogProps {
   defaultStartDate?: string;
   /** Vínculos prellenados (p. ej. tarea de seguimiento tras completar otra). */
   defaultAssociations?: TaskAssociation[];
+  /** CRM comercial (empresas/contactos) o cartera de clientes activos. */
+  associationVariant?: TaskAssociationPickerVariant;
   onSave: (task: TaskFormResult) => void | Promise<void>;
   /**
    * Si es true, no espera al API: cierra y muestra éxito al instante (creación optimista en el store).
@@ -128,9 +142,14 @@ export function TaskFormDialog({
   defaultStatus,
   defaultStartDate,
   defaultAssociations,
+  associationVariant = 'crm',
   onSave,
   optimisticClose = false,
 }: TaskFormDialogProps) {
+  const isClienteCartera = associationVariant === 'cliente-cartera';
+  const companyAssocType = taskPickerCompanyType(associationVariant);
+  const contactAssocType = taskPickerContactType(associationVariant);
+  const pickerTabs = pickerTabsForVariant(associationVariant);
   const { users, activeAdvisors } = useUsers();
   const currentUser = useAppStore((s) => s.currentUser);
   const canReassign = canUserReassignCommercialAdvisor(currentUser.role);
@@ -169,13 +188,13 @@ export function TaskFormDialog({
   const [creatingContact, setCreatingContact] = useState(false);
 
   const selectedCompanyId = useMemo(
-    () => resolveSelectedCompanyId(associations),
-    [associations],
+    () => resolveTaskPickerCompanyId(associations, associationVariant),
+    [associations, associationVariant],
   );
 
   const selectedCompanyName = useMemo(
-    () => selectedCompanyNameFromAssociations(associations, selectedCompanyId),
-    [associations, selectedCompanyId],
+    () => selectedCompanyNameFromAssociations(associations, selectedCompanyId, associationVariant),
+    [associations, selectedCompanyId, associationVariant],
   );
 
   useEffect(() => {
@@ -188,11 +207,11 @@ export function TaskFormDialog({
       );
       setFormAssignee(resolveDefaultAssignee());
       const hasCompany = defaultAssociations?.some(
-        (a) => a.type === 'empresa' && a.id && isLikelyCompanyCuid(a.id),
+        (a) => a.type === companyAssocType && a.id,
       );
       setAssocCategory(hasCompany ? 'contactos' : 'empresas');
     }
-  }, [open, defaultTitle, defaultStatus, defaultStartDate, defaultAssociations, defaultAssigneeId, canReassign, currentUser.id, activeAdvisors]);
+  }, [open, defaultTitle, defaultStatus, defaultStartDate, defaultAssociations, defaultAssigneeId, canReassign, currentUser.id, activeAdvisors, companyAssocType]);
 
   useEffect(() => {
     if (!open || !selectedCompanyId) {
@@ -205,37 +224,61 @@ export function TaskFormDialog({
     let cancelled = false;
     setLinkedLoading(true);
 
-    Promise.all([
-      contactListPaginated({
-        linkedToCompanyId: selectedCompanyId,
-        limit: TASK_LINKED_ENTITY_FETCH_LIMIT,
-        page: 1,
-      }),
-      opportunityListPaginated({
-        linkedToCompanyId: selectedCompanyId,
-        limit: TASK_LINKED_ENTITY_FETCH_LIMIT,
-        page: 1,
-      }),
-    ])
-      .then(([contactRes, oppRes]) => {
-        if (cancelled) return;
-        setLinkedContacts(contactRes.data.map(mapApiContactRowToContact));
-        setLinkedOpportunities(oppRes.data.map(mapApiOpportunityToOpportunity));
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setLinkedContacts([]);
-        setLinkedOpportunities([]);
-        toast.error('No se pudieron cargar contactos u oportunidades vinculados');
-      })
-      .finally(() => {
-        if (!cancelled) setLinkedLoading(false);
-      });
+    if (isClienteCartera) {
+      fetchClienteEmpresaById(selectedCompanyId)
+        .then((detail) => {
+          if (cancelled) return;
+          setLinkedContacts(
+            detail.contactos.map((c) => ({
+              id: c.id,
+              name: c.nombre,
+              companies: [{ id: detail.id, name: detail.empresa }],
+            } as unknown as Contact)),
+          );
+          setLinkedOpportunities([]);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setLinkedContacts([]);
+          setLinkedOpportunities([]);
+          toast.error('No se pudieron cargar los contactos del cliente');
+        })
+        .finally(() => {
+          if (!cancelled) setLinkedLoading(false);
+        });
+    } else {
+      Promise.all([
+        contactListPaginated({
+          linkedToCompanyId: selectedCompanyId,
+          limit: TASK_LINKED_ENTITY_FETCH_LIMIT,
+          page: 1,
+        }),
+        opportunityListPaginated({
+          linkedToCompanyId: selectedCompanyId,
+          limit: TASK_LINKED_ENTITY_FETCH_LIMIT,
+          page: 1,
+        }),
+      ])
+        .then(([contactRes, oppRes]) => {
+          if (cancelled) return;
+          setLinkedContacts(contactRes.data.map(mapApiContactRowToContact));
+          setLinkedOpportunities(oppRes.data.map(mapApiOpportunityToOpportunity));
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setLinkedContacts([]);
+          setLinkedOpportunities([]);
+          toast.error('No se pudieron cargar contactos u oportunidades vinculados');
+        })
+        .finally(() => {
+          if (!cancelled) setLinkedLoading(false);
+        });
+    }
 
     return () => {
       cancelled = true;
     };
-  }, [open, selectedCompanyId]);
+  }, [open, selectedCompanyId, isClienteCartera]);
 
   useEffect(() => {
     if (!selectedCompanyId || linkedLoading) return;
@@ -245,13 +288,13 @@ export function TaskFormDialog({
 
     setAssociations((prev) => {
       const next = prev.filter((a) => {
-        if (a.type === 'contacto') return contactIds.has(a.id);
-        if (a.type === 'negocio') return oppIds.has(a.id);
+        if (a.type === contactAssocType) return contactIds.has(a.id);
+        if (!isClienteCartera && a.type === 'negocio') return oppIds.has(a.id);
         return true;
       });
       return next.length === prev.length ? prev : next;
     });
-  }, [selectedCompanyId, linkedContacts, linkedOpportunities, linkedLoading]);
+  }, [selectedCompanyId, linkedContacts, linkedOpportunities, linkedLoading, contactAssocType, isClienteCartera]);
 
   const pickerCompanies = useMemo(
     () => mergeCompaniesForTaskPicker(companies, [
@@ -261,16 +304,17 @@ export function TaskFormDialog({
     [companies, defaultAssociations, associations],
   );
 
-  const pickerContacts = useMemo(
-    () =>
-      pickContactsForAssociationPicker(
-        associations,
-        contacts,
-        linkedContacts,
-        selectedCompanyId,
-      ),
-    [selectedCompanyId, linkedContacts, associations, contacts],
-  );
+  const pickerContacts = useMemo(() => {
+    if (isClienteCartera) {
+      return pickClienteContactosForAssociationPicker(associations, linkedContacts);
+    }
+    return pickContactsForAssociationPicker(
+      associations,
+      contacts,
+      linkedContacts,
+      selectedCompanyId,
+    );
+  }, [isClienteCartera, selectedCompanyId, linkedContacts, associations, contacts]);
 
   const pickerOpportunities = useMemo(
     () =>
@@ -286,7 +330,7 @@ export function TaskFormDialog({
   const usesLinkedFetch = Boolean(selectedCompanyId);
 
   const canCreateLinkedContact = Boolean(
-    selectedCompanyId && isLikelyCompanyCuid(selectedCompanyId),
+    selectedCompanyId && (isClienteCartera || isLikelyCompanyCuid(selectedCompanyId)),
   );
 
   const assocCounts = {
@@ -331,7 +375,11 @@ export function TaskFormDialog({
   }
 
   async function handleCreateContactFromWizard(data: NewContactData) {
-    if (!selectedCompanyId || !isLikelyCompanyCuid(selectedCompanyId)) {
+    if (!selectedCompanyId) {
+      toast.error('Selecciona una empresa antes de crear el contacto');
+      return;
+    }
+    if (!isClienteCartera && !isLikelyCompanyCuid(selectedCompanyId)) {
       toast.error('Selecciona una empresa antes de crear el contacto');
       return;
     }
@@ -339,9 +387,17 @@ export function TaskFormDialog({
     const LOADING_ID = 'task-form-create-contact';
     toast.loading('Guardando contacto…', { id: LOADING_ID });
     try {
-      const contact = await createContactFromWizardForCompany(data, selectedCompanyId, {
-        defaultAssignedTo: formAssignee,
-      });
+      const contact = isClienteCartera
+        ? contactoClienteRowToContact(
+            await createContactoCliente(
+              newContactDataToClienteBody(data, {
+                clienteEmpresaId: selectedCompanyId,
+              }),
+            ),
+          )
+        : await createContactFromWizardForCompany(data, selectedCompanyId, {
+            defaultAssignedTo: formAssignee,
+          });
       setLinkedContacts((prev) => {
         if (prev.some((c) => c.id === contact.id)) return prev;
         return [contact, ...prev];
@@ -349,7 +405,7 @@ export function TaskFormDialog({
       setAssociations((prev) =>
         toggleTaskAssociation(
           prev,
-          { type: 'contacto', id: contact.id, name: contact.name },
+          { type: contactAssocType, id: contact.id, name: contact.name },
           true,
         ),
       );
@@ -467,7 +523,9 @@ export function TaskFormDialog({
           compactControl={false}
           hint={associations.length > 0
             ? `${associations.length} registro${associations.length !== 1 ? 's' : ''} vinculado${associations.length !== 1 ? 's' : ''}`
-            : 'Vincula la tarea a un contacto, empresa u oportunidad'}
+            : isClienteCartera
+              ? 'Vincula la tarea a un contacto o empresa de clientes'
+              : 'Vincula la tarea a un contacto, empresa u oportunidad'}
         >
           {associations.length > 0 && (
             <div className="flex flex-wrap gap-2 pb-1">
@@ -477,21 +535,21 @@ export function TaskFormDialog({
                   variant="secondary"
                   className="gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1 pr-1.5 font-normal"
                 >
-                  {a.type === 'contacto' && <User className="size-3" />}
-                  {a.type === 'empresa' && <Building2 className="size-3" />}
+                  {(a.type === 'contacto' || a.type === 'cliente_contacto') && <User className="size-3" />}
+                  {(a.type === 'empresa' || a.type === 'cliente_empresa') && <Building2 className="size-3" />}
                   {a.type === 'negocio' && <Briefcase className="size-3" />}
                   <span className="text-xs">{a.name}</span>
                   <button
                     type="button"
                     className="ml-0.5 rounded-sm p-0.5 hover:bg-muted"
                     onClick={() => {
-                      if (a.type === 'empresa') {
+                      if (a.type === companyAssocType) {
                         setAssociations((prev) =>
                           prev.filter(
                             (x) =>
-                              x.type !== 'empresa' &&
-                              x.type !== 'contacto' &&
-                              x.type !== 'negocio',
+                              x.type !== companyAssocType &&
+                              x.type !== contactAssocType &&
+                              (isClienteCartera || x.type !== 'negocio'),
                           ),
                         );
                       } else {
@@ -528,7 +586,7 @@ export function TaskFormDialog({
               onOpenAutoFocus={(e) => e.preventDefault()}
             >
               <div className="flex border-b border-border/60">
-                {TASK_ASSOCIATION_PICKER_TABS.map(({ key, label }) => (
+                {pickerTabs.map(({ key, label }) => (
                   <button
                     key={key}
                     type="button"
@@ -586,7 +644,9 @@ export function TaskFormDialog({
                     filteredPickerContacts
                       .slice(0, TASK_ASSOCIATION_PICKER_PAGE_SIZE)
                       .map((l) => {
-                        const isSelected = associations.some((a) => a.type === 'contacto' && a.id === l.id);
+                        const isSelected = associations.some(
+                          (a) => a.type === contactAssocType && a.id === l.id,
+                        );
                         return (
                           <label
                             key={l.id}
@@ -599,7 +659,7 @@ export function TaskFormDialog({
                                 setAssociations((prev) =>
                                   toggleTaskAssociation(
                                     prev,
-                                    { type: 'contacto', id: l.id, name: l.name },
+                                    { type: contactAssocType, id: l.id, name: l.name },
                                     checked === true,
                                   ),
                                 );
@@ -627,7 +687,9 @@ export function TaskFormDialog({
                       .slice(0, TASK_ASSOCIATION_PICKER_PAGE_SIZE)
                       .map((c) => {
                         const rowId = c.id ?? c.name;
-                        const isSelected = associations.some((a) => a.type === 'empresa' && a.id === rowId);
+                        const isSelected = associations.some(
+                          (a) => a.type === companyAssocType && a.id === rowId,
+                        );
                         return (
                           <label
                             key={rowId}
@@ -640,7 +702,7 @@ export function TaskFormDialog({
                                 setAssociations((prev) =>
                                   toggleTaskAssociation(
                                     prev,
-                                    { type: 'empresa', id: rowId, name: c.name },
+                                    { type: companyAssocType, id: rowId, name: c.name },
                                     checked === true,
                                   ),
                                 );
@@ -779,6 +841,7 @@ export function TaskFormDialog({
     </FormDialogShell>
 
     <NewContactWizard
+      variant={isClienteCartera ? 'cliente-cartera' : 'crm'}
       open={newContactWizardOpen}
       onOpenChange={setNewContactWizardOpen}
       onSubmit={(data) => { void handleCreateContactFromWizard(data); }}

@@ -46,6 +46,7 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { activityTypeSvgIcon } from '@/lib/activityTypeSvgIcons';
 
 const MONTH_SHORT_ES = [
   'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
@@ -147,14 +148,6 @@ const NAV_SECTIONS = [
   { id: 'actividades', label: 'Tipos de Actividad', icon: Activity },
   { id: 'preferencias', label: 'Preferencias', icon: SettingsIcon },
 ] as const;
-
-const ACTIVITY_TYPE_ICONS: Record<string, typeof Phone> = {
-  llamada: Phone,
-  reunion: Video,
-  tarea: FileText,
-  correo: Mail,
-  whatsapp: MessageCircle,
-};
 
 function GoalsSettingsCard() {
   const { users } = useUsers();
@@ -1399,7 +1392,7 @@ export default function Settings() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   {activityTypes.map((at) => {
-                    const Icon = ACTIVITY_TYPE_ICONS[at.slug];
+                    const Icon = activityTypeSvgIcon(at.slug);
                     return (
                       <div
                         key={at.slug}

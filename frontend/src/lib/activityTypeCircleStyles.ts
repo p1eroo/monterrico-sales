@@ -1,8 +1,6 @@
 /**
  * Círculos de icono por tipo de actividad (HSL explícitos).
- * Misma base visual que el menú «Nueva actividad» (`QuickActionsWithDialogs`);
- * incluye `whatsapp` para listados/tareas. Evita depender solo de tokens
- * `text-activity-*` con el stroke de Lucide en tablas/timeline.
+ * Iconos SVG unificados vía `activityTypeSvgIcons.ts` (kanban, menú Crear, paneles).
  */
 export const ACTIVITY_TYPE_ICON_CIRCLE = {
   llamada:

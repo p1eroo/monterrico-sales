@@ -98,6 +98,7 @@ import { TaskFormDialog } from '@/components/shared/TaskFormDialog';
 import type { TaskFormResult } from '@/components/shared/TaskFormDialog';
 import { contactListAll, mapApiContactRowToContact } from '@/lib/contactApi';
 import { companyListAll } from '@/lib/companyApi';
+import { fetchClienteEmpresas } from '@/lib/clienteCarteraApi';
 import { opportunityListAll, mapApiOpportunityToOpportunity } from '@/lib/opportunityApi';
 import { formatTodayPeruYmd, formatDate, completedAtNowIso } from '@/lib/formatters';
 import {
@@ -309,12 +310,21 @@ export default function TareasPage({ scope = 'all' }: { scope?: TareasPageScope 
 
   const loadTaskFormCompanies = useCallback(async () => {
     try {
-      const companyRows = await companyListAll();
-      setCrmCompanies(companyRows.map((c) => ({ name: c.name, id: c.id })));
+      if (scope === 'clienteCartera') {
+        const rows = await fetchClienteEmpresas();
+        setCrmCompanies(rows.map((c) => ({ name: c.empresa, id: c.id })));
+      } else {
+        const companyRows = await companyListAll();
+        setCrmCompanies(companyRows.map((c) => ({ name: c.name, id: c.id })));
+      }
     } catch {
-      toast.error('No se pudieron cargar las empresas');
+      toast.error(
+        scope === 'clienteCartera'
+          ? 'No se pudieron cargar las empresas de clientes'
+          : 'No se pudieron cargar las empresas',
+      );
     }
-  }, []);
+  }, [scope]);
 
   const loadTaskDetailEntities = useCallback(async () => {
     try {
@@ -1474,10 +1484,15 @@ export default function TareasPage({ scope = 'all' }: { scope?: TareasPageScope 
           }
         }}
         title="Nueva Tarea"
-        description="Crea una nueva tarea vinculada a al menos un contacto, empresa u oportunidad."
+        description={
+          scope === 'clienteCartera'
+            ? 'Crea una nueva tarea vinculada a un contacto o empresa de tu cartera de clientes.'
+            : 'Crea una nueva tarea vinculada a al menos un contacto, empresa u oportunidad.'
+        }
         contacts={[]}
         companies={taskFormCompanies}
         opportunities={[]}
+        associationVariant={scope === 'clienteCartera' ? 'cliente-cartera' : 'crm'}
         defaultTitle={newTaskDefaultTitle}
         defaultStatus={newTaskColumnStatus}
         defaultAssociations={newTaskDefaultAssociations}
