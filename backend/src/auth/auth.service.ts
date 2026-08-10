@@ -347,7 +347,6 @@ export class AuthService {
       where: { id: account.user.id },
       data: {
         lastActivity: new Date(),
-        sessionVersion: { increment: 1 },
       },
       include: { role: true },
     });

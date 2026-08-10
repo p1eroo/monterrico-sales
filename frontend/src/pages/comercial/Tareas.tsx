@@ -98,7 +98,10 @@ import { TaskFormDialog } from '@/components/shared/TaskFormDialog';
 import type { TaskFormResult } from '@/components/shared/TaskFormDialog';
 import { contactListAll, mapApiContactRowToContact } from '@/lib/contactApi';
 import { companyListAll } from '@/lib/companyApi';
-import { fetchClienteEmpresas } from '@/lib/clienteCarteraApi';
+import {
+  fetchClienteEmpresas,
+  refreshClienteEmpresas,
+} from '@/lib/clienteCarteraApi';
 import { opportunityListAll, mapApiOpportunityToOpportunity } from '@/lib/opportunityApi';
 import { formatTodayPeruYmd, formatDate, completedAtNowIso } from '@/lib/formatters';
 import {
@@ -311,8 +314,12 @@ export default function TareasPage({ scope = 'all' }: { scope?: TareasPageScope 
   const loadTaskFormCompanies = useCallback(async () => {
     try {
       if (scope === 'clienteCartera') {
-        const rows = await fetchClienteEmpresas();
-        setCrmCompanies(rows.map((c) => ({ name: c.empresa, id: c.id })));
+        const cached = await fetchClienteEmpresas();
+        if (cached.length > 0) {
+          setCrmCompanies(cached.map((c) => ({ name: c.empresa, id: c.id })));
+        }
+        const result = await refreshClienteEmpresas();
+        setCrmCompanies(result.data.map((c) => ({ name: c.empresa, id: c.id })));
       } else {
         const companyRows = await companyListAll();
         setCrmCompanies(companyRows.map((c) => ({ name: c.name, id: c.id })));

@@ -39,7 +39,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
     if (payload.sessionVersion !== user.sessionVersion) {
       throw new UnauthorizedException(
-        'Tu sesión fue cerrada porque iniciaste sesión en otro navegador o dispositivo',
+        'Tu sesión expiró o fue cerrada (por ejemplo, tras un cambio de contraseña)',
       );
     }
     return {

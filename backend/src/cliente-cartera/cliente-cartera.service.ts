@@ -296,7 +296,7 @@ export class ClienteCarteraService {
 
     const row = await this.prisma.clienteEmpresa.findUnique({
       where: { id: raw },
-      select: { id: true, agenteSync: true },
+      select: { id: true, asesor: true },
     });
     if (!row) {
       throw new NotFoundException('Empresa cliente no encontrada');
@@ -312,7 +312,7 @@ export class ClienteCarteraService {
     if (scope.unrestricted) return {};
     const agente = username.trim().toLowerCase();
     if (!agente) return { id: '__none__' };
-    return { agenteSync: agente };
+    return { asesor: agente };
   }
 
   private buildContactoAssignedWhere(
@@ -323,13 +323,13 @@ export class ClienteCarteraService {
   }
 
   private assertEmpresaInScope(
-    row: { agenteSync: string },
+    row: { asesor: string },
     scope: CrmDataScope,
     username: string,
   ) {
     if (scope.unrestricted) return;
     const agente = username.trim().toLowerCase();
-    if (row.agenteSync !== agente) {
+    if (row.asesor !== agente) {
       throw new ForbiddenException('No tienes acceso a esta empresa cliente');
     }
   }

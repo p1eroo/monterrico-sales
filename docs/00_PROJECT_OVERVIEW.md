@@ -338,7 +338,7 @@ Todas las rutas requieren JWT Bearer token, excepto las marcadas `@Public()`.
 3. **Registro**: Abierto si `ALLOW_OPEN_REGISTRATION=true` o si no hay usuarios (primer usuario).
 4. **Google OAuth**: `GET /auth/google` inicia flujo. El callback vincula la cuenta Google al usuario.
 5. **JWT payload**: `{ sub: userId, username, name, role, roleId, sessionVersion }`.
-6. **Single session**: `sessionVersion` se incrementa en login/cambio de contraseña. Si no coincide → sesión inválida.
+6. **Sesiones concurrentes**: varios navegadores/dispositivos pueden usar la misma cuenta a la vez. `sessionVersion` solo se incrementa al **cambiar contraseña** para cerrar todas las sesiones activas; si no coincide con el JWT → sesión inválida.
 
 ### 6.2 Guards
 

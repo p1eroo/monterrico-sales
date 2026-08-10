@@ -334,7 +334,7 @@ export class ActivitiesService {
     if (options?.skipScopeCheck) return row;
     if (scope && !scope.unrestricted) {
       const agente = username?.trim().toLowerCase() ?? '';
-      if (!agente || row.agenteSync !== agente) {
+      if (!agente || row.asesor !== agente) {
         throw new BadRequestException('La empresa cliente indicada no existe');
       }
     }
