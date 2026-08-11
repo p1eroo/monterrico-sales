@@ -141,6 +141,8 @@ export async function companyListSummaryPaginated(params?: {
   lastInteractionTo?: string;
   createdFrom?: string;
   createdTo?: string;
+  sortBy?: string;
+  sortDir?: 'asc' | 'desc';
 }): Promise<CompanySummaryListResponse> {
   const sp = new URLSearchParams();
   if (params?.page != null) sp.set('page', String(params.page));
@@ -162,6 +164,8 @@ export async function companyListSummaryPaginated(params?: {
   if (params?.lastInteractionTo?.trim()) sp.set('lastInteractionTo', params.lastInteractionTo.trim());
   if (params?.createdFrom?.trim()) sp.set('createdFrom', params.createdFrom.trim());
   if (params?.createdTo?.trim()) sp.set('createdTo', params.createdTo.trim());
+  if (params?.sortBy?.trim()) sp.set('sortBy', params.sortBy.trim());
+  if (params?.sortDir) sp.set('sortDir', params.sortDir);
   const qs = sp.toString();
   return api<CompanySummaryListResponse>(
     qs ? `/companies/summary?${qs}` : '/companies/summary',

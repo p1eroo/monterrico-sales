@@ -22,6 +22,7 @@ import {
 import { COMPANY_FIELD_LABELS } from '../audit-detail/audit-field-labels';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
+import { buildCompanySummaryOrderBy } from './company-summary-sort.util';
 import {
   companyAdvisorWhere,
   parseAdvisorFilterQuery,
@@ -997,6 +998,8 @@ export class CompaniesService {
       lastInteractionTo?: string;
       createdFrom?: string;
       createdTo?: string;
+      sortBy?: string;
+      sortDir?: string;
     },
     scope?: CrmDataScope,
   ) {
@@ -1005,11 +1008,12 @@ export class CompaniesService {
     const skip = (page - 1) * limit;
 
     const where = await this.buildSummaryWhere(opts, scope);
+    const orderBy = buildCompanySummaryOrderBy(opts?.sortBy, opts?.sortDir);
 
     const [rows, total] = await Promise.all([
       this.prisma.company.findMany({
         where,
-        orderBy: { updatedAt: 'desc' },
+        orderBy,
         skip,
         take: limit,
         select: companySelectSummary,

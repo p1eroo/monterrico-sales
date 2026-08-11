@@ -175,6 +175,8 @@ export class CompaniesController {
     @Query('lastInteractionTo') lastInteractionTo?: string,
     @Query('createdFrom') createdFrom?: string,
     @Query('createdTo') createdTo?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortDir') sortDir?: string,
   ) {
     const scope = await this.crmDataScope.buildScope(
       req.user.userId,
@@ -184,6 +186,8 @@ export class CompaniesController {
     const limitNum = limit
       ? Math.min(5000, Math.max(1, Number.parseInt(limit, 10) || 25))
       : 25;
+    const normalizedSortDir =
+      sortDir?.trim().toLowerCase() === 'asc' ? 'asc' : 'desc';
     return this.companiesService.findAllSummary(
       {
         page: pageNum,
@@ -201,6 +205,8 @@ export class CompaniesController {
         lastInteractionTo: lastInteractionTo?.trim() || undefined,
         createdFrom: createdFrom?.trim() || undefined,
         createdTo: createdTo?.trim() || undefined,
+        sortBy: sortBy?.trim() || undefined,
+        sortDir: sortBy?.trim() ? normalizedSortDir : undefined,
       },
       scope,
     );

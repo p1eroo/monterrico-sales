@@ -151,6 +151,19 @@ import { ExportSvgIcon } from '@/components/icons/ExportSvgIcon';
 
 type EmpresaSummaryRow = CompanySummaryRow & { isLocalOnly?: boolean };
 
+/** Columna TanStack → campo de orden en GET /companies/summary */
+const COMPANY_TABLE_SORT_TO_API: Record<string, string> = {
+  empresa: 'name',
+  etapa: 'etapa',
+  fuente: 'fuente',
+  rubro: 'rubro',
+  tipo: 'tipo',
+  recuperado: 'clienteRecuperado',
+  asesor: 'asesor',
+  creacion: 'createdAt',
+  contactos: 'contactCount',
+};
+
 function empresaDetailPath(row: EmpresaSummaryRow): string {
   return companyDetailHref({ id: row.id, urlSlug: row.urlSlug, name: row.name });
 }
@@ -463,6 +476,19 @@ export default function EmpresasPage() {
     setSelectAllMode(false);
   }, [listFilterParams]);
 
+  const [sorting, setSorting] = useState<SortingState>([]);
+
+  const tableSortParams = useMemo(() => {
+    const active = sorting[0];
+    if (!active) return {};
+    const sortBy = COMPANY_TABLE_SORT_TO_API[active.id];
+    if (!sortBy) return {};
+    return {
+      sortBy,
+      sortDir: (active.desc ? 'desc' : 'asc') as 'asc' | 'desc',
+    };
+  }, [sorting]);
+
   const loadSummary = useCallback(async () => {
     setLoading(true);
     try {
@@ -470,6 +496,7 @@ export default function EmpresasPage() {
         page,
         limit: pageSize,
         ...listFilterParams,
+        ...tableSortParams,
       });
       setSummaryRows(res.data);
       setTotal(res.total);
@@ -485,6 +512,7 @@ export default function EmpresasPage() {
     page,
     pageSize,
     listFilterParams,
+    tableSortParams,
   ]);
 
   useEffect(() => {
@@ -523,7 +551,12 @@ export default function EmpresasPage() {
   const filtersDefault = !hasActiveFilters;
 
   const displayRows = useMemo((): EmpresaSummaryRow[] => {
-    if (page !== 1 || !filtersDefault || standaloneCompanies.length === 0) {
+    if (
+      sorting.length > 0 ||
+      page !== 1 ||
+      !filtersDefault ||
+      standaloneCompanies.length === 0
+    ) {
       return summaryRows;
     }
     const names = new Set(
@@ -533,7 +566,7 @@ export default function EmpresasPage() {
       .filter((c) => !names.has(c.name.trim().toLowerCase()))
       .map(localCompanyToSummary);
     return [...locals, ...summaryRows];
-  }, [summaryRows, page, filtersDefault, standaloneCompanies]);
+  }, [summaryRows, page, filtersDefault, standaloneCompanies, sorting.length]);
 
   function clearFilters() {
     setSearch('');
@@ -652,8 +685,6 @@ export default function EmpresasPage() {
     return withCols ? Object.keys(withCols.csvColumns) : [];
   }, [importPreviewData]);
 
-  const [sorting, setSorting] = useState<SortingState>([]);
-
   const responsiveClasses: Record<string, string> = {
     etapa: 'hidden md:table-cell',
     fuente: 'hidden lg:table-cell',
@@ -771,7 +802,6 @@ export default function EmpresasPage() {
           </div>
         );
       },
-      enableSorting: false,
       },
       {
         accessorKey: 'displayEtapa',
@@ -779,7 +809,6 @@ export default function EmpresasPage() {
         header: 'Etapa',
         enableHiding: true,
         cell: ({ getValue }) => <StatusBadge status={getValue() as Etapa} />,
-        enableSorting: false,
         size: 140,
       },
       {
@@ -790,7 +819,6 @@ export default function EmpresasPage() {
         cell: ({ getValue }) => (
           <span className="text-[13px] text-[#475569] dark:text-gray-400">{sourceLabelFromApi(getValue() as string | null, bundle)}</span>
         ),
-        enableSorting: false,
         size: 100,
       },
       {
@@ -803,7 +831,6 @@ export default function EmpresasPage() {
           const label = rubro ? getRubroLabelFromCatalog(rubro, bundle) : undefined;
           return <span className="block truncate text-[13px] text-[#475569] dark:text-gray-400" title={label}>{label ?? '—'}</span>;
         },
-        enableSorting: false,
         size: 140,
       },
       {
@@ -815,7 +842,6 @@ export default function EmpresasPage() {
           const tipo = parseTipoFromApi(getValue() as string | null | undefined);
           return <span className="text-[13px] text-[#475569] dark:text-gray-400">{tipo ?? '—'}</span>;
         },
-        enableSorting: false,
         size: 65,
         maxSize: 65,
       },
@@ -829,7 +855,6 @@ export default function EmpresasPage() {
             {getValue() === 'si' ? 'Recuperado' : '—'}
           </span>
         ),
-        enableSorting: false,
         size: 95,
       },
       {
@@ -840,7 +865,6 @@ export default function EmpresasPage() {
         cell: ({ getValue }) => (
           <span className="text-[13px] text-[#475569] dark:text-gray-400">{getValue() as string ?? '—'}</span>
         ),
-        enableSorting: false,
         size: 120,
       },
       {
@@ -853,13 +877,13 @@ export default function EmpresasPage() {
             {formatDateShort(String(getValue() ?? ''))}
           </span>
         ),
-        enableSorting: false,
         size: 115,
       },
       {
         id: 'contactos',
         header: 'Contactos',
         enableHiding: true,
+        accessorFn: (row) => row.contactCount,
         cell: ({ row }) => (
           <div className="flex justify-center">
             <EmpresaContactsPopover
@@ -869,7 +893,6 @@ export default function EmpresasPage() {
             />
           </div>
         ),
-        enableSorting: false,
         size: 100,
       },
       {
@@ -893,9 +916,17 @@ export default function EmpresasPage() {
     data: displayRows,
     columns,
     state: { sorting, columnVisibility },
-    onSortingChange: setSorting,
+    onSortingChange: (updater) => {
+      setSorting((prev) =>
+        typeof updater === 'function' ? updater(prev) : updater,
+      );
+      setPage(1);
+    },
     onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
+    manualSorting: true,
+    enableSorting: true,
+    enableSortingRemoval: true,
     enableColumnResizing: true,
     columnResizeMode: 'onChange',
     defaultColumn: { minSize: 60 },
@@ -2160,6 +2191,8 @@ export default function EmpresasPage() {
                           sortable: header.column.getCanSort(),
                         }),
                         getResponsiveClass(header.column.id),
+                        header.column.getIsSorted() &&
+                          'bg-emerald-50/90 dark:bg-emerald-950/35',
                       )}
                       style={comercialTableCellStyle(header.column.id, header.getSize())}
                       onClick={header.column.getToggleSortingHandler()}
