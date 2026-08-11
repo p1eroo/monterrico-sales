@@ -7,6 +7,7 @@ import type { Etapa, ContactSource } from '@/types';
 import { contactSourceLabels, etapaLabels } from '@/data/mock';
 import { useAppStore } from '@/store';
 import { canUserReassignCommercialAdvisor, resolveAdvisorAssigneeId } from '@/lib/advisorAssigneeDefaults';
+import { usePermissions } from '@/hooks/usePermissions';
 import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
 import { companyListAll, type ApiCompanyRecord } from '@/lib/companyApi';
 import { fetchClienteEmpresas } from '@/lib/clienteCarteraApi';
@@ -141,7 +142,8 @@ export function NewContactWizard({
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(defaultCompanyId ?? null);
   const [selectedOpportunityIds, setSelectedOpportunityIds] = useState<string[]>(defaultOpportunityIds);
   const currentUser = useAppStore((s) => s.currentUser);
-  const canReassign = canUserReassignCommercialAdvisor(currentUser.role);
+  const { hasPermission } = usePermissions();
+  const canReassign = canUserReassignCommercialAdvisor(hasPermission, 'contactos');
   const currentUserRef = useRef(currentUser);
   currentUserRef.current = currentUser;
   const bundle = useCrmConfigStore((s) => s.bundle);
@@ -182,7 +184,7 @@ export function NewContactWizard({
     setEmail(d?.email ?? '');
     setSource(d?.source ?? 'base');
     const cu = currentUserRef.current;
-    setAssignedTo(resolveAdvisorAssigneeId(d?.assignedTo, cu));
+    setAssignedTo(resolveAdvisorAssigneeId(d?.assignedTo, cu, canReassign));
     setClienteRecuperado(d?.clienteRecuperado ?? 'no');
     setDepartamento(d?.departamento ?? '');
     setProvincia(d?.provincia ?? '');
@@ -658,7 +660,8 @@ return () => {
                 htmlId="contact-wizard-assigned-to"
                 value={assignedTo}
                 onChange={setAssignedTo}
-                disabled={!canReassign}
+                assignModule="contactos"
+                disabled={false}
                 fallbackName={currentUser.name}
                 label="Asesor asignado"
                 formStyle

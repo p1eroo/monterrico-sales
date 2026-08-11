@@ -17,6 +17,7 @@ import {
 import { toast } from '@/lib/notify';
 import { priorityLabels } from '@/data/mock';
 import { canUserReassignCommercialAdvisor } from '@/lib/advisorAssigneeDefaults';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useUsers } from '@/hooks/useUsers';
 import { useAppStore } from '@/store';
 import type { Contact, Opportunity, TaskAssociation, TaskKind } from '@/types';
@@ -230,7 +231,8 @@ export function TaskDetailDialog({
 }: TaskDetailDialogProps) {
   const { users, activeAdvisors } = useUsers();
   const currentUser = useAppStore((s) => s.currentUser);
-  const canReassign = canUserReassignCommercialAdvisor(currentUser.role);
+  const { hasPermission } = usePermissions();
+  const canReassign = canUserReassignCommercialAdvisor(hasPermission, 'actividades');
 
   const [taskEditMode, setTaskEditMode] = useState(false);
   const [taskEditForm, setTaskEditForm] = useState<TaskDetailTask | null>(null);
@@ -1086,7 +1088,8 @@ export function TaskDetailDialog({
                 htmlId="task-detail-edit-assignee"
                 value={editAssigneeId}
                 onChange={setEditAssigneeId}
-                disabled={!canReassign}
+                assignModule="actividades"
+                disabled={false}
                 fallbackName={taskEditForm.assignee}
                 label="Asignado"
                 formStyle

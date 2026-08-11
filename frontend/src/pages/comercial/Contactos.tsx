@@ -34,7 +34,7 @@ import { PaletteIcon } from "@/components/icons/PaletteIcon";
 import { contactSourceLabels, etapaLabels } from "@/data/mock";
 import { useCrmConfigStore, getSourceLabelFromCatalog, useLeadSourceOptions } from "@/store/crmConfigStore";
 import { useAppStore } from "@/store";
-import { canReassignCommercialAdvisor } from "@/data/rbac";
+import { canAssignCommercialModule } from "@/data/rbac";
 import {
   NewContactWizard,
   type NewContactData,
@@ -240,9 +240,8 @@ export default function ContactosPage() {
     queryParams: advisorListParams,
     reset: resetAdvisorFilter,
   } = useMultiAdvisorFilter();
-  const currentUserRole = useAppStore((s) => s.currentUser.role ?? "");
-  const canEditAssignee = canReassignCommercialAdvisor(currentUserRole);
   const { hasPermission } = usePermissions();
+  const canEditAssignee = canAssignCommercialModule(hasPermission, "contactos");
   const pendingContacts = useOptimisticCrmStore((s) => s.pendingContacts);
   const addPendingContact = useOptimisticCrmStore((s) => s.addPendingContact);
   const removePendingContact = useOptimisticCrmStore(
@@ -1323,7 +1322,7 @@ export default function ContactosPage() {
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {canEditAssignee && hasPermission("contactos.editar") && (
+            {canEditAssignee && (
               <Button
                 size="sm"
                 className="h-9 bg-blue-600 text-sm font-normal text-white shadow-md hover:bg-blue-700"
@@ -1757,6 +1756,7 @@ export default function ContactosPage() {
         onOpenChange={setBatchReassignDialogOpen}
         count={selectedDeleteCount}
         entityLabel="contacto(s)"
+        assignModule="contactos"
         onConfirm={handleBatchReassign}
         confirming={batchReassigning}
       />

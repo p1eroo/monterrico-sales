@@ -9,6 +9,7 @@ import { companyTipoLabels, etapaLabels, contactSourceLabels } from '@/data/mock
 import { useRubroOptions } from '@/store/crmConfigStore';
 import { useAppStore } from '@/store';
 import { canUserReassignCommercialAdvisor, resolveAdvisorAssigneeId } from '@/lib/advisorAssigneeDefaults';
+import { usePermissions } from '@/hooks/usePermissions';
 import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
 import { cn } from '@/lib/utils';
 
@@ -90,14 +91,15 @@ const steps = [
 const COMPANY_NAME_LOOKUP_DEBOUNCE_MS = 700;
 
 function mergeCompanyForm(
-  defaults?: Partial<NewCompanyData>,
-  currentUser?: { id: string; role?: string },
+  defaults: Partial<NewCompanyData> | undefined,
+  currentUser: { id: string; role?: string },
+  canAssignOthers: boolean,
 ): NewCompanyData {
   const merged = { ...emptyForm, ...defaults };
   merged.propietario = resolveAdvisorAssigneeId(defaults?.propietario ?? merged.propietario, {
     id: currentUser?.id ?? '',
     role: currentUser?.role,
-  });
+  }, canAssignOthers);
   return merged;
 }
 
@@ -111,10 +113,13 @@ export function NewCompanyWizard({
   confirmButtonLabel = 'Crear Empresa',
 }: NewCompanyWizardProps) {
   const currentUser = useAppStore((s) => s.currentUser);
+  const { hasPermission } = usePermissions();
+  const canReassign = canUserReassignCommercialAdvisor(hasPermission, 'empresas');
   const getUserName = useUsersStore((s) => s.getUserName);
-  const canReassign = canUserReassignCommercialAdvisor(currentUser.role);
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState<NewCompanyData>(() => mergeCompanyForm(defaultValues, currentUser));
+  const [form, setForm] = useState<NewCompanyData>(() =>
+    mergeCompanyForm(defaultValues, currentUser, canReassign),
+  );
   const [rucLookupLoading, setRucLookupLoading] = useState(false);
   const [companyNameLookupLoading, setCompanyNameLookupLoading] = useState(false);
   const [companyNameSuggestions, setCompanyNameSuggestions] = useState<ApiCompanyRecord[]>([]);
@@ -273,7 +278,7 @@ export function NewCompanyWizard({
 
   useEffect(() => {
     if (!open) return;
-    setForm(mergeCompanyForm(defaultValues, currentUser));
+    setForm(mergeCompanyForm(defaultValues, currentUser, canReassign));
     setStep(0);
     setExistingCompanyId(null);
     setLoadedRucDigits(null);
@@ -365,7 +370,7 @@ export function NewCompanyWizard({
     if (!value) {
       setSubmitting(false);
       setStep(0);
-      setForm(mergeCompanyForm(undefined, currentUser));
+      setForm(mergeCompanyForm(undefined, currentUser, canReassign));
       setExistingCompanyId(null);
       setLoadedRucDigits(null);
       resetCompanyNameLookup();
@@ -433,7 +438,7 @@ export function NewCompanyWizard({
           ),
         );
         setStep(0);
-        setForm(mergeCompanyForm(undefined, currentUser));
+        setForm(mergeCompanyForm(undefined, currentUser, canReassign));
         setExistingCompanyId(null);
         setLoadedRucDigits(null);
         resetCompanyNameLookup();
@@ -461,7 +466,7 @@ export function NewCompanyWizard({
         onSubmit({ ...form, nombreNegocio }, { mode: 'create' }),
       );
       setStep(0);
-      setForm(mergeCompanyForm(undefined, currentUser));
+      setForm(mergeCompanyForm(undefined, currentUser, canReassign));
       setExistingCompanyId(null);
       setLoadedRucDigits(null);
       resetCompanyNameLookup();
@@ -751,7 +756,8 @@ export function NewCompanyWizard({
                 htmlId="company-wizard-propietario"
                 value={form.propietario}
                 onChange={(v) => set('propietario', v)}
-                disabled={!canReassign}
+                assignModule="empresas"
+                disabled={false}
                 fallbackName={currentUser.name}
                 label="Propietario"
                 formStyle

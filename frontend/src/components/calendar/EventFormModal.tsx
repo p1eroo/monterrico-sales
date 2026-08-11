@@ -17,6 +17,7 @@ import {
 import { useUsers } from '@/hooks/useUsers';
 import { useAppStore } from '@/store';
 import { canUserReassignCommercialAdvisor, resolveAdvisorAssigneeId } from '@/lib/advisorAssigneeDefaults';
+import { usePermissions } from '@/hooks/usePermissions';
 import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
 import { eventTypeConfig } from './eventTypeConfig';
 import { cn } from '@/lib/utils';
@@ -98,8 +99,9 @@ export function EventFormModal({
 
   const { activeAdvisors } = useUsers();
   const currentUser = useAppStore((s) => s.currentUser);
-  const canReassign = canUserReassignCommercialAdvisor(currentUser.role);
-  const defaultAssigneeId = resolveAdvisorAssigneeId(undefined, currentUser) || activeAdvisors[0]?.id || '';
+  const { hasPermission } = usePermissions();
+  const canReassign = canUserReassignCommercialAdvisor(hasPermission, 'actividades');
+  const defaultAssigneeId = resolveAdvisorAssigneeId(undefined, currentUser, canReassign) || activeAdvisors[0]?.id || '';
 
   useEffect(() => {
     if (!open) return;
@@ -257,7 +259,8 @@ export function EventFormModal({
                 htmlId="event-form-assigned-to"
                 value={field.value}
                 onChange={field.onChange}
-                disabled={!canReassign}
+                assignModule="actividades"
+                disabled={false}
                 fallbackName={currentUser.name}
                 label="Responsable"
               />

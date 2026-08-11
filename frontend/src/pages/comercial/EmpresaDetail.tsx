@@ -9,7 +9,8 @@ import {
 } from 'lucide-react';
 import { useCRMStore } from '@/store/crmStore';
 import { useAppStore } from '@/store';
-import { canReassignCommercialAdvisor } from '@/data/rbac';
+import { canAssignCommercialModule } from '@/data/rbac';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useCompaniesStore } from '@/store/companiesStore';
 import {
   companyTipoLabels, etapaLabels, contactSourceLabels, activities,
@@ -113,8 +114,8 @@ export default function EmpresaDetailPage() {
   const [apiLoading, setApiLoading] = useState(fromApiById);
   const { users, activeAdvisors } = useUsers();
   const crmBundle = useCrmConfigStore((s) => s.bundle);
-  const currentUserRole = useAppStore((s) => s.currentUser.role ?? '');
-  const canEditAssignee = canReassignCommercialAdvisor(currentUserRole);
+  const { hasPermission } = usePermissions();
+  const canEditAssignee = canAssignCommercialModule(hasPermission, 'empresas');
   const [apiError, setApiError] = useState<string | null>(null);
 
   const pendingContacts = useOptimisticCrmStore((s) => s.pendingContacts);

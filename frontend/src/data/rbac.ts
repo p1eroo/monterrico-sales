@@ -273,10 +273,27 @@ export function roleStringToTemplateId(role: string): string {
   return 'asesor';
 }
 
-/** Admin, jefe comercial, gerente, supervisor: pueden reasignar asesor en CRM. */
-export function canReassignCommercialAdvisor(roleLabel: string): boolean {
-  const t = roleStringToTemplateId(roleLabel);
-  return t === 'admin' || t === 'supervisor';
+/** Módulos CRM con acción «Asignar» en la matriz de permisos. */
+export type CommercialAssignModule =
+  | 'empresas'
+  | 'contactos'
+  | 'oportunidades'
+  | 'actividades'
+  | 'clientes'
+  | 'pipeline';
+
+export function commercialAssignPermissionKey(
+  module: CommercialAssignModule,
+): PermissionKey {
+  return `${module}.asignar` as PermissionKey;
+}
+
+/** ¿Puede elegir/reasignar asesor en este módulo? (requiere `*.asignar`; ver equipo usa `equipo.datos_completos`). */
+export function canAssignCommercialModule(
+  hasPermission: (key: PermissionKey) => boolean,
+  module: CommercialAssignModule,
+): boolean {
+  return hasPermission(commercialAssignPermissionKey(module));
 }
 
 export function getTemplatePermissions(templateId: string): Record<PermissionKey, boolean> {

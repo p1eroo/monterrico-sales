@@ -22,8 +22,9 @@ import type { ApiCompanyRecord } from '@/lib/companyApi';
 import { isLikelyCompanyCuid } from '@/lib/companyApi';
 import { useCompaniesStore } from '@/store/companiesStore';
 import { useAppStore } from '@/store';
-import { canReassignCommercialAdvisor } from '@/data/rbac';
+import { canAssignCommercialModule } from '@/data/rbac';
 import { resolveAdvisorAssigneeId } from '@/lib/advisorAssigneeDefaults';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useUsers } from '@/hooks/useUsers';
 import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
 import { useLeadSourceOptions, useRubroOptions } from '@/store/crmConfigStore';
@@ -62,6 +63,7 @@ function editFormFromApiRecord(
   rec: ApiCompanyRecord,
   currentUser: { id: string },
   activeAdvisors: { id: string }[],
+  canAssignOthers: boolean,
 ) {
   return {
     name: rec.name,
@@ -71,7 +73,11 @@ function editFormFromApiRecord(
     tipo: (rec.tipo && (rec.tipo === 'A' || rec.tipo === 'B' || rec.tipo === 'C') ? rec.tipo : '') as CompanyTipo | '',
     ruc: rec.ruc ?? '',
     razonSocial: rec.razonSocial ?? '',
-    assignedTo: resolveAdvisorAssigneeId(rec.assignedTo ?? activeAdvisors[0]?.id, currentUser),
+    assignedTo: resolveAdvisorAssigneeId(
+      rec.assignedTo ?? activeAdvisors[0]?.id,
+      currentUser,
+      canAssignOthers,
+    ),
     fuente: (rec.fuente as ContactSource) || 'base',
   };
 }
@@ -103,9 +109,9 @@ export function CompanyEditDialog({
     rowIsLocalOnly && rowId ? s.companies.find((c) => c.id === rowId) : undefined,
   );
   const { users, activeAdvisors } = useUsers();
-  const currentUserRole = useAppStore((s) => s.currentUser.role ?? '');
   const currentUser = useAppStore((s) => s.currentUser);
-  const canEditAssignee = canReassignCommercialAdvisor(currentUserRole);
+  const { hasPermission } = usePermissions();
+  const canEditAssignee = canAssignCommercialModule(hasPermission, 'empresas');
   const leadSourceOptions = useLeadSourceOptions();
   const rubroOptions = useRubroOptions();
 
@@ -165,7 +171,7 @@ export function CompanyEditDialog({
 
     if (initialRecord && initialRecord.id === rowId) {
       setLoadingApi(false);
-      setEditForm(editFormFromApiRecord(initialRecord, currentUser, activeAdvisors));
+      setEditForm(editFormFromApiRecord(initialRecord, currentUser, activeAdvisors, canEditAssignee));
       return;
     }
 
@@ -174,7 +180,7 @@ export function CompanyEditDialog({
     void api<ApiCompanyRecord>(`/companies/${rowId}`)
       .then((rec) => {
         if (cancelled) return;
-        setEditForm(editFormFromApiRecord(rec, currentUser, activeAdvisors));
+        setEditForm(editFormFromApiRecord(rec, currentUser, activeAdvisors, canEditAssignee));
       })
       .catch(() => {
         if (!cancelled) {
@@ -195,6 +201,7 @@ export function CompanyEditDialog({
     standalone?.id,
     activeAdvisors,
     currentUser,
+    canEditAssignee,
   ]);
 
   function handleSave() {
@@ -277,7 +284,8 @@ export function CompanyEditDialog({
               htmlId="company-list-edit-assigned-to"
               value={editForm.assignedTo}
               onChange={(assignedTo) => setEditForm((f) => ({ ...f, assignedTo }))}
-              disabled={!canEditAssignee}
+              assignModule="empresas"
+              disabled={loadingApi}
               fallbackName={
                 users.find((u) => u.id === editForm.assignedTo)?.name ||
                 (!canEditAssignee ? currentUser.name : undefined)

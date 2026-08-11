@@ -27,6 +27,7 @@ import {
   type ActivityFormFieldsType,
 } from '@/components/shared/ActivityTypeFormFields';
 import { canUserReassignCommercialAdvisor } from '@/lib/advisorAssigneeDefaults';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useAppStore } from '@/store';
 import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
 import { Badge } from '@/components/ui/badge';
@@ -134,7 +135,8 @@ export function ActivityDetailDialog({
   onDeleteActivity,
 }: ActivityDetailDialogProps) {
   const currentUser = useAppStore((s) => s.currentUser);
-  const canReassign = canUserReassignCommercialAdvisor(currentUser.role);
+  const { hasPermission } = usePermissions();
+  const canReassign = canUserReassignCommercialAdvisor(hasPermission, 'actividades');
 
   const [currentActivity, setCurrentActivity] = useState<Activity | null>(activity);
   const [editing, setEditing] = useState(false);
@@ -263,7 +265,8 @@ export function ActivityDetailDialog({
             htmlId="edit-activity-assignee"
             value={editForm.assignedTo}
             onChange={(v) => setEditForm((prev) => ({ ...prev, assignedTo: v }))}
-            disabled={!canReassign}
+            assignModule="actividades"
+            disabled={false}
             fallbackName={currentActivity.assignedToName}
             label="Asignado a"
             formStyle

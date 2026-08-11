@@ -100,7 +100,7 @@ import {
 import { api, API_BASE } from '@/lib/api';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAppStore } from '@/store';
-import { canReassignCommercialAdvisor } from '@/data/rbac';
+import { canAssignCommercialModule } from '@/data/rbac';
 import {
   downloadImportExportCsv,
   previewCompaniesImportCsv,
@@ -416,8 +416,7 @@ export default function EmpresasPage() {
   const [exportBusy, setExportBusy] = useState(false);
   const [fullExportBusy, setFullExportBusy] = useState(false);
   const { hasPermission } = usePermissions();
-  const currentUserRole = useAppStore((s) => s.currentUser.role ?? '');
-  const canReassignAdvisor = canReassignCommercialAdvisor(currentUserRole);
+  const canReassignAdvisor = canAssignCommercialModule(hasPermission, 'empresas');
 
   const [previewEmpresa, setPreviewEmpresa] = useState<EmpresaSummaryRow | null>(null);
   const [editEmpresa, setEditEmpresa] = useState<EmpresaSummaryRow | null>(null);
@@ -1702,7 +1701,7 @@ export default function EmpresasPage() {
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {canReassignAdvisor && hasPermission('empresas.editar') && (
+            {canReassignAdvisor && (
               <Button
                 size="sm"
                 className="h-9 bg-blue-600 text-sm font-normal text-white shadow-md hover:bg-blue-700"
@@ -2422,6 +2421,7 @@ export default function EmpresasPage() {
         onOpenChange={setBatchReassignDialogOpen}
         count={selectedDeleteCount}
         entityLabel="empresa(s)"
+        assignModule="empresas"
         onConfirm={handleBatchReassign}
         confirming={batchReassigning}
       />

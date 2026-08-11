@@ -8,6 +8,7 @@ import {
   canUserReassignCommercialAdvisor,
   resolveAdvisorAssigneeIdWithFallback,
 } from '@/lib/advisorAssigneeDefaults';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useUsers } from '@/hooks/useUsers';
 import { useTaskAssociationPickerPagination } from '@/hooks/useTaskAssociationPickerPagination';
 import { useAppStore } from '@/store';
@@ -156,13 +157,15 @@ export function TaskFormDialog({
   const pickerTabs = pickerTabsForVariant(associationVariant);
   const { users, activeAdvisors } = useUsers();
   const currentUser = useAppStore((s) => s.currentUser);
-  const canReassign = canUserReassignCommercialAdvisor(currentUser.role);
+  const { hasPermission } = usePermissions();
+  const canReassign = canUserReassignCommercialAdvisor(hasPermission, 'actividades');
 
   function resolveDefaultAssignee() {
     return resolveAdvisorAssigneeIdWithFallback(
       defaultAssigneeId,
       currentUser,
       activeAdvisors[0]?.id,
+      canReassign,
     );
   }
 
@@ -466,6 +469,7 @@ export function TaskFormDialog({
       formAssignee || defaultAssigneeId,
       currentUser,
       activeAdvisors[0]?.id,
+      canReassign,
     );
     if (!assigneeId) {
       toast.error('No hay asesor disponible para asignar la tarea');
@@ -863,7 +867,8 @@ export function TaskFormDialog({
             htmlId="task-form-assignee"
             value={formAssignee}
             onChange={setFormAssignee}
-            disabled={!canReassign}
+            assignModule="actividades"
+            disabled={false}
             fallbackName={currentUser.name}
             label="Asignado"
             formStyle

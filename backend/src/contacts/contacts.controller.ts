@@ -276,7 +276,7 @@ export class ContactsController {
   }
 
   @Post('bulk-reassign')
-  @RequirePermissions('contactos.editar')
+  @RequirePermissions('contactos.asignar')
   async bulkReassign(
     @Body() body: BulkReassignContactsDto,
     @Req() req: AuthedReq,

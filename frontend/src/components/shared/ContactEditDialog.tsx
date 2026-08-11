@@ -63,10 +63,10 @@ export function ContactEditDialog({
         telefono: contact.telefono,
         correo: contact.correo,
         fuente: contact.fuente,
-        assignedTo: resolveAdvisorAssigneeId(contact.assignedTo, currentUser) || activeAdvisors[0]?.id || '',
+        assignedTo: resolveAdvisorAssigneeId(contact.assignedTo, currentUser, canEditAssignee) || activeAdvisors[0]?.id || '',
       });
     }
-  }, [open, contact, activeAdvisors, currentUser.id, currentUser.role]);
+  }, [open, contact, activeAdvisors, currentUser, canEditAssignee]);
 
   function handleSave() {
     if (!contact || !editForm.name.trim()) return;
@@ -156,7 +156,8 @@ export function ContactEditDialog({
             htmlId="contact-edit-assigned-to"
             value={editForm.assignedTo}
             onChange={(assignedTo) => setEditForm((f) => ({ ...f, assignedTo }))}
-            disabled={!canEditAssignee}
+            assignModule="contactos"
+            disabled={false}
             fallbackName={contact?.assignedToName || currentUser.name}
             formStyle
           />

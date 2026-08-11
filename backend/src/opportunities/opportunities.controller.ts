@@ -187,7 +187,7 @@ export class OpportunitiesController {
   }
 
   @Post('bulk-reassign')
-  @RequirePermissions('oportunidades.editar')
+  @RequirePermissions('oportunidades.asignar')
   async bulkReassign(
     @Body() body: BulkReassignOpportunitiesDto,
     @Req() req: AuthedReq,

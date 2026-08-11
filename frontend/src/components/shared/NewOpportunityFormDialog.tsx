@@ -10,6 +10,7 @@ import { etapaLabels, contactSourceLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
 import { useAppStore } from '@/store';
 import { canUserReassignCommercialAdvisor, resolveAdvisorAssigneeId } from '@/lib/advisorAssigneeDefaults';
+import { usePermissions } from '@/hooks/usePermissions';
 import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
 import { useCRMStore } from '@/store/crmStore';
 import { useCrmConfigStore, getSourceLabelFromCatalog } from '@/store/crmConfigStore';
@@ -99,7 +100,8 @@ export function NewOpportunityFormDialog({
   const { contacts } = useCRMStore();
   const { activeAdvisors } = useUsers();
   const currentUser = useAppStore((s) => s.currentUser);
-  const canReassign = canUserReassignCommercialAdvisor(currentUser.role);
+  const { hasPermission } = usePermissions();
+  const canReassign = canUserReassignCommercialAdvisor(hasPermission, 'oportunidades');
   const bundle = useCrmConfigStore((s) => s.bundle);
   const stageOptions = useMemo(() => {
     const st = bundle?.catalog.stages
@@ -185,7 +187,7 @@ export function NewOpportunityFormDialog({
       ...newOpportunityFormDefaults,
       contactId: defaultContactId || '',
       companyId: defaultCompanyId || '',
-      assignedTo: canReassign ? undefined : resolveAdvisorAssigneeId(undefined, currentUser) || undefined,
+      assignedTo: canReassign ? undefined : resolveAdvisorAssigneeId(undefined, currentUser, false) || undefined,
     });
     setLinkContactSearch('');
     setLinkCompanySearch('');
@@ -473,29 +475,16 @@ export function NewOpportunityFormDialog({
               </Select>
             </FormDialogField>
 
-            {canReassign ? (
-              <FormDialogField label="Asesor (servidor)">
-                <Select value={form.watch('assignedTo') ?? 'none'} onValueChange={(v) => form.setValue('assignedTo', v === 'none' ? undefined : v)}>
-                  <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue placeholder="Sin asignar en servidor" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Sin asignar en servidor</SelectItem>
-                    {activeAdvisors.map((u) => (
-                      <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormDialogField>
-            ) : (
-              <AssignedAdvisorFormField
-                htmlId="opp-form-assigned-to"
-                value={form.watch('assignedTo') ?? ''}
-                onChange={(v) => form.setValue('assignedTo', v)}
-                disabled
-                fallbackName={currentUser.name}
-                label="Asesor (servidor)"
-                formStyle
-              />
-            )}
+            <AssignedAdvisorFormField
+              htmlId="opp-form-assigned-to"
+              value={form.watch('assignedTo') ?? ''}
+              onChange={(v) => form.setValue('assignedTo', v || undefined)}
+              assignModule="oportunidades"
+              disabled={false}
+              fallbackName={currentUser.name}
+              label="Asesor (servidor)"
+              formStyle
+            />
           </FormDialogGrid>
         </form>
       </FormDialogShell>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { CommercialAssignModule } from '@/data/rbac';
 import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
 import {
   FormDialogActions,
@@ -10,6 +11,7 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   count: number;
   entityLabel: string;
+  assignModule: CommercialAssignModule;
   onConfirm: (advisorId: string) => void | Promise<void>;
   confirming?: boolean;
 };
@@ -19,6 +21,7 @@ export function BatchReassignAdvisorDialog({
   onOpenChange,
   count,
   entityLabel,
+  assignModule,
   onConfirm,
   confirming = false,
 }: Props) {
@@ -63,6 +66,7 @@ export function BatchReassignAdvisorDialog({
         value={advisorId}
         onChange={setAdvisorId}
         disabled={confirming}
+        assignModule={assignModule}
         label="Nuevo asesor"
         formStyle
       />

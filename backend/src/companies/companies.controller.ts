@@ -288,7 +288,7 @@ export class CompaniesController {
   }
 
   @Post('bulk-reassign')
-  @RequirePermissions('empresas.editar')
+  @RequirePermissions('empresas.asignar')
   async bulkReassign(
     @Body() body: BulkReassignCompaniesDto,
     @Req() req: AuthedReq,

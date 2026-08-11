@@ -115,7 +115,7 @@ import {
 } from '@/store/optimisticCrmStore';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAppStore } from '@/store';
-import { canReassignCommercialAdvisor } from '@/data/rbac';
+import { canAssignCommercialModule } from '@/data/rbac';
 import {
   downloadImportExportCsv,
   startImportJob,
@@ -254,8 +254,7 @@ export default function OpportunitiesPage() {
   const [batchReassignDialogOpen, setBatchReassignDialogOpen] = useState(false);
   const [batchReassigning, setBatchReassigning] = useState(false);
   const { hasPermission } = usePermissions();
-  const currentUserRole = useAppStore((s) => s.currentUser.role ?? '');
-  const canReassignAdvisor = canReassignCommercialAdvisor(currentUserRole);
+  const canReassignAdvisor = canAssignCommercialModule(hasPermission, 'oportunidades');
   const importInputRef = useRef<HTMLInputElement>(null);
   const [importBusy, setImportBusy] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
@@ -883,7 +882,7 @@ export default function OpportunitiesPage() {
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {canReassignAdvisor && hasPermission('oportunidades.editar') && (
+            {canReassignAdvisor && (
               <Button
                 size="sm"
                 className="h-9 bg-blue-600 text-sm font-normal text-white shadow-md hover:bg-blue-700"
@@ -1340,6 +1339,7 @@ export default function OpportunitiesPage() {
         onOpenChange={setBatchReassignDialogOpen}
         count={selectedDeleteCount}
         entityLabel="oportunidad(es)"
+        assignModule="oportunidades"
         onConfirm={handleBatchReassign}
         confirming={batchReassigning}
       />

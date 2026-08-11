@@ -3,6 +3,8 @@ import { Check, ChevronDown, Search } from 'lucide-react';
 import { useUsers } from '@/hooks/useUsers';
 import { useAppStore } from '@/store';
 import { resolveAdvisorAssigneeId, canUserReassignCommercialAdvisor } from '@/lib/advisorAssigneeDefaults';
+import type { CommercialAssignModule } from '@/data/rbac';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -24,6 +26,7 @@ type Props = {
   value: string;
   onChange: (userId: string) => void;
   disabled: boolean;
+  assignModule: CommercialAssignModule;
   fallbackName?: string | null;
   label?: string;
   formStyle?: boolean;
@@ -200,15 +203,17 @@ export function AssignedAdvisorFormField({
   value,
   onChange,
   disabled,
+  assignModule,
   fallbackName,
   label = 'Asesor asignado',
   formStyle = false,
 }: Props) {
   const { activeAdvisors } = useUsers();
   const currentUser = useAppStore((s) => s.currentUser);
-  const canReassign = canUserReassignCommercialAdvisor(currentUser.role);
+  const { hasPermission } = usePermissions();
+  const canReassign = canUserReassignCommercialAdvisor(hasPermission, assignModule);
   const effectiveDisabled = disabled || !canReassign;
-  const effectiveValue = resolveAdvisorAssigneeId(value, currentUser);
+  const effectiveValue = resolveAdvisorAssigneeId(value, currentUser, canReassign);
 
   const selectOptions: AdvisorOption[] = useMemo(() => {
     const base = activeAdvisors.map((user) => ({ id: user.id, name: user.name }));

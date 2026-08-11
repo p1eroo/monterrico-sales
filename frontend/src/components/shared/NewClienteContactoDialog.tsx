@@ -3,6 +3,7 @@ import { Building2, ChevronDown, Link2, Search } from 'lucide-react';
 import { toast } from '@/lib/notify';
 import { useAppStore } from '@/store';
 import { resolveAdvisorAssigneeId, canUserReassignCommercialAdvisor } from '@/lib/advisorAssigneeDefaults';
+import { usePermissions } from '@/hooks/usePermissions';
 import { fetchClienteEmpresas } from '@/lib/clienteCarteraApi';
 import type { NewContactData } from '@/components/shared/NewContactWizard';
 import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
@@ -45,14 +46,15 @@ export function NewClienteContactoDialog({
   submitLabel = 'Crear contacto',
 }: Props) {
   const currentUser = useAppStore((s) => s.currentUser);
-  const canReassign = canUserReassignCommercialAdvisor(currentUser.role);
+  const { hasPermission } = usePermissions();
+  const canReassign = canUserReassignCommercialAdvisor(hasPermission, 'clientes');
 
   const [name, setName] = useState('');
   const [cargo, setCargo] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [assignedTo, setAssignedTo] = useState(() =>
-    resolveAdvisorAssigneeId(undefined, currentUser),
+    resolveAdvisorAssigneeId(undefined, currentUser, canReassign),
   );
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [empresas, setEmpresas] = useState<ClienteEmpresaOption[]>([]);
@@ -65,12 +67,12 @@ export function NewClienteContactoDialog({
     setCargo('');
     setEmail('');
     setPhone('');
-    setAssignedTo(resolveAdvisorAssigneeId(undefined, currentUser));
+    setAssignedTo(resolveAdvisorAssigneeId(undefined, currentUser, canReassign));
     setSelectedCompanyId(null);
     setAssocPanelOpen(false);
     setAssocSearch('');
     setSubmitting(false);
-  }, [currentUser]);
+  }, [currentUser, canReassign]);
 
   function handleOpenChange(next: boolean) {
     if (!next) reset();
@@ -321,7 +323,8 @@ export function NewClienteContactoDialog({
             htmlId="cliente-contacto-assigned-to"
             value={assignedTo}
             onChange={setAssignedTo}
-            disabled={!canReassign}
+            assignModule="clientes"
+            disabled={false}
             fallbackName={currentUser.name}
             label="Asesor asignado"
             formStyle

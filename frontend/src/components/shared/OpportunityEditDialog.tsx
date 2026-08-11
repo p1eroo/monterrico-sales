@@ -4,8 +4,6 @@ import { toast } from '@/lib/notify';
 import type { Opportunity } from '@/types';
 import { isLikelyOpportunityCuid } from '@/lib/opportunityApi';
 import { useUsers } from '@/hooks/useUsers';
-import { useAppStore } from '@/store';
-import { canReassignCommercialAdvisor } from '@/data/rbac';
 import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
 import {
   FormDialogActions,
@@ -42,8 +40,6 @@ export function OpportunityEditDialog({
   allowWithoutApiId = false,
 }: OpportunityEditDialogProps) {
   const { users } = useUsers();
-  const currentUserRole = useAppStore((s) => s.currentUser.role ?? '');
-  const canEditAssignee = canReassignCommercialAdvisor(currentUserRole);
 
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState(0);
@@ -126,7 +122,8 @@ export function OpportunityEditDialog({
                 htmlId="opp-edit-assigned-to"
                 value={assignedTo}
                 onChange={setAssignedTo}
-                disabled={!canEditAssignee}
+                assignModule="oportunidades"
+                disabled={false}
                 fallbackName={
                   users.find((u) => u.id === assignedTo)?.name ?? opportunity?.assignedToName
                 }
