@@ -32,7 +32,7 @@ import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLog
 import { useActivities } from '@/hooks/useActivities';
 import { useUsers } from '@/hooks/useUsers';
 import { useAppStore } from '@/store';
-import { canAssignCommercialModule } from '@/data/rbac';
+import { canPickOtherCommercialAdvisor } from '@/data/rbac';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useStageBadgeTone } from '@/hooks/useStageBadgeTone';
 import { getSourceLabelFromCatalog, getStageLabelFromCatalog, useCrmConfigStore } from '@/store/crmConfigStore';
@@ -72,7 +72,7 @@ export default function ClienteContactoDetailPage() {
   const navigate = useNavigate();
   const crmBundle = useCrmConfigStore((s) => s.bundle);
   const { hasPermission } = usePermissions();
-  const canEditAssignee = canAssignCommercialModule(hasPermission, 'clientes');
+  const canEditAssignee = canPickOtherCommercialAdvisor(hasPermission);
   const { users, activeAdvisors } = useUsers();
   const {
     activities: activitiesFromStore,

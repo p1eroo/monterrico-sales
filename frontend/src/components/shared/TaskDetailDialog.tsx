@@ -16,10 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/lib/notify';
 import { priorityLabels } from '@/data/mock';
-import { canUserReassignCommercialAdvisor } from '@/lib/advisorAssigneeDefaults';
-import { usePermissions } from '@/hooks/usePermissions';
 import { useUsers } from '@/hooks/useUsers';
-import { useAppStore } from '@/store';
 import type { Contact, Opportunity, TaskAssociation, TaskKind } from '@/types';
 import { TASK_KINDS } from '@/types';
 
@@ -230,9 +227,6 @@ export function TaskDetailDialog({
   onCompleteWithActivity,
 }: TaskDetailDialogProps) {
   const { users, activeAdvisors } = useUsers();
-  const currentUser = useAppStore((s) => s.currentUser);
-  const { hasPermission } = usePermissions();
-  const canReassign = canUserReassignCommercialAdvisor(hasPermission, 'actividades');
 
   const [taskEditMode, setTaskEditMode] = useState(false);
   const [taskEditForm, setTaskEditForm] = useState<TaskDetailTask | null>(null);

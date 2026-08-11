@@ -5,7 +5,7 @@ import { priorityLabels } from '@/data/mock';
 import { useUsers } from '@/hooks/useUsers';
 import { useAppStore } from '@/store';
 import { resolveAdvisorAssigneeId } from '@/lib/advisorAssigneeDefaults';
-import { canAssignCommercialModule } from '@/data/rbac';
+import { canPickOtherCommercialAdvisor } from '@/data/rbac';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useActivities } from '@/hooks/useActivities';
 import type { Contact, Opportunity, TaskAssociation, Activity, TaskKind } from '@/types';
@@ -201,7 +201,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
   const { users, activeAdvisors } = useUsers();
   const currentUser = useAppStore((s) => s.currentUser);
   const { hasPermission } = usePermissions();
-  const canAssignOthers = canAssignCommercialModule(hasPermission, 'actividades');
+  const canAssignOthers = canPickOtherCommercialAdvisor(hasPermission);
   const resolvedDefaultAssignee = resolveAdvisorAssigneeId(defaultAssigneeId, currentUser, canAssignOthers);
   const { activities, createActivity, updateActivity, deleteActivity } = useActivities();
 

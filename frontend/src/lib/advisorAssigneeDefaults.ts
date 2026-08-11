@@ -1,5 +1,5 @@
 import {
-  canAssignCommercialModule,
+  canPickOtherCommercialAdvisor,
   type CommercialAssignModule,
 } from '@/data/rbac';
 import type { PermissionKey } from '@/types';
@@ -34,9 +34,10 @@ export function resolveAdvisorAssigneeIdWithFallback(
   );
 }
 
+/** ¿Puede elegir otro asesor en formularios? (requiere `equipo.datos_completos`). */
 export function canUserReassignCommercialAdvisor(
   hasPermission: (key: PermissionKey) => boolean,
-  module: CommercialAssignModule,
+  _module?: CommercialAssignModule,
 ): boolean {
-  return canAssignCommercialModule(hasPermission, module);
+  return canPickOtherCommercialAdvisor(hasPermission);
 }

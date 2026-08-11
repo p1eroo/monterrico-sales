@@ -82,7 +82,7 @@ import { ColumnsSvgIcon } from '@/components/icons/ColumnsSvgIcon';
 import { ExportSvgIcon } from '@/components/icons/ExportSvgIcon';
 import { FilterSvgIcon } from '@/components/icons/FilterSvgIcon';
 import { usePermissions } from '@/hooks/usePermissions';
-import { canAssignCommercialModule } from '@/data/rbac';
+import { canPickOtherCommercialAdvisor } from '@/data/rbac';
 import { useAppStore } from '@/store';
 import { cn } from '@/lib/utils';
 import { ComercialTableColgroup } from '@/components/shared/ComercialTableColgroup';
@@ -170,7 +170,7 @@ function exportContactosClienteToCSV(rows: ContactoClienteRow[], sourceLabel: (k
 export default function ClienteContactos() {
   const navigate = useNavigate();
   const { hasPermission } = usePermissions();
-  const canEditAssignee = canAssignCommercialModule(hasPermission, 'clientes');
+  const canEditAssignee = canPickOtherCommercialAdvisor(hasPermission);
   const bundle = useCrmConfigStore((s) => s.bundle);
   const leadSourceOptions = useLeadSourceOptions();
   const sourceLabel = useCallback(

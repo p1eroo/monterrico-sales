@@ -26,9 +26,6 @@ import {
   editFormToFields,
   type ActivityFormFieldsType,
 } from '@/components/shared/ActivityTypeFormFields';
-import { canUserReassignCommercialAdvisor } from '@/lib/advisorAssigneeDefaults';
-import { usePermissions } from '@/hooks/usePermissions';
-import { useAppStore } from '@/store';
 import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -134,10 +131,6 @@ export function ActivityDetailDialog({
   onUpdateActivity,
   onDeleteActivity,
 }: ActivityDetailDialogProps) {
-  const currentUser = useAppStore((s) => s.currentUser);
-  const { hasPermission } = usePermissions();
-  const canReassign = canUserReassignCommercialAdvisor(hasPermission, 'actividades');
-
   const [currentActivity, setCurrentActivity] = useState<Activity | null>(activity);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);

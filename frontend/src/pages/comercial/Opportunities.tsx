@@ -115,7 +115,7 @@ import {
 } from '@/store/optimisticCrmStore';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAppStore } from '@/store';
-import { canAssignCommercialModule } from '@/data/rbac';
+import { canBulkReassignCommercialModule } from '@/data/rbac';
 import {
   downloadImportExportCsv,
   startImportJob,
@@ -254,7 +254,7 @@ export default function OpportunitiesPage() {
   const [batchReassignDialogOpen, setBatchReassignDialogOpen] = useState(false);
   const [batchReassigning, setBatchReassigning] = useState(false);
   const { hasPermission } = usePermissions();
-  const canReassignAdvisor = canAssignCommercialModule(hasPermission, 'oportunidades');
+  const canReassignAdvisor = canBulkReassignCommercialModule(hasPermission, 'oportunidades');
   const importInputRef = useRef<HTMLInputElement>(null);
   const [importBusy, setImportBusy] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);

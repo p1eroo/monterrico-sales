@@ -22,7 +22,7 @@ import type { ApiCompanyRecord } from '@/lib/companyApi';
 import { isLikelyCompanyCuid } from '@/lib/companyApi';
 import { useCompaniesStore } from '@/store/companiesStore';
 import { useAppStore } from '@/store';
-import { canAssignCommercialModule } from '@/data/rbac';
+import { canPickOtherCommercialAdvisor } from '@/data/rbac';
 import { resolveAdvisorAssigneeId } from '@/lib/advisorAssigneeDefaults';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useUsers } from '@/hooks/useUsers';
@@ -111,7 +111,7 @@ export function CompanyEditDialog({
   const { users, activeAdvisors } = useUsers();
   const currentUser = useAppStore((s) => s.currentUser);
   const { hasPermission } = usePermissions();
-  const canEditAssignee = canAssignCommercialModule(hasPermission, 'empresas');
+  const canEditAssignee = canPickOtherCommercialAdvisor(hasPermission);
   const leadSourceOptions = useLeadSourceOptions();
   const rubroOptions = useRubroOptions();
 

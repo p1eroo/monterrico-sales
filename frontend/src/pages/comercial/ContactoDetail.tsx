@@ -20,7 +20,7 @@ import { useActivities } from '@/hooks/useActivities';
 import { useUsers } from '@/hooks/useUsers';
 import { useCRMStore } from '@/store/crmStore';
 import { useAppStore } from '@/store';
-import { canAssignCommercialModule } from '@/data/rbac';
+import { canPickOtherCommercialAdvisor } from '@/data/rbac';
 import { usePermissions } from '@/hooks/usePermissions';
 import { getPrimaryCompany } from '@/lib/utils';
 import { taskAssociationsFromActivity } from '@/lib/taskAssociationsFromActivity';
@@ -296,7 +296,7 @@ export default function ContactoDetailPage() {
   const tasksTabRef = useRef<TasksTabHandle>(null);
   const [contactActivities, setContactActivities] = useState(initialActivities);
   const { hasPermission } = usePermissions();
-  const canEditAssignee = canAssignCommercialModule(hasPermission, 'contactos');
+  const canEditAssignee = canPickOtherCommercialAdvisor(hasPermission);
   const [whatsappDrawerOpen, setWhatsappDrawerOpen] = useState(false);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [addCompanyOpen, setAddCompanyOpen] = useState(false);

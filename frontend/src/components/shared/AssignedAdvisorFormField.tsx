@@ -211,9 +211,9 @@ export function AssignedAdvisorFormField({
   const { activeAdvisors } = useUsers();
   const currentUser = useAppStore((s) => s.currentUser);
   const { hasPermission } = usePermissions();
-  const canReassign = canUserReassignCommercialAdvisor(hasPermission, assignModule);
-  const effectiveDisabled = disabled || !canReassign;
-  const effectiveValue = resolveAdvisorAssigneeId(value, currentUser, canReassign);
+  const canAssignOthers = canUserReassignCommercialAdvisor(hasPermission, assignModule);
+  const effectiveDisabled = disabled || !canAssignOthers;
+  const effectiveValue = resolveAdvisorAssigneeId(value, currentUser, canAssignOthers);
 
   const selectOptions: AdvisorOption[] = useMemo(() => {
     const base = activeAdvisors.map((user) => ({ id: user.id, name: user.name }));

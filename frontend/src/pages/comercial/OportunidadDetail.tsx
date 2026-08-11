@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useCRMStore } from '@/store/crmStore';
 import { useAppStore } from '@/store';
-import { canAssignCommercialModule } from '@/data/rbac';
+import { canPickOtherCommercialAdvisor } from '@/data/rbac';
 import { usePermissions } from '@/hooks/usePermissions';
 import { etapaLabels, activities, contactSourceLabels } from '@/data/mock';
 import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLogsApi';
@@ -115,7 +115,7 @@ export default function OportunidadDetailPage() {
   const { users, activeAdvisors } = useUsers();
   const crmBundle = useCrmConfigStore((s) => s.bundle);
   const { hasPermission } = usePermissions();
-  const canEditAssignee = canAssignCommercialModule(hasPermission, 'oportunidades');
+  const canEditAssignee = canPickOtherCommercialAdvisor(hasPermission);
   const { activities: activitiesFromStore, createActivity, updateActivity, deleteActivity } = useActivities();
   const storeOpp = opportunities.find((o) => o.id === routeId);
 

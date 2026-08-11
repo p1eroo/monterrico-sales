@@ -288,12 +288,30 @@ export function commercialAssignPermissionKey(
   return `${module}.asignar` as PermissionKey;
 }
 
-/** ¿Puede elegir/reasignar asesor en este módulo? (requiere `*.asignar`; ver equipo usa `equipo.datos_completos`). */
+/** ¿Tiene permiso `*.asignar` en el módulo? (API / reasignación masiva; no abre el picker solo). */
 export function canAssignCommercialModule(
   hasPermission: (key: PermissionKey) => boolean,
   module: CommercialAssignModule,
 ): boolean {
   return hasPermission(commercialAssignPermissionKey(module));
+}
+
+/** ¿Puede elegir otro asesor en formularios (Propietario / Asignado)? */
+export function canPickOtherCommercialAdvisor(
+  hasPermission: (key: PermissionKey) => boolean,
+): boolean {
+  return hasPermission('equipo.datos_completos');
+}
+
+/** ¿Puede usar reasignación masiva en listados de este módulo? */
+export function canBulkReassignCommercialModule(
+  hasPermission: (key: PermissionKey) => boolean,
+  module: CommercialAssignModule,
+): boolean {
+  return (
+    canAssignCommercialModule(hasPermission, module) &&
+    canPickOtherCommercialAdvisor(hasPermission)
+  );
 }
 
 export function getTemplatePermissions(templateId: string): Record<PermissionKey, boolean> {

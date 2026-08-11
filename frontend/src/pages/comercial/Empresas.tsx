@@ -100,7 +100,7 @@ import {
 import { api, API_BASE } from '@/lib/api';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAppStore } from '@/store';
-import { canAssignCommercialModule } from '@/data/rbac';
+import { canBulkReassignCommercialModule } from '@/data/rbac';
 import {
   downloadImportExportCsv,
   previewCompaniesImportCsv,
@@ -416,7 +416,7 @@ export default function EmpresasPage() {
   const [exportBusy, setExportBusy] = useState(false);
   const [fullExportBusy, setFullExportBusy] = useState(false);
   const { hasPermission } = usePermissions();
-  const canReassignAdvisor = canAssignCommercialModule(hasPermission, 'empresas');
+  const canReassignAdvisor = canBulkReassignCommercialModule(hasPermission, 'empresas');
 
   const [previewEmpresa, setPreviewEmpresa] = useState<EmpresaSummaryRow | null>(null);
   const [editEmpresa, setEditEmpresa] = useState<EmpresaSummaryRow | null>(null);
