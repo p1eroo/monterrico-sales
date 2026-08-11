@@ -195,6 +195,18 @@ export async function bulkDeleteCompanies(
   });
 }
 
+export async function bulkReassignCompanies(
+  params: { newAssignedTo: string } & (
+    | ({ ids: string[]; selectAll?: false } & CompanyListSummaryFilters)
+    | ({ selectAll: true; ids?: undefined } & CompanyListSummaryFilters)
+  ),
+): Promise<{ updated: number }> {
+  return api<{ updated: number }>('/companies/bulk-reassign', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
 /** Conteos por etapa para pestañas del listado (mismos filtros que summary salvo etapa). */
 export async function companySummaryEtapaCounts(params?: {
   search?: string;

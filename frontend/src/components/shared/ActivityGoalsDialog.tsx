@@ -29,11 +29,16 @@ const EMPTY_TARGETS: ActivityGoalTargets = {
   correos: 0,
 };
 
-const COLUMNS: { key: keyof ActivityGoalTargets; label: string }[] = [
+const COLUMNS_WEEK: { key: keyof ActivityGoalTargets; label: string }[] = [
   { key: 'contacto', label: 'Contacto' },
   { key: 'noContacto', label: 'No contacto' },
   { key: 'reuniones', label: 'Reuniones' },
   { key: 'correos', label: 'Correos' },
+];
+
+const COLUMNS_DAY: { key: keyof ActivityGoalTargets; label: string }[] = [
+  { key: 'contacto', label: 'Contacto' },
+  { key: 'reuniones', label: 'Reuniones' },
 ];
 
 interface ActivityGoalsDialogProps {
@@ -49,13 +54,20 @@ interface ActivityGoalsDialogProps {
   onSaved?: (goals: Record<string, ActivityGoalTargets>) => void;
 }
 
-function normalizeTargets(raw: Partial<ActivityGoalTargets> | undefined): ActivityGoalTargets {
-  return {
+function normalizeTargets(
+  raw: Partial<ActivityGoalTargets> | undefined,
+  goalPeriod: 'week' | 'day',
+): ActivityGoalTargets {
+  const normalized = {
     contacto: Math.max(0, Math.round(Number(raw?.contacto) || 0)),
     noContacto: Math.max(0, Math.round(Number(raw?.noContacto) || 0)),
     reuniones: Math.max(0, Math.round(Number(raw?.reuniones) || 0)),
     correos: Math.max(0, Math.round(Number(raw?.correos) || 0)),
   };
+  if (goalPeriod === 'day') {
+    return { ...normalized, noContacto: 0, correos: 0 };
+  }
+  return normalized;
 }
 
 export function ActivityGoalsDialog({
@@ -79,6 +91,7 @@ export function ActivityGoalsDialog({
       ? dayStart?.slice(0, 10) ?? ''
       : weekStart?.slice(0, 10) ?? '';
   const periodLabel = goalPeriod === 'day' ? dayLabel : weekLabel;
+  const columns = goalPeriod === 'day' ? COLUMNS_DAY : COLUMNS_WEEK;
 
   const advisorRows = useMemo(() => {
     const byId = new Map(advisors.map((a) => [a.id, a.name]));
@@ -136,7 +149,7 @@ export function ActivityGoalsDialog({
         ...EMPTY_TARGETS,
         ...prev[userId],
         [key]: parsed,
-      }),
+      }, goalPeriod),
     }));
   };
 
@@ -146,7 +159,7 @@ export function ActivityGoalsDialog({
     try {
       const byUserId: Record<string, ActivityGoalTargets> = {};
       for (const row of advisorRows) {
-        byUserId[row.id] = normalizeTargets(draft[row.id]);
+        byUserId[row.id] = normalizeTargets(draft[row.id], goalPeriod);
       }
       const data =
         goalPeriod === 'day'
@@ -201,7 +214,7 @@ export function ActivityGoalsDialog({
                 <thead>
                   <tr className="border-b border-border/70 bg-muted/40 text-left text-xs text-muted-foreground">
                     <th className="px-3 py-2.5 font-medium">Asesor</th>
-                    {COLUMNS.map((col) => (
+                    {columns.map((col) => (
                       <th key={col.key} className="px-2 py-2.5 font-medium">
                         {col.label}
                       </th>
@@ -210,7 +223,7 @@ export function ActivityGoalsDialog({
                 </thead>
                 <tbody>
                   {advisorRows.map((row) => {
-                    const targets = normalizeTargets(draft[row.id]);
+                    const targets = normalizeTargets(draft[row.id], goalPeriod);
                     return (
                       <tr
                         key={row.id}
@@ -219,7 +232,7 @@ export function ActivityGoalsDialog({
                         <td className="px-3 py-2 font-medium text-foreground">
                           {row.name}
                         </td>
-                        {COLUMNS.map((col) => (
+                        {columns.map((col) => (
                           <td key={col.key} className="px-2 py-1.5">
                             <Input
                               type="number"

@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label';
 import {
   FormDialogShell,
   FormDialogWizardFooter,
+  FormDialogField,
   formDialogInputClass,
   formDialogSelectTriggerClass,
 } from '@/components/ui/form-dialog';
@@ -727,31 +728,25 @@ export function NewCompanyWizard({
           )}
 
           {step === 1 && (
-            <div className="grid gap-4 grid-cols-2">
-              <div className="space-y-2">
-                <Label>Distrito</Label>
+            <div className="grid grid-cols-2 items-start gap-4">
+              <FormDialogField label="Distrito">
                 <Input className={formDialogInputClass} placeholder="Ej: Surco" value={form.distrito} onChange={(e) => set('distrito', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Provincia</Label>
+              </FormDialogField>
+              <FormDialogField label="Provincia">
                 <Input className={formDialogInputClass} placeholder="Ej: Lima" value={form.provincia} onChange={(e) => set('provincia', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Departamento</Label>
+              </FormDialogField>
+              <FormDialogField label="Departamento">
                 <Input className={formDialogInputClass} placeholder="Ej: Lima" value={form.departamento} onChange={(e) => set('departamento', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Dirección</Label>
+              </FormDialogField>
+              <FormDialogField label="Dirección">
                 <Input className={formDialogInputClass} placeholder="Ej: Av. Primavera 1234" value={form.direccion} onChange={(e) => set('direccion', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>LinkedIn</Label>
+              </FormDialogField>
+              <FormDialogField label="LinkedIn">
                 <Input className={formDialogInputClass} placeholder="https://www.linkedin.com/company/..." value={form.linkedin} onChange={(e) => set('linkedin', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Correo</Label>
+              </FormDialogField>
+              <FormDialogField label="Correo">
                 <Input className={formDialogInputClass} type="email" placeholder="contacto@empresa.com" value={form.correo} onChange={(e) => set('correo', e.target.value)} />
-              </div>
+              </FormDialogField>
               <AssignedAdvisorFormField
                 htmlId="company-wizard-propietario"
                 value={form.propietario}
@@ -761,8 +756,7 @@ export function NewCompanyWizard({
                 label="Propietario"
                 formStyle
               />
-              <div className="space-y-2">
-                <Label>Cliente Recuperado</Label>
+              <FormDialogField label="Cliente Recuperado">
                 <Select value={form.clienteRecuperado} onValueChange={(v) => set('clienteRecuperado', v as 'si' | 'no')}>
                   <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -770,7 +764,7 @@ export function NewCompanyWizard({
                     <SelectItem value="si">Sí</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+              </FormDialogField>
             </div>
           )}
 

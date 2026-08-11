@@ -210,6 +210,18 @@ export async function bulkDeleteOpportunities(
   });
 }
 
+export async function bulkReassignOpportunities(
+  params: { newAssignedTo: string } & (
+    | ({ ids: string[]; selectAll?: false } & OpportunityListFilters)
+    | ({ selectAll: true; ids?: undefined } & OpportunityListFilters)
+  ),
+): Promise<{ updated: number }> {
+  return api<{ updated: number }>('/opportunities/bulk-reassign', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
 /** Quita el vínculo empresa–oportunidad (`CompanyOpportunity`). */
 export async function opportunityUnlinkCompany(
   opportunityId: string,

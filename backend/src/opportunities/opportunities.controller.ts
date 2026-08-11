@@ -14,6 +14,7 @@ import { OpportunitiesService } from './opportunities.service';
 import { CreateOpportunityDto } from './dto/create-opportunity.dto';
 import { UpdateOpportunityDto } from './dto/update-opportunity.dto';
 import { BulkDeleteOpportunitiesDto } from './dto/bulk-delete-opportunities.dto';
+import { BulkReassignOpportunitiesDto } from './dto/bulk-reassign-opportunities.dto';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { RequireAnyPermission } from '../auth/decorators/require-any-permission.decorator';
@@ -164,6 +165,40 @@ export class OpportunitiesController {
     );
     return this.opportunitiesService.bulkRemove(
       {
+        ids: body.ids,
+        selectAll: body.selectAll,
+        search: body.search?.trim() || undefined,
+        etapa: body.etapa?.trim() || undefined,
+        status: body.status?.trim() || undefined,
+        fuente: body.fuente?.trim() || undefined,
+        assignedTo: body.assignedTo?.trim() || undefined,
+        excludeAssignedTo: body.excludeAssignedTo?.trim() || undefined,
+        advisorPool: body.advisorPool?.trim() || undefined,
+        linkedToCompanyId: body.linkedToCompany?.trim() || undefined,
+        excludeCompanyLinkId: body.excludeCompanyLink?.trim() || undefined,
+        excludeContactLinkId: body.excludeContactLink?.trim() || undefined,
+      },
+      {
+        userId: req.user.userId,
+        userName: req.user.name,
+      },
+      scope,
+    );
+  }
+
+  @Post('bulk-reassign')
+  @RequirePermissions('oportunidades.editar')
+  async bulkReassign(
+    @Body() body: BulkReassignOpportunitiesDto,
+    @Req() req: AuthedReq,
+  ) {
+    const scope = await this.crmDataScope.buildScope(
+      req.user.userId,
+      req.user.roleId,
+    );
+    return this.opportunitiesService.bulkReassign(
+      {
+        newAssignedTo: body.newAssignedTo?.trim() || '',
         ids: body.ids,
         selectAll: body.selectAll,
         search: body.search?.trim() || undefined,

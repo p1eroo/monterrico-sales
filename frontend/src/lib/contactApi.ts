@@ -423,6 +423,18 @@ export async function bulkDeleteContacts(
   });
 }
 
+export async function bulkReassignContacts(
+  params: { newAssignedTo: string } & (
+    | ({ ids: string[]; selectAll?: false } & ContactListFilters)
+    | ({ selectAll: true; ids?: undefined } & ContactListFilters)
+  ),
+): Promise<{ updated: number }> {
+  return api<{ updated: number }>('/contacts/bulk-reassign', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
 /** Conteos por etapa para pestañas del listado (mismos filtros que GET /contacts salvo etapa). */
 export async function contactListEtapaCounts(params?: {
   search?: string;

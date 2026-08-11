@@ -20,6 +20,7 @@ import {
   Upload, Download,
   Users,
 } from 'lucide-react';
+import { UsersGroupRoundedSvgIcon } from '@/components/icons/UsersGroupRoundedSvgIcon';
 import { ChartSquareIcon } from '@/components/icons/ChartSquareIcon';
 import { PaletteIcon } from '@/components/icons/PaletteIcon';
 import { BlackSuitcaseSvgIcon } from '@/components/icons/BlackSuitcaseSvgIcon';
@@ -68,6 +69,7 @@ import {
   type NewOpportunityFormValues,
 } from '@/components/shared/NewOpportunityFormDialog';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { BatchReassignAdvisorDialog } from '@/components/shared/BatchReassignAdvisorDialog';
 import { OpportunityEditDialog } from '@/components/shared/OpportunityEditDialog';
 import { OpportunityPreviewSheet } from '@/components/shared/OpportunityPreviewSheet';
 import { MultiAdvisorFilter } from '@/components/shared/MultiAdvisorFilter';
@@ -102,6 +104,7 @@ import { opportunityDetailHref } from '@/lib/detailRoutes';
 import {
   type ApiOpportunityDetail,
   bulkDeleteOpportunities,
+  bulkReassignOpportunities,
   isLikelyOpportunityCuid,
   mapApiOpportunityToOpportunity,
 } from '@/lib/opportunityApi';
@@ -111,6 +114,8 @@ import {
   useOptimisticCrmStore,
 } from '@/store/optimisticCrmStore';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAppStore } from '@/store';
+import { canReassignCommercialAdvisor } from '@/data/rbac';
 import {
   downloadImportExportCsv,
   startImportJob,
@@ -246,7 +251,11 @@ export default function OpportunitiesPage() {
   const [selectAllMode, setSelectAllMode] = useState(false);
   const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
   const [batchDeleting, setBatchDeleting] = useState(false);
+  const [batchReassignDialogOpen, setBatchReassignDialogOpen] = useState(false);
+  const [batchReassigning, setBatchReassigning] = useState(false);
   const { hasPermission } = usePermissions();
+  const currentUserRole = useAppStore((s) => s.currentUser.role ?? '');
+  const canReassignAdvisor = canReassignCommercialAdvisor(currentUserRole);
   const importInputRef = useRef<HTMLInputElement>(null);
   const [importBusy, setImportBusy] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
@@ -403,6 +412,38 @@ export default function OpportunitiesPage() {
       );
     } finally {
       setBatchDeleting(false);
+    }
+  }
+
+  async function handleBatchReassign(newAssignedTo: string) {
+    if (selectedDeleteCount === 0) return;
+    setBatchReassigning(true);
+    toast.loading('Reasignando…', { id: 'batch-reassign-opportunities' });
+    try {
+      const result = await bulkReassignOpportunities(
+        selectAllMode
+          ? { selectAll: true, newAssignedTo, ...listFilterParams }
+          : {
+              newAssignedTo,
+              ids: selectedOpportunities.filter(
+                (id) => !isPendingOpportunityId(id) && isLikelyOpportunityCuid(id),
+              ),
+            },
+      );
+      setBatchReassignDialogOpen(false);
+      setSelectedOpportunities([]);
+      setSelectAllMode(false);
+      await cacheLoad();
+      toast.success(`${result.updated} oportunidad(es) reasignada(s)`, {
+        id: 'batch-reassign-opportunities',
+      });
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : 'No se pudo reasignar',
+        { id: 'batch-reassign-opportunities' },
+      );
+    } finally {
+      setBatchReassigning(false);
     }
   }
 
@@ -803,56 +844,76 @@ export default function OpportunitiesPage() {
         <Button onClick={() => setNewDialogOpen(true)} className="h-9 w-[110px] text-sm font-normal shadow-md">
           <Plus /> Nueva
         </Button>
-        {hasPermission('oportunidades.eliminar') && selectedDeleteCount > 0 && (
-          <Button
-            variant="destructive"
-            onClick={() => setBatchDeleteDialogOpen(true)}
-            disabled={batchDeleting}
-          >
-            {batchDeleting ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Trash2 className="size-4" />
-            )}{' '}
-            Eliminar ({selectedDeleteCount})
-          </Button>
-        )}
       </PageHeader>
 
       {selectedDeleteCount > 0 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/50 px-4 py-2.5">
-          {selectAllMode ? (
-            <span className="text-sm font-medium">
-              Todas las {totalFiltered} oportunidades del filtro están seleccionadas
-            </span>
-          ) : (
-            <span className="text-sm font-medium">
-              {selectedOpportunities.length} de {totalFiltered} seleccionadas
-            </span>
-          )}
-          {allPageSelected && totalFiltered > displayedOpportunities.length && (
-            <Button
-              variant="link"
-              size="sm"
-              className="h-auto px-1 text-xs"
-              onClick={handleSelectAllMatchingFilter}
-            >
-              Seleccionar las {totalFiltered} oportunidades del filtro
-            </Button>
-          )}
-          {selectAllMode && (
-            <Button
-              variant="link"
-              size="sm"
-              className="h-auto px-1 text-xs"
-              onClick={() => {
-                setSelectAllMode(false);
-                setSelectedOpportunities([]);
-              }}
-            >
-              Deseleccionar todo
-            </Button>
-          )}
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/50 px-4 py-2.5">
+          <div className="flex flex-wrap items-center gap-3">
+            {selectAllMode ? (
+              <span className="text-sm font-medium">
+                Todas las {totalFiltered} oportunidades del filtro están seleccionadas
+              </span>
+            ) : (
+              <span className="text-sm font-medium">
+                {selectedOpportunities.length} de {totalFiltered} seleccionadas
+              </span>
+            )}
+            {allPageSelected && totalFiltered > displayedOpportunities.length && (
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto px-1 text-xs"
+                onClick={handleSelectAllMatchingFilter}
+              >
+                Seleccionar las {totalFiltered} oportunidades del filtro
+              </Button>
+            )}
+            {selectAllMode && (
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto px-1 text-xs"
+                onClick={() => {
+                  setSelectAllMode(false);
+                  setSelectedOpportunities([]);
+                }}
+              >
+                Deseleccionar todo
+              </Button>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {canReassignAdvisor && hasPermission('oportunidades.editar') && (
+              <Button
+                size="sm"
+                className="h-9 bg-blue-600 text-sm font-normal text-white shadow-md hover:bg-blue-700"
+                onClick={() => setBatchReassignDialogOpen(true)}
+                disabled={batchReassigning || batchDeleting}
+              >
+                {batchReassigning ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <UsersGroupRoundedSvgIcon className="size-4" />
+                )}{' '}
+                Reasignar ({selectedDeleteCount})
+              </Button>
+            )}
+            {hasPermission('oportunidades.eliminar') && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setBatchDeleteDialogOpen(true)}
+                disabled={batchDeleting || batchReassigning}
+              >
+                {batchDeleting ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Trash2 className="size-4" />
+                )}{' '}
+                Eliminar ({selectedDeleteCount})
+              </Button>
+            )}
+          </div>
         </div>
       )}
 
@@ -1272,6 +1333,15 @@ export default function OpportunitiesPage() {
         onConfirm={handleBatchDelete}
         variant="destructive"
         confirmLabel={batchDeleting ? 'Eliminando...' : `Eliminar ${selectedDeleteCount}`}
+      />
+
+      <BatchReassignAdvisorDialog
+        open={batchReassignDialogOpen}
+        onOpenChange={setBatchReassignDialogOpen}
+        count={selectedDeleteCount}
+        entityLabel="oportunidad(es)"
+        onConfirm={handleBatchReassign}
+        confirming={batchReassigning}
       />
 
       <ConfirmDialog

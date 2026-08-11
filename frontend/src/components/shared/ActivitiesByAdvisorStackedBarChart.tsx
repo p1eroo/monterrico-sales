@@ -6,8 +6,9 @@ import { applyActivityGoalDecorations } from '@/lib/activityGoalChartMarkers';
 import { buildAdvisorStackedBarTooltipHtml } from '@/lib/advisorStackedBarTooltip';
 import {
   type ActivityGoalTargets,
-  activityGoalTotal,
+  activityGoalTotalForPeriod,
 } from '@/lib/crmConfigApi';
+import type { ActivityGoalPeriod } from '@/components/shared/ActivitiesByAdvisorDetailSheet';
 import {
   type ActivitiesByAdvisorStackedData,
   type ActivitiesByAdvisorStackedRow,
@@ -37,6 +38,23 @@ function formatActivityCountByLabel(label: string, value: number): string {
   return `${count} ${word}`;
 }
 
+function advisorGoalProgressActual(
+  row: ActivitiesByAdvisorStackedRow,
+  period: ActivityGoalPeriod,
+): number {
+  if (period === 'day') {
+    return row.llamadasContacto + row.reuniones;
+  }
+  return row.total;
+}
+
+function goalTotalForPeriod(
+  targets: ActivityGoalTargets,
+  period: ActivityGoalPeriod,
+): number {
+  return activityGoalTotalForPeriod(targets, period);
+}
+
 function formatValue(n: number): string {
   return Math.round(n).toLocaleString('es-PE');
 }
@@ -54,8 +72,10 @@ interface ActivitiesByAdvisorStackedBarChartProps {
   chartHeight?: number;
   showLegend?: boolean;
   onAdvisorSelect?: (advisor: ActivitiesByAdvisorStackedRow) => void;
-  /** Metas semanales por userId (Contacto, No contacto, Reuniones, Correos). */
+  /** Metas por userId (Contacto, No contacto, Reuniones, Correos). */
   goalByAdvisorId?: Record<string, ActivityGoalTargets>;
+  /** week = reportes; day = dashboard operativo. */
+  goalPeriod?: ActivityGoalPeriod;
 }
 
 export function ActivitiesByAdvisorStackedBarChart({
@@ -65,6 +85,7 @@ export function ActivitiesByAdvisorStackedBarChart({
   showLegend = true,
   onAdvisorSelect,
   goalByAdvisorId,
+  goalPeriod = 'week',
 }: ActivitiesByAdvisorStackedBarChartProps) {
   const chartTheme = useChartTheme();
   const hoverIndexRef = useRef(-1);
@@ -76,15 +97,20 @@ export function ActivitiesByAdvisorStackedBarChart({
 
   const hasGoals = useMemo(() => {
     if (!goalByAdvisorId) return false;
-    return Object.values(goalByAdvisorId).some((targets) => activityGoalTotal(targets) > 0);
-  }, [goalByAdvisorId]);
+    return Object.values(goalByAdvisorId).some(
+      (targets) => goalTotalForPeriod(targets, goalPeriod) > 0,
+    );
+  }, [goalByAdvisorId, goalPeriod]);
 
   const xAxisBounds = useMemo(() => {
-    const actualMax = Math.max(...data.advisors.map((row) => row.total), 0);
+    const actualMax = Math.max(
+      ...data.advisors.map((row) => advisorGoalProgressActual(row, goalPeriod)),
+      0,
+    );
     const goalMax = data.advisors.reduce((max, row) => {
       const targets = goalByAdvisorId?.[row.advisorId];
       if (!targets) return max;
-      return Math.max(max, activityGoalTotal(targets));
+      return Math.max(max, goalTotalForPeriod(targets, goalPeriod));
     }, 0);
     const min = 0;
     const peak = Math.max(actualMax, goalMax);
@@ -93,7 +119,7 @@ export function ActivitiesByAdvisorStackedBarChart({
         ? Math.ceil(peak * 1.08)
         : undefined;
     return { min, max };
-  }, [data.advisors, goalByAdvisorId]);
+  }, [data.advisors, goalByAdvisorId, goalPeriod]);
 
   const defaultTotalLabelColor = chartTheme.isDark ? '#e2e8f0' : '#334155';
 
@@ -105,6 +131,7 @@ export function ActivitiesByAdvisorStackedBarChart({
       {
         isDark: chartTheme.isDark,
         defaultLabelColor: defaultTotalLabelColor,
+        goalPeriod,
       },
     );
   };
@@ -213,17 +240,19 @@ export function ActivitiesByAdvisorStackedBarChart({
                 color: defaultTotalLabelColor,
               },
               formatter: (total, opts) => {
-                const totalNum = Number(total);
                 const idx = opts?.dataPointIndex ?? -1;
                 const advisor = data.advisors[idx];
-                const goalTotal = advisor
-                  ? activityGoalTotal(goalByAdvisorId?.[advisor.advisorId] ?? {
-                      contacto: 0,
-                      noContacto: 0,
-                      reuniones: 0,
-                      correos: 0,
-                    })
-                  : 0;
+                if (!advisor) return '';
+                const totalNum = advisorGoalProgressActual(advisor, goalPeriod);
+                const goalTotal = goalTotalForPeriod(
+                  goalByAdvisorId?.[advisor.advisorId] ?? {
+                    contacto: 0,
+                    noContacto: 0,
+                    reuniones: 0,
+                    correos: 0,
+                  },
+                  goalPeriod,
+                );
 
                 if (totalNum <= 0 && goalTotal <= 0) return '';
                 if (goalTotal > 0) {
@@ -286,7 +315,8 @@ export function ActivitiesByAdvisorStackedBarChart({
           const advisor = data.advisors[dataPointIndex];
           if (!advisor) return '';
           const targets = goalByAdvisorId?.[advisor.advisorId];
-          const goalTotal = targets ? activityGoalTotal(targets) : 0;
+          const goalTotal = targets ? goalTotalForPeriod(targets, goalPeriod) : 0;
+          const progressTotal = advisorGoalProgressActual(advisor, goalPeriod);
           const base = buildAdvisorStackedBarTooltipHtml({
             title: advisor.advisorName,
             weekLabel: data.weekLabel,
@@ -299,7 +329,7 @@ export function ActivitiesByAdvisorStackedBarChart({
           if (goalTotal <= 0) return base;
           const goalLine = `<div class="mt-1.5 border-t border-border/40 pt-1.5 text-[10px] text-muted-foreground">
                   Meta total: <span class="font-semibold tabular-nums text-foreground">${formatValue(goalTotal)}</span>
-                  · Avance: <span class="font-semibold tabular-nums ${advisor.total >= goalTotal ? 'text-emerald-600' : 'text-foreground'}">${formatValue(advisor.total)}/${formatValue(goalTotal)}</span>
+                  · Avance: <span class="font-semibold tabular-nums ${progressTotal >= goalTotal ? 'text-emerald-600' : 'text-foreground'}">${formatValue(progressTotal)}/${formatValue(goalTotal)}</span>
                 </div>`;
           return base.replace(/<\/div>\s*$/, `${goalLine}</div>`);
         },
@@ -314,6 +344,7 @@ export function ActivitiesByAdvisorStackedBarChart({
       data.advisors,
       data.weekLabel,
       goalByAdvisorId,
+      goalPeriod,
       onAdvisorSelect,
       showLegend,
       xAxisBounds,
@@ -359,7 +390,7 @@ export function ActivitiesByAdvisorStackedBarChart({
               className="inline-block h-3 w-0 border-l-2 border-dashed border-amber-600 dark:border-amber-400"
               aria-hidden
             />
-            Meta semanal
+            {goalPeriod === 'day' ? 'Meta diaria' : 'Meta semanal'}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span

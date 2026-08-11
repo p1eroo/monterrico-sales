@@ -45,6 +45,7 @@ import {
   formDialogInputClass,
   formDialogPickerTriggerClass,
   formDialogPopoverContentClass,
+  formDialogScrollListClass,
   formDialogSelectTriggerClass,
   formDialogTextareaClass,
 } from '@/components/ui/form-dialog';
@@ -68,9 +69,9 @@ import {
   toggleTaskAssociation,
 } from '@/lib/taskActivityUpdate';
 import {
-  TASK_ASSOCIATION_PICKER_PAGE_SIZE,
   TASK_ASSOCIATION_PICKER_TABS,
   TASK_LINKED_ENTITY_FETCH_LIMIT,
+  paginateAssociationPickerItems,
   pickContactsForAssociationPicker,
   pickOpportunitiesForAssociationPicker,
   pickCompaniesForAssociationPicker,
@@ -82,7 +83,9 @@ import {
   activityTypeIconCircleClass,
 } from '@/lib/activityTypeCircleStyles';
 import { cn } from '@/lib/utils';
+import { useTaskAssociationPickerPagination } from '@/hooks/useTaskAssociationPickerPagination';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { TaskAssociationPickerLoadMore } from '@/components/shared/TaskAssociationPickerLoadMore';
 
 export type TaskDetailStatus = string;
 export type TaskDetailType = TaskKind;
@@ -346,6 +349,24 @@ export function TaskDetailDialog({
       ),
     [editPickerOpportunities, editAssocSearch],
   );
+
+  const filteredEditPickerCompanies = useMemo(
+    () =>
+      editPickerCompanies.filter((c) =>
+        c.name.toLowerCase().includes(editAssocSearch.toLowerCase()),
+      ),
+    [editPickerCompanies, editAssocSearch],
+  );
+
+  const { visibleCount: editAssocVisibleCount, showMore: showMoreEditAssocItems } =
+    useTaskAssociationPickerPagination(`${editAssocCategory}:${editAssocSearch}`);
+
+  const activeEditAssocFilteredTotal =
+    editAssocCategory === 'contactos'
+      ? filteredEditPickerContacts.length
+      : editAssocCategory === 'empresas'
+        ? filteredEditPickerCompanies.length
+        : filteredEditPickerOpportunities.length;
 
   const assocCounts = {
     contactos: editPickerContacts.length,
@@ -820,7 +841,10 @@ export function TaskDetailDialog({
                         className={cn(formDialogInputClass, 'h-10 pl-9 text-sm')}
                       />
                     </div>
-                    <div className="max-h-52 space-y-0.5 overflow-y-auto">
+                    <div
+                      className={cn(formDialogScrollListClass, 'space-y-0.5')}
+                      onWheel={(e) => e.stopPropagation()}
+                    >
                       {editAssocCategory === 'contactos' &&
                         !editUsesLinkedFetch &&
                         editPickerContacts.length === 0 && (
@@ -836,9 +860,10 @@ export function TaskDetailDialog({
                       )}
                       {editAssocCategory === 'contactos' &&
                         !editLinkedLoading &&
-                        filteredEditPickerContacts
-                          .slice(0, TASK_ASSOCIATION_PICKER_PAGE_SIZE)
-                          .map((l) => {
+                        paginateAssociationPickerItems(
+                          filteredEditPickerContacts,
+                          editAssocVisibleCount,
+                        ).map((l) => {
                             const isSelected = editAssociations.some((a) =>
                               isTaskAssociationMatchingContact(a, l.id),
                             );
@@ -879,10 +904,10 @@ export function TaskDetailDialog({
                           </p>
                         )}
                       {editAssocCategory === 'empresas' &&
-                        editPickerCompanies
-                          .filter((c) => c.name.toLowerCase().includes(editAssocSearch.toLowerCase()))
-                          .slice(0, TASK_ASSOCIATION_PICKER_PAGE_SIZE)
-                          .map((c) => {
+                        paginateAssociationPickerItems(
+                          filteredEditPickerCompanies,
+                          editAssocVisibleCount,
+                        ).map((c) => {
                             const rowId = c.id ?? c.name;
                             const isSelected = editAssociations.some((a) =>
                               isTaskAssociationMatchingEmpresa(a, c),
@@ -933,9 +958,10 @@ export function TaskDetailDialog({
                       )}
                       {editAssocCategory === 'negocios' &&
                         !editLinkedLoading &&
-                        filteredEditPickerOpportunities
-                          .slice(0, TASK_ASSOCIATION_PICKER_PAGE_SIZE)
-                          .map((o) => {
+                        paginateAssociationPickerItems(
+                          filteredEditPickerOpportunities,
+                          editAssocVisibleCount,
+                        ).map((o) => {
                             const isSelected = editAssociations.some((a) =>
                               isTaskAssociationMatchingNegocio(a, o.id),
                             );
@@ -975,6 +1001,11 @@ export function TaskDetailDialog({
                               : 'No hay oportunidades vinculadas a esta empresa.'}
                           </p>
                         )}
+                      <TaskAssociationPickerLoadMore
+                        visibleCount={editAssocVisibleCount}
+                        totalCount={activeEditAssocFilteredTotal}
+                        onShowMore={showMoreEditAssocItems}
+                      />
                     </div>
                   </div>
                 </PopoverContent>

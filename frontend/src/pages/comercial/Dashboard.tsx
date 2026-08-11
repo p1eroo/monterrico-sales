@@ -46,7 +46,7 @@ import {
   type ActivitiesByAdvisorDetailsQuery,
 } from '@/lib/analyticsApi';
 import {
-  activityGoalTotal,
+  activityGoalTotalForPeriod,
   fetchCrmDailyActivityGoals,
   type ActivityGoalTargets,
 } from '@/lib/crmConfigApi';
@@ -389,7 +389,7 @@ export default function Dashboard() {
     const row = activitiesByAdvisorLatestWeek.advisors[0];
     if (!row) return null;
     const target = activityGoalsLatestWeek[row.advisorId];
-    if (!target || activityGoalTotal(target) <= 0) return null;
+    if (!target || activityGoalTotalForPeriod(target, 'day') <= 0) return null;
     return {
       row,
       target,
@@ -626,6 +626,7 @@ export default function Dashboard() {
       <ActivitiesByAdvisorStackedBarChart
         data={activitiesByAdvisorStackedView}
         goalByAdvisorId={activityGoalsByUserId}
+        goalPeriod="day"
         chartHeight={height}
         onAdvisorSelect={openActivitiesAdvisorDetail}
       />
@@ -954,6 +955,7 @@ export default function Dashboard() {
                 <ActivityGoalSummary
                   actual={activitiesModalGoalDetail.actual}
                   target={activitiesModalGoalDetail.target}
+                  goalPeriod="day"
                 />
               </div>
             ) : null}
@@ -997,6 +999,7 @@ export default function Dashboard() {
               null
             : null
         }
+        goalPeriod="day"
       />
 
       <ActivityGoalsDialog

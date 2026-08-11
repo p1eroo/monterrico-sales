@@ -9,6 +9,7 @@ import {
   resolveAdvisorAssigneeIdWithFallback,
 } from '@/lib/advisorAssigneeDefaults';
 import { useUsers } from '@/hooks/useUsers';
+import { useTaskAssociationPickerPagination } from '@/hooks/useTaskAssociationPickerPagination';
 import { useAppStore } from '@/store';
 import { mergeCompaniesForTaskPicker } from '@/lib/taskAssociationsFromActivity';
 import { isLikelyCompanyCuid } from '@/lib/companyApi';
@@ -28,8 +29,8 @@ import {
   toggleTaskAssociation,
 } from '@/lib/taskActivityUpdate';
 import {
-  TASK_ASSOCIATION_PICKER_PAGE_SIZE,
   TASK_LINKED_ENTITY_FETCH_LIMIT,
+  paginateAssociationPickerItems,
   pickClienteContactosForAssociationPicker,
   pickContactsForAssociationPicker,
   pickOpportunitiesForAssociationPicker,
@@ -48,6 +49,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
+import { TaskAssociationPickerLoadMore } from '@/components/shared/TaskAssociationPickerLoadMore';
 import { NewContactWizard, type NewContactData } from '@/components/shared/NewContactWizard';
 import { createContactFromWizardForCompany } from '@/lib/createContactFromWizard';
 import {
@@ -58,8 +60,10 @@ import {
   formDialogInputClass,
   formDialogPickerTriggerClass,
   formDialogPopoverContentClass,
+  formDialogScrollListClass,
   formDialogSelectTriggerClass,
 } from '@/components/ui/form-dialog';
+import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -355,6 +359,24 @@ export function TaskFormDialog({
     [pickerOpportunities, assocSearch],
   );
 
+  const filteredPickerCompanies = useMemo(
+    () =>
+      pickerCompanies.filter((c) =>
+        c.name.toLowerCase().includes(assocSearch.toLowerCase()),
+      ),
+    [pickerCompanies, assocSearch],
+  );
+
+  const { visibleCount: assocVisibleCount, showMore: showMoreAssocItems } =
+    useTaskAssociationPickerPagination(`${assocCategory}:${assocSearch}`);
+
+  const activeAssocFilteredTotal =
+    assocCategory === 'contactos'
+      ? filteredPickerContacts.length
+      : assocCategory === 'empresas'
+        ? filteredPickerCompanies.length
+        : filteredPickerOpportunities.length;
+
   function resetForm() {
     setFormTitle('');
     setFormType('');
@@ -627,7 +649,10 @@ export function TaskFormDialog({
                   </Button>
                 )}
 
-                <div className="max-h-52 space-y-0.5 overflow-y-auto">
+                <div
+                  className={cn(formDialogScrollListClass, 'space-y-0.5')}
+                  onWheel={(e) => e.stopPropagation()}
+                >
                   {assocCategory === 'contactos' && !usesLinkedFetch && pickerContacts.length === 0 && (
                     <p className="px-2 py-6 text-center text-xs text-muted-foreground">
                       Selecciona una empresa para ver sus contactos vinculados.
@@ -641,9 +666,10 @@ export function TaskFormDialog({
                   )}
                   {assocCategory === 'contactos' &&
                     !linkedLoading &&
-                    filteredPickerContacts
-                      .slice(0, TASK_ASSOCIATION_PICKER_PAGE_SIZE)
-                      .map((l) => {
+                    paginateAssociationPickerItems(
+                      filteredPickerContacts,
+                      assocVisibleCount,
+                    ).map((l) => {
                         const isSelected = associations.some(
                           (a) => a.type === contactAssocType && a.id === l.id,
                         );
@@ -682,10 +708,10 @@ export function TaskFormDialog({
                     )}
 
                   {assocCategory === 'empresas' &&
-                    pickerCompanies
-                      .filter((c) => c.name.toLowerCase().includes(assocSearch.toLowerCase()))
-                      .slice(0, TASK_ASSOCIATION_PICKER_PAGE_SIZE)
-                      .map((c) => {
+                    paginateAssociationPickerItems(
+                      filteredPickerCompanies,
+                      assocVisibleCount,
+                    ).map((c) => {
                         const rowId = c.id ?? c.name;
                         const isSelected = associations.some(
                           (a) => a.type === companyAssocType && a.id === rowId,
@@ -731,9 +757,10 @@ export function TaskFormDialog({
                   )}
                   {assocCategory === 'negocios' &&
                     !linkedLoading &&
-                    filteredPickerOpportunities
-                      .slice(0, TASK_ASSOCIATION_PICKER_PAGE_SIZE)
-                      .map((o) => {
+                    paginateAssociationPickerItems(
+                      filteredPickerOpportunities,
+                      assocVisibleCount,
+                    ).map((o) => {
                         const isSelected = associations.some((a) => a.type === 'negocio' && a.id === o.id);
                         return (
                           <label
@@ -768,6 +795,11 @@ export function TaskFormDialog({
                           : 'No hay oportunidades vinculadas a esta empresa.'}
                       </p>
                     )}
+                  <TaskAssociationPickerLoadMore
+                    visibleCount={assocVisibleCount}
+                    totalCount={activeAssocFilteredTotal}
+                    onShowMore={showMoreAssocItems}
+                  />
                 </div>
               </div>
             </PopoverContent>

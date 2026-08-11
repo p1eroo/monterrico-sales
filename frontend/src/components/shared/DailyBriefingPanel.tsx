@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { companyDetailPath } from '@/lib/detailRoutes';
-import { useState, useEffect, type ComponentType } from 'react';
+import { useState, useEffect, useMemo, type ComponentType } from 'react';
 import {
   AlertTriangle,
   X,
@@ -14,10 +14,13 @@ import { Dialog as DialogPrimitive } from 'radix-ui';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useAppStore } from '@/store';
 import { companySinCambioEtapaAlert } from '@/lib/companyApi';
-import { markDailyBriefingShown } from '@/lib/dailyOverview';
-import { activities, calendarEvents } from '@/data/mock';
+import {
+  markDailyBriefingCloseLockUsed,
+  markDailyBriefingShown,
+  shouldApplyDailyBriefingCloseLock,
+} from '@/lib/dailyOverview';
+import { formatTodayPeruYmd } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import { rightDrawerDialogContentClass } from '@/lib/rightPanelShell';
 import {
@@ -25,38 +28,48 @@ import {
   activityTypeIconCircleClass,
 } from '@/lib/activityTypeCircleStyles';
 import { activityTypeSvgIcon } from '@/lib/activityTypeSvgIcons';
-import type { Activity, CalendarEvent } from '@/types';
-import { resolveCalendarEventLinks } from '@/lib/calendarEventLinks';
+import type { Activity } from '@/types';
+import { TASK_KINDS } from '@/types';
 import { taskAssociationsFromActivity } from '@/lib/taskAssociationsFromActivity';
-import { effectiveTaskStatus, isTaskOverdue } from '@/lib/taskStatus';
+import { effectiveTaskStatus, isTaskOverdue, taskDaysUntilDue } from '@/lib/taskStatus';
 import { InactiveCompaniesPanel } from '@/components/notifications/InactiveCompaniesPanel';
 import type { CompanySinCambioEtapaAlertItem } from '@/lib/companyApi';
-
-type TaskItem = { activity?: Activity; event?: CalendarEvent };
+import { useActivities } from '@/hooks/useActivities';
+import { useMultiAdvisorFilter } from '@/hooks/useMultiAdvisorFilter';
 
 /** Segundos sin poder cerrar al abrir (click fuera, Escape o X). */
 const BRIEFING_CLOSE_LOCK_SECONDS = 5;
 
-function briefingTaskSubtitle(item: TaskItem): string {
-  if (item.activity) {
-    const assocs = taskAssociationsFromActivity(item.activity);
-    return assocs.map((x) => x.name).join(' · ');
-  }
-  if (item.event) {
-    const r = resolveCalendarEventLinks(item.event);
-    return [r.contactName, r.companyName, r.opportunityTitle].filter(Boolean).join(' · ');
-  }
-  return '';
+function isBriefingTask(a: Activity): boolean {
+  return (
+    a.type === 'tarea' &&
+    !!a.taskKind &&
+    TASK_KINDS.includes(a.taskKind)
+  );
 }
 
-function briefingTaskIconType(item: TaskItem): string {
-  if (item.activity) {
-    if (item.activity.type === 'tarea' && item.activity.taskKind) {
-      return item.activity.taskKind;
-    }
-    return item.activity.type;
+function briefingTaskSubtitle(task: Activity): string {
+  const assocs = taskAssociationsFromActivity(task);
+  return assocs.map((x) => x.name).join(' · ');
+}
+
+function briefingTaskIconType(task: Activity): string {
+  if (task.type === 'tarea' && task.taskKind) return task.taskKind;
+  return task.type;
+}
+
+function briefingTaskMetaLine(
+  task: Activity,
+  showAssignee: boolean,
+): string {
+  const parts: string[] = [];
+  if (showAssignee && task.assignedToName?.trim()) {
+    parts.push(task.assignedToName.trim());
   }
-  return item.event?.type ?? 'tarea';
+  const associations = briefingTaskSubtitle(task);
+  if (associations) parts.push(associations);
+  if (task.startTime?.trim()) parts.push(task.startTime.trim());
+  return parts.join(' · ');
 }
 
 interface DailyBriefingPanelProps {
@@ -64,131 +77,6 @@ interface DailyBriefingPanelProps {
   onOpenChange: (open: boolean) => void;
   dontShowAgainToday?: boolean;
   onDontShowAgainChange?: (checked: boolean) => void;
-}
-
-function getTodayTasks(currentUserId: string): TaskItem[] {
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const items: TaskItem[] = [];
-
-  for (const a of activities) {
-    if (a.dueDate === today && a.assignedTo === currentUserId) {
-      items.push({ activity: a });
-    }
-  }
-  for (const e of calendarEvents) {
-    if (e.date === today && e.assignedTo === currentUserId) {
-      if (!items.some((i) => i.event?.id === e.id)) {
-        items.push({ event: e });
-      }
-    }
-  }
-
-  return items.sort((a, b) => {
-    const timeA = a.activity?.startTime ?? a.event?.startTime ?? '00:00';
-    const timeB = b.activity?.startTime ?? b.event?.startTime ?? '00:00';
-    return timeA.localeCompare(timeB);
-  });
-}
-
-function countOverdueTasks(currentUserId: string): number {
-  let count = 0;
-  for (const a of activities) {
-    if (
-      a.assignedTo === currentUserId &&
-      isTaskOverdue({ status: a.status, dueDate: a.dueDate })
-    ) {
-      count += 1;
-    }
-  }
-  for (const e of calendarEvents) {
-    if (e.assignedTo === currentUserId && e.status === 'vencida') {
-      count += 1;
-    }
-  }
-  return count;
-}
-
-/** Vista previa en dev cuando no hay tareas reales para hoy. */
-function getBriefingPreviewTasks(currentUserId: string, currentUserName: string): TaskItem[] {
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const preview: Activity[] = [
-    {
-      id: 'brief-preview-1',
-      type: 'tarea',
-      taskKind: 'llamada',
-      title: 'Llamada de seguimiento',
-      description: 'Confirmar interés en propuesta corporativa',
-      contactId: 'l5',
-      contactName: 'Fernando Ochoa',
-      companyName: 'BCP',
-      assignedTo: currentUserId,
-      assignedToName: currentUserName,
-      status: 'pendiente',
-      dueDate: today,
-      startTime: '09:30',
-      createdAt: today,
-    },
-    {
-      id: 'brief-preview-2',
-      type: 'tarea',
-      taskKind: 'reunion',
-      title: 'Reunión presencial',
-      description: 'Demo de flota ejecutiva en oficinas del cliente',
-      contactId: 'l2',
-      contactName: 'Sofía Vargas',
-      companyName: 'Hotel Belmond',
-      assignedTo: currentUserId,
-      assignedToName: currentUserName,
-      status: 'en_progreso',
-      dueDate: today,
-      startTime: '11:30',
-      createdAt: today,
-    },
-    {
-      id: 'brief-preview-3',
-      type: 'tarea',
-      taskKind: 'correo',
-      title: 'Enviar propuesta actualizada',
-      description: 'Incluir descuento por volumen acordado en la llamada',
-      contactId: 'l14',
-      contactName: 'Isabella Campos',
-      companyName: 'Repsol',
-      assignedTo: currentUserId,
-      assignedToName: currentUserName,
-      status: 'vencida',
-      dueDate: today,
-      startTime: '08:00',
-      createdAt: today,
-    },
-    {
-      id: 'brief-preview-4',
-      type: 'tarea',
-      taskKind: 'whatsapp',
-      title: 'Confirmar asistencia',
-      description: 'Recordatorio de reunión de cierre de mes',
-      contactId: 'l3',
-      contactName: 'Miguel Ángel Ruiz',
-      companyName: 'Graña y Montero',
-      assignedTo: currentUserId,
-      assignedToName: currentUserName,
-      status: 'pendiente',
-      dueDate: today,
-      startTime: '16:00',
-      createdAt: today,
-    },
-  ];
-
-  return preview.map((activity) => ({ activity }));
-}
-
-function isOverdue(item: TaskItem): boolean {
-  if (item.activity) {
-    return isTaskOverdue({
-      status: item.activity.status,
-      dueDate: item.activity.dueDate,
-    });
-  }
-  return item.event?.status === 'vencida';
 }
 
 function getStatusBadgeClass(status: string): string {
@@ -274,11 +162,54 @@ export function DailyBriefingPanel({
   onDontShowAgainChange,
 }: DailyBriefingPanelProps) {
   const navigate = useNavigate();
-  const currentUser = useAppStore((s) => s.currentUser);
+  const { activities, loading: activitiesLoading } = useActivities();
+  const { canSeeAllAdvisors, matchesAssignee } = useMultiAdvisorFilter();
   const [sinCambioEtapaCount, setSinCambioEtapaCount] = useState(0);
   const [briefingView, setBriefingView] = useState<'summary' | 'companies'>('summary');
   const [closeLockRemaining, setCloseLockRemaining] = useState(0);
   const canDismiss = closeLockRemaining === 0;
+
+  const todayYmd = formatTodayPeruYmd();
+
+  const scopedTasks = useMemo(
+    () =>
+      activities.filter(
+        (a) => isBriefingTask(a) && matchesAssignee(a.assignedTo),
+      ),
+    [activities, matchesAssignee],
+  );
+
+  const todayTasks = useMemo(
+    () =>
+      scopedTasks
+        .filter(
+          (task) =>
+            task.status !== 'completada' &&
+            (task.dueDate === todayYmd || taskDaysUntilDue(task.dueDate) === 0),
+        )
+        .sort((a, b) =>
+          (a.startTime ?? '00:00').localeCompare(b.startTime ?? '00:00'),
+        ),
+    [scopedTasks, todayYmd],
+  );
+
+  const pendingTodayCount = useMemo(
+    () =>
+      todayTasks.filter((task) => {
+        const status = effectiveTaskStatus(task);
+        return status === 'pendiente' || status === 'en_progreso';
+      }).length,
+    [todayTasks],
+  );
+
+  const overdueTaskCount = useMemo(
+    () =>
+      scopedTasks.filter(
+        (task) =>
+          task.status !== 'completada' && isTaskOverdue(task),
+      ).length,
+    [scopedTasks],
+  );
 
   useEffect(() => {
     if (!open) {
@@ -287,6 +218,13 @@ export function DailyBriefingPanel({
       return;
     }
 
+    const applyCloseLock = shouldApplyDailyBriefingCloseLock();
+    if (!applyCloseLock) {
+      setCloseLockRemaining(0);
+      return;
+    }
+
+    markDailyBriefingCloseLockUsed();
     setCloseLockRemaining(BRIEFING_CLOSE_LOCK_SECONDS);
     const interval = window.setInterval(() => {
       setCloseLockRemaining((prev) => (prev <= 1 ? 0 : prev - 1));
@@ -309,17 +247,7 @@ export function DailyBriefingPanel({
       c = false;
     };
   }, [open]);
-  const todayTasksRaw = getTodayTasks(currentUser.id);
-  const usingPreviewTasks =
-    import.meta.env.DEV && todayTasksRaw.length === 0;
-  const todayTasks = usingPreviewTasks
-    ? getBriefingPreviewTasks(currentUser.id, currentUser.name)
-    : todayTasksRaw;
-  const pendingTodayCount = todayTasks.filter((i) => {
-    const s = i.activity?.status ?? i.event?.status;
-    return s === 'pendiente' || s === 'en_progreso';
-  }).length;
-  const overdueTaskCount = countOverdueTasks(currentUser.id);
+
   const todayLabel = format(new Date(), "EEEE, d 'de' MMMM", { locale: es }).replace(/^\w/, (c) => c.toUpperCase());
 
   const handleClose = () => {
@@ -453,38 +381,29 @@ export function DailyBriefingPanel({
 
               {/* Tareas de hoy */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-sm font-medium text-foreground">Tareas que vencen hoy</h3>
-                  {usingPreviewTasks && (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                      Vista previa
-                    </span>
-                  )}
-                </div>
-                {todayTasks.length === 0 ? (
+                <h3 className="text-sm font-medium text-foreground">Tareas que vencen hoy</h3>
+                {activitiesLoading ? (
                   <p className="py-3 text-center text-sm text-muted-foreground">
-                    No tienes tareas que venzan hoy
+                    Cargando tareas…
+                  </p>
+                ) : todayTasks.length === 0 ? (
+                  <p className="py-3 text-center text-sm text-muted-foreground">
+                    {canSeeAllAdvisors
+                      ? 'No hay tareas que venzan hoy'
+                      : 'No tienes tareas que venzan hoy'}
                   </p>
                 ) : (
                   <div className="space-y-2">
-                    {todayTasks.map((item, idx) => {
-                      const title = item.activity?.title ?? item.event?.title ?? '';
-                      const time = item.activity?.startTime ?? item.event?.startTime ?? '';
-                      const iconType = briefingTaskIconType(item);
+                    {todayTasks.map((task) => {
+                      const iconType = briefingTaskIconType(task);
                       const TaskIcon = activityTypeSvgIcon(iconType);
-                      const status = item.activity
-                        ? effectiveTaskStatus({
-                            status: item.activity.status,
-                            dueDate: item.activity.dueDate,
-                          })
-                        : item.event?.status ?? 'pendiente';
-                      const companyContact = briefingTaskSubtitle(item);
-                      const overdue = isOverdue(item);
-                      const metaLine = [companyContact, time].filter(Boolean).join(' · ');
+                      const status = effectiveTaskStatus(task);
+                      const metaLine = briefingTaskMetaLine(task, canSeeAllAdvisors);
+                      const overdue = isTaskOverdue(task);
 
                       return (
                         <div
-                          key={item.activity?.id ?? item.event?.id ?? idx}
+                          key={task.id}
                           className={cn(
                             'flex w-full gap-3 rounded-xl border px-3 py-2.5',
                             overdue
@@ -504,7 +423,7 @@ export function DailyBriefingPanel({
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start justify-between gap-2">
-                              <p className="truncate text-sm font-medium">{title}</p>
+                              <p className="truncate text-sm font-medium">{task.title}</p>
                               <span
                                 className={cn(
                                   'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium',

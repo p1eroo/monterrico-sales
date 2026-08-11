@@ -28,6 +28,7 @@ import {
   Users,
   Loader2,
 } from "lucide-react";
+import { UsersGroupRoundedSvgIcon } from "@/components/icons/UsersGroupRoundedSvgIcon";
 import { ChartSquareIcon } from "@/components/icons/ChartSquareIcon";
 import { PaletteIcon } from "@/components/icons/PaletteIcon";
 import { contactSourceLabels, etapaLabels } from "@/data/mock";
@@ -53,6 +54,7 @@ import { useMultiAdvisorFilter } from "@/hooks/useMultiAdvisorFilter";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { BatchReassignAdvisorDialog } from "@/components/shared/BatchReassignAdvisorDialog";
 import { GhostTableSkeleton } from "@/components/shared/GhostTableSkeleton";
 import { GlassCard } from "@/components/shared/GlassCard";
 import { ImportInProgressDialog } from "@/components/shared/ImportInProgressDialog";
@@ -139,6 +141,7 @@ import {
   contactListPaginated,
   contactListEtapaCounts,
   bulkDeleteContacts,
+  bulkReassignContacts,
   primaryCompanyIdFromApiContact,
   apiContactDetailToListRow,
 } from "@/lib/contactApi";
@@ -284,6 +287,8 @@ export default function ContactosPage() {
   const [contactToDelete, setContactToDelete] = useState<string | null>(null);
   const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
   const [batchDeleting, setBatchDeleting] = useState(false);
+  const [batchReassignDialogOpen, setBatchReassignDialogOpen] = useState(false);
+  const [batchReassigning, setBatchReassigning] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
   const [importBusy, setImportBusy] = useState(false);
   const [importPreviewInProgress, setImportPreviewInProgress] = useState(false);
@@ -600,6 +605,39 @@ export default function ContactosPage() {
       );
     } finally {
       setBatchDeleting(false);
+    }
+  }
+
+  async function handleBatchReassign(newAssignedTo: string) {
+    if (selectedDeleteCount === 0) return;
+    setBatchReassigning(true);
+    toast.loading('Reasignando…', { id: 'batch-reassign-contacts' });
+    try {
+      const result = await bulkReassignContacts(
+        selectAllMode
+          ? { selectAll: true, newAssignedTo, ...listFilterParams }
+          : {
+              newAssignedTo,
+              ids: selectedContacts.filter(
+                (id) => !isPendingContactId(id) && isLikelyContactCuid(id),
+              ),
+            },
+      );
+      setBatchReassignDialogOpen(false);
+      setSelectedContacts([]);
+      setSelectAllMode(false);
+      await loadApiContacts();
+      await loadEtapaTabCounts();
+      toast.success(`${result.updated} contacto(s) reasignado(s)`, {
+        id: 'batch-reassign-contacts',
+      });
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : 'No se pudo reasignar',
+        { id: 'batch-reassign-contacts' },
+      );
+    } finally {
+      setBatchReassigning(false);
     }
   }
 
@@ -1243,59 +1281,79 @@ export default function ContactosPage() {
         description="Gestiona y da seguimiento a tus prospectos de venta"
         className="mb-4"
       >
-        {hasPermission("contactos.eliminar") && selectedDeleteCount > 0 && (
-          <Button
-            variant="destructive"
-            onClick={() => setBatchDeleteDialogOpen(true)}
-            disabled={batchDeleting}
-          >
-            {batchDeleting ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Trash2 className="size-4" />
-            )}{" "}
-            Eliminar ({selectedDeleteCount})
-          </Button>
-        )}
         <Button onClick={() => setNewContactOpen(true)} className="h-9 w-[110px] text-sm font-normal shadow-md">
           <Plus /> Nuevo
         </Button>
       </PageHeader>
 
       {selectedDeleteCount > 0 && (
-        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border bg-muted/50 px-4 py-2.5">
-          {selectAllMode ? (
-            <span className="text-sm font-medium">
-              Todos los {totalContacts} contactos del filtro están seleccionados
-            </span>
-          ) : (
-            <span className="text-sm font-medium">
-              {selectedContacts.length} de {totalContacts} seleccionados
-            </span>
-          )}
-          {allPageSelected && totalContacts > displayedContacts.length && (
-            <Button
-              variant="link"
-              size="sm"
-              className="h-auto px-1 text-xs"
-              onClick={handleSelectAllMatchingFilter}
-            >
-              Seleccionar los {totalContacts} contactos del filtro
-            </Button>
-          )}
-          {selectAllMode && (
-            <Button
-              variant="link"
-              size="sm"
-              className="h-auto px-1 text-xs"
-              onClick={() => {
-                setSelectAllMode(false);
-                setSelectedContacts([]);
-              }}
-            >
-              Deseleccionar todo
-            </Button>
-          )}
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/50 px-4 py-2.5">
+          <div className="flex flex-wrap items-center gap-3">
+            {selectAllMode ? (
+              <span className="text-sm font-medium">
+                Todos los {totalContacts} contactos del filtro están seleccionados
+              </span>
+            ) : (
+              <span className="text-sm font-medium">
+                {selectedContacts.length} de {totalContacts} seleccionados
+              </span>
+            )}
+            {allPageSelected && totalContacts > displayedContacts.length && (
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto px-1 text-xs"
+                onClick={handleSelectAllMatchingFilter}
+              >
+                Seleccionar los {totalContacts} contactos del filtro
+              </Button>
+            )}
+            {selectAllMode && (
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto px-1 text-xs"
+                onClick={() => {
+                  setSelectAllMode(false);
+                  setSelectedContacts([]);
+                }}
+              >
+                Deseleccionar todo
+              </Button>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {canEditAssignee && hasPermission("contactos.editar") && (
+              <Button
+                size="sm"
+                className="h-9 bg-blue-600 text-sm font-normal text-white shadow-md hover:bg-blue-700"
+                onClick={() => setBatchReassignDialogOpen(true)}
+                disabled={batchReassigning || batchDeleting}
+              >
+                {batchReassigning ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <UsersGroupRoundedSvgIcon className="size-4" />
+                )}{" "}
+                Reasignar ({selectedDeleteCount})
+              </Button>
+            )}
+            {hasPermission("contactos.eliminar") && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setBatchDeleteDialogOpen(true)}
+                disabled={batchDeleting || batchReassigning}
+              >
+                {batchDeleting ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Trash2 className="size-4" />
+                )}{" "}
+                Eliminar ({selectedDeleteCount})
+              </Button>
+            )}
+          </div>
         </div>
       )}
 
@@ -1692,6 +1750,15 @@ export default function ContactosPage() {
         onConfirm={handleBatchDelete}
         variant="destructive"
         confirmLabel={batchDeleting ? "Eliminando..." : `Eliminar ${selectedDeleteCount}`}
+      />
+
+      <BatchReassignAdvisorDialog
+        open={batchReassignDialogOpen}
+        onOpenChange={setBatchReassignDialogOpen}
+        count={selectedDeleteCount}
+        entityLabel="contacto(s)"
+        onConfirm={handleBatchReassign}
+        confirming={batchReassigning}
       />
 
       <ContactPreviewSheet

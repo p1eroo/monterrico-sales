@@ -20,9 +20,9 @@ import {
   type ContactEditSavePayload,
 } from '@/components/shared/ContactEditDialog';
 import {
-  NewContactWizard,
-  type NewContactData,
-} from '@/components/shared/NewContactWizard';
+  NewClienteContactoDialog,
+} from '@/components/shared/NewClienteContactoDialog';
+import type { NewContactData } from '@/components/shared/NewContactWizard';
 import { Pagination } from '@/components/shared/Pagination';
 import { GlassCard } from '@/components/shared/GlassCard';
 import { GhostTableSkeleton } from '@/components/shared/GhostTableSkeleton';
@@ -1049,14 +1049,10 @@ export default function ClienteContactos() {
         )}
       </GlassCard>
 
-      <NewContactWizard
-        variant="cliente-cartera"
+      <NewClienteContactoDialog
         open={newContactOpen}
         onOpenChange={setNewContactOpen}
         onSubmit={onSubmitNewContact}
-        title="Nuevo contacto"
-        description="Registra un nuevo contacto de cartera."
-        submitLabel="Crear contacto"
       />
 
       <ContactEditDialog

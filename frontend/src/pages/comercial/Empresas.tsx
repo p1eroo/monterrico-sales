@@ -26,6 +26,7 @@ import { useCompaniesStore } from '@/store/companiesStore';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { BatchReassignAdvisorDialog } from '@/components/shared/BatchReassignAdvisorDialog';
 import { ImportInProgressDialog } from '@/components/shared/ImportInProgressDialog';
 import { Pagination } from '@/components/shared/Pagination';
 import { MultiAdvisorFilter } from '@/components/shared/MultiAdvisorFilter';
@@ -61,6 +62,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { ChartSquareIcon } from '@/components/icons/ChartSquareIcon';
+import { UsersGroupRoundedSvgIcon } from '@/components/icons/UsersGroupRoundedSvgIcon';
 import { CategorySolidIcon } from '@/components/icons/CategorySolidIcon';
 import { DateRangeFilterButton } from '@/components/ui/date-range-filter-button';
 import { GitForkIcon } from '@/components/icons/GitForkIcon';
@@ -97,6 +99,8 @@ import {
 } from '@/lib/crmTableSurface';
 import { api, API_BASE } from '@/lib/api';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAppStore } from '@/store';
+import { canReassignCommercialAdvisor } from '@/data/rbac';
 import {
   downloadImportExportCsv,
   previewCompaniesImportCsv,
@@ -108,6 +112,7 @@ import {
   type ApiCompanyRecord,
   type CompanySummaryRow,
   bulkDeleteCompanies,
+  bulkReassignCompanies,
   companyListSummaryPaginated,
   companySummaryEtapaCounts,
   isLikelyCompanyCuid,
@@ -377,6 +382,8 @@ export default function EmpresasPage() {
   const [selectAllMode, setSelectAllMode] = useState(false);
   const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
   const [batchDeleting, setBatchDeleting] = useState(false);
+  const [batchReassignDialogOpen, setBatchReassignDialogOpen] = useState(false);
+  const [batchReassigning, setBatchReassigning] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) return 'cards';
     return 'table';
@@ -396,6 +403,8 @@ export default function EmpresasPage() {
   const [exportBusy, setExportBusy] = useState(false);
   const [fullExportBusy, setFullExportBusy] = useState(false);
   const { hasPermission } = usePermissions();
+  const currentUserRole = useAppStore((s) => s.currentUser.role ?? '');
+  const canReassignAdvisor = canReassignCommercialAdvisor(currentUserRole);
 
   const [previewEmpresa, setPreviewEmpresa] = useState<EmpresaSummaryRow | null>(null);
   const [editEmpresa, setEditEmpresa] = useState<EmpresaSummaryRow | null>(null);
@@ -602,6 +611,37 @@ export default function EmpresasPage() {
       );
     } finally {
       setBatchDeleting(false);
+    }
+  }
+
+  async function handleBatchReassign(newAssignedTo: string) {
+    if (selectedDeleteCount === 0) return;
+    setBatchReassigning(true);
+    toast.loading('Reasignando…', { id: 'batch-reassign-empresas' });
+    try {
+      const result = await bulkReassignCompanies(
+        selectAllMode
+          ? { selectAll: true, newAssignedTo, ...listFilterParams }
+          : {
+              newAssignedTo,
+              ids: selectedCompanies.filter((id) => isLikelyCompanyCuid(id)),
+            },
+      );
+      setBatchReassignDialogOpen(false);
+      setSelectedCompanies([]);
+      setSelectAllMode(false);
+      await loadSummary();
+      await loadEtapaTabCounts();
+      toast.success(`${result.updated} reasignada(s)`, {
+        id: 'batch-reassign-empresas',
+      });
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : 'No se pudo reasignar',
+        { id: 'batch-reassign-empresas' },
+      );
+    } finally {
+      setBatchReassigning(false);
     }
   }
 
@@ -1589,59 +1629,79 @@ export default function EmpresasPage() {
         description="Gestiona empresas y cuentas comerciales"
         className="mb-4"
       >
-        {hasPermission('empresas.eliminar') && selectedDeleteCount > 0 && (
-          <Button
-            variant="destructive"
-            onClick={() => setBatchDeleteDialogOpen(true)}
-            disabled={batchDeleting}
-          >
-            {batchDeleting ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Trash2 className="size-4" />
-            )}{' '}
-            Eliminar ({selectedDeleteCount})
-          </Button>
-        )}
         <Button onClick={() => setNewEmpresaOpen(true)} className="h-9 w-[110px] text-sm font-normal shadow-md">
           <Plus /> Nueva
         </Button>
       </PageHeader>
 
       {selectedDeleteCount > 0 && (
-        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border bg-muted/50 px-4 py-2.5">
-          {selectAllMode ? (
-            <span className="text-sm font-medium">
-              Todas las {total} empresas del filtro están seleccionadas
-            </span>
-          ) : (
-            <span className="text-sm font-medium">
-              {selectedCompanies.length} de {total} seleccionadas
-            </span>
-          )}
-          {allPageSelected && total > displayRows.length && (
-            <Button
-              variant="link"
-              size="sm"
-              className="h-auto px-1 text-xs"
-              onClick={handleSelectAllMatchingFilter}
-            >
-              Seleccionar las {total} empresas del filtro
-            </Button>
-          )}
-          {selectAllMode && (
-            <Button
-              variant="link"
-              size="sm"
-              className="h-auto px-1 text-xs"
-              onClick={() => {
-                setSelectAllMode(false);
-                setSelectedCompanies([]);
-              }}
-            >
-              Deseleccionar todo
-            </Button>
-          )}
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/50 px-4 py-2.5">
+          <div className="flex flex-wrap items-center gap-3">
+            {selectAllMode ? (
+              <span className="text-sm font-medium">
+                Todas las {total} empresas del filtro están seleccionadas
+              </span>
+            ) : (
+              <span className="text-sm font-medium">
+                {selectedCompanies.length} de {total} seleccionadas
+              </span>
+            )}
+            {allPageSelected && total > displayRows.length && (
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto px-1 text-xs"
+                onClick={handleSelectAllMatchingFilter}
+              >
+                Seleccionar las {total} empresas del filtro
+              </Button>
+            )}
+            {selectAllMode && (
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto px-1 text-xs"
+                onClick={() => {
+                  setSelectAllMode(false);
+                  setSelectedCompanies([]);
+                }}
+              >
+                Deseleccionar todo
+              </Button>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {canReassignAdvisor && hasPermission('empresas.editar') && (
+              <Button
+                size="sm"
+                className="h-9 bg-blue-600 text-sm font-normal text-white shadow-md hover:bg-blue-700"
+                onClick={() => setBatchReassignDialogOpen(true)}
+                disabled={batchReassigning || batchDeleting}
+              >
+                {batchReassigning ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <UsersGroupRoundedSvgIcon className="size-4" />
+                )}{' '}
+                Reasignar ({selectedDeleteCount})
+              </Button>
+            )}
+            {hasPermission('empresas.eliminar') && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setBatchDeleteDialogOpen(true)}
+                disabled={batchDeleting || batchReassigning}
+              >
+                {batchDeleting ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Trash2 className="size-4" />
+                )}{' '}
+                Eliminar ({selectedDeleteCount})
+              </Button>
+            )}
+          </div>
         </div>
       )}
 
@@ -2322,6 +2382,15 @@ export default function EmpresasPage() {
             ? 'Eliminando...'
             : `Eliminar ${selectedDeleteCount}`
         }
+      />
+
+      <BatchReassignAdvisorDialog
+        open={batchReassignDialogOpen}
+        onOpenChange={setBatchReassignDialogOpen}
+        count={selectedDeleteCount}
+        entityLabel="empresa(s)"
+        onConfirm={handleBatchReassign}
+        confirming={batchReassigning}
       />
 
       <ConfirmDialog

@@ -53,6 +53,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { ActivityGoalTargets } from '@/lib/crmConfigApi';
+import { activityGoalTotalForPeriod } from '@/lib/crmConfigApi';
 
 const PAGE_SIZE = 25;
 
@@ -78,6 +79,16 @@ const DETAIL_CALL_OUTCOME_FILTERS: { value: DetailCallOutcomeFilter; label: stri
 
 export type AdvisorWeeklyDetailSheetKind = 'activities' | 'tasks';
 
+export type ActivityGoalPeriod = 'week' | 'day';
+
+function goalPeriodLabel(period: ActivityGoalPeriod): string {
+  return period === 'day' ? 'Meta diaria' : 'Meta semanal';
+}
+
+function periodSubtitlePrefix(period: ActivityGoalPeriod, label: string): string {
+  if (!label) return '';
+  return period === 'day' ? label : `Semana ${label}`;
+}
 const SHEET_COPY: Record<
   AdvisorWeeklyDetailSheetKind,
   {
@@ -85,7 +96,8 @@ const SHEET_COPY: Record<
     subtitle: string;
     loading: string;
     loadError: string;
-    empty: string;
+    emptyWeek: string;
+    emptyDay: string;
   }
 > = {
   activities: {
@@ -93,14 +105,16 @@ const SHEET_COPY: Record<
     subtitle: 'interacciones completadas',
     loading: 'Cargando actividades…',
     loadError: 'No se pudo cargar el detalle de actividades.',
-    empty: 'Sin actividades en esta semana.',
+    emptyWeek: 'Sin actividades en esta semana.',
+    emptyDay: 'Sin actividades en este día.',
   },
   tasks: {
     defaultTitle: 'Tareas',
     subtitle: 'tareas completadas',
     loading: 'Cargando tareas…',
     loadError: 'No se pudo cargar el detalle de tareas.',
-    empty: 'Sin tareas en esta semana.',
+    emptyWeek: 'Sin tareas en esta semana.',
+    emptyDay: 'Sin tareas en este día.',
   },
 };
 
@@ -146,6 +160,8 @@ interface ActivitiesByAdvisorDetailSheetProps {
   >;
   actualCounts?: ActivityGoalTargets | null;
   goalTargets?: ActivityGoalTargets | null;
+  /** week = reportes; day = dashboard operativo. */
+  goalPeriod?: ActivityGoalPeriod;
 }
 
 export function ActivitiesByAdvisorDetailSheet({
@@ -160,6 +176,7 @@ export function ActivitiesByAdvisorDetailSheet({
   detailQuery,
   actualCounts,
   goalTargets,
+  goalPeriod = 'week',
 }: ActivitiesByAdvisorDetailSheetProps) {
   const copy = SHEET_COPY[kind];
   const { hasPermission } = usePermissions();
@@ -178,6 +195,8 @@ export function ActivitiesByAdvisorDetailSheet({
 
   const hasActiveFilters = typeFilter !== 'all' || callOutcomeFilter !== 'all';
   const displayWeek = weekLabel ?? result?.weekLabel;
+  const periodLabel = periodSubtitlePrefix(goalPeriod, displayWeek ?? '');
+  const emptyCopy = goalPeriod === 'day' ? copy.emptyDay : copy.emptyWeek;
 
   const loadPage = useCallback(
     async (nextPage: number) => {
@@ -331,8 +350,8 @@ export function ActivitiesByAdvisorDetailSheet({
                 {advisorName ?? result?.advisorName ?? copy.defaultTitle}
               </SheetTitle>
               <SheetDescription className="text-sm">
-                {displayWeek
-                  ? `Semana ${displayWeek} · ${copy.subtitle}`
+                {periodLabel
+                  ? `${periodLabel} · ${copy.subtitle}`
                   : copy.subtitle}
               </SheetDescription>
             </div>
@@ -356,10 +375,11 @@ export function ActivitiesByAdvisorDetailSheet({
           onClear={clearFilters}
         />
 
-        {kind === 'activities' && goalTargets && hasAnyGoalTarget(goalTargets) ? (
+        {kind === 'activities' && goalTargets && hasAnyGoalTarget(goalTargets, goalPeriod) ? (
           <ActivityGoalSummary
             actual={actualCounts ?? EMPTY_GOAL_TARGETS}
             target={goalTargets}
+            goalPeriod={goalPeriod}
           />
         ) : null}
 
@@ -390,7 +410,7 @@ export function ActivitiesByAdvisorDetailSheet({
               <p className="mt-1 max-w-[16rem] text-xs text-muted-foreground">
                 {hasActiveFilters
                   ? 'Prueba otro tipo o limpia los filtros para ver todo el listado.'
-                  : copy.empty}
+                  : emptyCopy}
               </p>
               {hasActiveFilters ? (
                 <Button
@@ -564,38 +584,53 @@ const EMPTY_GOAL_TARGETS: ActivityGoalTargets = {
   correos: 0,
 };
 
-const GOAL_ROWS: { key: keyof ActivityGoalTargets; label: string }[] = [
+const GOAL_ROWS_WEEK: { key: keyof ActivityGoalTargets; label: string }[] = [
   { key: 'contacto', label: 'Contacto' },
   { key: 'noContacto', label: 'No contacto' },
   { key: 'reuniones', label: 'Reuniones' },
   { key: 'correos', label: 'Correos' },
 ];
 
-function hasAnyGoalTarget(target: ActivityGoalTargets): boolean {
-  return target.contacto + target.noContacto + target.reuniones + target.correos > 0;
+const GOAL_ROWS_DAY: { key: keyof ActivityGoalTargets; label: string }[] = [
+  { key: 'contacto', label: 'Contacto' },
+  { key: 'reuniones', label: 'Reuniones' },
+];
+
+function goalRowsForPeriod(period: ActivityGoalPeriod) {
+  return period === 'day' ? GOAL_ROWS_DAY : GOAL_ROWS_WEEK;
 }
 
-function goalTotal(target: ActivityGoalTargets): number {
-  return target.contacto + target.noContacto + target.reuniones + target.correos;
+function hasAnyGoalTarget(target: ActivityGoalTargets, period: ActivityGoalPeriod): boolean {
+  return activityGoalTotalForPeriod(target, period) > 0;
+}
+
+function goalProgressTotal(
+  values: ActivityGoalTargets,
+  period: ActivityGoalPeriod,
+): number {
+  return activityGoalTotalForPeriod(values, period);
 }
 
 export function ActivityGoalSummary({
   actual,
   target,
+  goalPeriod = 'week',
 }: {
   actual: ActivityGoalTargets;
   target: ActivityGoalTargets;
+  goalPeriod?: ActivityGoalPeriod;
 }) {
-  const actualTotal = goalTotal(actual);
-  const targetTotal = goalTotal(target);
-  const allMet = targetTotal > 0 && GOAL_ROWS.every(({ key }) => actual[key] >= target[key]);
+  const goalRows = goalRowsForPeriod(goalPeriod);
+  const actualTotal = goalProgressTotal(actual, goalPeriod);
+  const targetTotal = goalProgressTotal(target, goalPeriod);
+  const allMet = targetTotal > 0 && goalRows.every(({ key }) => actual[key] >= target[key]);
   const totalMet = targetTotal > 0 && actualTotal >= targetTotal;
 
   return (
     <div className="shrink-0 border-b border-border/50 bg-background/20 px-4 py-3">
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Meta semanal
+          {goalPeriodLabel(goalPeriod)}
         </p>
         <Badge
           variant="secondary"
@@ -610,7 +645,7 @@ export function ActivityGoalSummary({
         </Badge>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        {GOAL_ROWS.map(({ key, label }) => {
+        {goalRows.map(({ key, label }) => {
           const t = target[key];
           if (t <= 0) return null;
           const a = actual[key];

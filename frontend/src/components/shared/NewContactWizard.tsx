@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label';
 import {
   FormDialogShell,
   FormDialogWizardFooter,
+  FormDialogField,
   formDialogInputClass,
   formDialogPickerTriggerClass,
   formDialogPopoverContentClass,
@@ -642,9 +643,8 @@ return () => {
           )}
 
           {step === 1 && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Fuente</Label>
+            <div className="grid items-start gap-4 sm:grid-cols-2">
+              <FormDialogField label="Fuente">
                 <Select value={source} onValueChange={(v) => setSource(v as ContactSource)}>
                   <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -653,7 +653,7 @@ return () => {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </FormDialogField>
               <AssignedAdvisorFormField
                 htmlId="contact-wizard-assigned-to"
                 value={assignedTo}
@@ -663,8 +663,7 @@ return () => {
                 label="Asesor asignado"
                 formStyle
               />
-              <div className="space-y-2">
-                <Label>Cliente Recuperado</Label>
+              <FormDialogField label="Cliente Recuperado">
                 <Select value={clienteRecuperado} onValueChange={(v) => setClienteRecuperado(v as 'si' | 'no')}>
                   <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -672,7 +671,7 @@ return () => {
                     <SelectItem value="si">Sí</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+              </FormDialogField>
             </div>
           )}
 

@@ -94,10 +94,12 @@ export function FormDialogField({
 }) {
   return (
     <div className={cn('space-y-2', className)}>
-      <Label className={cn('text-sm font-semibold text-foreground/90', labelClassName)}>
-        {label}
-        {required ? <span className="text-destructive"> *</span> : null}
-      </Label>
+      <div className="flex min-h-7 items-end">
+        <Label className={cn('text-sm font-semibold leading-none text-foreground/90', labelClassName)}>
+          {label}
+          {required ? <span className="text-destructive"> *</span> : null}
+        </Label>
+      </div>
       {compactControl ? (
         <div className={formDialogControlSlotClass}>{children}</div>
       ) : (

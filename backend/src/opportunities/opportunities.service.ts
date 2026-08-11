@@ -14,6 +14,10 @@ import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { ActivityActor } from '../activity-logs/activity-logs.types';
 import { AuditDetailService } from '../audit-detail/audit-detail.service';
 import { buildChangeEntries } from '../common/audit-diff.util';
+import {
+  formatReassignmentDescription,
+  resolveAdvisorDisplayName,
+} from '../common/reassignment-activity.util';
 import { OPPORTUNITY_FIELD_LABELS } from '../audit-detail/audit-field-labels';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
@@ -859,7 +863,29 @@ export class OpportunitiesService {
       !hasCompanyLinkUpdate
     ) {
       action = 'asignar';
-      description = 'Asesor de la oportunidad actualizado.';
+      const [previousAdvisorName, newAdvisorName] = await Promise.all([
+        resolveAdvisorDisplayName(this.prisma, snapshot.assignedTo),
+        resolveAdvisorDisplayName(
+          this.prisma,
+          dto.assignedTo?.trim() || null,
+        ),
+      ]);
+      description = formatReassignmentDescription(
+        newAdvisorName,
+        previousAdvisorName,
+      );
+    } else if (assigneeChanged) {
+      const [previousAdvisorName, newAdvisorName] = await Promise.all([
+        resolveAdvisorDisplayName(this.prisma, snapshot.assignedTo),
+        resolveAdvisorDisplayName(
+          this.prisma,
+          dto.assignedTo?.trim() || null,
+        ),
+      ]);
+      description = formatReassignmentDescription(
+        newAdvisorName,
+        previousAdvisorName,
+      );
     } else if (
       dto.contactId !== undefined &&
       hasCompanyLinkUpdate &&
@@ -1159,6 +1185,114 @@ export class OpportunitiesService {
     });
 
     return { deleted: toDelete.length };
+  }
+
+  async bulkReassign(
+    params: {
+      newAssignedTo: string;
+      ids?: string[];
+      selectAll?: boolean;
+      search?: string;
+      etapa?: string;
+      status?: string;
+      fuente?: string;
+      assignedTo?: string;
+      excludeAssignedTo?: string;
+      advisorPool?: string;
+      linkedToCompanyId?: string;
+      excludeCompanyLinkId?: string;
+      excludeContactLinkId?: string;
+    },
+    actor: ActivityActor,
+    scope?: CrmDataScope,
+  ): Promise<{ updated: number }> {
+    const { newAssignedTo, ids, selectAll, ...filterOpts } = params;
+    const targetId = newAssignedTo?.trim();
+    if (!targetId) {
+      throw new BadRequestException('Debes indicar el asesor destino');
+    }
+    await this.assertUserExists(targetId);
+    if (scope && !scope.unrestricted && targetId !== scope.viewerUserId) {
+      throw new BadRequestException(
+        'No tienes permiso para reasignar a otro asesor',
+      );
+    }
+
+    let where: Prisma.OpportunityWhereInput;
+    if (selectAll) {
+      where = await this.opportunityListWhere(filterOpts, scope);
+    } else if (ids?.length) {
+      where = { id: { in: ids } };
+      if (scope && !scope.unrestricted) {
+        where.assignedTo = scope.viewerUserId;
+      }
+    } else {
+      throw new BadRequestException(
+        'Debes proporcionar ids o selectAll=true',
+      );
+    }
+
+    const toUpdate = await this.prisma.opportunity.findMany({
+      where,
+      select: { id: true, title: true },
+    });
+
+    if (toUpdate.length === 0) {
+      return { updated: 0 };
+    }
+
+    await this.prisma.opportunity.updateMany({
+      where: { id: { in: toUpdate.map((o) => o.id) } },
+      data: { assignedTo: targetId },
+    });
+
+    for (const opp of toUpdate) {
+      await this.entitySync.propagateFromOpportunityAllCompanies(opp.id, actor);
+    }
+
+    const advisor = await this.prisma.user.findUnique({
+      where: { id: targetId },
+      select: { name: true },
+    });
+    const advisorLabel = advisor?.name ?? targetId;
+    const sampleTitles = toUpdate
+      .slice(0, 5)
+      .map((o) => o.title)
+      .join(', ');
+    const titlesSuffix =
+      toUpdate.length > 5 ? `, … (+${toUpdate.length - 5} más)` : '';
+
+    await this.auditDetail.record(actor, {
+      action: 'actualizar',
+      module: 'oportunidades',
+      entityType: 'Oportunidad',
+      entityId: toUpdate[0]!.id,
+      entityName: `${toUpdate.length} oportunidades`,
+      entries: [
+        {
+          fieldKey: 'assignedTo',
+          fieldLabel: 'Asesor asignado',
+          oldValue: `${sampleTitles}${titlesSuffix}`,
+          newValue: advisorLabel,
+        },
+      ],
+    });
+
+    const reassignmentDescription = formatReassignmentDescription(advisorLabel);
+    await Promise.all(
+      toUpdate.map((opportunity) =>
+        this.activityLogs.record(actor, {
+          action: 'asignar',
+          module: 'oportunidades',
+          entityType: 'Oportunidad',
+          entityId: opportunity.id,
+          entityName: opportunity.title,
+          description: reassignmentDescription,
+        }),
+      ),
+    );
+
+    return { updated: toUpdate.length };
   }
 
   async remove(

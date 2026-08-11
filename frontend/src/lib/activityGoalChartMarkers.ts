@@ -1,7 +1,13 @@
 import type { ActivityGoalTargets } from '@/lib/crmConfigApi';
-import { activityGoalTotal } from '@/lib/crmConfigApi';
+import { activityGoalTotalForPeriod } from '@/lib/crmConfigApi';
 
-type AdvisorRow = { advisorId: string; advisorName: string; total: number };
+type AdvisorGoalRow = {
+  advisorId: string;
+  advisorName: string;
+  total: number;
+  llamadasContacto?: number;
+  reuniones?: number;
+};
 
 const MARKER_CLASS = 'activity-goal-marker';
 const HIGHLIGHT_CLASS = 'activity-goal-highlight';
@@ -48,11 +54,25 @@ function rowCenterY(
   return globals.translateY + rowHeight * index + rowHeight / 2;
 }
 
+function advisorProgressTotal(
+  row: AdvisorGoalRow,
+  goalPeriod: 'week' | 'day' = 'week',
+): number {
+  if (goalPeriod === 'day') {
+    return (row.llamadasContacto ?? 0) + (row.reuniones ?? 0);
+  }
+  return row.total;
+}
+
 export function applyActivityGoalDecorations(
   chartContext: ApexChartContext,
-  advisors: AdvisorRow[],
+  advisors: AdvisorGoalRow[],
   goalByAdvisorId: Record<string, ActivityGoalTargets> | undefined,
-  opts: { isDark: boolean; defaultLabelColor: string },
+  opts: {
+    isDark: boolean;
+    defaultLabelColor: string;
+    goalPeriod?: 'week' | 'day';
+  },
 ) {
   const chartEl = chartContext.el as HTMLElement | undefined;
   const svg = chartEl?.querySelector('.apexcharts-svg');
@@ -78,19 +98,22 @@ export function applyActivityGoalDecorations(
   highlightGroup.setAttribute('class', HIGHLIGHT_CLASS);
   highlightGroup.setAttribute('pointer-events', 'none');
 
+  const goalPeriod = opts.goalPeriod ?? 'week';
+
   advisors.forEach((row, index) => {
     const targets = goalByAdvisorId?.[row.advisorId];
-    const goalTotal = targets ? activityGoalTotal(targets) : 0;
+    const goalTotal = targets ? activityGoalTotalForPeriod(targets, goalPeriod) : 0;
     // ApexCharts dibuja la primera categoría abajo en barras horizontales.
     const categoryIndex = rowCount - 1 - index;
     const yCenter = rowCenterY(categoryIndex, rowCount, globals);
     const rowHeight = globals.gridHeight / rowCount;
     const halfH = Math.max(10, rowHeight * 0.36);
-    const met = goalTotal > 0 && row.total >= goalTotal;
+    const progressTotal = advisorProgressTotal(row, goalPeriod);
+    const met = goalTotal > 0 && progressTotal >= goalTotal;
 
-    if (met && row.total > 0) {
+    if (met && progressTotal > 0) {
       const xStart = xForValue(0, globals);
-      const xEnd = xForValue(row.total, globals);
+      const xEnd = xForValue(progressTotal, globals);
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('x', String(xStart));
       rect.setAttribute('y', String(yCenter - halfH));
@@ -129,8 +152,9 @@ export function applyActivityGoalDecorations(
     const advisor = advisors[index];
     if (!advisor) return;
     const targets = goalByAdvisorId?.[advisor.advisorId];
-    const goalTotal = targets ? activityGoalTotal(targets) : 0;
-    const met = goalTotal > 0 && advisor.total >= goalTotal;
+    const goalTotal = targets ? activityGoalTotalForPeriod(targets, goalPeriod) : 0;
+    const progressTotal = advisorProgressTotal(advisor, goalPeriod);
+    const met = goalTotal > 0 && progressTotal >= goalTotal;
     const el = node as SVGTextElement;
     el.setAttribute('fill', met ? metLabelColor : opts.defaultLabelColor);
   });
@@ -139,7 +163,7 @@ export function applyActivityGoalDecorations(
 /** @deprecated Use applyActivityGoalDecorations */
 export function drawActivityGoalMarkers(
   chartContext: ApexChartContext,
-  advisors: AdvisorRow[],
+  advisors: AdvisorGoalRow[],
   goalByAdvisorId: Record<string, ActivityGoalTargets> | undefined,
   isDark: boolean,
 ) {

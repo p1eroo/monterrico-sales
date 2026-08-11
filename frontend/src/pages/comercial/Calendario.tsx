@@ -3,7 +3,6 @@ import { addDays, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, for
 import { es } from 'date-fns/locale';
 import {
   ChevronLeft, ChevronRight, Calendar as CalendarIcon, Search,
-  Phone, Mail, MessageCircle, ClipboardList,
 } from 'lucide-react';
 import { toast } from '@/lib/notify';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -42,6 +41,8 @@ import { batchCheckCompanies } from '@/lib/apolloApi';
 import type { CalendarEvent, Contact, Opportunity, TaskKind, TaskAssociation, Activity } from '@/types';
 import { TASK_KINDS } from '@/types';
 import { taskAssociationsFromEntityCtx } from '@/lib/taskAssociationsFromActivity';
+import { activityTypeSvgIcon } from '@/lib/activityTypeSvgIcons';
+import { ACTIVITY_ICON_INHERIT, ACTIVITY_TYPE_ICON_CIRCLE } from '@/lib/activityTypeCircleStyles';
 
 const CALENDAR_TYPE_FILTER_MODALITIES = ['llamada', 'reunion', 'correo', 'whatsapp'] as const;
 
@@ -80,11 +81,11 @@ const EVENT_DOT_COLOR: Record<string, string> = {
 };
 
 const NEW_ACTIVITY_ACTIONS = [
-  { kind: 'llamada' as const, icon: Phone, label: 'Llamada' },
-  { kind: 'reunion' as const, icon: CalendarIcon, label: 'Reunión' },
-  { kind: 'correo' as const, icon: Mail, label: 'Correo' },
-  { kind: 'whatsapp' as const, icon: MessageCircle, label: 'WhatsApp' },
-  { kind: 'tarea' as const, icon: ClipboardList, label: 'Tarea' },
+  { kind: 'llamada' as const, label: 'Llamada' },
+  { kind: 'reunion' as const, label: 'Reunión' },
+  { kind: 'correo' as const, label: 'Correo' },
+  { kind: 'whatsapp' as const, label: 'WhatsApp' },
+  { kind: 'tarea' as const, label: 'Tarea' },
 ];
 
 export default function CalendarioPage() {
@@ -830,24 +831,34 @@ export default function CalendarioPage() {
         <div
           data-quick-create
           style={{ position: 'fixed', left: quickCreateMenu.x, top: quickCreateMenu.y, zIndex: 9999 }}
-          className="min-w-40 rounded-md border bg-popover p-1 shadow-lg"
+          className="min-w-[12.5rem] overflow-hidden rounded-xl border border-border/80 bg-popover p-1.5 shadow-xl"
         >
-          <p className="px-2 py-1 text-xs font-medium text-muted-foreground">Tipo de actividad</p>
-          <div className="mt-0.5 border-t" />
-          {NEW_ACTIVITY_ACTIONS.map((a) => {
-            const Icon = a.icon;
-            return (
-              <button
-                key={a.kind}
-                type="button"
-                onClick={() => { setQuickCreateMenu(null); handleSelectNewActivityKind(a.kind); }}
-                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted"
-              >
-                <Icon className="size-4 shrink-0 text-[#13944C]" />
-                {a.label}
-              </button>
-            );
-          })}
+          <div className="space-y-0.5">
+            {NEW_ACTIVITY_ACTIONS.map((a) => {
+              const Icon = activityTypeSvgIcon(a.kind);
+              return (
+                <button
+                  key={a.kind}
+                  type="button"
+                  onClick={() => { setQuickCreateMenu(null); handleSelectNewActivityKind(a.kind); }}
+                  className={cn(
+                    'flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/70',
+                    ACTIVITY_ICON_INHERIT,
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'flex size-7 shrink-0 items-center justify-center rounded-full',
+                      ACTIVITY_TYPE_ICON_CIRCLE[a.kind],
+                    )}
+                  >
+                    <Icon className="size-3.5" aria-hidden />
+                  </span>
+                  {a.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 

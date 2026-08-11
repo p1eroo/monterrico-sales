@@ -80,6 +80,18 @@ export function activityGoalTotal(targets: ActivityGoalTargets): number {
   );
 }
 
+/** Avance diario operativo: solo llamadas con contacto + reuniones. */
+export function activityGoalTrackedTotal(targets: ActivityGoalTargets): number {
+  return targets.contacto + targets.reuniones;
+}
+
+export function activityGoalTotalForPeriod(
+  targets: ActivityGoalTargets,
+  period: 'week' | 'day',
+): number {
+  return period === 'day' ? activityGoalTrackedTotal(targets) : activityGoalTotal(targets);
+}
+
 export type CrmActivityGoalsDto = {
   weekStart: string;
   byUserId: Record<string, ActivityGoalTargets>;

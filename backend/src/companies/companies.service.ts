@@ -15,6 +15,10 @@ import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { ActivityActor } from '../activity-logs/activity-logs.types';
 import { AuditDetailService } from '../audit-detail/audit-detail.service';
 import { buildChangeEntries } from '../common/audit-diff.util';
+import {
+  formatReassignmentDescription,
+  resolveAdvisorDisplayName,
+} from '../common/reassignment-activity.util';
 import { COMPANY_FIELD_LABELS } from '../audit-detail/audit-field-labels';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
@@ -136,6 +140,114 @@ export class CompaniesService {
     if (!u) {
       throw new BadRequestException('El usuario asignado no existe');
     }
+  }
+
+  /** Propaga assignedTo de empresas a todos sus contactos y oportunidades vinculados. */
+  private async cascadeAssignedToToLinkedEntities(
+    companyIds: string[],
+    assignedTo: string | null,
+  ): Promise<{
+    contactsUpdated: number;
+    opportunitiesUpdated: number;
+    contactIds: string[];
+    opportunityIds: string[];
+  }> {
+    if (companyIds.length === 0) {
+      return {
+        contactsUpdated: 0,
+        opportunitiesUpdated: 0,
+        contactIds: [],
+        opportunityIds: [],
+      };
+    }
+
+    const [contactLinks, oppLinks] = await Promise.all([
+      this.prisma.companyContact.findMany({
+        where: { companyId: { in: companyIds } },
+        select: { contactId: true },
+      }),
+      this.prisma.companyOpportunity.findMany({
+        where: { companyId: { in: companyIds } },
+        select: { opportunityId: true },
+      }),
+    ]);
+
+    const contactIds = [...new Set(contactLinks.map((l) => l.contactId))];
+    const opportunityIds = [...new Set(oppLinks.map((l) => l.opportunityId))];
+
+    let contactsUpdated = 0;
+    let opportunitiesUpdated = 0;
+
+    if (contactIds.length > 0) {
+      const res = await this.prisma.contact.updateMany({
+        where: { id: { in: contactIds } },
+        data: { assignedTo },
+      });
+      contactsUpdated = res.count;
+    }
+
+    if (opportunityIds.length > 0) {
+      const res = await this.prisma.opportunity.updateMany({
+        where: { id: { in: opportunityIds } },
+        data: { assignedTo },
+      });
+      opportunitiesUpdated = res.count;
+    }
+
+    return {
+      contactsUpdated,
+      opportunitiesUpdated,
+      contactIds,
+      opportunityIds,
+    };
+  }
+
+  private async recordLinkedReassignmentLogs(
+    actor: ActivityActor,
+    linked: { contactIds: string[]; opportunityIds: string[] },
+    description: string,
+  ): Promise<void> {
+    const [contacts, opportunities] = await Promise.all([
+      linked.contactIds.length > 0
+        ? this.prisma.contact.findMany({
+            where: { id: { in: linked.contactIds } },
+            select: { id: true, name: true },
+          })
+        : Promise.resolve([]),
+      linked.opportunityIds.length > 0
+        ? this.prisma.opportunity.findMany({
+            where: { id: { in: linked.opportunityIds } },
+            select: { id: true, title: true },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const tasks: Promise<void>[] = [];
+    for (const contact of contacts) {
+      tasks.push(
+        this.activityLogs.record(actor, {
+          action: 'asignar',
+          module: 'contactos',
+          entityType: 'Contacto',
+          entityId: contact.id,
+          entityName: contact.name,
+          description,
+        }),
+      );
+    }
+    for (const opportunity of opportunities) {
+      tasks.push(
+        this.activityLogs.record(actor, {
+          action: 'asignar',
+          module: 'oportunidades',
+          entityType: 'Oportunidad',
+          entityId: opportunity.id,
+          entityName: opportunity.title,
+          description,
+        }),
+      );
+    }
+    await Promise.all(tasks);
   }
 
   private async allocateCompanyUrlSlug(
@@ -1177,6 +1289,18 @@ export class CompaniesService {
       data: data as Prisma.CompanyUpdateInput,
     });
 
+    let linkedReassignment: {
+      contactIds: string[];
+      opportunityIds: string[];
+    } | null = null;
+    if (dto.assignedTo !== undefined) {
+      const nextAssigned = dto.assignedTo?.trim() || null;
+      linkedReassignment = await this.cascadeAssignedToToLinkedEntities(
+        [id],
+        nextAssigned,
+      );
+    }
+
     const touchedCommercial =
       dto.facturacionEstimada !== undefined ||
       dto.fuente !== undefined ||
@@ -1189,10 +1313,35 @@ export class CompaniesService {
 
     const etapaChanged =
       dto.etapa !== undefined && dto.etapa.trim() !== snapshot.etapa;
-    const action = etapaChanged ? 'cambiar_etapa' : 'actualizar';
-    const description = etapaChanged
+    const assigneeChanged =
+      dto.assignedTo !== undefined &&
+      (dto.assignedTo?.trim() || null) !== (snapshot.assignedTo ?? null);
+
+    let action = etapaChanged ? 'cambiar_etapa' : 'actualizar';
+    let description = etapaChanged
       ? `Etapa de la empresa: ${snapshot.etapa} → ${dto.etapa!.trim()}`
       : 'Datos de la empresa actualizados.';
+
+    if (assigneeChanged) {
+      const [previousAdvisorName, newAdvisorName] = await Promise.all([
+        resolveAdvisorDisplayName(this.prisma, snapshot.assignedTo),
+        resolveAdvisorDisplayName(
+          this.prisma,
+          dto.assignedTo?.trim() || null,
+        ),
+      ]);
+      description = formatReassignmentDescription(
+        newAdvisorName,
+        previousAdvisorName,
+      );
+      const assigneeOnlyChange =
+        !etapaChanged &&
+        Object.keys(data).filter((key) => key !== 'urlSlug').length === 1 &&
+        data.assignedTo !== undefined;
+      if (assigneeOnlyChange) {
+        action = 'asignar';
+      }
+    }
 
     const auditPatch: Record<string, unknown> = { ...data };
     delete auditPatch.urlSlug;
@@ -1223,6 +1372,19 @@ export class CompaniesService {
       entityName: displayName,
       description,
     });
+
+    if (assigneeChanged && linkedReassignment) {
+      const newAdvisorName = await resolveAdvisorDisplayName(
+        this.prisma,
+        dto.assignedTo?.trim() || null,
+      );
+      const linkedDescription = formatReassignmentDescription(newAdvisorName);
+      await this.recordLinkedReassignmentLogs(
+        actor,
+        linkedReassignment,
+        linkedDescription,
+      );
+    }
 
     return this.findOne(id, scope);
   }
@@ -1308,6 +1470,116 @@ export class CompaniesService {
     });
 
     return { deleted: toDelete.length };
+  }
+
+  async bulkReassign(
+    params: {
+      newAssignedTo: string;
+      ids?: string[];
+      selectAll?: boolean;
+      search?: string;
+      rubro?: string;
+      tipo?: string;
+      etapa?: string;
+      fuente?: string;
+      assignedTo?: string;
+      excludeAssignedTo?: string;
+      advisorPool?: string;
+      lastInteraction?: string;
+      lastInteractionFrom?: string;
+      lastInteractionTo?: string;
+      createdFrom?: string;
+      createdTo?: string;
+    },
+    actor: ActivityActor,
+    scope?: CrmDataScope,
+  ): Promise<{ updated: number }> {
+    const { newAssignedTo, ids, selectAll, ...filterOpts } = params;
+    const targetId = newAssignedTo?.trim();
+    if (!targetId) {
+      throw new BadRequestException('Debes indicar el asesor destino');
+    }
+    await this.assertUserExists(targetId);
+    if (scope && !scope.unrestricted && targetId !== scope.viewerUserId) {
+      throw new BadRequestException(
+        'No tienes permiso para reasignar a otro asesor',
+      );
+    }
+
+    let where: Prisma.CompanyWhereInput;
+    if (selectAll) {
+      where = await this.buildSummaryWhere(filterOpts, scope);
+    } else if (ids?.length) {
+      where = mergeCompanyScope({ id: { in: ids } }, scope);
+    } else {
+      throw new BadRequestException(
+        'Debes proporcionar ids o selectAll=true',
+      );
+    }
+
+    const toUpdate = await this.prisma.company.findMany({
+      where,
+      select: { id: true, name: true },
+    });
+
+    if (toUpdate.length === 0) {
+      return { updated: 0 };
+    }
+
+    await this.prisma.company.updateMany({
+      where: { id: { in: toUpdate.map((c) => c.id) } },
+      data: { assignedTo: targetId },
+    });
+
+    const linked = await this.cascadeAssignedToToLinkedEntities(
+      toUpdate.map((c) => c.id),
+      targetId,
+    );
+
+    const advisor = await this.prisma.user.findUnique({
+      where: { id: targetId },
+      select: { name: true },
+    });
+    const advisorLabel = advisor?.name ?? targetId;
+    const sampleNames = toUpdate
+      .slice(0, 5)
+      .map((c) => c.name)
+      .join(', ');
+    const namesSuffix =
+      toUpdate.length > 5 ? `, … (+${toUpdate.length - 5} más)` : '';
+
+    await this.auditDetail.record(actor, {
+      action: 'actualizar',
+      module: 'empresas',
+      entityType: 'Empresa',
+      entityId: toUpdate[0]!.id,
+      entityName: `${toUpdate.length} empresas`,
+      entries: [
+        {
+          fieldKey: 'assignedTo',
+          fieldLabel: 'Asesor asignado',
+          oldValue: `${sampleNames}${namesSuffix}`,
+          newValue: advisorLabel,
+        },
+      ],
+    });
+
+    const reassignmentDescription = formatReassignmentDescription(advisorLabel);
+    await Promise.all([
+      ...toUpdate.map((company) =>
+        this.activityLogs.record(actor, {
+          action: 'asignar',
+          module: 'empresas',
+          entityType: 'Empresa',
+          entityId: company.id,
+          entityName: company.name,
+          description: reassignmentDescription,
+        }),
+      ),
+      this.recordLinkedReassignmentLogs(actor, linked, reassignmentDescription),
+    ]);
+
+    return { updated: toUpdate.length };
   }
 
   async remove(

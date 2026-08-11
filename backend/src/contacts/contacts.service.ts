@@ -16,6 +16,10 @@ import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { ActivityActor } from '../activity-logs/activity-logs.types';
 import { AuditDetailService } from '../audit-detail/audit-detail.service';
 import { buildChangeEntries } from '../common/audit-diff.util';
+import {
+  formatReassignmentDescription,
+  resolveAdvisorDisplayName,
+} from '../common/reassignment-activity.util';
 import { CONTACT_FIELD_LABELS } from '../audit-detail/audit-field-labels';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { mergeCompanyScope } from '../common/crm-data-scope-where.util';
@@ -973,10 +977,35 @@ export class ContactsService {
 
     const etapaChanged =
       dto.etapa !== undefined && dto.etapa.trim() !== snapshot.etapa;
-    const action = etapaChanged ? 'cambiar_etapa' : 'actualizar';
-    const description = etapaChanged
+    const assigneeChanged =
+      dto.assignedTo !== undefined &&
+      (dto.assignedTo?.trim() || null) !== (snapshot.assignedTo ?? null);
+
+    let action = etapaChanged ? 'cambiar_etapa' : 'actualizar';
+    let description = etapaChanged
       ? `Etapa del contacto: ${snapshot.etapa} → ${dto.etapa!.trim()}`
       : 'Datos del contacto actualizados.';
+
+    if (assigneeChanged) {
+      const [previousAdvisorName, newAdvisorName] = await Promise.all([
+        resolveAdvisorDisplayName(this.prisma, snapshot.assignedTo),
+        resolveAdvisorDisplayName(
+          this.prisma,
+          dto.assignedTo?.trim() || null,
+        ),
+      ]);
+      description = formatReassignmentDescription(
+        newAdvisorName,
+        previousAdvisorName,
+      );
+      const assigneeOnlyChange =
+        !etapaChanged &&
+        Object.keys(data).filter((key) => key !== 'urlSlug').length === 1 &&
+        data.assignedTo !== undefined;
+      if (assigneeOnlyChange) {
+        action = 'asignar';
+      }
+    }
 
     const auditPatch: Record<string, unknown> = { ...data };
     delete auditPatch.urlSlug;
@@ -1097,6 +1126,124 @@ export class ContactsService {
     });
 
     return { deleted: toDelete.length };
+  }
+
+  async bulkReassign(
+    params: {
+      newAssignedTo: string;
+      ids?: string[];
+      selectAll?: boolean;
+      search?: string;
+      etapa?: string;
+      fuente?: string;
+      assignedTo?: string;
+      excludeAssignedTo?: string;
+      advisorPool?: string;
+      linkedToCompanyId?: string;
+      excludeCompanyLinkId?: string;
+      excludeOpportunityLinkId?: string;
+      lastInteraction?: string;
+      lastInteractionFrom?: string;
+      lastInteractionTo?: string;
+      createdFrom?: string;
+      createdTo?: string;
+    },
+    actor: ActivityActor,
+    scope?: CrmDataScope,
+  ): Promise<{ updated: number }> {
+    const { newAssignedTo, ids, selectAll, ...filterOpts } = params;
+    const targetId = newAssignedTo?.trim();
+    if (!targetId) {
+      throw new BadRequestException('Debes indicar el asesor destino');
+    }
+    await this.assertUserExists(targetId);
+    if (scope && !scope.unrestricted && targetId !== scope.viewerUserId) {
+      throw new BadRequestException(
+        'No tienes permiso para reasignar a otro asesor',
+      );
+    }
+
+    let where: Prisma.ContactWhereInput;
+    if (selectAll) {
+      where = await this.contactListWhere(filterOpts, scope);
+    } else if (ids?.length) {
+      where = { id: { in: ids } };
+      if (scope && !scope.unrestricted) {
+        where.assignedTo = scope.viewerUserId;
+      }
+    } else {
+      throw new BadRequestException(
+        'Debes proporcionar ids o selectAll=true',
+      );
+    }
+
+    const toUpdate = await this.prisma.contact.findMany({
+      where,
+      select: { id: true, name: true },
+    });
+
+    if (toUpdate.length === 0) {
+      return { updated: 0 };
+    }
+
+    await this.prisma.contact.updateMany({
+      where: { id: { in: toUpdate.map((c) => c.id) } },
+      data: { assignedTo: targetId },
+    });
+
+    for (const contact of toUpdate) {
+      const links = await this.prisma.companyContact.findMany({
+        where: { contactId: contact.id },
+        select: { companyId: true },
+      });
+      for (const { companyId } of links) {
+        await this.entitySync.propagateFromContact(companyId, contact.id, actor);
+      }
+    }
+
+    const advisor = await this.prisma.user.findUnique({
+      where: { id: targetId },
+      select: { name: true },
+    });
+    const advisorLabel = advisor?.name ?? targetId;
+    const sampleNames = toUpdate
+      .slice(0, 5)
+      .map((c) => c.name)
+      .join(', ');
+    const namesSuffix =
+      toUpdate.length > 5 ? `, … (+${toUpdate.length - 5} más)` : '';
+
+    await this.auditDetail.record(actor, {
+      action: 'actualizar',
+      module: 'contactos',
+      entityType: 'Contacto',
+      entityId: toUpdate[0]!.id,
+      entityName: `${toUpdate.length} contactos`,
+      entries: [
+        {
+          fieldKey: 'assignedTo',
+          fieldLabel: 'Asesor asignado',
+          oldValue: `${sampleNames}${namesSuffix}`,
+          newValue: advisorLabel,
+        },
+      ],
+    });
+
+    const reassignmentDescription = formatReassignmentDescription(advisorLabel);
+    await Promise.all(
+      toUpdate.map((contact) =>
+        this.activityLogs.record(actor, {
+          action: 'asignar',
+          module: 'contactos',
+          entityType: 'Contacto',
+          entityId: contact.id,
+          entityName: contact.name,
+          description: reassignmentDescription,
+        }),
+      ),
+    );
+
+    return { updated: toUpdate.length };
   }
 
   async remove(

@@ -61,7 +61,15 @@ export const TASK_ASSOCIATION_PICKER_TABS: {
 ];
 
 export const TASK_LINKED_ENTITY_FETCH_LIMIT = 500;
-export const TASK_ASSOCIATION_PICKER_PAGE_SIZE = 8;
+/** Filas visibles por tanda en el picker de asociaciones (tareas). */
+export const TASK_ASSOCIATION_PICKER_BATCH_SIZE = 50;
+
+export function paginateAssociationPickerItems<T>(
+  items: readonly T[],
+  visibleCount: number,
+): T[] {
+  return items.slice(0, visibleCount);
+}
 
 export function resolveSelectedCompanyId(associations: TaskAssociation[]): string | undefined {
   const empresas = associations.filter(
