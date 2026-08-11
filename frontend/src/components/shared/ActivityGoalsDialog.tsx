@@ -1,15 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import {
+  FormDialogActions,
+  FormDialogShell,
+  formDialogBtnOutlineClass,
+  formDialogInputClass,
+} from '@/components/ui/form-dialog';
 import {
   fetchCrmActivityGoals,
   fetchCrmDailyActivityGoals,
@@ -68,6 +66,13 @@ function normalizeTargets(
     return { ...normalized, noContacto: 0, correos: 0 };
   }
   return normalized;
+}
+
+function advisorInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return `${parts[0]![0] ?? ''}${parts[1]![0] ?? ''}`.toUpperCase();
 }
 
 export function ActivityGoalsDialog({
@@ -145,11 +150,14 @@ export function ActivityGoalsDialog({
     const parsed = Math.max(0, Math.round(Number(value) || 0));
     setDraft((prev) => ({
       ...prev,
-      [userId]: normalizeTargets({
-        ...EMPTY_TARGETS,
-        ...prev[userId],
-        [key]: parsed,
-      }, goalPeriod),
+      [userId]: normalizeTargets(
+        {
+          ...EMPTY_TARGETS,
+          ...prev[userId],
+          [key]: parsed,
+        },
+        goalPeriod,
+      ),
     }));
   };
 
@@ -182,106 +190,134 @@ export function ActivityGoalsDialog({
     }
   };
 
+  const description = periodLabel
+    ? goalPeriod === 'day'
+      ? `${periodLabel} · objetivos diarios por asesor. El total de avance usa contacto (meta) + reuniones.`
+      : `Semana ${periodLabel} · objetivos semanales por asesor y tipo de actividad.`
+    : goalPeriod === 'day'
+      ? 'Objetivos diarios por asesor. El total de avance usa contacto (meta) + reuniones.'
+      : 'Objetivos semanales por asesor y tipo de actividad.';
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-hidden sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Metas de actividades</DialogTitle>
-          <DialogDescription>
-            {periodLabel
-              ? goalPeriod === 'day'
-                ? `${periodLabel} · objetivos diarios por asesor`
-                : `Semana ${periodLabel} · objetivos semanales por asesor`
-              : goalPeriod === 'day'
-                ? 'Objetivos diarios por asesor'
-                : 'Objetivos semanales por asesor'}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {loading ? (
-            <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              Cargando metas…
-            </div>
-          ) : advisorRows.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">
-              No hay asesores para configurar metas.
-            </p>
-          ) : (
-            <div className="overflow-x-auto rounded-lg border border-border/70">
-              <table className="w-full min-w-[560px] text-sm">
-                <thead>
-                  <tr className="border-b border-border/70 bg-muted/40 text-left text-xs text-muted-foreground">
-                    <th className="px-3 py-2.5 font-medium">Asesor</th>
-                    {columns.map((col) => (
-                      <th key={col.key} className="px-2 py-2.5 font-medium">
-                        {col.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {advisorRows.map((row) => {
-                    const targets = normalizeTargets(draft[row.id], goalPeriod);
-                    return (
-                      <tr
-                        key={row.id}
-                        className="border-b border-border/50 last:border-0"
-                      >
-                        <td className="px-3 py-2 font-medium text-foreground">
-                          {row.name}
-                        </td>
-                        {columns.map((col) => (
-                          <td key={col.key} className="px-2 py-1.5">
-                            <Input
-                              type="number"
-                              min={0}
-                              step={1}
-                              disabled={!canEdit}
-                              value={targets[col.key] || ''}
-                              onChange={(e) =>
-                                setTarget(row.id, col.key, e.target.value)
-                              }
-                              className={cn(
-                                'h-8 w-16 px-2 text-center text-xs',
-                                !canEdit && 'opacity-70',
-                              )}
-                            />
-                          </td>
-                        ))}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={saving}
-          >
-            Cerrar
-          </Button>
-          {canEdit ? (
-            <Button type="button" onClick={() => void save()} disabled={saving || loading}>
-              {saving ? (
-                <>
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                  Guardando…
-                </>
-              ) : (
-                'Guardar metas'
-              )}
+    <FormDialogShell
+      open={open}
+      onOpenChange={onOpenChange}
+      maxWidthClassName="sm:max-w-2xl"
+      title="Metas de actividades"
+      description={description}
+      bodyClassName="mt-0 pb-0"
+      footer={
+        canEdit ? (
+          <FormDialogActions
+            cancelLabel="Cancelar"
+            submitLabel="Guardar metas"
+            submitting={saving}
+            submitDisabled={loading || advisorRows.length === 0}
+            onCancel={() => onOpenChange(false)}
+            onSubmit={() => void save()}
+          />
+        ) : (
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              className={cn('min-w-[7.5rem]', formDialogBtnOutlineClass)}
+              onClick={() => onOpenChange(false)}
+            >
+              Cerrar
             </Button>
+          </div>
+        )
+      }
+    >
+      {loading ? (
+        <div className="flex flex-col items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+          <Loader2 className="size-5 animate-spin text-primary/70" />
+          Cargando metas…
+        </div>
+      ) : advisorRows.length === 0 ? (
+        <div className="flex flex-col items-center px-4 py-16 text-center">
+          <p className="text-sm font-medium text-foreground">No hay asesores</p>
+          <p className="mt-1 max-w-xs text-xs text-muted-foreground">
+            No hay asesores disponibles para configurar metas en este periodo.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[420px] text-sm">
+              <thead>
+                <tr className="border-b border-border/60">
+                  <th className="px-1 py-3 text-left text-sm font-semibold text-foreground/90">
+                    Asesor
+                  </th>
+                  {columns.map((col) => (
+                    <th
+                      key={col.key}
+                      className="px-2 py-3 text-center text-sm font-semibold text-foreground/90"
+                    >
+                      {col.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {advisorRows.map((row) => {
+                  const targets = normalizeTargets(draft[row.id], goalPeriod);
+                  return (
+                    <tr
+                      key={row.id}
+                      className="border-b border-border/40 last:border-0"
+                    >
+                      <td className="py-3 pr-3">
+                        <div className="flex min-w-[9rem] items-center gap-2.5">
+                          <span
+                            className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-[#13944C]/10 text-[10px] font-semibold text-[#13944C]"
+                            aria-hidden
+                          >
+                            {advisorInitials(row.name)}
+                          </span>
+                          <span className="truncate font-medium text-foreground">
+                            {row.name}
+                          </span>
+                        </div>
+                      </td>
+                      {columns.map((col) => (
+                        <td key={col.key} className="px-2 py-2 text-center">
+                          <Input
+                            type="number"
+                            min={0}
+                            step={1}
+                            inputMode="numeric"
+                            disabled={!canEdit}
+                            aria-label={`${col.label} · ${row.name}`}
+                            value={targets[col.key] || ''}
+                            placeholder="0"
+                            onChange={(e) =>
+                              setTarget(row.id, col.key, e.target.value)
+                            }
+                            className={cn(
+                              formDialogInputClass,
+                              '!w-[4.5rem] !min-w-[4.5rem] mx-auto text-center tabular-nums',
+                              !canEdit && 'cursor-not-allowed opacity-60',
+                            )}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {!canEdit ? (
+            <p className="text-center text-xs text-muted-foreground">
+              Solo lectura: no tienes permiso para editar estas metas.
+            </p>
           ) : null}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      )}
+    </FormDialogShell>
   );
 }

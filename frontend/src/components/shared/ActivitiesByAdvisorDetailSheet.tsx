@@ -59,6 +59,7 @@ const PAGE_SIZE = 25;
 
 type DetailTypeFilter = 'all' | 'llamada' | 'reunion' | 'correo';
 type DetailCallOutcomeFilter = 'all' | 'contacto' | 'no_contacto';
+type DetailCallGoalFilter = 'all' | 'meta' | 'seguimiento' | 'no_contacto';
 
 const DETAIL_TYPE_FILTERS: {
   value: DetailTypeFilter;
@@ -74,6 +75,13 @@ const DETAIL_TYPE_FILTERS: {
 const DETAIL_CALL_OUTCOME_FILTERS: { value: DetailCallOutcomeFilter; label: string }[] = [
   { value: 'all', label: 'Todos' },
   { value: 'contacto', label: 'Contacto' },
+  { value: 'no_contacto', label: 'No contacto' },
+];
+
+const DETAIL_CALL_GOAL_FILTERS: { value: DetailCallGoalFilter; label: string }[] = [
+  { value: 'all', label: 'Todos' },
+  { value: 'meta', label: 'Cuentan para meta' },
+  { value: 'seguimiento', label: 'Seguimiento' },
   { value: 'no_contacto', label: 'No contacto' },
 ];
 
@@ -185,6 +193,7 @@ export function ActivitiesByAdvisorDetailSheet({
   const [page, setPage] = useState(1);
   const [typeFilter, setTypeFilter] = useState<DetailTypeFilter>('all');
   const [callOutcomeFilter, setCallOutcomeFilter] = useState<DetailCallOutcomeFilter>('all');
+  const [callGoalFilter, setCallGoalFilter] = useState<DetailCallGoalFilter>('all');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ActivitiesByAdvisorDetailsPage | null>(null);
@@ -193,7 +202,12 @@ export function ActivitiesByAdvisorDetailSheet({
   const [detailLoadingId, setDetailLoadingId] = useState<string | null>(null);
   const [taskComments, setTaskComments] = useState<TaskComment[]>([]);
 
-  const hasActiveFilters = typeFilter !== 'all' || callOutcomeFilter !== 'all';
+  const usesContactGoalRules = goalPeriod === 'day' && kind === 'activities';
+  const hasActiveFilters =
+    typeFilter !== 'all' ||
+    (usesContactGoalRules
+      ? callGoalFilter !== 'all'
+      : callOutcomeFilter !== 'all');
   const displayWeek = weekLabel ?? result?.weekLabel;
   const periodLabel = periodSubtitlePrefix(goalPeriod, displayWeek ?? '');
   const emptyCopy = goalPeriod === 'day' ? copy.emptyDay : copy.emptyWeek;
@@ -214,10 +228,20 @@ export function ActivitiesByAdvisorDetailSheet({
           page: nextPage,
           limit: PAGE_SIZE,
           activityType: typeFilter !== 'all' ? typeFilter : undefined,
-          callOutcome:
-            typeFilter === 'llamada' && callOutcomeFilter !== 'all'
-              ? callOutcomeFilter
-              : undefined,
+          ...(usesContactGoalRules
+            ? {
+                contactGoalRules: true,
+                callGoalKind:
+                  typeFilter === 'llamada' && callGoalFilter !== 'all'
+                    ? callGoalFilter
+                    : undefined,
+              }
+            : {
+                callOutcome:
+                  typeFilter === 'llamada' && callOutcomeFilter !== 'all'
+                    ? callOutcomeFilter
+                    : undefined,
+              }),
         });
         setResult(data);
         setPage(data.page);
@@ -230,19 +254,20 @@ export function ActivitiesByAdvisorDetailSheet({
         setLoading(false);
       }
     },
-    [advisorId, callOutcomeFilter, copy.loadError, detailQuery, kind, typeFilter, weekEnd, weekStart],
+    [advisorId, callGoalFilter, callOutcomeFilter, copy.loadError, detailQuery, kind, typeFilter, usesContactGoalRules, weekEnd, weekStart],
   );
 
   useEffect(() => {
     if (!open || !advisorId || !weekStart || !weekEnd) return;
     void loadPage(1);
-  }, [open, advisorId, weekStart, weekEnd, typeFilter, callOutcomeFilter, loadPage]);
+  }, [open, advisorId, weekStart, weekEnd, typeFilter, callOutcomeFilter, callGoalFilter, loadPage]);
 
   useEffect(() => {
     if (!open) {
       setPage(1);
       setTypeFilter('all');
       setCallOutcomeFilter('all');
+      setCallGoalFilter('all');
       setResult(null);
       setError(null);
       setDetailOpen(false);
@@ -329,12 +354,16 @@ export function ActivitiesByAdvisorDetailSheet({
 
   function handleTypeFilterChange(value: DetailTypeFilter) {
     setTypeFilter(value);
-    if (value !== 'llamada') setCallOutcomeFilter('all');
+    if (value !== 'llamada') {
+      setCallOutcomeFilter('all');
+      setCallGoalFilter('all');
+    }
   }
 
   function clearFilters() {
     setTypeFilter('all');
     setCallOutcomeFilter('all');
+    setCallGoalFilter('all');
   }
 
   return (
@@ -368,10 +397,13 @@ export function ActivitiesByAdvisorDetailSheet({
 
         <AdvisorDetailFilters
           typeFilter={typeFilter}
+          goalPeriod={goalPeriod}
           callOutcomeFilter={callOutcomeFilter}
+          callGoalFilter={callGoalFilter}
           hasActiveFilters={hasActiveFilters}
           onTypeChange={handleTypeFilterChange}
           onCallOutcomeChange={setCallOutcomeFilter}
+          onCallGoalChange={setCallGoalFilter}
           onClear={clearFilters}
         />
 
@@ -397,6 +429,7 @@ export function ActivitiesByAdvisorDetailSheet({
                 <ActivityDetailItem
                   key={row.id}
                   row={row}
+                  goalPeriod={goalPeriod}
                   loading={detailLoadingId === row.id}
                   onOpen={() => void openRecordDetail(row.id)}
                 />
@@ -473,19 +506,30 @@ export function ActivitiesByAdvisorDetailSheet({
 
 function AdvisorDetailFilters({
   typeFilter,
+  goalPeriod,
   callOutcomeFilter,
+  callGoalFilter,
   hasActiveFilters,
   onTypeChange,
   onCallOutcomeChange,
+  onCallGoalChange,
   onClear,
 }: {
   typeFilter: DetailTypeFilter;
+  goalPeriod: ActivityGoalPeriod;
   callOutcomeFilter: DetailCallOutcomeFilter;
+  callGoalFilter: DetailCallGoalFilter;
   hasActiveFilters: boolean;
   onTypeChange: (value: DetailTypeFilter) => void;
   onCallOutcomeChange: (value: DetailCallOutcomeFilter) => void;
+  onCallGoalChange: (value: DetailCallGoalFilter) => void;
   onClear: () => void;
 }) {
+  const usesContactGoalRules = goalPeriod === 'day';
+  const callFilters = usesContactGoalRules
+    ? DETAIL_CALL_GOAL_FILTERS
+    : DETAIL_CALL_OUTCOME_FILTERS;
+
   return (
     <div className="shrink-0 space-y-3 border-b border-border/50 bg-background/30 px-4 py-3 backdrop-blur-sm">
       <div className="flex items-center justify-between gap-2">
@@ -521,13 +565,23 @@ function AdvisorDetailFilters({
 
       {typeFilter === 'llamada' ? (
         <div className="space-y-1.5">
-          <p className="text-[10px] font-medium text-muted-foreground">Resultado de llamada</p>
+          <p className="text-[10px] font-medium text-muted-foreground">
+            {usesContactGoalRules ? 'Clasificación de llamada' : 'Resultado de llamada'}
+          </p>
           <FilterChipRow>
-            {DETAIL_CALL_OUTCOME_FILTERS.map((option) => (
+            {callFilters.map((option) => (
               <FilterChip
                 key={option.value}
-                active={callOutcomeFilter === option.value}
-                onClick={() => onCallOutcomeChange(option.value)}
+                active={
+                  usesContactGoalRules
+                    ? callGoalFilter === option.value
+                    : callOutcomeFilter === option.value
+                }
+                onClick={() =>
+                  usesContactGoalRules
+                    ? onCallGoalChange(option.value as DetailCallGoalFilter)
+                    : onCallOutcomeChange(option.value as DetailCallOutcomeFilter)
+                }
                 compact
               >
                 {option.label}
@@ -687,10 +741,12 @@ export function ActivityGoalSummary({
 
 function ActivityDetailItem({
   row,
+  goalPeriod,
   loading,
   onOpen,
 }: {
   row: ActivitiesByAdvisorDetailRow;
+  goalPeriod: ActivityGoalPeriod;
   loading?: boolean;
   onOpen: () => void;
 }) {
@@ -702,6 +758,13 @@ function ActivityDetailItem({
 
   const hasEntities =
     row.companies.length > 0 || row.contacts.length > 0 || row.opportunities.length > 0;
+
+  const callBadgeLabel =
+    goalPeriod === 'day' && row.callGoalKindLabel
+      ? row.callGoalKindLabel
+      : row.callOutcomeLabel;
+  const callBadgeKind =
+    goalPeriod === 'day' && row.callGoalKind ? row.callGoalKind : row.callOutcome;
 
   return (
     <li
@@ -742,17 +805,19 @@ function ActivityDetailItem({
                 <span className="text-[11px] font-bold uppercase tracking-wide text-foreground/90">
                   {row.typeLabel}
                 </span>
-                {row.callOutcomeLabel ? (
+                {callBadgeLabel ? (
                   <Badge
                     variant="secondary"
                     className={cn(
                       'rounded-full px-2 py-0 text-[10px] font-medium',
-                      row.callOutcome === 'contacto'
+                      callBadgeKind === 'meta' || callBadgeKind === 'contacto'
                         ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                        : 'border-border/60 bg-muted/60 text-muted-foreground',
+                        : callBadgeKind === 'seguimiento'
+                          ? 'border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-400'
+                          : 'border-border/60 bg-muted/60 text-muted-foreground',
                     )}
                   >
-                    {row.callOutcomeLabel}
+                    {callBadgeLabel}
                     {row.callResultLabel ? ` · ${row.callResultLabel}` : ''}
                   </Badge>
                 ) : null}

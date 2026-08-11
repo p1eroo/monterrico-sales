@@ -119,7 +119,7 @@ export type AnalyticsSummary = {
   activitiesByTypeWeekly: {
     weeks: { name: string; weekStart: string; weekEnd: string }[];
     types: {
-      key: 'llamadas_contacto' | 'llamadas_no_contacto' | 'reuniones' | 'correos';
+      key: 'llamadas_contacto' | 'llamadas_seguimiento' | 'llamadas_no_contacto' | 'reuniones' | 'correos';
       label: string;
       counts: number[];
       total: number;
@@ -134,6 +134,7 @@ export type AnalyticsSummary = {
       advisorName: string;
       llamadas: number;
       llamadasContacto: number;
+      llamadasSeguimiento?: number;
       llamadasNoContacto: number;
       reuniones: number;
       correos: number;
@@ -142,6 +143,7 @@ export type AnalyticsSummary = {
       byWeek: {
         llamadas: number;
         llamadasContacto: number;
+        llamadasSeguimiento?: number;
         llamadasNoContacto: number;
         reuniones: number;
         correos: number;
@@ -541,6 +543,8 @@ export type ActivitiesByAdvisorDetailRow = {
   callOutcome?: 'contacto' | 'no_contacto';
   callOutcomeLabel?: string;
   callResultLabel?: string;
+  callGoalKind?: 'meta' | 'seguimiento' | 'no_contacto';
+  callGoalKindLabel?: string;
   companies: ActivitiesByAdvisorDetailEntity[];
   contacts: ActivitiesByAdvisorDetailEntity[];
   opportunities: { id: string; title: string; urlSlug: string }[];
@@ -564,8 +568,11 @@ export type ActivitiesByAdvisorDetailsQuery = AnalyticsQueryFilters & {
   limit?: number;
   /** llamada | reunion | correo */
   activityType?: string;
-  /** contacto | no_contacto (solo llamadas) */
+  /** contacto | no_contacto (solo llamadas; reportes semanales) */
   callOutcome?: string;
+  /** meta | seguimiento | no_contacto (metas diarias) */
+  callGoalKind?: string;
+  contactGoalRules?: boolean;
 };
 
 export async function fetchActivitiesByAdvisorDetails(
@@ -580,6 +587,8 @@ export async function fetchActivitiesByAdvisorDetails(
   if (params.limit != null) q.set('limit', String(params.limit));
   if (params.activityType?.trim()) q.set('activityType', params.activityType.trim());
   if (params.callOutcome?.trim()) q.set('callOutcome', params.callOutcome.trim());
+  if (params.callGoalKind?.trim()) q.set('callGoalKind', params.callGoalKind.trim());
+  if (params.contactGoalRules) q.set('contactGoalRules', 'true');
   return api<ActivitiesByAdvisorDetailsPage>(
     `/analytics/activities-by-advisor/details?${q.toString()}`,
   );

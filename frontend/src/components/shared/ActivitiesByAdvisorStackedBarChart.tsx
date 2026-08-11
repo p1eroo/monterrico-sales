@@ -16,15 +16,28 @@ import {
 } from '@/lib/activitiesByAdvisorStackedUtils';
 import { cn } from '@/lib/utils';
 
-const ACTIVITY_SERIES = [
+const ACTIVITY_SERIES_WEEK = [
   { key: 'llamadasContacto' as const, label: 'Contacto', color: '#0E6B40' },
   { key: 'llamadasNoContacto' as const, label: 'No contacto', color: '#6ee7b7' },
   { key: 'reuniones' as const, label: 'Reuniones', color: '#34d399' },
   { key: 'correos' as const, label: 'Correos', color: '#065f46' },
 ] as const;
 
+const ACTIVITY_SERIES_DAY = [
+  { key: 'llamadasContacto' as const, label: 'Contacto', color: '#0E6B40' },
+  { key: 'llamadasSeguimiento' as const, label: 'Seguimiento', color: '#059669' },
+  { key: 'llamadasNoContacto' as const, label: 'No contacto', color: '#6ee7b7' },
+  { key: 'reuniones' as const, label: 'Reuniones', color: '#34d399' },
+  { key: 'correos' as const, label: 'Correos', color: '#065f46' },
+] as const;
+
+function activitySeriesForPeriod(period: ActivityGoalPeriod) {
+  return period === 'day' ? ACTIVITY_SERIES_DAY : ACTIVITY_SERIES_WEEK;
+}
+
 const ACTIVITY_COUNT_BY_LABEL: Record<string, [singular: string, plural: string]> = {
   Contacto: ['llamada con contacto', 'llamadas con contacto'],
+  Seguimiento: ['llamada de seguimiento', 'llamadas de seguimiento'],
   'No contacto': ['llamada sin contacto', 'llamadas sin contacto'],
   Reuniones: ['reunión', 'reuniones'],
   Correos: ['correo', 'correos'],
@@ -158,6 +171,10 @@ export function ActivitiesByAdvisorStackedBarChart({
   }, [data.advisors, onAdvisorSelect]);
   const isEmpty = !activitiesByAdvisorStackedHasData(data);
   const height = resolveChartHeight(data.advisors.length, chartHeight);
+  const activitySeries = useMemo(
+    () => activitySeriesForPeriod(goalPeriod),
+    [goalPeriod],
+  );
 
   const categories = useMemo(
     () => data.advisors.map((row) => row.advisorName),
@@ -166,11 +183,11 @@ export function ActivitiesByAdvisorStackedBarChart({
 
   const series = useMemo(
     () =>
-      ACTIVITY_SERIES.map((item) => ({
+      activitySeries.map((item) => ({
         name: item.label,
         data: data.advisors.map((row) => row[item.key]),
       })),
-    [data.advisors],
+    [activitySeries, data.advisors],
   );
 
   const options = useMemo<ApexOptions>(
@@ -222,7 +239,7 @@ export function ActivitiesByAdvisorStackedBarChart({
             : {}),
         },
       },
-      colors: ACTIVITY_SERIES.map((item) => item.color),
+      colors: activitySeries.map((item) => item.color),
       plotOptions: {
         bar: {
           horizontal: true,
@@ -320,7 +337,7 @@ export function ActivitiesByAdvisorStackedBarChart({
           const base = buildAdvisorStackedBarTooltipHtml({
             title: advisor.advisorName,
             weekLabel: data.weekLabel,
-            seriesItems: ACTIVITY_SERIES.map((item) => ({
+            seriesItems: activitySeries.map((item) => ({
               name: item.label,
               value: advisor[item.key],
               formatValue: formatActivityCountByLabel,
@@ -345,6 +362,7 @@ export function ActivitiesByAdvisorStackedBarChart({
       data.weekLabel,
       goalByAdvisorId,
       goalPeriod,
+      activitySeries,
       onAdvisorSelect,
       showLegend,
       xAxisBounds,

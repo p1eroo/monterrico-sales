@@ -160,6 +160,8 @@ export class AnalyticsController {
     @Query('source') source?: string,
     @Query('activityType') activityType?: string,
     @Query('callOutcome') callOutcome?: string,
+    @Query('callGoalKind') callGoalKind?: string,
+    @Query('contactGoalRules') contactGoalRules?: string,
   ) {
     const crmScope = await this.crmDataScope.buildScope(
       req.user.userId,
@@ -179,6 +181,8 @@ export class AnalyticsController {
       source,
       activityType,
       callOutcome,
+      callGoalKind,
+      contactGoalRules: contactGoalRules === 'true' || contactGoalRules === '1',
       crmScope,
     });
   }

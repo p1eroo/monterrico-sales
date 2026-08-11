@@ -1,5 +1,12 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import {
+  activityCountKeyWithContactGoalRules,
+  callGoalKindLabel,
+  classifyCallGoalKind,
+  type CallGoalKind,
+  type CompanyContactGoalContext,
+} from '../activities/call-goal-kind.util';
+import {
   callInteractionTypeKey,
   callOutcomeDescriptionWhere,
   callOutcomeGroupFromResult,
@@ -261,6 +268,8 @@ type ActivitiesByAdvisorDetailRow = {
   callOutcome?: 'contacto' | 'no_contacto';
   callOutcomeLabel?: string;
   callResultLabel?: string;
+  callGoalKind?: CallGoalKind;
+  callGoalKindLabel?: string;
   companies: ActivitiesByAdvisorDetailEntity[];
   contacts: ActivitiesByAdvisorDetailEntity[];
   opportunities: { id: string; title: string; urlSlug: string }[];
@@ -298,7 +307,12 @@ type CompaniesBySourceWeeklySnapshot = {
 };
 
 type ActivitiesByTypeWeeklyRow = {
-  key: 'llamadas_contacto' | 'llamadas_no_contacto' | 'reuniones' | 'correos';
+  key:
+    | 'llamadas_contacto'
+    | 'llamadas_seguimiento'
+    | 'llamadas_no_contacto'
+    | 'reuniones'
+    | 'correos';
   label: string;
   counts: number[];
   total: number;
@@ -315,6 +329,7 @@ type ActivitiesByAdvisorWeeklyRow = {
   advisorName: string;
   llamadas: number;
   llamadasContacto: number;
+  llamadasSeguimiento: number;
   llamadasNoContacto: number;
   reuniones: number;
   correos: number;
@@ -323,6 +338,7 @@ type ActivitiesByAdvisorWeeklyRow = {
   byWeek: {
     llamadas: number;
     llamadasContacto: number;
+    llamadasSeguimiento: number;
     llamadasNoContacto: number;
     reuniones: number;
     correos: number;
@@ -373,6 +389,7 @@ type TasksByAdvisorWeeklySnapshot = {
 
 const ACTIVITY_TYPE_DEFINITIONS = [
   { key: 'llamadas_contacto' as const, label: 'Contacto' },
+  { key: 'llamadas_seguimiento' as const, label: 'Seguimiento' },
   { key: 'llamadas_no_contacto' as const, label: 'No contacto' },
   { key: 'reuniones' as const, label: 'Reuniones' },
   { key: 'correos' as const, label: 'Correos' },
@@ -411,6 +428,14 @@ function parseAdvisorDetailActivityType(raw?: string): string | undefined {
 function parseAdvisorDetailCallOutcome(raw?: string): CallOutcomeGroup | undefined {
   const value = raw?.trim().toLowerCase();
   if (value === 'contacto' || value === 'no_contacto') return value;
+  return undefined;
+}
+
+function parseAdvisorDetailCallGoalKind(raw?: string): CallGoalKind | undefined {
+  const value = raw?.trim().toLowerCase();
+  if (value === 'meta' || value === 'seguimiento' || value === 'no_contacto') {
+    return value;
+  }
   return undefined;
 }
 
@@ -1691,6 +1716,96 @@ export class AnalyticsService {
     return this.classifyCompanyWeekMovement(auditsInWeek, getProb);
   }
 
+  /** Etapa histórica de empresas vinculadas a llamadas (reglas de meta de contacto). */
+  private async loadContactGoalCompanyContext(
+    companyIds: string[],
+    referenceTo: Date,
+  ): Promise<{
+    getProb: (slug: string) => number;
+    byCompanyId: Map<string, CompanyContactGoalContext>;
+  }> {
+    const uniqueIds = [...new Set(companyIds.filter(Boolean))];
+    if (uniqueIds.length === 0) {
+      const getProb = (_slug: string) => 0;
+      return { getProb, byCompanyId: new Map() };
+    }
+
+    const [stages, companies, auditRows] = await Promise.all([
+      this.prisma.crmStage.findMany({
+        where: { enabled: true },
+        select: { slug: true, probability: true },
+      }),
+      this.prisma.company.findMany({
+        where: { id: { in: uniqueIds } },
+        select: { id: true, createdAt: true, etapa: true },
+      }),
+      this.prisma.auditChangeSet.findMany({
+        where: {
+          module: 'empresas',
+          entityType: 'Empresa',
+          entityId: { in: uniqueIds },
+          createdAt: { lte: referenceTo },
+          entries: { some: { fieldKey: 'etapa' } },
+        },
+        include: {
+          entries: {
+            where: { fieldKey: 'etapa' },
+            select: { oldValue: true, newValue: true },
+          },
+        },
+      }),
+    ]);
+
+    const stageInfo = new Map<string, number>();
+    for (const stage of stages) {
+      stageInfo.set(stage.slug, stage.probability);
+    }
+    const getProb = (slug: string): number => {
+      const key = slug.trim();
+      if (stageInfo.has(key)) return stageInfo.get(key)!;
+      return STAGE_PROBABILITY_FALLBACK[key] ?? 0;
+    };
+
+    type AuditEv = { at: Date; oldSlug: string; newSlug: string };
+    const auditsByCompany = new Map<string, AuditEv[]>();
+    for (const row of auditRows) {
+      const id = row.entityId;
+      if (!id) continue;
+      const entry = row.entries[0];
+      if (!entry) continue;
+      const oldSlug = entry.oldValue.trim();
+      const newSlug = entry.newValue.trim();
+      if (!oldSlug && !newSlug) continue;
+      const list = auditsByCompany.get(id) ?? [];
+      list.push({ at: row.createdAt, oldSlug, newSlug });
+      auditsByCompany.set(id, list);
+    }
+    for (const [, list] of auditsByCompany) {
+      list.sort((a, b) => a.at.getTime() - b.at.getTime());
+    }
+
+    const byCompanyId = new Map<string, CompanyContactGoalContext>();
+    for (const company of companies) {
+      const audits = auditsByCompany.get(company.id) ?? [];
+      byCompanyId.set(company.id, {
+        id: company.id,
+        createdAt: company.createdAt,
+        etapaFn: buildEtapaStepFunction(
+          company.createdAt,
+          company.etapa,
+          audits.map((audit) => ({
+            at: audit.at,
+            oldValue: audit.oldSlug,
+            newValue: audit.newSlug,
+          })),
+        ),
+        audits,
+      });
+    }
+
+    return { getProb, byCompanyId };
+  }
+
   private async buildCompaniesWeeklyProgress(
     from: Date,
     to: Date,
@@ -2318,6 +2433,8 @@ export class AnalyticsService {
     source?: string;
     activityType?: string;
     callOutcome?: string;
+    callGoalKind?: string;
+    contactGoalRules?: boolean;
     page?: number;
     limit?: number;
     crmScope: CrmDataScope;
@@ -2355,6 +2472,8 @@ export class AnalyticsService {
 
     const activityType = parseAdvisorDetailActivityType(opts.activityType);
     const callOutcome = parseAdvisorDetailCallOutcome(opts.callOutcome);
+    const callGoalKind = parseAdvisorDetailCallGoalKind(opts.callGoalKind);
+    const contactGoalRules = opts.contactGoalRules === true;
 
     const where = this.activityWhereForAnalytics(
       {
@@ -2365,109 +2484,237 @@ export class AnalyticsService {
         ...(advisorId === UNASSIGNED_ADVISOR_ID
           ? { assignedTo: '' }
           : { assignedTo: advisorId }),
-        ...advisorDetailCallFilters(activityType, callOutcome, 'type'),
+        ...(contactGoalRules
+          ? {}
+          : advisorDetailCallFilters(activityType, callOutcome, 'type')),
       },
       filters,
       unrestricted,
     );
 
-    const [total, rows, advisorUser] = await Promise.all([
+    const detailSelect = {
+      id: true,
+      type: true,
+      title: true,
+      description: true,
+      completedAt: true,
+      companies: {
+        include: {
+          company: { select: { id: true, name: true, urlSlug: true } },
+        },
+      },
+      contacts: {
+        include: {
+          contact: { select: { id: true, name: true, urlSlug: true } },
+        },
+      },
+      opportunities: {
+        include: {
+          opportunity: { select: { id: true, title: true, urlSlug: true } },
+        },
+      },
+    } as const;
+
+    const advisorUserPromise =
+      advisorId === UNASSIGNED_ADVISOR_ID
+        ? Promise.resolve(null)
+        : this.prisma.user.findUnique({
+            where: { id: advisorId },
+            select: { name: true },
+          });
+
+    const advisorNameFromUser = (
+      advisorUser: { name: string | null } | null,
+    ): string =>
+      advisorId === UNASSIGNED_ADVISOR_ID
+        ? 'Sin asignar'
+        : advisorUser?.name?.trim() || 'Sin nombre';
+
+    const weekLabel = formatIsoWeekLabel(isoWeekNumberLima(weekStart));
+
+    const matchesCallGoalFilter = (
+      row: ActivitiesByAdvisorDetailRow,
+    ): boolean => {
+      if (callGoalKind) return row.callGoalKind === callGoalKind;
+      if (callOutcome === 'contacto') {
+        return row.callGoalKind === 'meta' || row.callGoalKind === 'seguimiento';
+      }
+      if (callOutcome === 'no_contacto') {
+        return row.callGoalKind === 'no_contacto';
+      }
+      return true;
+    };
+
+    if (!contactGoalRules) {
+      const [total, pageRows, advisorUser] = await Promise.all([
+        this.prisma.activity.count({ where }),
+        this.prisma.activity.findMany({
+          where,
+          orderBy: [{ completedAt: 'desc' }, { createdAt: 'desc' }],
+          skip: (page - 1) * limit,
+          take: limit,
+          select: detailSelect,
+        }),
+        advisorUserPromise,
+      ]);
+      const totalPages = Math.max(1, Math.ceil(total / limit));
+      const safePage = Math.min(page, totalPages);
+      return {
+        data: pageRows.map((row) => this.mapActivitiesByAdvisorDetailRow(row)),
+        total,
+        page: safePage,
+        limit,
+        totalPages,
+        advisorName: advisorNameFromUser(advisorUser),
+        weekLabel,
+      };
+    }
+
+    const needsInMemoryCallFilter = Boolean(
+      callGoalKind || callOutcome,
+    );
+
+    if (needsInMemoryCallFilter) {
+      const [allRows, advisorUser] = await Promise.all([
+        this.prisma.activity.findMany({
+          where,
+          orderBy: [{ completedAt: 'desc' }, { createdAt: 'desc' }],
+          select: detailSelect,
+        }),
+        advisorUserPromise,
+      ]);
+      const contactGoalCtx = await this.loadContactGoalCompanyContext(
+        allRows.flatMap((row) => row.companies.map(({ company }) => company.id)),
+        weekEnd,
+      );
+      const filtered = allRows
+        .map((row) => this.mapActivitiesByAdvisorDetailRow(row, contactGoalCtx))
+        .filter(matchesCallGoalFilter);
+      const total = filtered.length;
+      const totalPages = Math.max(1, Math.ceil(total / limit));
+      const safePage = Math.min(page, totalPages);
+      const start = (safePage - 1) * limit;
+      return {
+        data: filtered.slice(start, start + limit),
+        total,
+        page: safePage,
+        limit,
+        totalPages,
+        advisorName: advisorNameFromUser(advisorUser),
+        weekLabel,
+      };
+    }
+
+    const [total, pageRows, advisorUser] = await Promise.all([
       this.prisma.activity.count({ where }),
       this.prisma.activity.findMany({
         where,
         orderBy: [{ completedAt: 'desc' }, { createdAt: 'desc' }],
         skip: (page - 1) * limit,
         take: limit,
-        select: {
-          id: true,
-          type: true,
-          title: true,
-          description: true,
-          completedAt: true,
-          companies: {
-            include: {
-              company: { select: { id: true, name: true, urlSlug: true } },
-            },
-          },
-          contacts: {
-            include: {
-              contact: { select: { id: true, name: true, urlSlug: true } },
-            },
-          },
-          opportunities: {
-            include: {
-              opportunity: { select: { id: true, title: true, urlSlug: true } },
-            },
-          },
-        },
+        select: detailSelect,
       }),
-      advisorId === UNASSIGNED_ADVISOR_ID
-        ? Promise.resolve(null)
-        : this.prisma.user.findUnique({
-            where: { id: advisorId },
-            select: { name: true },
-          }),
+      advisorUserPromise,
     ]);
-
-    const advisorName =
-      advisorId === UNASSIGNED_ADVISOR_ID
-        ? 'Sin asignar'
-        : advisorUser?.name?.trim() || 'Sin nombre';
-    const weekLabel = formatIsoWeekLabel(isoWeekNumberLima(weekStart));
-
-    const data: ActivitiesByAdvisorDetailRow[] = rows.map((row) => {
-      const typeKey = row.type?.toLowerCase().trim() ?? '';
-      const parsedResult =
-        typeKey === 'llamada'
-          ? parseCallResultFromDescription(row.description)
-          : null;
-      const callOutcome =
-        typeKey === 'llamada'
-          ? callOutcomeGroupFromResult(parsedResult)
-          : undefined;
-
-      return {
-        id: row.id,
-        type: row.type,
-        typeLabel: activityTypeDisplayLabel(row.type),
-        title: row.title.trim() || row.type,
-        completedAt: row.completedAt?.toISOString() ?? '',
-        ...(callOutcome
-          ? {
-              callOutcome,
-              callOutcomeLabel: callOutcomeLabel(callOutcome),
-              callResultLabel: callResultDetailLabel(parsedResult) ?? undefined,
-            }
-          : {}),
-        companies: row.companies.map(({ company }) => ({
-          id: company.id,
-          name: company.name.trim() || 'Sin nombre',
-          urlSlug: company.urlSlug?.trim() || company.id,
-        })),
-        contacts: row.contacts.map(({ contact }) => ({
-          id: contact.id,
-          name: contact.name.trim() || 'Sin nombre',
-          urlSlug: contact.urlSlug?.trim() || contact.id,
-        })),
-        opportunities: row.opportunities.map(({ opportunity }) => ({
-          id: opportunity.id,
-          title: opportunity.title.trim() || 'Sin título',
-          urlSlug: opportunity.urlSlug?.trim() || opportunity.id,
-        })),
-      };
-    });
-
+    const contactGoalCtx = await this.loadContactGoalCompanyContext(
+      pageRows.flatMap((row) => row.companies.map(({ company }) => company.id)),
+      weekEnd,
+    );
     const totalPages = Math.max(1, Math.ceil(total / limit));
     const safePage = Math.min(page, totalPages);
-
     return {
-      data,
+      data: pageRows.map((row) =>
+        this.mapActivitiesByAdvisorDetailRow(row, contactGoalCtx),
+      ),
       total,
       page: safePage,
       limit,
       totalPages,
-      advisorName,
+      advisorName: advisorNameFromUser(advisorUser),
       weekLabel,
+    };
+  }
+
+  private mapActivitiesByAdvisorDetailRow(
+    row: {
+      id: string;
+      type: string;
+      title: string;
+      description: string | null;
+      completedAt: Date | null;
+      companies: {
+        company: { id: string; name: string; urlSlug: string | null };
+      }[];
+      contacts: {
+        contact: { id: string; name: string; urlSlug: string | null };
+      }[];
+      opportunities: {
+        opportunity: { id: string; title: string; urlSlug: string | null };
+      }[];
+    },
+    contactGoalCtx?: {
+      getProb: (slug: string) => number;
+      byCompanyId: Map<string, CompanyContactGoalContext>;
+    } | null,
+  ): ActivitiesByAdvisorDetailRow {
+    const typeKey = row.type?.toLowerCase().trim() ?? '';
+    const parsedResult =
+      typeKey === 'llamada'
+        ? parseCallResultFromDescription(row.description)
+        : null;
+    const callOutcome =
+      typeKey === 'llamada'
+        ? callOutcomeGroupFromResult(parsedResult)
+        : undefined;
+
+    let callGoalKind: CallGoalKind | undefined;
+    if (typeKey === 'llamada' && contactGoalCtx && row.completedAt) {
+      const companies = row.companies
+        .map(({ company }) => contactGoalCtx.byCompanyId.get(company.id))
+        .filter((company): company is CompanyContactGoalContext => Boolean(company));
+      callGoalKind = classifyCallGoalKind(
+        row.completedAt,
+        parsedResult,
+        companies,
+        contactGoalCtx.getProb,
+        ACTIVE_PROSPECT_MIN_PROBABILITY,
+      );
+    }
+
+    return {
+      id: row.id,
+      type: row.type,
+      typeLabel: activityTypeDisplayLabel(row.type),
+      title: row.title.trim() || row.type,
+      completedAt: row.completedAt?.toISOString() ?? '',
+      ...(callOutcome
+        ? {
+            callOutcome,
+            callOutcomeLabel: callOutcomeLabel(callOutcome),
+            callResultLabel: callResultDetailLabel(parsedResult) ?? undefined,
+          }
+        : {}),
+      ...(callGoalKind
+        ? {
+            callGoalKind,
+            callGoalKindLabel: callGoalKindLabel(callGoalKind),
+          }
+        : {}),
+      companies: row.companies.map(({ company }) => ({
+        id: company.id,
+        name: company.name.trim() || 'Sin nombre',
+        urlSlug: company.urlSlug?.trim() || company.id,
+      })),
+      contacts: row.contacts.map(({ contact }) => ({
+        id: contact.id,
+        name: contact.name.trim() || 'Sin nombre',
+        urlSlug: contact.urlSlug?.trim() || contact.id,
+      })),
+      opportunities: row.opportunities.map(({ opportunity }) => ({
+        id: opportunity.id,
+        title: opportunity.title.trim() || 'Sin título',
+        urlSlug: opportunity.urlSlug?.trim() || opportunity.id,
+      })),
     };
   }
 
@@ -3645,6 +3892,7 @@ export class AnalyticsService {
     filters: AnalyticsScopeFilters,
     unrestricted: boolean,
     periodTargets?: WeekTarget[],
+    useContactGoalRules = false,
   ): Promise<ActivitiesByTypeWeeklySnapshot> {
     const weekTargets = periodTargets ?? weekTargetsForChartRange(from, to);
 
@@ -3656,8 +3904,28 @@ export class AnalyticsService {
         filters,
         unrestricted,
       ),
-      select: { completedAt: true, type: true, description: true },
+      select: {
+        completedAt: true,
+        type: true,
+        description: true,
+        ...(useContactGoalRules
+          ? { companies: { select: { companyId: true } } }
+          : {}),
+      },
     });
+
+    let contactGoalCtx: {
+      getProb: (slug: string) => number;
+      byCompanyId: Map<string, CompanyContactGoalContext>;
+    } | null = null;
+    if (useContactGoalRules) {
+      const companyIds = acts.flatMap((act) =>
+        'companies' in act
+          ? act.companies.map((link) => link.companyId)
+          : [],
+      );
+      contactGoalCtx = await this.loadContactGoalCompanyContext(companyIds, to);
+    }
 
     const weekIndexByName = new Map(
       weekTargets.map((week, index) => [week.name, index] as const),
@@ -3674,7 +3942,19 @@ export class AnalyticsService {
 
     for (const act of acts) {
       if (!act.completedAt) continue;
-      const typeKey = activityTypeKeyFromRaw(act.type, act.description);
+      const typeKey = useContactGoalRules
+        ? activityCountKeyWithContactGoalRules(
+            act.type,
+            act.description,
+            act.completedAt,
+            'companies' in act
+              ? act.companies.map((link) => link.companyId)
+              : [],
+            contactGoalCtx!.byCompanyId,
+            contactGoalCtx!.getProb,
+            ACTIVE_PROSPECT_MIN_PROBABILITY,
+          )
+        : activityTypeKeyFromRaw(act.type, act.description);
       if (!typeKey) continue;
 
       let weekIndex: number | null = null;
@@ -3732,6 +4012,7 @@ export class AnalyticsService {
     unrestricted: boolean,
     userRows: { id: string; name: string }[],
     periodTargets?: WeekTarget[],
+    useContactGoalRules = false,
   ): Promise<ActivitiesByAdvisorWeeklySnapshot> {
     const weekTargets = periodTargets ?? weekTargetsForChartRange(from, to);
 
@@ -3743,11 +4024,33 @@ export class AnalyticsService {
         filters,
         unrestricted,
       ),
-      select: { completedAt: true, type: true, description: true, assignedTo: true },
+      select: {
+        completedAt: true,
+        type: true,
+        description: true,
+        assignedTo: true,
+        ...(useContactGoalRules
+          ? { companies: { select: { companyId: true } } }
+          : {}),
+      },
     });
+
+    let contactGoalCtx: {
+      getProb: (slug: string) => number;
+      byCompanyId: Map<string, CompanyContactGoalContext>;
+    } | null = null;
+    if (useContactGoalRules) {
+      const companyIds = acts.flatMap((act) =>
+        'companies' in act
+          ? act.companies.map((link) => link.companyId)
+          : [],
+      );
+      contactGoalCtx = await this.loadContactGoalCompanyContext(companyIds, to);
+    }
 
     type AdvisorCounts = {
       llamadasContacto: number;
+      llamadasSeguimiento: number;
       llamadasNoContacto: number;
       reuniones: number;
       correos: number;
@@ -3756,11 +4059,29 @@ export class AnalyticsService {
 
     const emptyCounts = (): AdvisorCounts => ({
       llamadasContacto: 0,
+      llamadasSeguimiento: 0,
       llamadasNoContacto: 0,
       reuniones: 0,
       correos: 0,
       notas: 0,
     });
+
+    const incrementAdvisorCount = (
+      row: AdvisorCounts,
+      typeKey: ActivitiesByTypeWeeklyRow['key'],
+    ) => {
+      if (typeKey === 'llamadas_contacto') {
+        row.llamadasContacto += 1;
+      } else if (typeKey === 'llamadas_seguimiento') {
+        row.llamadasSeguimiento += 1;
+      } else if (typeKey === 'llamadas_no_contacto') {
+        row.llamadasNoContacto += 1;
+      } else if (typeKey === 'reuniones') {
+        row.reuniones += 1;
+      } else if (typeKey === 'correos') {
+        row.correos += 1;
+      }
+    };
 
     const countsByAdvisor = new Map<string, AdvisorCounts[]>();
 
@@ -3774,7 +4095,19 @@ export class AnalyticsService {
 
     for (const act of acts) {
       if (!act.completedAt) continue;
-      const typeKey = activityTypeKeyFromRaw(act.type, act.description);
+      const typeKey = useContactGoalRules
+        ? activityCountKeyWithContactGoalRules(
+            act.type,
+            act.description,
+            act.completedAt,
+            'companies' in act
+              ? act.companies.map((link) => link.companyId)
+              : [],
+            contactGoalCtx!.byCompanyId,
+            contactGoalCtx!.getProb,
+            ACTIVE_PROSPECT_MIN_PROBABILITY,
+          )
+        : activityTypeKeyFromRaw(act.type, act.description);
       if (!typeKey) continue;
 
       let weekIndex: number | null = null;
@@ -3792,15 +4125,7 @@ export class AnalyticsService {
       const advisorId = act.assignedTo?.trim() || UNASSIGNED_ADVISOR_ID;
       const rows = ensureAdvisorWeeks(advisorId);
       const row = rows[weekIndex] ?? emptyCounts();
-      if (typeKey === 'llamadas_contacto') {
-        row.llamadasContacto = (row.llamadasContacto ?? 0) + 1;
-      } else if (typeKey === 'llamadas_no_contacto') {
-        row.llamadasNoContacto = (row.llamadasNoContacto ?? 0) + 1;
-      } else if (typeKey === 'reuniones') {
-        row.reuniones = (row.reuniones ?? 0) + 1;
-      } else if (typeKey === 'correos') {
-        row.correos = (row.correos ?? 0) + 1;
-      }
+      incrementAdvisorCount(row, typeKey);
       rows[weekIndex] = row;
     }
 
@@ -3830,17 +4155,21 @@ export class AnalyticsService {
         const totals = emptyCounts();
         const byWeek = byWeekRows.map((weekRow) => {
           totals.llamadasContacto += weekRow.llamadasContacto;
+          totals.llamadasSeguimiento += weekRow.llamadasSeguimiento;
           totals.llamadasNoContacto += weekRow.llamadasNoContacto;
           totals.reuniones += weekRow.reuniones;
           totals.correos += weekRow.correos;
           totals.notas += weekRow.notas;
           const weekLlamadas =
-            weekRow.llamadasContacto + weekRow.llamadasNoContacto;
+            weekRow.llamadasContacto +
+            weekRow.llamadasSeguimiento +
+            weekRow.llamadasNoContacto;
           const weekTotal =
             weekLlamadas + weekRow.reuniones + weekRow.correos + weekRow.notas;
           return {
             llamadas: weekLlamadas,
             llamadasContacto: weekRow.llamadasContacto,
+            llamadasSeguimiento: weekRow.llamadasSeguimiento,
             llamadasNoContacto: weekRow.llamadasNoContacto,
             reuniones: weekRow.reuniones,
             correos: weekRow.correos,
@@ -3848,13 +4177,17 @@ export class AnalyticsService {
             total: weekTotal,
           };
         });
-        const llamadas = totals.llamadasContacto + totals.llamadasNoContacto;
+        const llamadas =
+          totals.llamadasContacto +
+          totals.llamadasSeguimiento +
+          totals.llamadasNoContacto;
         const total = llamadas + totals.reuniones + totals.correos + totals.notas;
         return {
           advisorId,
           advisorName: resolveAdvisorName(advisorId),
           llamadas,
           llamadasContacto: totals.llamadasContacto,
+          llamadasSeguimiento: totals.llamadasSeguimiento,
           llamadasNoContacto: totals.llamadasNoContacto,
           reuniones: totals.reuniones,
           correos: totals.correos,
@@ -4725,6 +5058,7 @@ export class AnalyticsService {
       opts.chartGranularity === 'day'
         ? dayTargetsForChartRange(from, to)
         : undefined;
+    const useContactGoalRules = opts.chartGranularity === 'day';
 
     const [
       companiesWeeklyProgress,
@@ -4807,6 +5141,7 @@ export class AnalyticsService {
         filters,
         unrestricted,
         chartPeriodTargets,
+        useContactGoalRules,
       ),
       this.buildActivitiesByAdvisorWeekly(
         from,
@@ -4815,6 +5150,7 @@ export class AnalyticsService {
         unrestricted,
         userRows,
         chartPeriodTargets,
+        useContactGoalRules,
       ),
       this.buildTasksByKindWeekly(from, to, filters, unrestricted, chartPeriodTargets),
       this.buildTasksByAdvisorWeekly(from, to, filters, unrestricted, userRows),
