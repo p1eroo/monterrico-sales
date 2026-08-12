@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { MessageCircle, Search, Trash2 } from 'lucide-react';
+import { MessageCircle, Search, Trash2, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,6 +24,7 @@ import {
 } from '@/components/shared/InboxThreadContextMenu';
 import { useChatpoolStore } from './store';
 import { ConversationCard } from './ConversationCard';
+import { ProspectList } from './ProspectList';
 import { FlotaWhatsappConnectionBanner, FlotaWhatsappLoadingState } from './FlotaWhatsappConnectionBanner';
 import { FLOTA_PROSPECTO_ESTADOS, formatProspectoEstado } from './prospectoEstado';
 import { isWaConversationId } from './utils';
@@ -85,10 +86,12 @@ export function ConversationList() {
   const filterAssignee = useChatpoolStore((s) => s.filterAssignee);
   const filterRead = useChatpoolStore((s) => s.filterRead);
   const filterEstado = useChatpoolStore((s) => s.filterEstado);
+  const sidebarView = useChatpoolStore((s) => s.sidebarView);
   const openConversation = useChatpoolStore((s) => s.openConversation);
   const setFilterAssignee = useChatpoolStore((s) => s.setFilterAssignee);
   const setFilterRead = useChatpoolStore((s) => s.setFilterRead);
   const setFilterEstado = useChatpoolStore((s) => s.setFilterEstado);
+  const setSidebarView = useChatpoolStore((s) => s.setSidebarView);
   const deleteConversation = useChatpoolStore((s) => s.deleteConversation);
   const isReady = connectionState === 'ready';
 
@@ -153,9 +156,7 @@ export function ConversationList() {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      await deleteConversation(deleteTarget.id, {
-        removeProspecto: deleteTarget.prospectoActivo !== false && !isWaConversationId(deleteTarget.id),
-      });
+      await deleteConversation(deleteTarget.id, { removeProspecto: false });
       setDeleteTarget(null);
     } finally {
       setDeleting(false);
@@ -164,11 +165,55 @@ export function ConversationList() {
 
   return (
     <div className="w-[320px] bg-card border-r border-border flex flex-col shrink-0 h-full">
-      <div className="px-4 pt-4 pb-0">
-        <div className="mb-3">
-          <h2 className="truncate text-foreground font-semibold text-[15px]">{inboxName}</h2>
+      <div className={cn('px-4 pt-4 pb-0', sidebarView === 'contacts' && 'flex flex-col flex-1 min-h-0')}>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="truncate text-foreground font-semibold text-[15px] min-w-0">{inboxName}</h2>
+          <div
+            className="flex shrink-0 gap-0.5 rounded-lg bg-muted p-0.5"
+            role="tablist"
+            aria-label="Vista de bandeja"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={sidebarView === 'chats'}
+              title="Conversaciones"
+              onClick={() => setSidebarView('chats')}
+              className={cn(
+                'flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors',
+                sidebarView === 'chats'
+                  ? 'bg-card text-primary shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              Chats
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={sidebarView === 'contacts'}
+              title="Prospectos del CRM"
+              onClick={() => setSidebarView('contacts')}
+              className={cn(
+                'flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors',
+                sidebarView === 'contacts'
+                  ? 'bg-card text-primary shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <Users className="w-3.5 h-3.5" />
+              Contactos
+            </button>
+          </div>
         </div>
 
+        {sidebarView === 'contacts' ? (
+          <div className="flex flex-col flex-1 min-h-0">
+            <ProspectList />
+          </div>
+        ) : (
+          <>
         <div className="relative mb-3">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <Input
@@ -275,8 +320,12 @@ export function ConversationList() {
         </div>
 
         <div className="mt-3 border-b border-border" />
+          </>
+        )}
       </div>
 
+      {sidebarView === 'chats' ? (
+        <>
       <FlotaWhatsappConnectionBanner state={connectionState} />
 
       <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin">
@@ -349,10 +398,8 @@ export function ConversationList() {
                   Se borrará todo el historial de WhatsApp de{' '}
                   <span className="font-medium text-foreground">{deleteTarget?.contact.name}</span>.
                 </p>
-                {deleteTarget && deleteTarget.prospectoActivo !== false && !isWaConversationId(deleteTarget.id) ? (
-                  <p>Si el prospecto fue creado desde WhatsApp, también se quitará del CRM.</p>
-                ) : null}
-                <p>Podrás volver a probar cuando el contacto escriba de nuevo.</p>
+                <p>El prospecto permanece en el CRM; solo se elimina el historial del chat.</p>
+                <p>Cuando el contacto escriba de nuevo, el chat se mostrará con los datos del CRM si ya existe.</p>
               </div>
             </DialogDescription>
           </DialogHeader>
@@ -366,6 +413,8 @@ export function ConversationList() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+        </>
+      ) : null}
     </div>
   );
 }

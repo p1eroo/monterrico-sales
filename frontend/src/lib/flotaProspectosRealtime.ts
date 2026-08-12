@@ -3,6 +3,9 @@ import { io } from 'socket.io-client';
 import { API_BASE } from './api';
 
 const CHANNEL = 'flota-prospectos';
+const VISIBILITY_REFRESH_MS = 30_000;
+
+let lastVisibilityRefreshAt = 0;
 
 export type FlotaProspectosRefreshEvent = {
   type: 'refresh';
@@ -61,7 +64,11 @@ export function subscribeFlotaProspectosRefresh(
   }
 
   const onVisible = () => {
-    if (document.visibilityState === 'visible') onRefresh();
+    if (document.visibilityState !== 'visible') return;
+    const now = Date.now();
+    if (now - lastVisibilityRefreshAt < VISIBILITY_REFRESH_MS) return;
+    lastVisibilityRefreshAt = now;
+    onRefresh();
   };
   document.addEventListener('visibilitychange', onVisible);
   cleanups.push(() => document.removeEventListener('visibilitychange', onVisible));

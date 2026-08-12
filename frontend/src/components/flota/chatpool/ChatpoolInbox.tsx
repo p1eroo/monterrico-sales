@@ -19,15 +19,23 @@ export function ChatpoolInbox() {
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key !== 'Escape' || e.defaultPrevented) return;
-      const { activeConversationId, selectConversation } = useChatpoolStore.getState();
-      if (!activeConversationId) return;
+      if (e.key !== 'Escape') return;
+
+      const state = useChatpoolStore.getState();
+      if (state.lightboxMessageId) return;
+
+      if (document.querySelector('[role="dialog"][data-state="open"]')) return;
+      if (document.querySelector('[role="alertdialog"][data-state="open"]')) return;
+      if (document.querySelector('[data-radix-select-viewport]')) return;
+
+      if (!state.activeConversationId) return;
+
       e.preventDefault();
-      selectConversation(null);
+      state.closeActiveChat();
     }
 
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
   }, []);
 
   return (

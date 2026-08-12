@@ -23,6 +23,46 @@ export function formatMessageTime(date: Date): string {
   });
 }
 
+/** Etiqueta corta para cita en header del chat (fecha + hora si aplica). */
+export function formatCitaHeaderLabel(iso: string): string {
+  const raw = iso.trim();
+  if (!raw) return '';
+
+  // Solo fecha (YYYY-MM-DD): evitar corrimiento por UTC
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const [y, m, d] = raw.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    return date.toLocaleDateString('es-PE', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  }
+
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const hasTime =
+    date.getHours() !== 0 ||
+    date.getMinutes() !== 0 ||
+    date.getSeconds() !== 0;
+
+  const datePart = date.toLocaleDateString('es-PE', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+
+  if (!hasTime) return datePart;
+
+  const timePart = date.toLocaleTimeString('es-PE', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  return `${datePart} · ${timePart}`;
+}
+
 export function formatDate(date: Date): string {
   const today = new Date();
   const yesterday = new Date(Date.now() - 86400000);
@@ -127,6 +167,15 @@ export function getMessagesForConversation(
     }
   }
   return [...map.values()].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+}
+
+export function getConductorCodigo(
+  phone: string | null | undefined,
+  codigos: Record<string, string>,
+): string | null {
+  if (!phone) return null;
+  const normalized = phone.replace(/\D/g, '').replace(/^51/, '');
+  return codigos[normalized] ?? null;
 }
 
 export function resolveAttachmentUrl(url?: string | null): string {

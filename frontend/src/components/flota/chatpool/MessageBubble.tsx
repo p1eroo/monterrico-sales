@@ -13,10 +13,11 @@ interface MessageBubbleProps {
   onImageClick?: (messageId: string) => void;
 }
 
-function StatusIcon({ status }: { status?: Message['status'] }) {
-  if (status === 'read') return <CheckCheck className="w-3.5 h-3.5 text-sky-400" />;
-  if (status === 'delivered' || status === 'sent') return <CheckCheck className="w-3.5 h-3.5 text-muted-foreground" />;
-  if (status === 'pending') return <Check className="w-3.5 h-3.5 text-muted-foreground" />;
+function StatusIcon({ status, onColoredBubble }: { status?: Message['status']; onColoredBubble?: boolean }) {
+  const mutedClass = onColoredBubble ? 'text-white/70' : 'text-muted-foreground';
+  if (status === 'read') return <CheckCheck className="w-3.5 h-3.5 text-sky-300 dark:text-sky-400" />;
+  if (status === 'delivered' || status === 'sent') return <CheckCheck className={cn('w-3.5 h-3.5', mutedClass)} />;
+  if (status === 'pending') return <Check className={cn('w-3.5 h-3.5', mutedClass)} />;
   return null;
 }
 
@@ -26,7 +27,7 @@ export function MessageBubble({ message, contactName, agentFallbackName, isLastI
   if (message.senderType === 'system') {
     return (
       <div className="flex justify-center my-3 px-4">
-        <span className="max-w-[min(100%,28rem)] text-center text-xs leading-snug font-medium text-muted-foreground bg-muted/50 border border-border px-3.5 py-1.5 rounded-full">
+        <span className="max-w-[min(100%,28rem)] text-center text-xs leading-snug font-medium text-muted-foreground bg-card border border-border px-3.5 py-1.5 rounded-full dark:bg-muted/50">
           {message.content}
         </span>
       </div>
@@ -59,11 +60,11 @@ export function MessageBubble({ message, contactName, agentFallbackName, isLastI
 
         <div
           className={cn(
-            'rounded-2xl shadow-sm',
+            'rounded-2xl',
             isImageMessage ? 'p-1.5' : 'px-3 py-2 min-w-[120px]',
             isAgent
-              ? 'bg-emerald-600 text-white rounded-br-sm dark:bg-emerald-700'
-              : 'bg-muted text-foreground rounded-bl-sm',
+              ? 'bg-chat-bubble-outbound text-chat-bubble-outbound-foreground rounded-br-sm shadow-none dark:shadow-sm'
+              : 'bg-chat-bubble-inbound text-foreground border border-border rounded-bl-sm shadow-none dark:border-transparent dark:bg-muted dark:shadow-sm',
           )}
         >
           {hasAttachment ? (
@@ -80,9 +81,14 @@ export function MessageBubble({ message, contactName, agentFallbackName, isLastI
             </p>
           ) : null}
           {!isImageMessage ? (
-            <div className={cn('flex items-center justify-end gap-1 mt-1', isAgent ? 'text-white/70' : 'text-muted-foreground')}>
+            <div
+              className={cn(
+                'flex items-center justify-end gap-1 mt-1',
+                isAgent ? 'text-chat-bubble-outbound-foreground/70' : 'text-muted-foreground',
+              )}
+            >
               <span className="text-[10px]">{formatMessageTime(message.createdAt)}</span>
-              {isAgent && <StatusIcon status={message.status} />}
+              {isAgent && <StatusIcon status={message.status} onColoredBubble />}
             </div>
           ) : null}
         </div>
@@ -90,12 +96,12 @@ export function MessageBubble({ message, contactName, agentFallbackName, isLastI
         {isImageMessage && isLastInGroup ? (
           <div className={cn('flex items-center gap-1 mt-1 px-1', isAgent ? 'justify-end' : 'justify-start')}>
             <span className="text-[10px] text-muted-foreground">{formatMessageTime(message.createdAt)}</span>
-            {isAgent && <StatusIcon status={message.status} />}
+            {isAgent && <StatusIcon status={message.status} onColoredBubble />}
           </div>
         ) : null}
       </div>
 
-      {isAgent && isLastInGroup && <ChatpoolAvatar name={senderName} size="sm" className="self-end" />}
+      {isAgent && isLastInGroup && <ChatpoolAvatar name={senderName} size="sm" className="self-end" variant="agent" />}
       {isAgent && !isLastInGroup && <div className="w-7 shrink-0" />}
     </div>
   );

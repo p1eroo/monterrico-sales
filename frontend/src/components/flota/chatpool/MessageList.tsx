@@ -101,7 +101,7 @@ export function MessageList() {
   return (
     <div className="flex-1 flex flex-col min-h-0">
       <ChatHeader conversation={activeConversation} />
-      <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto py-3 bg-muted/20 scrollbar-thin">
+      <div ref={scrollContainerRef} className="chat-wallpaper flex-1 min-h-0 overflow-y-auto py-3 scrollbar-thin">
         {showLoadingSpinner ? (
           <div className="flex h-full min-h-[200px] items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -114,7 +114,7 @@ export function MessageList() {
           messageGroups.map((group) => (
             <div key={group.date}>
               <div className="flex justify-center my-3">
-                <span className="text-[11px] text-muted-foreground bg-muted px-3 py-1 rounded-full">
+                <span className="text-[11px] text-muted-foreground bg-card border border-border px-3 py-1 rounded-full dark:bg-muted dark:border-transparent">
                   {group.date}
                 </span>
               </div>

@@ -32,12 +32,13 @@ export class FilesController {
   constructor(private readonly filesService: FilesService) {}
 
   @Get()
-  @RequirePermissions('archivos.ver')
-  findAll(
+  async findAll(
+    @Req() req: AuthedRequest,
     @Query('entityType') entityType?: string,
     @Query('entityId') entityId?: string,
     @Query('scope') scope?: string,
   ) {
+    await this.filesService.assertCanListFiles(req.user.userId, scope);
     return this.filesService.findAll(entityType, entityId, scope);
   }
 
@@ -89,11 +90,12 @@ export class FilesController {
 
   /** Descarga o vista previa con Content-Type correcto (proxy; evita CDNs con cabeceras erróneas). */
   @Get(':id/content')
-  @RequirePermissions('archivos.ver')
   async streamContent(
+    @Req() req: AuthedRequest,
     @Param('id') id: string,
     @Query('disposition') disposition?: string,
   ): Promise<StreamableFile> {
+    await this.filesService.assertCanReadFile(req.user.userId, id);
     const disp = disposition === 'attachment' ? 'attachment' : 'inline';
     const { stream, mimeType, contentDisposition } =
       await this.filesService.openContentStream(id, disp);
@@ -104,19 +106,19 @@ export class FilesController {
   }
 
   @Get(':id/url')
-  @RequirePermissions('archivos.ver')
-  presign(
+  async presign(
+    @Req() req: AuthedRequest,
     @Param('id') id: string,
     @Query('disposition') disposition?: string,
   ) {
+    await this.filesService.assertCanReadFile(req.user.userId, id);
     const disp =
       disposition === 'attachment' ? 'attachment' : 'inline';
     return this.filesService.presignGet(id, disp);
   }
 
   @Delete(':id')
-  @RequirePermissions('archivos.eliminar')
-  remove(@Param('id') id: string, @Req() req: AuthedRequest) {
+  async remove(@Param('id') id: string, @Req() req: AuthedRequest) {
     return this.filesService.remove(id, req.user.userId);
   }
 }

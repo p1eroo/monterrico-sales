@@ -48,6 +48,8 @@ export type FlotaConversation = {
   direction: string;
   unread: number;
   estado?: string;
+  fechaCita?: string | null;
+  asistencia?: string | null;
   operador?: string;
   lastSender?: string;
   llamadaCount?: number;
@@ -98,7 +100,19 @@ export async function markConversationAsRead(prospectoId: string): Promise<void>
   return api(`/api/whatsapp/flota/read/${prospectoId}`, { method: 'POST' });
 }
 
-export async function fetchMasivoProspectos(search?: string, estado?: string): Promise<{ id: string; nombreCompleto: string; celular: string | null; movil: string | null; estado: string | null }[]> {
+export type FlotaMasivoProspecto = {
+  id: string;
+  nombreCompleto: string;
+  celular: string | null;
+  movil: string | null;
+  estado: string | null;
+  operador: string | null;
+};
+
+export async function fetchMasivoProspectos(
+  search?: string,
+  estado?: string,
+): Promise<FlotaMasivoProspecto[]> {
   const qs = new URLSearchParams();
   if (search?.trim()) qs.set('search', search.trim());
   if (estado) qs.set('estado', estado);

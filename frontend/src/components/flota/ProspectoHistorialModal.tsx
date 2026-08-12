@@ -27,7 +27,7 @@ function formatEventDate(date: string | Date): string {
   });
 }
 
-function buildMockHistorial(
+export function buildProspectoHistorialEvents(
   prospecto: FlotaProspectoRow,
   operadores: OperadorUser[],
 ): TimelineEvent[] {
@@ -149,7 +149,7 @@ export function ProspectoHistorialModal({
   onOpenChange,
 }: ProspectoHistorialModalProps) {
   const events = useMemo(
-    () => (prospecto ? buildMockHistorial(prospecto, operadores) : []),
+    () => (prospecto ? buildProspectoHistorialEvents(prospecto, operadores) : []),
     [prospecto, operadores],
   );
 

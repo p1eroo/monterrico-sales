@@ -33,6 +33,7 @@ import {
 } from './evolution-webhook.util';
 import { WhatsappGateway } from './whatsapp.gateway';
 import { WhatsappProspectoNameSyncService } from './whatsapp-prospecto-name-sync.service';
+import { FlotaDocumentExtractionService } from '../flota-prospectos/flota-document-extraction.service';
 import XLSX from 'xlsx';
 
 type JsonRecord = Record<string, unknown>;
@@ -149,6 +150,7 @@ export class WhatsappService {
     private readonly mediaUpload: MediaUploadService,
     private readonly audioConversion: AudioConversionService,
     private readonly prospectoNameSync: WhatsappProspectoNameSyncService,
+    private readonly documentExtraction: FlotaDocumentExtractionService,
   ) {}
 
   private defaultInstanceKey(): string {
@@ -967,6 +969,11 @@ export class WhatsappService {
     return [...new Set([digits, suffix9, with51].filter((value) => value.length >= 8))];
   }
 
+  private isExtractableDocumentMime(mime: string): boolean {
+    const m = (mime || '').toLowerCase().split(';')[0].trim();
+    return m.startsWith('image/') || m === 'application/pdf';
+  }
+
   private async persistInboundMediaAttachment(args: {
     messageId: string;
     contact:
@@ -1070,6 +1077,23 @@ export class WhatsappService {
         relatedEntityName: `whatsapp-${media.mediaType}`,
       });
       this.logger.log(`Adjunto WhatsApp ${messageId}: guardado OK (${bytes.length} bytes, tipo=${media.mimeType})`);
+
+      if (flotaProspecto?.id && this.isExtractableDocumentMime(realMimeType)) {
+        void this.documentExtraction
+          .processFile(flotaProspecto.id, bytes, realMimeType, originalName)
+          .then((result) => {
+            if (result?.tipoDocumento && result.tipoDocumento !== 'otro') {
+              this.logger.log(
+                `Adjunto WhatsApp ${messageId}: documento ${result.tipoDocumento} analizado (confianza ${result.confianza})`,
+              );
+            }
+          })
+          .catch((e) => {
+            this.logger.warn(
+              `Adjunto WhatsApp ${messageId}: extracción falló: ${e instanceof Error ? e.message : e}`,
+            );
+          });
+      }
     } catch (e) {
       this.logger.warn(
         `No se pudo almacenar adjunto WhatsApp ${messageId} en bucket Flota: ${String(e)}`,
@@ -2344,6 +2368,8 @@ export class WhatsappService {
       unread: number;
       lastReadAt: Date | null;
       estado?: string;
+      fechaCita?: string | null;
+      asistencia?: string | null;
       operador?: string | null;
       lastSender?: string;
       llamadaCount: number;
@@ -2372,6 +2398,8 @@ export class WhatsappService {
         phone?: string | null;
         prospectoActivo: boolean;
         estado?: string | null;
+        fechaCita?: Date | string | null;
+        asistencia?: string | null;
         operador?: string | null;
         llamadaCount?: number;
         lastReadAt?: Date | null;
@@ -2386,6 +2414,12 @@ export class WhatsappService {
       if (meta.phone?.trim()) entry.phone = meta.phone.trim();
       entry.prospectoActivo = meta.prospectoActivo;
       entry.estado = meta.prospectoActivo ? meta.estado ?? undefined : undefined;
+      entry.fechaCita = meta.prospectoActivo
+        ? meta.fechaCita
+          ? new Date(meta.fechaCita).toISOString()
+          : null
+        : null;
+      entry.asistencia = meta.prospectoActivo ? meta.asistencia ?? null : null;
       entry.operador = meta.prospectoActivo ? meta.operador ?? null : null;
       entry.llamadaCount = meta.llamadaCount ?? entry.llamadaCount;
       if (meta.lastReadAt !== undefined) entry.lastReadAt = meta.lastReadAt;
@@ -2430,6 +2464,8 @@ export class WhatsappService {
       target.unread += source.unread;
       if (!target.lastSender && source.lastSender) target.lastSender = source.lastSender;
       if (!target.estado && source.estado) target.estado = source.estado;
+      if (!target.fechaCita && source.fechaCita) target.fechaCita = source.fechaCita;
+      if (!target.asistencia && source.asistencia) target.asistencia = source.asistencia;
       if (!target.operador && source.operador) target.operador = source.operador;
       if (!target.prospectoActivo && source.prospectoActivo) {
         target.prospectoActivo = source.prospectoActivo;
@@ -2466,6 +2502,8 @@ export class WhatsappService {
             nombreCompleto: true,
             celular: true,
             estado: true,
+            fechaCita: true,
+            asistencia: true,
             lastReadAt: true,
             operador: true,
             eliminadoAt: true,
@@ -2545,6 +2583,10 @@ export class WhatsappService {
           unread: 0,
           lastReadAt: prospectLastReadAt,
           estado: prospectoActivo ? row.flotaProspecto?.estado ?? undefined : undefined,
+          fechaCita: prospectoActivo
+            ? row.flotaProspecto?.fechaCita?.toISOString() ?? null
+            : null,
+          asistencia: prospectoActivo ? row.flotaProspecto?.asistencia ?? null : null,
           operador: prospectoActivo ? row.flotaProspecto?.operador ?? null : null,
           lastSender:
             row.direction === 'outbound'
@@ -2563,6 +2605,8 @@ export class WhatsappService {
         phone: phoneRaw,
         prospectoActivo,
         estado: row.flotaProspecto?.estado,
+        fechaCita: row.flotaProspecto?.fechaCita,
+        asistencia: row.flotaProspecto?.asistencia,
         operador: row.flotaProspecto?.operador,
         llamadaCount: row.flotaProspecto?._count?.llamadas,
         lastReadAt: prospectLastReadAt,
@@ -2627,6 +2671,8 @@ export class WhatsappService {
       direction: c.lastDirection,
       unread: Math.min(c.unread, 99),
       estado: c.estado,
+      fechaCita: c.fechaCita ?? null,
+      asistencia: c.asistencia ?? null,
       operador: c.operador ?? undefined,
       lastSender: c.lastSender ?? c.name,
       llamadaCount: c.llamadaCount,
@@ -2799,15 +2845,12 @@ export class WhatsappService {
     }
 
     let removedProspecto = false;
-    if (prospectoId && !prospectoMeta?.eliminadoAt) {
-      const origen = prospectoMeta?.origen ?? 'MANUAL';
-      if (origen === 'WHATSAPP' && opts?.removeProspecto !== false) {
-        await this.prisma.flotaProspecto.update({
-          where: { id: prospectoId },
-          data: { eliminadoAt: new Date() },
-        });
-        removedProspecto = true;
-      }
+    if (prospectoId && !prospectoMeta?.eliminadoAt && opts?.removeProspecto === true) {
+      await this.prisma.flotaProspecto.update({
+        where: { id: prospectoId },
+        data: { eliminadoAt: new Date() },
+      });
+      removedProspecto = true;
     }
 
     this.logger.log(

@@ -71,4 +71,7 @@ export interface Conversation {
   channelType: ChannelType;
   operador?: string | null;
   prospectoActivo?: boolean;
+  /** ISO datetime cuando el prospecto está citado */
+  fechaCita?: string | null;
+  asistencia?: string | null;
 }

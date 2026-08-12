@@ -190,6 +190,20 @@ export function ChatComposer() {
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      if (pendingAttachment) {
+        clearPendingAttachment();
+        return;
+      }
+      if (quickRepliesOpen) {
+        setQuickRepliesOpen(false);
+        return;
+      }
+      useChatpoolStore.getState().closeActiveChat();
+      (e.target as HTMLTextAreaElement).blur();
+      return;
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       void handleSendText();
@@ -261,6 +275,11 @@ export function ChatComposer() {
                 setPendingAttachment((prev) => (prev ? { ...prev, caption: e.target.value } : null))
               }
               onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  clearPendingAttachment();
+                  return;
+                }
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   void handleSendAttachment();

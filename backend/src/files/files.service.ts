@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   ServiceUnavailableException,
@@ -63,6 +64,100 @@ export class FilesService {
       throw new ServiceUnavailableException(
         'Almacenamiento no configurado: defina MEDIA_UPLOAD_URL + MEDIA_BUCKET (proxy de medios) o S3_ENDPOINT + S3_ACCESS_KEY + S3_SECRET_KEY + S3_BUCKET.',
       );
+    }
+  }
+
+  private async getGrantedPermissions(userId: string): Promise<Set<string>> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { roleId: true },
+    });
+    if (!user?.roleId) {
+      throw new ForbiddenException('Usuario sin rol asignado');
+    }
+    const authorities = await this.prisma.authority.findMany({
+      where: { roleId: user.roleId },
+      select: { permission: true },
+    });
+    return new Set(authorities.map((a) => a.permission));
+  }
+
+  /** Archivos de prospectos Flota o adjuntos WhatsApp/Chatwoot vinculados a Flota. */
+  private async isFlotaFile(row: {
+    entityType: string;
+    relatedEntityType?: string | null;
+    relatedEntityId?: string | null;
+  }): Promise<boolean> {
+    if (row.entityType === 'flota-prospecto') return true;
+    if (row.relatedEntityType === 'chatwoot-message') return true;
+    if (
+      row.relatedEntityType === 'whatsapp-message' &&
+      row.relatedEntityId?.trim()
+    ) {
+      const msg = await this.prisma.crmWhatsappMessage.findUnique({
+        where: { id: row.relatedEntityId.trim() },
+        select: { flotaProspectoId: true },
+      });
+      return !!msg?.flotaProspectoId;
+    }
+    return false;
+  }
+
+  private canReadFlotaFile(granted: Set<string>): boolean {
+    return (
+      granted.has('flota_prospectos.ver') || granted.has('flota_mensajes.ver')
+    );
+  }
+
+  private canDeleteFlotaFile(granted: Set<string>): boolean {
+    return (
+      granted.has('flota_prospectos.editar') ||
+      granted.has('flota_mensajes.editar')
+    );
+  }
+
+  async assertCanListFiles(userId: string, scope?: string): Promise<void> {
+    const granted = await this.getGrantedPermissions(userId);
+    if (scope === 'flota') {
+      if (this.canReadFlotaFile(granted)) {
+        return;
+      }
+      throw new ForbiddenException('Permiso denegado: flota_prospectos.ver');
+    }
+    if (!granted.has('archivos.ver')) {
+      throw new ForbiddenException('Permiso denegado: archivos.ver');
+    }
+  }
+
+  async assertCanReadFile(userId: string, fileId: string): Promise<void> {
+    const row = await this.prisma.crmFile.findUnique({ where: { id: fileId } });
+    if (!row) {
+      throw new NotFoundException('Archivo no encontrado');
+    }
+    const granted = await this.getGrantedPermissions(userId);
+    const flota = await this.isFlotaFile(row);
+    if (flota) {
+      if (this.canReadFlotaFile(granted)) return;
+      throw new ForbiddenException('Permiso denegado: flota_prospectos.ver');
+    }
+    if (!granted.has('archivos.ver')) {
+      throw new ForbiddenException('Permiso denegado: archivos.ver');
+    }
+  }
+
+  async assertCanDeleteFile(userId: string, fileId: string): Promise<void> {
+    const row = await this.prisma.crmFile.findUnique({ where: { id: fileId } });
+    if (!row) {
+      throw new NotFoundException('Archivo no encontrado');
+    }
+    const granted = await this.getGrantedPermissions(userId);
+    const flota = await this.isFlotaFile(row);
+    if (flota) {
+      if (this.canDeleteFlotaFile(granted)) return;
+      throw new ForbiddenException('Permiso denegado: flota_prospectos.editar');
+    }
+    if (!granted.has('archivos.eliminar')) {
+      throw new ForbiddenException('Permiso denegado: archivos.eliminar');
     }
   }
 
@@ -186,7 +281,8 @@ export class FilesService {
     }
   }
 
-  async remove(id: string, _requesterId: string) {
+  async remove(id: string, requesterId: string) {
+    await this.assertCanDeleteFile(requesterId, id);
     const row = await this.prisma.crmFile.findUnique({ where: { id } });
     if (!row) {
       throw new NotFoundException('Archivo no encontrado');

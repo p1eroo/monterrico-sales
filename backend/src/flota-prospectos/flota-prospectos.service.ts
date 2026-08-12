@@ -244,6 +244,7 @@ export class FlotaProspectosService {
         celular: true,
         movil: true,
         estado: true,
+        operador: true,
       },
       orderBy: { nombreCompleto: 'asc' },
       take: 20000,

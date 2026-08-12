@@ -46,6 +46,7 @@ export function ConfirmDialog({
           overlayClassName ?? (nested ? formDialogNestedOverlayClass : undefined)
         }
         className={cn(nested && `!fixed ${formDialogNestedContentClass}`, contentClassName)}
+        {...(nested ? { 'data-dismiss-blocker': '' } : {})}
       >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

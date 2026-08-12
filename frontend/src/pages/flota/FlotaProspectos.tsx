@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from '@/lib/notify';
 import { api } from "@/lib/api";
-import { initiateConversation, resolveConversationByPhone, fetchConversation, conversationPhoneMatches } from "@/lib/chatwootApi";
+import { initiateConversation } from "@/lib/chatwootApi";
 import {
   useWhatsappTemplates,
   resolveSelectedTemplate,
@@ -18,15 +18,13 @@ import {
   UserPlus,
   FileSpreadsheet,
   Loader2,
-  Trash2,
-  Info,
-  History,
   Phone,
-  Edit2,
-  Lock,
-  MessageCircle,
   Send,
   MoreVertical,
+  Trash2,
+  Edit2,
+  Lock,
+  Info,
 } from "lucide-react";
 import {
   DateRangeCalendar,
@@ -95,8 +93,8 @@ import {
   flotaProspectosCounts,
   flotaProspectosSheetNames,
   flotaProspectosSheetPreview,
-  flotaProspectosDeleteMany,
   flotaProspectoCreate,
+  flotaProspectosDeleteMany,
   flotaProspectosSpreadsheets,
   flotaProspectosByPhone,
   flotaLlamadaCreate,
@@ -112,29 +110,16 @@ import {
 } from "@/lib/flotaProspectosApi";
 import { getConductorTelefonos } from "@/lib/flotaConductoresApi";
 import { useFlotaProspectosRealtime, notifyFlotaProspectosRefresh } from "@/lib/flotaProspectosRealtime";
-import { InlineEditCell } from "@/components/shared/InlineEditCell";
+import {
+  buildFlotaProspectosListCacheKey,
+  useFlotaProspectosStore,
+} from "@/store/flotaProspectosStore";
 import { DataTable, type ColumnDef } from "@/components/shared/DataTable";
 import { TableWithStickyScroll } from "@/components/shared/TableWithStickyScroll";
 import { Pagination } from "@/components/shared/Pagination";
 import ChatwootInboxPanel from "@/components/flota/ChatwootInboxPanel";
 import { ProspectoArchivosModal } from "@/components/flota/ProspectoArchivosModal";
 import { ProspectoInfoModal } from "@/components/flota/ProspectoInfoModal";
-import { ProspectoHistorialModal } from "@/components/flota/ProspectoHistorialModal";
-
-const ESTADO_OPTIONS = [
-  { label: "Nuevo", value: "Nuevo" },
-  { label: "Afiliado", value: "Afiliado" },
-  { label: "Citado", value: "Citado" },
-  { label: "Seguimiento", value: "Seguimiento" },
-  { label: "Información", value: "Informacion" },
-  { label: "Sin Requisitos", value: "Sin Requisitos" },
-  { label: "No Responde", value: "No Responde" },
-];
-
-const ASISTENCIA_OPTIONS = [
-  { label: "Asistió", value: "Asistió" },
-  { label: "No Asistió", value: "No Asistió" },
-];
 
 const AIRE_ACONDICIONADO_OPTIONS = [
   { label: "SI", value: "SI" },
@@ -219,7 +204,7 @@ export default function FlotaProspectos() {
   const [archivosModalOpen, setArchivosModalOpen] = useState(false);
   const [archivosProspectoId, setArchivosProspectoId] = useState<string | null>(null);
   const [infoModalProspecto, setInfoModalProspecto] = useState<FlotaProspectoRow | null>(null);
-  const [historialModalProspecto, setHistorialModalProspecto] = useState<FlotaProspectoRow | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editProspectoId, setEditProspectoId] = useState<string | null>(null);
   const [editSaving, setEditSaving] = useState(false);
   const [editData, setEditData] = useState({
@@ -295,7 +280,6 @@ export default function FlotaProspectos() {
     [setSearchParams],
   );
 
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [blockedProspects, setBlockedProspects] = useState<FlotaProspectoRow[]>([]);
   const [modalidadFilter, setModalidadFilter] = useState("all");
   const [ciudadFilter, setCiudadFilter] = useState("all");
@@ -312,7 +296,6 @@ export default function FlotaProspectos() {
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
   const [chatActiveId, setChatActiveId] = useState<number | null>(null);
   const [chatInitialContact, setChatInitialContact] = useState<{ name?: string; phone?: string } | null>(null);
-  const [openingChatProspectoId, setOpeningChatProspectoId] = useState<string | null>(null);
   const [newChatData, setNewChatData] = useState<{ phone: string; name: string; operador?: string } | null>(null);
   const [newChatSelected, setNewChatSelected] = useState('afiliacion_atu');
   const { templates: newChatTemplates, loading: newChatLoadingTpl } = useWhatsappTemplates(!!newChatData);
@@ -328,20 +311,12 @@ export default function FlotaProspectos() {
   blockedProspectsRef.current = blockedProspects;
   const prospectsWithFilesRef = useRef(prospectsWithFiles);
   prospectsWithFilesRef.current = prospectsWithFiles;
-  const selectedIdsRef = useRef(selectedIds);
-  selectedIdsRef.current = selectedIds;
   const columnFiltersRef = useRef(columnFilters);
   columnFiltersRef.current = columnFilters;
   const operadoresRef = useRef(operadores);
   operadoresRef.current = operadores;
   const conductorTelefonosRef = useRef(conductorTelefonos);
   conductorTelefonosRef.current = conductorTelefonos;
-  const openingChatProspectoIdRef = useRef(openingChatProspectoId);
-  openingChatProspectoIdRef.current = openingChatProspectoId;
-  const setInfoModalProspectoRef = useRef(setInfoModalProspecto);
-  setInfoModalProspectoRef.current = setInfoModalProspecto;
-  const setHistorialModalProspectoRef = useRef(setHistorialModalProspecto);
-  setHistorialModalProspectoRef.current = setHistorialModalProspecto;
 
   const columns = useMemo<ColumnDef<FlotaProspectoRow>[]>(
     () => [
@@ -366,8 +341,8 @@ export default function FlotaProspectos() {
                 <Lock className="size-3.5 text-muted-foreground" />
               ) : (
                 <Checkbox
-                  checked={selectedIdsRef.current.has(row.original.id)}
-                  className="h-4 w-4 border border-gray-400 data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
+                  checked={selectedIds.has(row.original.id)}
+                  className="h-4 w-4 rounded border border-gray-400 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
                   onCheckedChange={() => {
                     const id = row.original.id;
                     setSelectedIds((prev) => {
@@ -384,49 +359,6 @@ export default function FlotaProspectos() {
         },
       },
       {
-        id: "rowMenu",
-        header: "",
-        enableSorting: false,
-        enableColumnFilter: false,
-        size: 36,
-        minSize: 36,
-        maxSize: 36,
-        cell: ({ row }) => (
-          <div
-            className="flex justify-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="p-1 rounded hover:bg-accent transition-colors text-muted-foreground"
-                  title="Opciones"
-                >
-                  <MoreVertical className="size-3.5" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem
-                  className="gap-2 text-xs cursor-pointer"
-                  onClick={() => setInfoModalProspectoRef.current(row.original)}
-                >
-                  <Info className="size-3.5" />
-                  Información
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="gap-2 text-xs cursor-pointer"
-                  onClick={() => setHistorialModalProspectoRef.current(row.original)}
-                >
-                  <History className="size-3.5" />
-                  Historial
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        ),
-      },
-      {
         id: "actions",
         header: "",
         enableSorting: false,
@@ -435,22 +367,28 @@ export default function FlotaProspectos() {
         minSize: 52,
         maxSize: 52,
         cell: ({ row }) => {
-          const hasFiles = (row.original._count?.archivos ?? 0) > 0 || prospectsWithFilesRef.current.has(row.original.id);
+          const hasFiles =
+            (row.original._count?.archivos ?? 0) > 0 ||
+            prospectsWithFilesRef.current.has(row.original.id);
           return (
-          <div className="flex justify-center">
-            <button
-              type="button"
-              className="p-1 rounded hover:bg-accent transition-colors"
-              title="Ver archivos"
-              onClick={(e) => {
-                e.stopPropagation();
-                setArchivosProspectoId(row.original.id);
-                setArchivosModalOpen(true);
-              }}
-            >
-              <img src={hasFiles ? filesSiSvg : filesNoSvg} className="size-6" alt={hasFiles ? "Con archivos" : "Sin archivos"} />
-            </button>
-          </div>
+            <div className="flex justify-center">
+              <button
+                type="button"
+                className="p-1 rounded hover:bg-accent transition-colors"
+                title="Ver archivos"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setArchivosProspectoId(row.original.id);
+                  setArchivosModalOpen(true);
+                }}
+              >
+                <img
+                  src={hasFiles ? filesSiSvg : filesNoSvg}
+                  className="size-6"
+                  alt={hasFiles ? "Con archivos" : "Sin archivos"}
+                />
+              </button>
+            </div>
           );
         },
       },
@@ -511,76 +449,13 @@ export default function FlotaProspectos() {
             (bp) => bp.id === row.original.id,
           );
           return (
-            <div className="relative">
+            <div>
               <span
                 className="truncate block max-w-[90px]"
                 title={phone}
               >
                 {phone || "—"}
               </span>
-                {phone && (
-                <div
-                  className={`absolute inset-0 flex items-center justify-center transition-opacity bg-background/70 rounded z-10 ${
-                    openingChatProspectoId === row.original.id
-                      ? 'opacity-100 cursor-wait'
-                      : 'opacity-0 hover:opacity-100 cursor-pointer'
-                  }`}
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    const p = row.original;
-                    if (openingChatProspectoIdRef.current === p.id) return;
-                    const digits = (p.celular || '').replace(/\D/g, '');
-                    if (!digits) return;
-                    const fullPhone = digits.length === 9 ? `+51${digits}` : `+${digits}`;
-                    setOpeningChatProspectoId(p.id);
-                    try {
-                      const openExisting = (conversationId: number) => {
-                        setChatInitialContact({
-                          name: p.nombreCompleto,
-                          phone: fullPhone,
-                        });
-                        setChatActiveId(conversationId);
-                        setChatPanelOpen(true);
-                      };
-                      if (p.chatwootConversationId) {
-                        try {
-                          const detail = await fetchConversation(p.chatwootConversationId);
-                          if (conversationPhoneMatches(detail, fullPhone)) {
-                            openExisting(p.chatwootConversationId);
-                            return;
-                          }
-                        } catch {
-                          /* vinculación incorrecta: buscar por teléfono */
-                        }
-                      }
-                      const existing = await resolveConversationByPhone(
-                        fullPhone,
-                        p.chatwootContactId ?? undefined,
-                      );
-                      if (existing) {
-                        openExisting(existing.id);
-                        return;
-                      }
-                      setNewChatSelected('afiliacion_atu');
-                      setNewChatData({
-                        phone: fullPhone,
-                        name: p.nombreCompleto,
-                        operador: p.operador || undefined,
-                      });
-                    } catch {
-                      toast.error('Error al abrir el chat');
-                    } finally {
-                      setOpeningChatProspectoId(null);
-                    }
-                  }}
-                >
-                  {openingChatProspectoId === row.original.id ? (
-                    <Loader2 className="size-5 animate-spin text-primary" />
-                  ) : (
-                    <MessageCircle className="size-5 text-primary" />
-                  )}
-                </div>
-              )}
               {isBlocked && (
                 <span className="block text-[10px] text-muted-foreground italic">
                   Operador no editable
@@ -858,7 +733,7 @@ export default function FlotaProspectos() {
         ),
       },
     ],
-    [openingChatProspectoId],
+    [selectedIds],
   );
 
   const { hasPermission } = usePermissions();
@@ -873,11 +748,6 @@ export default function FlotaProspectos() {
     if (hasVerTodos) return operadores;
     return operadores.filter((op) => op.name === currentUser.name);
   }, [hasVerTodos, operadores, currentUser.name]);
-
-  const operadorOptions = useMemo(
-    () => filterOperadores.map((op) => ({ label: op.name, value: op.name })),
-    [filterOperadores],
-  );
 
   const redSocialOptions = useMemo(() => {
     return (counts?.redesSociales ?? []).filter(Boolean).sort();
@@ -943,8 +813,16 @@ export default function FlotaProspectos() {
   }, []);
 
   useEffect(() => {
+    const cached = useFlotaProspectosStore.getState().getOperadoresIfFresh();
+    if (cached) {
+      setOperadores(cached);
+      return;
+    }
     fetchOperadores()
-      .then(setOperadores)
+      .then((ops) => {
+        setOperadores(ops);
+        useFlotaProspectosStore.getState().setOperadores(ops);
+      })
       .catch(() => {});
   }, []);
 
@@ -997,16 +875,65 @@ export default function FlotaProspectos() {
 
   const LOAD_LIMIT = 25;
 
+  const buildListCacheKey = useCallback(
+    (pageNum: number) =>
+      buildFlotaProspectosListCacheKey({
+        page: pageNum,
+        search: searchDebounced,
+        estado: estadoFilter,
+        duplicados: duplicadosFilter,
+        fechaRegistroDesde: fechaRegistroRange?.from?.toISOString().split("T")[0],
+        fechaRegistroHasta: fechaRegistroRange?.to?.toISOString().split("T")[0],
+        mesImportDesde: mesImportRange?.from?.toISOString().split("T")[0],
+        mesImportHasta: mesImportRange?.to?.toISOString().split("T")[0],
+        redSocial: redSocialFilter,
+        operador: operadorFilter,
+        modalidad: modalidadFilter,
+        ciudad: ciudadFilter,
+        aireAcondicionado: aireAcondicionadoFilter,
+        conLlamadas: conLlamadasFilter,
+        columnFilters,
+      }),
+    [
+      searchDebounced,
+      estadoFilter,
+      duplicadosFilter,
+      fechaRegistroRange,
+      mesImportRange,
+      redSocialFilter,
+      operadorFilter,
+      modalidadFilter,
+      ciudadFilter,
+      aireAcondicionadoFilter,
+      conLlamadasFilter,
+      columnFilters,
+    ],
+  );
+
   const loadProspectos = useCallback(
-    async (pageNum: number) => {
+    async (pageNum: number, opts?: { silent?: boolean }) => {
+      const cacheKey = buildListCacheKey(pageNum);
+      const store = useFlotaProspectosStore.getState();
+      let silent = opts?.silent === true;
+
+      if (!silent) {
+        const cached = store.getListIfFresh(cacheKey);
+        if (cached) {
+          setProspectos(cached.prospectos);
+          setTotalProspectos(cached.total);
+          setInitialLoading(false);
+          isFirstLoad.current = false;
+          silent = true;
+        } else if (isFirstLoad.current) {
+          isFirstLoad.current = false;
+          setInitialLoading(true);
+        }
+      }
+
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
 
-      if (isFirstLoad.current) {
-        isFirstLoad.current = false;
-        setInitialLoading(true);
-      }
       try {
         const res = await flotaProspectosList({
           page: pageNum,
@@ -1064,6 +991,7 @@ export default function FlotaProspectos() {
 
         setProspectos(res.data);
         setTotalProspectos(res.total);
+        store.setListCache(cacheKey, res.data, res.total);
       } catch (e) {
         if ((e as Error).name === 'AbortError') return;
         toast.error(
@@ -1073,20 +1001,7 @@ export default function FlotaProspectos() {
         setInitialLoading(false);
       }
     },
-    [
-      searchDebounced,
-      estadoFilter,
-      duplicadosFilter,
-      fechaRegistroRange,
-      mesImportRange,
-      redSocialFilter,
-      operadorFilter,
-      modalidadFilter,
-      ciudadFilter,
-      aireAcondicionadoFilter,
-      conLlamadasFilter,
-      columnFilters,
-    ],
+    [buildListCacheKey, operadores],
   );
 
   useEffect(() => {
@@ -1107,10 +1022,20 @@ export default function FlotaProspectos() {
     return [...filtered, ...prospectos];
   }, [prospectos, columnFilters, blockedProspects]);
 
-  const loadCounts = useCallback(async () => {
+  const loadCounts = useCallback(async (opts?: { force?: boolean }) => {
+    const store = useFlotaProspectosStore.getState();
+    if (!opts?.force) {
+      const cached = store.getCountsIfFresh();
+      if (cached) {
+        setCounts(cached);
+        return;
+      }
+      if (store.counts) setCounts(store.counts);
+    }
     try {
       const c = await flotaProspectosCounts();
       setCounts(c);
+      store.setCounts(c);
     } catch {
       /* silently fail */
     }
@@ -1123,12 +1048,16 @@ export default function FlotaProspectos() {
   // Auto-recargar cuando una importación finaliza
   useEffect(() => {
     if (!completionTick) return;
-    void Promise.all([loadProspectos(page), loadCounts()]);
+    useFlotaProspectosStore.getState().invalidate();
+    void Promise.all([loadProspectos(page), loadCounts({ force: true })]);
   }, [completionTick, loadProspectos, loadCounts]);
 
   // Auto-recargar cuando otra pestaña, socket o visibilidad indican cambios
   useFlotaProspectosRealtime(() => {
-    void Promise.all([loadProspectos(page), loadCounts()]);
+    void Promise.all([
+      loadProspectos(page, { silent: true }),
+      loadCounts({ force: true }),
+    ]);
   });
 
   const infoModalProspectoId = infoModalProspecto?.id;
@@ -1141,12 +1070,6 @@ export default function FlotaProspectos() {
       );
     }
   }, [prospectos, infoModalProspectoId]);
-
-  useEffect(() => {
-    void loadCounts();
-  }, [loadCounts]);
-
-
 
   const getConductorCodigo = (celular: string | null): string | null => {
     if (!celular) return null;
@@ -1163,67 +1086,17 @@ export default function FlotaProspectos() {
       .trim();
   };
 
-  const toLocalDatetimeValue = (iso: string | null | undefined): string => {
-    if (!iso) return "";
-    const d = new Date(iso);
-    const date = d.toLocaleDateString("en-CA", { timeZone: "America/Lima" });
-    const time = d.toLocaleTimeString("en-GB", {
-      timeZone: "America/Lima",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-    return `${date}T${time}`;
-  };
-
   const isConductor = (celular: string | null): boolean => {
     if (!celular) return false;
     const normalized = celular.replace(/\D/g, "").replace(/^51/, "");
     return conductorTelefonosRef.current.phones.has(normalized);
   };
 
-  const handleOptimisticSave = useCallback(
-    (id: string, field: string, newValue: string | null) => {
-      setProspectos((prev) =>
-        prev.map((p) => {
-          if (p.id !== id) return p;
-          const updated = { ...p };
-          if (field === "edad" || field === "anioVehiculo") {
-            (updated as any)[field] =
-              newValue != null ? parseInt(newValue, 10) : null;
-          } else {
-            (updated as any)[field] = newValue;
-          }
-          return updated;
-        }),
-      );
-    },
-    [],
-  );
-
   const getRowClass = (prospecto: FlotaProspectoRow): string => {
     if (isConductor(prospecto.celular)) {
       return "bg-green-50/50 border-l-4 border-l-green-500 dark:bg-green-950/40 dark:border-l-green-400 dark:hover:bg-green-950/60";
     }
     return "hover:bg-muted/50";
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedIds.size === prospectos.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(prospectos.map((p) => p.id)));
-    }
-  };
-
-  const toggleSelectOne = (id: string) => {
-    const newSelected = new Set(selectedIds);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
-    }
-    setSelectedIds(newSelected);
   };
 
   const handleDownloadTemplate = useCallback(() => {
@@ -1574,7 +1447,7 @@ export default function FlotaProspectos() {
       {initialLoading && prospectos.length === 0 ? (
         <GhostTableSkeleton
           columns={[
-            { label: "", width: 44 },
+            { label: "", width: 40 },
             { label: "", width: 52 },
             { label: "F.Registro", width: 110 },
             { label: "Red Social", width: 90 },
@@ -1732,63 +1605,63 @@ export default function FlotaProspectos() {
           </PageHeader>
 
           {selectedIds.size > 0 && (
-            <div className="flex items-center gap-2 px-5">
+            <div className="flex flex-wrap items-center gap-2 px-5 pb-2">
               {selectedIds.size === 1 && (
-            <>
-              <Button
-                variant="ghost"
-                className="gap-1.5"
-                onClick={() => {
-                  const id = Array.from(selectedIds)[0];
-                  navigate(`/flota/prospectos/${id}`);
-                }}
-              >
-                <Info className="size-4" />
-                Vista detallada
-              </Button>
-              <Button
-                variant="ghost"
-                className="gap-1.5"
-                onClick={() => {
-                  const id = Array.from(selectedIds)[0];
-                  setEditProspectoId(id);
-                }}
-              >
-                <Edit2 className="size-4" />
-                Editar
-              </Button>
-              <Button
-                variant="ghost"
-                className="gap-1.5"
-                onClick={() => {
-                  const id = Array.from(selectedIds)[0];
-                  const row = prospectos.find((p) => p.id === id);
-                  if (row) {
-                    const now = new Date();
-                    setLlamadaProspecto({ id: row.id, nombre: row.nombreCompleto });
-                    setLlamadaFecha(now.toISOString().split("T")[0]);
-                    setLlamadaHora(now.toTimeString().split(" ")[0].substring(0, 5));
-                    setLlamadaNotas("");
-                  }
-                }}
-              >
-                <Phone className="size-4" />
-                Registrar llamada
-              </Button>
-            </>
+                <>
+                  <Button
+                    variant="ghost"
+                    className="gap-1.5"
+                    onClick={() => {
+                      const id = Array.from(selectedIds)[0];
+                      navigate(`/flota/prospectos/${id}`);
+                    }}
+                  >
+                    <Info className="size-4" />
+                    Vista detallada
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="gap-1.5"
+                    onClick={() => {
+                      const id = Array.from(selectedIds)[0];
+                      setEditProspectoId(id);
+                    }}
+                  >
+                    <Edit2 className="size-4" />
+                    Editar
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="gap-1.5"
+                    onClick={() => {
+                      const id = Array.from(selectedIds)[0];
+                      const row = prospectos.find((p) => p.id === id);
+                      if (row) {
+                        const now = new Date();
+                        setLlamadaProspecto({ id: row.id, nombre: row.nombreCompleto });
+                        setLlamadaFecha(now.toISOString().split("T")[0]);
+                        setLlamadaHora(now.toTimeString().split(" ")[0].substring(0, 5));
+                        setLlamadaNotas("");
+                      }
+                    }}
+                  >
+                    <Phone className="size-4" />
+                    Registrar llamada
+                  </Button>
+                </>
+              )}
+              {hasPermission("flota_prospectos.eliminar") && (
+                <Button
+                  variant="destructive"
+                  className="gap-1.5"
+                  onClick={() => setDeleteDialogOpen(true)}
+                >
+                  <Trash2 className="size-4" />
+                  Eliminar ({selectedIds.size})
+                </Button>
+              )}
+            </div>
           )}
-          {hasPermission("flota_prospectos.eliminar") && (
-            <Button
-              variant="destructive"
-              className="gap-1.5"
-              onClick={() => setDeleteDialogOpen(true)}
-            >
-              <Trash2 className="size-4" />
-              Eliminar ({selectedIds.size})
-            </Button>
-          )}
-        </div>
-      )}
 
           <div className="text-xs">
             <DataTable
@@ -1796,6 +1669,8 @@ export default function FlotaProspectos() {
               maxHeight="calc(100vh - 16rem)"
               data={displayData}
               getId={(r) => r.id}
+              onRowClick={setInfoModalProspecto}
+              getRowClassName={getRowClass}
               filterComponents={{
                 fechaRegistro: (
                   <Popover open={fechasOpen} onOpenChange={setFechasOpen}>
@@ -1938,121 +1813,6 @@ export default function FlotaProspectos() {
                   </select>
                 ),
               }}
-              readOnlyColumns={["select", "rowMenu", "actions", "fechaRegistro"]}
-              editTypes={{
-                edad: "number",
-                anioVehiculo: "number",
-                operador: "select",
-                estado: "select",
-                asistencia: "select",
-                modalidad: "select",
-                ciudad: "select",
-                aireAcondicionado: "select",
-                fechaCita: "datetime-local",
-                fechaAfiliacion: "date",
-              }}
-              editOptions={{
-                operador: operadorOptions,
-                estado: ESTADO_OPTIONS,
-                asistencia: ASISTENCIA_OPTIONS,
-                modalidad: MODALIDAD_OPTIONS,
-                ciudad: CIUDAD_OPTIONS,
-                aireAcondicionado: AIRE_ACONDICIONADO_OPTIONS,
-              }}
-               onEditStart={(row, columnId) => {
-                 if (columnId === "estado") return false;
-                 if (columnId === "operador") return false;
-                 if (columnId === "modalidad") return;
-                 if (columnId === "ciudad") return;
-                 if (columnId === "aireAcondicionado") return;
-                 return false;
-               }}
-              onRowSelectionChange={(ids) => setSelectedIds(new Set(ids))}
-               onCellEdit={async (row, columnId, newValue) => {
-                const isBlocked = blockedProspects.some((bp) => bp.id === (row as any).id);
-                if (isBlocked && columnId === "operador") {
-                  toast.warning("No puedes cambiar el operador asignado a otro operador");
-                  return;
-                }
-                const body: Record<string, unknown> = {};
-                if (columnId === "edad" || columnId === "anioVehiculo") {
-                  const num = parseInt(newValue, 10);
-                  body[columnId] = isNaN(num) ? null : num;
-                } else if (columnId === "observaciones") {
-                  const fullObs = (row as any).observaciones || "";
-                  const entries = fullObs.split(/\n?---\n?/).filter(Boolean);
-                  const cleanValue = newValue
-                    .replace(/^\[.+?\]\s*/g, "")
-                    .trim();
-                  if (entries.length > 0) {
-                    const latest = entries[0];
-                    const datePrefix = latest.match(/^\[.+?\]\s*/)?.[0] || "";
-                    entries[0] = datePrefix
-                      ? `${datePrefix}${cleanValue}`
-                      : cleanValue;
-                    body[columnId] = entries.join("\n---\n");
-                  } else {
-                    body[columnId] = cleanValue;
-                  }
-                } else if (columnId === "estado" && newValue === "Citado") {
-                  const p = row as any;
-                  setCitadoProspectId(p.id);
-                  setCitadoDate(p.fechaCita ? p.fechaCita.split("T")[0] : "");
-                  setCitadoTime(
-                    p.fechaCita
-                      ? new Date(p.fechaCita)
-                          .toTimeString()
-                          .split(" ")[0]
-                          .substring(0, 5)
-                      : "",
-                  );
-                  setCitadoDialogOpen(true);
-                  return;
-                } else if (columnId === "operador") {
-                  const opName = newValue || "Sin operador";
-                  setProspectos((prev) =>
-                    prev.map((p) =>
-                      p.id === (row as any).id
-                        ? { ...p, operador: newValue || null }
-                        : p,
-                    ),
-                  );
-                  try {
-                    await api(`/flota-prospectos/${(row as any).id}/operador`, {
-                      method: "PATCH",
-                      body: JSON.stringify({ operador: newValue || null }),
-                    });
-                    toast.success(`Operador cambiado a ${opName}`);
-                  } catch {
-                    setProspectos((prev) => [...prev]);
-                    toast.error("Error al cambiar operador");
-                  }
-                  return;
-                } else if (columnId === "aireAcondicionado") {
-                  body[columnId] = newValue?.trim() || null;
-                } else {
-                  body[columnId] = newValue;
-                }
-                if (Object.keys(body).length === 0) return;
-                setProspectos((prev) =>
-                  prev.map((p) =>
-                    p.id === (row as any).id ? { ...p, ...body } : p,
-                  ),
-                );
-                try {
-                  await api(`/flota-prospectos/${(row as any).id}`, {
-                    method: "PATCH",
-                    body: JSON.stringify(body),
-                  });
-                  setBlockedProspects((prev) =>
-                    prev.map((p) =>
-                      p.id === (row as any).id ? { ...p, ...body } : p,
-                    ),
-                  );
-                } catch {
-                  setProspectos((prev) => [...prev]);
-                }
-              }}
               onFilterChange={(columnId, value) => {
                 setColumnFilters((prev) => ({ ...prev, [columnId]: value }));
                 setPage(1);
@@ -2076,7 +1836,7 @@ export default function FlotaProspectos() {
           {!initialLoading && (
             <div className={cn('flex h-14 items-center px-5', crmTableFooterClass)}>
               {selectedIds.size > 0 && (
-                <p className="text-xs text-muted-foreground mr-4 italic">
+                <p className="mr-4 text-xs italic text-muted-foreground">
                   ({selectedIds.size} seleccionados)
                 </p>
               )}
@@ -2480,60 +2240,6 @@ export default function FlotaProspectos() {
       </Dialog>
 
       <Dialog
-        open={deleteDialogOpen}
-        onOpenChange={(open) => !open && setDeleteDialogOpen(false)}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Eliminar prospectos</DialogTitle>
-            <DialogDescription>
-              ¿Estás seguro de eliminar <strong>{selectedIds.size}</strong>{" "}
-              prospecto(s)? Esta acción no se puede deshacer.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setDeleteDialogOpen(false)}
-              disabled={deleting}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={deleting}
-              onClick={async () => {
-                setDeleting(true);
-                try {
-                  await flotaProspectosDeleteMany(Array.from(selectedIds));
-                  toast.success(`${selectedIds.size} eliminado(s)`);
-                  setSelectedIds(new Set());
-                  setDeleteDialogOpen(false);
-                  void loadProspectos(page);
-                  void loadCounts();
-                } catch (e) {
-                  toast.error(
-                    e instanceof Error ? e.message : "Error eliminando",
-                  );
-                } finally {
-                  setDeleting(false);
-                }
-              }}
-            >
-              {deleting ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Trash2 className="size-4" />
-              )}
-              {deleting ? "Eliminando..." : "Eliminar"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
         open={!!llamadaProspecto}
         onOpenChange={(open) => {
           if (!open) setLlamadaProspecto(null);
@@ -2830,16 +2536,64 @@ tr[data-row-id="${bp.id}"] {
         onOpenChange={(open) => {
           if (!open) setInfoModalProspecto(null);
         }}
-      />
-
-      <ProspectoHistorialModal
-        prospecto={historialModalProspecto}
-        operadores={operadores}
-        open={!!historialModalProspecto}
-        onOpenChange={(open) => {
-          if (!open) setHistorialModalProspecto(null);
+        onFilesLoad={(prospectoId, fileCount) => {
+          setProspectsWithFiles((prev) => {
+            const next = new Set(prev);
+            if (fileCount > 0) next.add(prospectoId);
+            else next.delete(prospectoId);
+            return next;
+          });
         }}
       />
+
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => !open && setDeleteDialogOpen(false)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Eliminar prospectos</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de eliminar <strong>{selectedIds.size}</strong> prospecto(s)? Esta
+              acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={deleting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleting}
+              onClick={async () => {
+                setDeleting(true);
+                try {
+                  await flotaProspectosDeleteMany(Array.from(selectedIds));
+                  toast.success(`${selectedIds.size} eliminado(s)`);
+                  setSelectedIds(new Set());
+                  setDeleteDialogOpen(false);
+                  notifyFlotaProspectosRefresh();
+                  void loadProspectos(page);
+                  void loadCounts();
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : "Error eliminando");
+                } finally {
+                  setDeleting(false);
+                }
+              }}
+            >
+              {deleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+              {deleting ? "Eliminando..." : "Eliminar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

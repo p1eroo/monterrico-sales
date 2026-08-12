@@ -50,6 +50,10 @@ interface DataTableProps<TData> {
   onFilterChange?: (columnId: string, value: string) => void;
   /** Current filter values by column ID. */
   filterValues?: Record<string, string>;
+  /** Called when a data row is clicked. */
+  onRowClick?: (row: TData) => void;
+  /** Optional extra classes per row (e.g. highlight). */
+  getRowClassName?: (row: TData) => string | undefined;
 }
 
 export function DataTable<TData>({
@@ -66,6 +70,8 @@ export function DataTable<TData>({
   maxHeight,
   onFilterChange,
   filterValues,
+  onRowClick,
+  getRowClassName,
 }: DataTableProps<TData>) {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -138,7 +144,7 @@ export function DataTable<TData>({
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    enableRowSelection: true,
+    enableRowSelection: !!onRowSelectionChange,
     enableSorting: true,
     enableSortingRemoval: false,
     defaultColumn: {
@@ -242,7 +248,17 @@ export function DataTable<TData>({
                 <tr
                   key={row.id}
                   data-row-id={(row.original as any)?.id || row.id}
-                  className={cn("h-[48px] last:border-b-0", crmTableBodyRowClassInteractive)}
+                  className={cn(
+                    "h-[48px] last:border-b-0",
+                    crmTableBodyRowClassInteractive,
+                    onRowClick && "cursor-pointer",
+                    getRowClassName?.(row.original),
+                  )}
+                  onClick={
+                    onRowClick
+                      ? () => onRowClick(row.original)
+                      : undefined
+                  }
                 >
                   {row.getVisibleCells().map((cell) => {
                     const colId = cell.column.id;

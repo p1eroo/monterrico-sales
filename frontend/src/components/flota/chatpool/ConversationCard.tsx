@@ -9,7 +9,9 @@ import { cn } from '@/lib/utils';
 import { ChatpoolAvatar } from './ui/Avatar';
 import { ChatpoolBadge } from './ui/Badge';
 import { ChatpoolLabelChip } from './ui/LabelChip';
-import { formatTime } from './utils';
+import { ConductorCodigoBadge } from './ui/ConductorCodigoBadge';
+import { formatTime, getConductorCodigo } from './utils';
+import { useChatpoolStore } from './store';
 import type { Conversation } from './types';
 
 const channelIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -35,9 +37,11 @@ interface ConversationCardProps {
 }
 
 export function ConversationCard({ conversation, isActive, onClick }: ConversationCardProps) {
+  const conductorCodigoByPhone = useChatpoolStore((s) => s.conductorCodigoByPhone);
   const { contact, lastMessage, unreadCount, channelType, assignee, isTyping, labels, prospectoActivo } =
     conversation;
   const visibleLabels = prospectoActivo !== false ? labels : [];
+  const conductorCodigo = getConductorCodigo(contact.phone, conductorCodigoByPhone);
   const ChannelIcon = channelIcons[channelType] || Globe;
   const channelColor = channelColors[channelType] || 'text-muted-foreground';
 
@@ -103,9 +107,10 @@ export function ConversationCard({ conversation, isActive, onClick }: Conversati
             )}
           </div>
 
-          <div className="flex items-center gap-2 mt-1.5">
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+            {conductorCodigo ? <ConductorCodigoBadge codigo={conductorCodigo} /> : null}
             {visibleLabels.length > 0 && (
-              <div className="flex items-center gap-1 flex-1 min-w-0">
+              <div className="flex items-center gap-1 min-w-0">
                 {visibleLabels.slice(0, 2).map((label) => (
                   <ChatpoolLabelChip key={label.id} label={label} />
                 ))}

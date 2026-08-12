@@ -250,9 +250,10 @@ export class WhatsappProspectoNameSyncService {
   }
 
   /**
-   * Crea prospecto automáticamente para un contacto WhatsApp peruano sin registro en CRM.
-   * Solo auto-crea si el chat wa- no tiene mucho historial inbound previo (>3 = dejar manual).
-   * Vincula mensajes huérfanos previos del mismo teléfono.
+   * Vincula o crea prospecto para inbound Flota:
+   * - Si ya existe activo en CRM → solo vincula mensajes huérfanos (la tabla manda).
+   * - Si solo hay prospecto archivado → no reactivar ni duplicar (chat wa-).
+   * - Si no hay registro → auto-crear prospecto nuevo.
    */
   async ensureProspectoForInbound(params: {
     peerDigits: string;
@@ -275,49 +276,23 @@ export class WhatsappProspectoNameSyncService {
       select: { id: true, nombreCompleto: true, celular: true },
     });
     if (existing) {
+      await this.linkOrphanMessages(existing.id, peerDigits, evoInstanceName);
       return existing;
     }
 
-    const softDeleted = await this.prisma.flotaProspecto.findFirst({
+    const archived = await this.prisma.flotaProspecto.findFirst({
       where: {
         eliminadoAt: { not: null },
         OR: [{ celular: { endsWith: mobile9 } }, { movil: { endsWith: mobile9 } }],
       },
-      orderBy: { eliminadoAt: 'desc' },
-      select: { id: true, nombreCompleto: true, celular: true, whatsappPushName: true },
+      select: { id: true },
     });
-    if (softDeleted) {
-      const trimmedPush = pushName?.trim() ?? '';
-      const nombreCompleto =
-        trimmedPush && !isPlaceholderProspectName(trimmedPush, mobile9)
-          ? trimmedPush
-          : softDeleted.nombreCompleto;
-
-      const reactivated = await this.prisma.flotaProspecto.update({
-        where: { id: softDeleted.id },
-        data: {
-          eliminadoAt: null,
-          origen: 'WHATSAPP',
-          estado: 'Nuevo',
-          nombreCompleto,
-          celular,
-          whatsappPushName: trimmedPush || softDeleted.whatsappPushName,
-          fechaRegistro: new Date(),
-        },
-        select: { id: true, nombreCompleto: true, celular: true },
-      });
-
-      await this.linkOrphanMessages(reactivated.id, peerDigits, evoInstanceName);
-      this.prospectosGateway.emitChange('updated', reactivated.id);
+    if (archived) {
       this.logger.log(
-        `Prospecto reactivado desde WhatsApp: ${reactivated.id} (${reactivated.celular}) → ${reactivated.nombreCompleto}`,
+        `Inbound WhatsApp ${mobile9}: prospecto archivado ${archived.id}; chat wa- sin reactivar CRM`,
       );
-      return reactivated;
+      return null;
     }
-
-    const priorInboundOrphans = await this.countPriorInboundOrphans(peerDigits, evoInstanceName);
-    // Chats wa- antiguos con mucho historial inbound: no auto-crear (Jack, etc.)
-    if (priorInboundOrphans > 3) return null;
 
     const trimmedPush = pushName?.trim() ?? '';
     const nombreCompleto =
@@ -345,35 +320,6 @@ export class WhatsappProspectoNameSyncService {
     );
 
     return created;
-  }
-
-  private async countPriorInboundOrphans(peerDigits: string, evoInstanceName: string): Promise<number> {
-    const candidates = this.waNumberCandidates(peerDigits);
-    if (candidates.length === 0) return 0;
-
-    const exact = await this.prisma.crmWhatsappMessage.count({
-      where: {
-        flotaProspectoId: null,
-        contactId: null,
-        evoInstanceName,
-        direction: 'inbound',
-        OR: [{ fromWaId: { in: candidates } }, { toWaId: { in: candidates } }],
-      },
-    });
-    if (exact > 0) return exact;
-
-    const digits = peerDigits.replace(/\D/g, '').slice(-9);
-    if (digits.length < 8) return 0;
-
-    return this.prisma.crmWhatsappMessage.count({
-      where: {
-        flotaProspectoId: null,
-        contactId: null,
-        evoInstanceName,
-        direction: 'inbound',
-        OR: [{ fromWaId: { contains: digits } }, { toWaId: { contains: digits } }],
-      },
-    });
   }
 
   private async linkOrphanMessages(

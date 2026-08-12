@@ -17,35 +17,44 @@ import {
 const formDialogControlSize =
   'box-border h-11 min-h-11 max-h-11 w-full px-3 text-sm';
 
+const formDialogControlBorderClass =
+  'rounded-lg border border-border bg-background shadow-none dark:border-border/80 dark:bg-input/30';
+
 /** Inputs planos estilo modal de integración (sin sombra pesada). */
 export const formDialogInputClass = cn(
   formDialogControlSize,
-  '!h-11 !min-h-11 !max-h-11 !py-0 rounded-lg border border-slate-300/80 bg-background shadow-none',
+  '!h-11 !min-h-11 !max-h-11 !py-0',
+  formDialogControlBorderClass,
   'focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/25',
   '[&::-webkit-calendar-picker-indicator]:m-0 [&::-webkit-calendar-picker-indicator]:size-4',
+  'dark:[&::-webkit-calendar-picker-indicator]:invert',
 );
 
 export const formDialogSelectTriggerClass = cn(
   formDialogControlSize,
-  '!flex items-center justify-between rounded-lg border border-slate-300/80 bg-background !py-0 shadow-none',
+  '!flex items-center justify-between !py-0',
+  formDialogControlBorderClass,
   'data-[size=default]:!h-11 data-[size=sm]:!h-11',
   'focus-visible:ring-1 focus-visible:ring-ring/25',
 );
 
 export const formDialogPickerTriggerClass = cn(
   formDialogControlSize,
-  '!flex items-center justify-between rounded-lg border border-slate-300/80 bg-background font-normal text-muted-foreground shadow-none hover:bg-background',
+  '!flex items-center justify-between font-normal text-muted-foreground hover:bg-background dark:hover:bg-input/30',
+  formDialogControlBorderClass,
 );
 
 export const formDialogTextareaClass = cn(
-  'min-h-[6.5rem] w-full resize-y rounded-lg border border-slate-300/80 bg-background px-3 py-2.5 text-sm shadow-none',
+  'min-h-[6.5rem] w-full resize-y px-3 py-2.5 text-sm',
+  formDialogControlBorderClass,
   'focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/25',
 );
 
 /** Botón selector de entidad (contacto, empresa, etc.). */
 export const formDialogLinkPickerClass = cn(
   formDialogControlSize,
-  '!flex items-center justify-start gap-2 rounded-lg border border-slate-300/80 bg-background px-3 font-normal shadow-none hover:bg-background',
+  '!flex items-center justify-start gap-2 px-3 font-normal hover:bg-background dark:hover:bg-input/30',
+  formDialogControlBorderClass,
 );
 
 export const formDialogBtnOutlineClass =
@@ -65,6 +74,61 @@ export const formDialogPopoverContentClass =
 /** Diálogo secundario abierto encima de FormDialogShell (p. ej. picker de empresa). */
 export const formDialogNestedOverlayClass = 'z-[205]';
 export const formDialogNestedContentClass = 'z-[210]';
+
+/** Capas portaled encima del shell (lightbox, diálogos anidados) que no deben cerrarlo. */
+export const DISMISS_BLOCKER_ATTR = 'data-dismiss-blocker';
+
+export function isDismissBlockedTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  return Boolean(target.closest(`[${DISMISS_BLOCKER_ATTR}]`));
+}
+
+function eventTouchesDismissBlocker(event: Event): boolean {
+  if (isDismissBlockedTarget(event.target)) return true;
+
+  const original = (event as CustomEvent<{ originalEvent?: Event }>).detail?.originalEvent;
+  if (original && isDismissBlockedTarget(original.target)) return true;
+
+  if (typeof event.composedPath === 'function') {
+    for (const node of event.composedPath()) {
+      if (node instanceof Element && node.closest(`[${DISMISS_BLOCKER_ATTR}]`)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+export function preventDismissIfBlocked(event: Event) {
+  if (eventTouchesDismissBlocker(event)) {
+    event.preventDefault();
+  }
+}
+
+export function createFormDialogOutsideHandler(suspendOutsideDismiss?: boolean) {
+  return (event: Event) => {
+    if (eventTouchesDismissBlocker(event)) {
+      event.preventDefault();
+      return;
+    }
+    if (suspendOutsideDismiss) {
+      event.preventDefault();
+    }
+  };
+}
+
+/** Evita bloquear clics en lightbox/diálogos anidados (Radix onInteractOutside). */
+export function createFormDialogInteractOutsideHandler(suspendOutsideDismiss?: boolean) {
+  return (event: Event) => {
+    if (eventTouchesDismissBlocker(event)) {
+      return;
+    }
+    if (suspendOutsideDismiss) {
+      event.preventDefault();
+    }
+  };
+}
 
 export function FormDialogFieldError({ children }: { children?: React.ReactNode }) {
   if (!children) return null;
@@ -93,13 +157,11 @@ export function FormDialogField({
   labelClassName?: string;
 }) {
   return (
-    <div className={cn('space-y-2', className)}>
-      <div className="flex min-h-7 items-end">
-        <Label className={cn('text-sm font-semibold leading-none text-foreground/90', labelClassName)}>
-          {label}
-          {required ? <span className="text-destructive"> *</span> : null}
-        </Label>
-      </div>
+    <div className={cn('space-y-1.5', className)}>
+      <Label className={cn('text-xs font-medium leading-none text-muted-foreground', labelClassName)}>
+        {label}
+        {required ? <span className="text-destructive"> *</span> : null}
+      </Label>
       {compactControl ? (
         <div className={formDialogControlSlotClass}>{children}</div>
       ) : (
@@ -118,7 +180,7 @@ export function FormDialogGrid({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn('grid grid-cols-1 items-start gap-x-6 gap-y-6 sm:grid-cols-2', className)}>
+    <div className={cn('grid grid-cols-1 items-start gap-x-4 gap-y-3.5 sm:grid-cols-2', className)}>
       {children}
     </div>
   );
@@ -239,6 +301,8 @@ export function FormDialogShell({
   appendContent,
   overlayClassName = 'z-[200]',
   showHeaderCloseButton = true,
+  suspendOutsideDismiss = false,
+  modal = true,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -254,12 +318,29 @@ export function FormDialogShell({
   appendContent?: React.ReactNode;
   overlayClassName?: string;
   showHeaderCloseButton?: boolean;
+  /** Bloquea cierre por clic/foco fuera (p. ej. lightbox abierto encima). */
+  suspendOutsideDismiss?: boolean;
+  /** false permite interacción con capas portaled encima (p. ej. vista previa fullscreen). */
+  modal?: boolean;
 }) {
+  const handleOutsideDismiss = createFormDialogOutsideHandler(suspendOutsideDismiss);
+  const handleInteractOutside = createFormDialogInteractOutsideHandler(suspendOutsideDismiss);
+
+  const handleEscapeKeyDown = (event: KeyboardEvent) => {
+    if (suspendOutsideDismiss) {
+      event.preventDefault();
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} modal={modal}>
       <DialogContent
         showCloseButton={false}
         overlayClassName={overlayClassName}
+        onPointerDownOutside={handleOutsideDismiss}
+        onInteractOutside={handleInteractOutside}
+        onFocusOutside={handleOutsideDismiss}
+        onEscapeKeyDown={handleEscapeKeyDown}
         className={cn(
           '!fixed z-[201] flex max-h-[90vh] w-full min-w-[min(100%,20rem)] flex-col gap-0 overflow-hidden rounded-3xl border border-border/60 bg-background p-0 shadow-xl',
           'opacity-100 data-[state=open]:opacity-100',
@@ -267,7 +348,7 @@ export function FormDialogShell({
           contentClassName,
         )}
       >
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-8 pt-8 scrollbar-thin [scrollbar-gutter:stable]">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-8 pt-8 scrollbar-thin">
           <div className="flex items-start justify-between gap-4">
             <DialogHeader className="gap-1 p-0 text-left">
               <DialogTitle className={cn('text-xl font-bold tracking-tight text-foreground', titleClassName)}>

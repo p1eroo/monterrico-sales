@@ -43,9 +43,11 @@ import {
   collectConversationAttachments,
   findConversationInList,
   formatFileSize,
+  getConductorCodigo,
   getMessagesForConversation,
   type ConversationAttachment,
 } from './utils';
+import { ConductorCodigoBadge } from './ui/ConductorCodigoBadge';
 import type { Conversation } from './types';
 
 const channelLabels: Record<string, string> = {
@@ -162,6 +164,9 @@ export function ContactDetails() {
             name: data.nombreCompleto,
             phone: data.celular,
             operador: data.operador,
+            estado: data.estado ?? undefined,
+            fechaCita: data.fechaCita,
+            asistencia: data.asistencia,
           });
         }}
       />
@@ -169,7 +174,7 @@ export function ContactDetails() {
       <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Quitar del CRM</DialogTitle>
+            <DialogTitle>Quitar o eliminar prospecto</DialogTitle>
             <DialogDescription>
               Se eliminará <strong>{conversation.contact.name}</strong> de la tabla de prospectos.
               La conversación de WhatsApp no se borrará.
@@ -180,11 +185,20 @@ export function ContactDetails() {
               Cancelar
             </Button>
             <Button
-              variant="destructive"
+              variant="ghost"
+              className={cn(
+                'h-9 gap-2 rounded-lg border-0 px-3 shadow-none text-xs font-medium',
+                'bg-slate-600 text-white hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-slate-500/30',
+                'dark:bg-slate-500 dark:hover:bg-slate-600',
+              )}
               onClick={() => void handleDeleteProspecto()}
               disabled={deletingProspecto}
             >
-              {deletingProspecto ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Quitar del CRM'}
+              {deletingProspecto ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                'Quitar o eliminar prospecto'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -258,6 +272,7 @@ function ContactSummary({
   const currentUser = useAppStore((s) => s.currentUser);
   const updateOperador = useChatpoolStore((s) => s.updateOperador);
   const updateEstado = useChatpoolStore((s) => s.updateEstado);
+  const conductorCodigoByPhone = useChatpoolStore((s) => s.conductorCodigoByPhone);
 
   const [operadores, setOperadores] = useState<OperadorUser[]>([]);
   const [citadoDialogOpen, setCitadoDialogOpen] = useState(false);
@@ -272,6 +287,7 @@ function ContactSummary({
   const currentEstado = conversation.labels[0]?.name ?? '';
   const isOperadorRole = currentUser.role === 'operador';
   const canAssignOperador = !isOperadorRole || !conversation.operador;
+  const conductorCodigo = getConductorCodigo(conversation.contact.phone, conductorCodigoByPhone);
 
   async function handleOperadorChange(value: string) {
     const next = value === '__none__' ? null : value;
@@ -302,9 +318,10 @@ function ContactSummary({
     <>
       <div className="p-4 space-y-4 border-b border-border">
         {conversation.contact.phone && (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
             <span className="text-sm text-foreground">{conversation.contact.phone}</span>
+            {conductorCodigo ? <ConductorCodigoBadge codigo={conductorCodigo} /> : null}
           </div>
         )}
 
@@ -413,34 +430,52 @@ function ProspectoCrmActions({
   onCreate: () => void;
   onDelete: () => void;
 }) {
+  const panelActionBase =
+    'h-9 w-full gap-2 rounded-lg border-0 shadow-none justify-center text-xs font-medium focus-visible:ring-2';
+
   return (
     <div className="p-4 border-b border-border space-y-2">
       {prospectoActivo ? (
         <Button
           type="button"
-          variant="outline"
-          className="w-full justify-start gap-2 text-destructive hover:text-destructive"
+          variant="ghost"
+          className={cn(
+            panelActionBase,
+            'bg-slate-600 text-white hover:bg-slate-700 focus-visible:ring-slate-500/30',
+            'dark:bg-slate-500 dark:hover:bg-slate-600',
+          )}
           onClick={onDelete}
           disabled={deleting}
         >
-          {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserMinus className="h-4 w-4" />}
-          Quitar del CRM
+          {deleting ? (
+            <Loader2 className="size-4 shrink-0 animate-spin" />
+          ) : (
+            <UserMinus className="size-4 shrink-0" />
+          )}
+          Quitar o eliminar prospecto
         </Button>
       ) : (
         <Button
           type="button"
-          variant="default"
-          className="w-full justify-start gap-2"
+          variant="ghost"
+          className={cn(
+            panelActionBase,
+            'bg-info text-info-foreground hover:bg-info/90 focus-visible:ring-info/30',
+          )}
           onClick={onCreate}
           disabled={creating}
         >
-          {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+          {creating ? (
+            <Loader2 className="size-4 shrink-0 animate-spin" />
+          ) : (
+            <UserPlus className="size-4 shrink-0" />
+          )}
           Agregar al CRM
         </Button>
       )}
       <p className="text-[11px] text-muted-foreground leading-relaxed">
         {prospectoActivo
-          ? 'Quita el contacto de prospectos sin borrar el chat de WhatsApp.'
+          ? 'Elimina el prospecto de la tabla sin borrar el chat de WhatsApp.'
           : 'Crea el prospecto en el CRM y vincula los mensajes existentes.'}
       </p>
     </div>

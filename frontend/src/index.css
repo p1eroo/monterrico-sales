@@ -68,6 +68,10 @@
     --color-warning-foreground: var(--warning-foreground);
     --color-info: var(--info);
     --color-info-foreground: var(--info-foreground);
+    --color-chat-surface: var(--chat-surface);
+    --color-chat-bubble-outbound: var(--chat-bubble-outbound);
+    --color-chat-bubble-outbound-foreground: var(--chat-bubble-outbound-foreground);
+    --color-chat-bubble-inbound: var(--chat-bubble-inbound);
     --font-sans: 'Poppins', system-ui, -apple-system, sans-serif;
 }
 
@@ -144,6 +148,13 @@
     /* Scrollbars (thumb); el track siempre transparente en código para WebKit/Firefox */
     --crm-scrollbar-thumb: #bcc9c4;
     --crm-scrollbar-thumb-hover: color-mix(in srgb, var(--primary) 38%, #94a3af);
+    /* Chatpool (modo claro) */
+    --chat-surface: #eef1f4;
+    --chat-bubble-outbound: #13944C;
+    --chat-bubble-outbound-foreground: #ffffff;
+    --chat-bubble-inbound: #ffffff;
+    --chat-wallpaper: url('/chat-wallpaper-light.svg');
+    --chat-wallpaper-size: 400px 400px;
 }
 
 /* Dark mode - Minimals-inspired (fondo #161C24, cards/tablas #212B36) */
@@ -216,6 +227,12 @@
     --pipeline-kanban-column-header: color-mix(in srgb, #212b36 92%, transparent);
     --crm-scrollbar-thumb: color-mix(in srgb, #919eab 55%, var(--border));
     --crm-scrollbar-thumb-hover: color-mix(in srgb, var(--primary) 45%, #637381);
+    /* Chatpool (modo oscuro — sin cambios visuales) */
+    --chat-surface: color-mix(in srgb, var(--muted) 35%, var(--background));
+    --chat-bubble-outbound: #047857;
+    --chat-bubble-outbound-foreground: #ffffff;
+    --chat-bubble-inbound: var(--muted);
+    --chat-wallpaper: url('/chat-wallpaper-dark.svg');
 }
 
 @layer base {
@@ -299,6 +316,15 @@
 
     .crm-info-icon {
         @apply mt-0.5 h-3.5 w-3.5 shrink-0 text-text-tertiary;
+    }
+
+    /* Fondo tipo WhatsApp para bandeja de chat (SVG en /public) */
+    .chat-wallpaper {
+        background-color: var(--chat-surface);
+        background-image: var(--chat-wallpaper);
+        background-size: var(--chat-wallpaper-size);
+        background-repeat: repeat;
+        background-attachment: local;
     }
 
     .crm-info-label {

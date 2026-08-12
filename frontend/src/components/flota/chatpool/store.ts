@@ -10,16 +10,19 @@ import {
   uploadFlotaAudio,
   uploadFlotaDocument,
   uploadFlotaImage,
+  type FlotaMasivoProspecto,
 } from '@/lib/flotaWhatsappApi';
 import type { WhatsappSocketPayload } from '@/lib/whatsappApi';
 import { toast } from '@/lib/notify';
-import { mapFlotaConversation, mapWhatsappMessage, sortConversations } from './mappers';
+import { getConductorTelefonos } from '@/lib/flotaConductoresApi';
+import { mapFlotaConversation, mapProspectoToConversation, mapWhatsappMessage, sortConversations } from './mappers';
 import { prospectoEstadoLabel } from './prospectoEstado';
 import type { Conversation, Message } from './types';
 import {
   flotaProspectoCreate,
   flotaProspectoSetEstado,
   flotaProspectoSetOperador,
+  flotaProspectoUpdate,
   flotaProspectosDeleteMany,
   getOperatorDisplayName,
   type OperadorUser,
@@ -116,6 +119,7 @@ function resolveMessageBucketId(activeId: string | null, resolvedId: string, isA
 
 export type AssigneeFilter = 'mine' | 'unassigned' | 'all';
 export type ReadFilter = 'all' | 'unread';
+export type SidebarView = 'chats' | 'contacts';
 export type ConnectionState = 'loading' | 'ready' | 'no-inbox' | 'disconnected';
 
 interface ChatpoolState {
@@ -129,17 +133,22 @@ interface ChatpoolState {
   filterAssignee: AssigneeFilter;
   filterRead: ReadFilter;
   filterEstado: string | null;
+  sidebarView: SidebarView;
   contactSidebarOpen: boolean;
   currentAgentName: string | null;
   lightboxMessageId: string | null;
+  conductorCodigoByPhone: Record<string, string>;
 
   bootstrap: (currentAgentName?: string | null) => Promise<void>;
-  refreshConversations: () => Promise<void>;
+  refreshConversations: (opts?: { silent?: boolean }) => Promise<void>;
   openConversation: (id: string, opts?: { skipListRefresh?: boolean }) => Promise<void>;
   selectConversation: (id: string | null) => void;
+  closeActiveChat: () => void;
   setFilterAssignee: (assignee: AssigneeFilter) => void;
   setFilterRead: (filter: ReadFilter) => void;
   setFilterEstado: (estado: string | null) => void;
+  setSidebarView: (view: SidebarView) => void;
+  openProspectoConversation: (prospecto: FlotaMasivoProspecto) => Promise<void>;
   setContactSidebarOpen: (open: boolean) => void;
   openLightbox: (messageId: string) => void;
   closeLightbox: () => void;
@@ -147,8 +156,16 @@ interface ChatpoolState {
   updateEstado: (prospectoId: string, estado: string, extra?: { fechaCita?: string }) => Promise<void>;
   applyProspectoPatch: (
     prospectoId: string,
-    patch: { name?: string; phone?: string | null; operador?: string | null; estado?: string },
+    patch: {
+      name?: string;
+      phone?: string | null;
+      operador?: string | null;
+      estado?: string;
+      fechaCita?: string | null;
+      asistencia?: string | null;
+    },
   ) => void;
+  updateAsistencia: (prospectoId: string, asistencia: string) => Promise<void>;
   applyOperadorAssigned: (contactId: string, operador: string) => void;
   createProspectoFromConversation: (conversationId: string) => Promise<void>;
   removeProspectoFromConversation: (prospectoId: string) => Promise<void>;
@@ -224,12 +241,27 @@ export const useChatpoolStore = create<ChatpoolState>((set, get) => ({
   filterAssignee: 'all',
   filterRead: 'all',
   filterEstado: null,
+  sidebarView: 'chats',
   contactSidebarOpen: true,
   currentAgentName: null,
   lightboxMessageId: null,
+  conductorCodigoByPhone: {},
 
   bootstrap: async (currentAgentName) => {
+    const prev = get();
+    if (
+      prev.connectionState === 'ready' &&
+      prev.conversations.length > 0
+    ) {
+      set({ currentAgentName: currentAgentName ?? null });
+      void get().refreshConversations({ silent: true });
+      return;
+    }
+
     set({ connectionState: 'loading', conversationsLoading: true, currentAgentName: currentAgentName ?? null });
+    void getConductorTelefonos()
+      .then((r) => set({ conductorCodigoByPhone: r.codigoByTelefono }))
+      .catch(() => {});
     try {
       const instances = await fetchFlotaInstances();
       const inboxInstance = instances.find((i) => i.useForInbox);
@@ -259,9 +291,12 @@ export const useChatpoolStore = create<ChatpoolState>((set, get) => ({
     }
   },
 
-  refreshConversations: async () => {
+  refreshConversations: async (opts) => {
     if (get().connectionState !== 'ready') return;
-    set({ conversationsLoading: true });
+    const silent = opts?.silent === true;
+    if (!silent || get().conversations.length === 0) {
+      set({ conversationsLoading: true });
+    }
     try {
       const data = await fetchConversations();
       const conversations = sortConversations(data.map(mapFlotaConversation));
@@ -371,9 +406,89 @@ export const useChatpoolStore = create<ChatpoolState>((set, get) => ({
     }
   },
 
+  closeActiveChat: () => {
+    set({ activeConversationId: null });
+  },
+
   setFilterAssignee: (assignee) => set({ filterAssignee: assignee }),
   setFilterRead: (filter) => set({ filterRead: filter }),
   setFilterEstado: (estado) => set({ filterEstado: estado }),
+  setSidebarView: (view) => set({ sidebarView: view }),
+
+  openProspectoConversation: async (prospecto) => {
+    const phone = (prospecto.celular || prospecto.movil || '').trim();
+    const digits = phoneKey(phone);
+    if (digits.length < 8) {
+      toast.error('Este prospecto no tiene celular válido para WhatsApp');
+      return;
+    }
+
+    const state = get();
+    let conversations = [...state.conversations];
+    let nextMessages = { ...state.messages };
+    const waId = waConversationId(digits);
+    const built = mapProspectoToConversation(prospecto);
+
+    const migrateBucket = (fromId: string, toId: string) => {
+      if (fromId === toId) return;
+      const old = nextMessages[fromId];
+      if (!old?.length) return;
+      nextMessages = {
+        ...nextMessages,
+        [toId]: mergeMessagesById(nextMessages[toId] ?? [], old).map((m) => ({
+          ...m,
+          conversationId: toId,
+        })),
+      };
+      const { [fromId]: _removed, ...rest } = nextMessages;
+      nextMessages = rest;
+    };
+
+    const byPhone = conversations.find((c) => conversationPhoneKey(c) === digits);
+    const byId = conversations.find((c) => c.id === prospecto.id);
+    const existing = byId ?? byPhone;
+
+    if (existing) {
+      const merged: Conversation = {
+        ...built,
+        ...existing,
+        id: prospecto.id,
+        contact: { ...built.contact, id: prospecto.id },
+        prospectoActivo: true,
+        operador: built.operador ?? existing.operador,
+        assignee: built.assignee ?? existing.assignee,
+        labels: built.labels.length ? built.labels : existing.labels,
+        lastMessage: existing.lastMessage,
+        lastMessageAt: existing.lastMessageAt,
+        unreadCount: existing.unreadCount,
+      };
+
+      if (existing.id !== prospecto.id) migrateBucket(existing.id, prospecto.id);
+      if (byPhone && isWaConversationId(byPhone.id) && byPhone.id !== prospecto.id) {
+        migrateBucket(byPhone.id, prospecto.id);
+      }
+
+      conversations = conversations.filter(
+        (c) =>
+          !(
+            isWaConversationId(c.id) &&
+            conversationPhoneKey(c) === digits &&
+            c.id !== prospecto.id
+          ),
+      );
+      if (existing.id !== prospecto.id && !isWaConversationId(existing.id)) {
+        conversations = conversations.filter((c) => c.id !== existing.id);
+      }
+      conversations = upsertConversation(conversations, merged);
+    } else {
+      migrateBucket(waId, prospecto.id);
+      conversations = upsertConversation(conversations, built);
+    }
+
+    set({ conversations, messages: nextMessages });
+    await get().openConversation(prospecto.id);
+  },
+
   setContactSidebarOpen: (open) => set({ contactSidebarOpen: open }),
   openLightbox: (messageId) => set({ lightboxMessageId: messageId }),
   closeLightbox: () => set({ lightboxMessageId: null }),
@@ -419,6 +534,10 @@ export const useChatpoolStore = create<ChatpoolState>((set, get) => ({
       set((s) => ({
         conversations: patchConversation(s.conversations, prospectoId, {
           labels: [prospectoEstadoLabel(prospectoId, estado)],
+          fechaCita:
+            estado === 'Citado'
+              ? (extra?.fechaCita ?? s.conversations.find((c) => c.id === prospectoId)?.fechaCita ?? null)
+              : null,
         }),
       }));
       toast.success(`Estado actualizado a ${estado}`);
@@ -446,9 +565,33 @@ export const useChatpoolStore = create<ChatpoolState>((set, get) => ({
               }
             : {}),
           ...(patch.estado ? { labels: [prospectoEstadoLabel(prospectoId, patch.estado)] } : {}),
+          ...(patch.fechaCita !== undefined ? { fechaCita: patch.fechaCita } : {}),
+          ...(patch.asistencia !== undefined ? { asistencia: patch.asistencia } : {}),
         };
       }),
     }));
+  },
+
+  updateAsistencia: async (prospectoId, asistencia) => {
+    if (isWaConversationId(prospectoId)) {
+      toast.error('Agrega el contacto al CRM antes de marcar asistencia');
+      return;
+    }
+    const conv = get().conversations.find((c) => c.id === prospectoId);
+    if (conv?.prospectoActivo === false) {
+      toast.error('Este contacto no está en el CRM');
+      return;
+    }
+    try {
+      await flotaProspectoUpdate(prospectoId, { asistencia });
+      set((s) => ({
+        conversations: patchConversation(s.conversations, prospectoId, { asistencia }),
+      }));
+      toast.success(`Asistencia: ${asistencia}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo actualizar la asistencia');
+      throw e;
+    }
   },
 
   applyOperadorAssigned: (contactId, operador) => {

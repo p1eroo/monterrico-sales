@@ -1,6 +1,7 @@
-import type { FlotaConversation } from '@/lib/flotaWhatsappApi';
+import type { FlotaConversation, FlotaMasivoProspecto } from '@/lib/flotaWhatsappApi';
 import type { WhatsappMessageItem } from '@/lib/whatsappApi';
 import type { Conversation, Message } from './types';
+import { prospectoEstadoLabel } from './prospectoEstado';
 
 function operadorToAssignee(operador: string) {
   const name = operador.trim();
@@ -61,6 +62,8 @@ export function mapFlotaConversation(item: FlotaConversation): Conversation {
     isTyping: false,
     channelType: 'whatsapp',
     prospectoActivo,
+    fechaCita: prospectoActivo ? (item.fechaCita ?? null) : null,
+    asistencia: prospectoActivo ? (item.asistencia ?? null) : null,
   };
 }
 
@@ -120,6 +123,34 @@ export function mapWhatsappMessage(item: WhatsappMessageItem, conversationId: st
     mimeType: attachment?.mimeType,
     createdAt: new Date(item.createdAt),
     status: item.direction === 'outbound' ? mapWaStatus(item.waOutboundStatus) : 'read',
+  };
+}
+
+export function mapProspectoToConversation(prospecto: FlotaMasivoProspecto): Conversation {
+  const phone = prospecto.celular || prospecto.movil || '';
+  const now = new Date();
+
+  return {
+    id: prospecto.id,
+    inboxId: 'flota-whatsapp',
+    contact: {
+      id: prospecto.id,
+      inboxId: 'flota-whatsapp',
+      name: prospecto.nombreCompleto?.trim() || phone || 'Sin nombre',
+      phone: phone || undefined,
+    },
+    assignee: prospecto.operador ? operadorToAssignee(prospecto.operador) : undefined,
+    operador: prospecto.operador,
+    lastMessage: null,
+    unreadCount: 0,
+    priority: 'none',
+    labels: prospecto.estado ? [prospectoEstadoLabel(prospecto.id, prospecto.estado)] : [],
+    createdAt: now,
+    updatedAt: now,
+    lastMessageAt: null,
+    isTyping: false,
+    channelType: 'whatsapp',
+    prospectoActivo: true,
   };
 }
 

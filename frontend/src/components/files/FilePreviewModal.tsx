@@ -7,6 +7,12 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Download, ExternalLink, Loader2 } from 'lucide-react';
+import {
+  formDialogNestedContentClass,
+  formDialogNestedOverlayClass,
+} from '@/components/ui/form-dialog';
+import { SimpleImagePreviewDialog } from '@/components/shared/SimpleImagePreviewDialog';
+import { cn } from '@/lib/utils';
 import { FileTypeIcon } from './FileTypeIcon';
 import type { FileAttachment } from '@/types';
 import { fetchFileContentBlobUrl } from '@/lib/fileApi';
@@ -37,6 +43,9 @@ interface FilePreviewModalProps {
   onDownload?: (file: FileAttachment) => void;
   onNavigateToEntity?: (file: FileAttachment) => void;
   fetchBlobUrl?: (fileId: string, disposition: string) => Promise<string>;
+  nested?: boolean;
+  overlayClassName?: string;
+  contentClassName?: string;
 }
 
 export function FilePreviewModal({
@@ -46,6 +55,9 @@ export function FilePreviewModal({
   onDownload,
   onNavigateToEntity,
   fetchBlobUrl,
+  nested = false,
+  overlayClassName,
+  contentClassName,
 }: FilePreviewModalProps) {
   const isImage = useMemo(
     () => (file ? looksLikeImage(file) : false),
@@ -106,9 +118,35 @@ export function FilePreviewModal({
     void onDownload?.(file);
   };
 
+  const isEmbedded = nested;
+
+  if (isImage) {
+    return (
+      <SimpleImagePreviewDialog
+        open={open}
+        onOpenChange={onOpenChange}
+        imageUrl={previewUrl}
+        loading={previewLoading}
+        alt={file.name}
+        onDownload={onDownload ? handleDownload : undefined}
+        nested={nested}
+      />
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[min(88vh,900px)] max-h-[92vh] w-[min(96vw,1400px)] max-w-[calc(100vw-1rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(96vw,1400px)]">
+      <DialogContent
+        overlayClassName={
+          overlayClassName ?? (isEmbedded ? formDialogNestedOverlayClass : undefined)
+        }
+        {...(isEmbedded ? { 'data-dismiss-blocker': '' } : {})}
+        className={cn(
+          'flex h-[min(88vh,900px)] max-h-[92vh] w-[min(96vw,1400px)] max-w-[calc(100vw-1rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(96vw,1400px)]',
+          isEmbedded && `!fixed ${formDialogNestedContentClass}`,
+          contentClassName,
+        )}
+      >
         <DialogHeader className="px-6 py-4 border-b shrink-0">
           <div className="flex items-start justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3">
@@ -148,23 +186,6 @@ export function FilePreviewModal({
         </DialogHeader>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-auto bg-muted/30">
-          {isImage && (
-            <div className="flex min-h-[min(60vh,480px)] flex-col items-center justify-center p-6">
-              {previewLoading && (
-                <Loader2 className="size-8 animate-spin text-muted-foreground" />
-              )}
-              {previewError && (
-                <p className="text-sm text-destructive text-center">{previewError}</p>
-              )}
-              {!previewLoading && !previewError && previewUrl && (
-                <img
-                  src={previewUrl}
-                  alt={file.name}
-                  className="max-h-[min(75vh,720px)] max-w-full object-contain rounded-lg shadow-sm"
-                />
-              )}
-            </div>
-          )}
           {isPdf && (
             <div className="flex min-h-0 flex-1 flex-col">
               {previewLoading && (
