@@ -11,6 +11,7 @@ import { FlotaProspectosService } from './flota-prospectos.service';
 import { FlotaOperadorStatsScheduler } from './flota-operador-stats.scheduler';
 import { GoogleSheetsService } from './google-sheets.service';
 import { FlotaDocumentExtractionModule } from './flota-document-extraction.module';
+import { WhatsappModule } from '../whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { FlotaDocumentExtractionModule } from './flota-document-extraction.modul
     ImportExportModule,
     FilesModule,
     FlotaDocumentExtractionModule,
+    WhatsappModule,
   ],
   controllers: [FlotaProspectosController, FlowRegistroController],
   providers: [

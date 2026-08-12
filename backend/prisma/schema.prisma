@@ -974,6 +974,12 @@ model FlotaProspecto {
   /** ID de la conversación activa en Chatwoot */
   chatwootConversationId Int?
 
+  /** Último pushName visto en WhatsApp (Evolution) */
+  whatsappPushName     String?
+  /** Último nombre del CRM enviado al dispositivo WhatsApp */
+  whatsappNamePushed   String?
+  whatsappNamePushedAt DateTime?
+
   whatsappMessages CrmWhatsappMessage[]
   llamadas         FlotaLlamada[]
 
@@ -992,6 +998,18 @@ model FlotaLlamada {
   createdAt   DateTime       @default(now())
 
   @@index([prospectoId])
+}
+
+/** Marca de lectura para chats WhatsApp sin prospecto CRM (wa-{teléfono}). */
+model FlotaWhatsappConversationRead {
+  id              String   @id @default(cuid())
+  evoInstanceName String
+  phoneDigits     String
+  lastReadAt      DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([evoInstanceName, phoneDigits])
+  @@index([evoInstanceName, phoneDigits])
 }
 
 /** Snapshot diario de métricas "Actividad por Operador" (histórico inmutable). */

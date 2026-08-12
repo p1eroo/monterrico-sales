@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { User, Settings, LogOut } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
@@ -23,7 +23,12 @@ import { AreaSwitcher } from "@/components/layout/AreaSwitcher";
 
 export function Topbar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentUser, logout, area } = useAppStore();
+  const hideChatwootBell =
+    area === "flota" &&
+    (location.pathname === "/flota/whatsapp" ||
+      location.pathname.startsWith("/flota/whatsapp/"));
 
   const handleLogout = () => {
     logout();
@@ -45,7 +50,7 @@ export function Topbar() {
             <NotificationCenter />
           </>
         )}
-        {area === "flota" && <FlotaNotificationBell />}
+        {area === "flota" && !hideChatwootBell && <FlotaNotificationBell />}
 
         <ThemeToggle />
 

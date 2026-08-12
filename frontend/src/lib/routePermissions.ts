@@ -43,6 +43,8 @@ export const ACCESSIBLE_PATH_ORDER: PathRule[] = [
   { path: '/flota/conductores', permission: 'flota_conductores.ver' },
   { path: '/flota/reportes', permission: 'flota_reportes.ver' },
   { path: '/flota/mensajes', permission: 'flota_mensajes.ver' },
+  { path: '/flota/whatsapp', permission: 'flota_mensajes.ver' },
+  { path: '/flota/integraciones', permission: 'flota_mensajes.ver' },
 ];
 
 /**
@@ -84,6 +86,10 @@ export function getRequiredPermissionForPath(
   if (pathname.startsWith('/flota/conductores')) return 'flota_conductores.ver';
   if (pathname.startsWith('/flota/reportes')) return 'flota_reportes.ver';
   if (pathname.startsWith('/flota/mensajes')) return 'flota_mensajes.ver';
+  if (pathname.startsWith('/flota/whatsapp') || pathname.startsWith('/flota/bandeja') || pathname.startsWith('/flota/chatpool')) {
+    return 'flota_mensajes.ver';
+  }
+  if (pathname.startsWith('/flota/integraciones')) return 'flota_mensajes.ver';
 
   if (pathname === '/marketing' || pathname.startsWith('/marketing')) return 'marketing.ver';
 

@@ -24,6 +24,11 @@ export type WhatsappSocketPayload =
       contactId: string;
       messageId: string;
       forEveryone?: boolean;
+    }
+  | {
+      type: 'prospecto_updated';
+      contactId: string;
+      name: string;
     };
 
 export type FlotaBulkProgressPayload = {

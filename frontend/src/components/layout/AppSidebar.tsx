@@ -1,7 +1,7 @@
 import { type ComponentType } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { UserPlus, Users, Shield, Settings,
-  FileSearch, Bot, ArrowRightLeft, ChevronDown,
+  FileSearch, Bot, ArrowRightLeft, ChevronDown, MessageCircle,
 } from 'lucide-react';
 import type { PermissionKey } from '@/types';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -56,6 +56,7 @@ type NavDef = {
   icon: NavIcon;
   permission?: PermissionKey;
   anyOf?: readonly PermissionKey[];
+  groupLabel?: string;
   children?: { to: string; label: string; icon: NavIcon }[];
 };
 
@@ -109,10 +110,21 @@ function navItemVisible(
 const navItemsFlota: NavDef[] = [
   { to: '/flota/dashboard', label: 'Dashboard', icon: DashboardSvgIcon, permission: 'flota_dashboard.ver' },
   { to: '/flota/prospectos', label: 'Prospectos', icon: UsersGroupTwoRoundedSvgIcon, permission: 'flota_prospectos.ver' },
+  { to: '/flota/whatsapp', label: 'WhatsApp', icon: MessageCircle, permission: 'flota_mensajes.ver' },
   { to: '/flota/conductores', label: 'Conductores', icon: WheelSvgIcon, permission: 'flota_conductores.ver' },
   { to: '/flota/calendario', label: 'Calendario', icon: CalendarSvgIcon, permission: 'flota_prospectos.ver' },
   { to: '/flota/reportes', label: 'Reportes', icon: Widget5SvgIcon, permission: 'flota_reportes.ver' },
   { to: '/flota/mensajes', label: 'Mensajes', icon: ChatUnreadSvgIcon, permission: 'flota_mensajes.ver' },
+  {
+    to: '/flota/integraciones',
+    label: 'Integraciones',
+    icon: ArrowRightLeft,
+    permission: 'flota_mensajes.ver',
+    groupLabel: 'Canales',
+    children: [
+      { to: '/flota/integraciones/evolution', label: 'Evolution GO', icon: MessageCircle },
+    ],
+  },
 ];
 
 const navItemsAdmin: NavDef[] = [
@@ -196,6 +208,11 @@ export function AppSidebar() {
                       icon={item.icon}
                       isActive={hasActiveChild}
                     >
+                      {item.groupLabel && (
+                        <p className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-sidebar-foreground/50">
+                          {item.groupLabel}
+                        </p>
+                      )}
                       {item.children.map((child) => {
                         const isChildActive = location.pathname.startsWith(child.to);
                         return (
@@ -234,6 +251,11 @@ export function AppSidebar() {
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                           <SidebarMenuSub>
+                            {item.groupLabel && (
+                              <p className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-sidebar-foreground/50">
+                                {item.groupLabel}
+                              </p>
+                            )}
                             {item.children.map((child) => {
                               const isChildActive = location.pathname.startsWith(child.to);
                               return (

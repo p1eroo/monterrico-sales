@@ -93,6 +93,31 @@ export function resolveEvolutionMediaUrl(
   return value;
 }
 
+export function extractPushName(data: JsonRecord): string | null {
+  const info = asRecord(data['Info']) ?? asRecord(data['info']);
+  const source = asRecord(info?.['MessageSource']) ?? info;
+  return (
+    readStringField(data, ['pushName', 'PushName', 'notify', 'Notify', 'verifiedName', 'VerifiedName']) ??
+    readStringField(info, [
+      'PushName',
+      'pushName',
+      'notify',
+      'Notify',
+      'VerifiedName',
+      'verifiedName',
+      'Name',
+      'name',
+    ]) ??
+    readStringField(source, ['PushName', 'pushName', 'notify', 'Notify'])
+  );
+}
+
+function pickPhoneDigitsFromJid(raw: unknown): string {
+  if (typeof raw !== 'string' || !raw.includes('@s.whatsapp.net')) return '';
+  const digits = jidUserDigits(raw);
+  return digits.length >= 8 ? digits : '';
+}
+
 export function jidUserDigits(raw: unknown): string {
   if (typeof raw === 'string') {
     const head = raw.split('@')[0] ?? '';
@@ -326,11 +351,19 @@ export function parseMessageEventData(data: JsonRecord): {
   const isLidChat = !isGroup && chatStr.includes('@lid');
   const senderAltStr = typeof senderAltRaw === 'string' ? senderAltRaw : '';
   const recipientAltStr = typeof recipientAltRaw === 'string' ? recipientAltRaw : '';
-  const altJid = isFromMe
-    ? (recipientAltStr.includes('@s.whatsapp.net') ? recipientAltStr : senderAltStr)
-    : (senderAltStr.includes('@s.whatsapp.net') ? senderAltStr : recipientAltStr);
-  const chatJid = isLidChat ? jidUserDigits(altJid || chatRaw) : jidUserDigits(chatRaw);
-  const senderJid = isLidChat ? jidUserDigits(altJid || senderRaw || chatRaw) : jidUserDigits(senderRaw);
+  const phoneFromAlt = isFromMe
+    ? pickPhoneDigitsFromJid(recipientAltStr) || pickPhoneDigitsFromJid(senderAltStr)
+    : pickPhoneDigitsFromJid(senderAltStr) || pickPhoneDigitsFromJid(recipientAltStr);
+  const phoneFromChat = pickPhoneDigitsFromJid(chatStr);
+  const phoneFromSender = pickPhoneDigitsFromJid(senderRaw);
+  const resolvedPhone = phoneFromAlt || phoneFromSender || phoneFromChat;
+
+  let chatJid = resolvedPhone;
+  let senderJid = resolvedPhone;
+  if (!resolvedPhone && !isLidChat) {
+    chatJid = jidUserDigits(chatRaw);
+    senderJid = jidUserDigits(senderRaw) || chatJid;
+  }
 
   const msg = rootMessageNode(data);
   const isProtocolMessage = Boolean(

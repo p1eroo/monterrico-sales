@@ -9,11 +9,12 @@ import { WhatsappService } from './whatsapp.service';
 import { WhatsappController } from './whatsapp.controller';
 import { WhatsappWebhookController } from './whatsapp-webhook.controller';
 import { WhatsappGateway } from './whatsapp.gateway';
+import { WhatsappProspectoNameSyncService } from './whatsapp-prospecto-name-sync.service';
 
 @Module({
   imports: [ContactsModule, NotificationsModule, AuthModule, FilesModule, MediaModule],
   controllers: [WhatsappController, WhatsappWebhookController],
-  providers: [EvogoClient, WhatsappService, WhatsappGateway],
-  exports: [WhatsappService],
+  providers: [EvogoClient, WhatsappService, WhatsappGateway, WhatsappProspectoNameSyncService],
+  exports: [WhatsappService, WhatsappProspectoNameSyncService],
 })
 export class WhatsappModule {}

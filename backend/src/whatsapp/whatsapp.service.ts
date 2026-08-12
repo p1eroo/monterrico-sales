@@ -15,11 +15,11 @@ import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { FilesService } from '../files/files.service';
 import { S3StorageService } from '../files/s3-storage.service';
-import { EvogoClient, type EvogoSendTextResult } from './evogo.client';
+import { EvogoClient, EVOGO_WEBHOOK_EVENT_OPTIONS, type EvogoAdvancedSettings, type EvogoSendTextResult } from './evogo.client';
 import { MediaUploadService } from '../media/media-upload.service';
 import { AudioConversionService } from '../media/audio-conversion.service';
 import { SendWhatsappDto } from './dto/send-whatsapp.dto';
-import { digitsOnly, normalizePeWaNumber } from './wa-number.util';
+import { digitsOnly, isWhatsappLidDigits, normalizePeWaNumber } from './wa-number.util';
 import {
   parseMessageEventData,
   parseMessageMedia,
@@ -29,9 +29,10 @@ import {
   readMessageEventPayload,
   resolveEvolutionMediaUrl,
   stripHeavyPayload,
+  extractPushName,
 } from './evolution-webhook.util';
 import { WhatsappGateway } from './whatsapp.gateway';
-import { randomUUID } from 'node:crypto';
+import { WhatsappProspectoNameSyncService } from './whatsapp-prospecto-name-sync.service';
 import XLSX from 'xlsx';
 
 type JsonRecord = Record<string, unknown>;
@@ -69,6 +70,7 @@ type WhatsappInstanceRow = {
   instanceName: string;
   instanceApiKey: string;
   evoInstanceId: string | null;
+  instanceType: string;
   displayLineId: string | null;
   status: string;
   qrCode: string | null;
@@ -111,6 +113,7 @@ const WHATSAPP_LIST_SELECT = {
 const WHATSAPP_INSTANCE_SELECT = {
   id: true,
   userId: true,
+  instanceType: true,
   instanceName: true,
   instanceApiKey: true,
   evoInstanceId: true,
@@ -145,6 +148,7 @@ export class WhatsappService {
     private readonly gateway: WhatsappGateway,
     private readonly mediaUpload: MediaUploadService,
     private readonly audioConversion: AudioConversionService,
+    private readonly prospectoNameSync: WhatsappProspectoNameSyncService,
   ) {}
 
   private defaultInstanceKey(): string {
@@ -314,6 +318,7 @@ export class WhatsappService {
     return {
       id: instance.id,
       instanceName: instance.instanceName,
+      instanceType: instance.instanceType,
       evoInstanceId: instance.evoInstanceId,
       displayLineId: instance.displayLineId,
       status: instance.status,
@@ -1262,6 +1267,23 @@ export class WhatsappService {
   }
 
   async listForFlotaProspecto(prospectoId: string, limit = 50, before?: string) {
+    if (prospectoId.startsWith('wa-')) {
+      return this.listForFlotaPhone(prospectoId.slice(3), limit, before);
+    }
+
+    const prospecto = await this.prisma.flotaProspecto.findUnique({
+      where: { id: prospectoId },
+      select: { celular: true, movil: true },
+    });
+    const phoneDigits = (prospecto?.celular ?? prospecto?.movil ?? '').replace(/\D/g, '').slice(-9);
+    if (phoneDigits.length >= 8) {
+      await this.prospectoNameSync.linkMessagesToProspecto(
+        prospectoId,
+        phoneDigits,
+        this.sharedEvoInstanceName(),
+      );
+    }
+
     const take = Math.min(200, Math.max(1, limit));
     const where: any = { flotaProspectoId: prospectoId };
     if (before) {
@@ -1551,6 +1573,11 @@ export class WhatsappService {
       return { ok: true, ignored: 'no_peer' };
     }
 
+    if (isWhatsappLidDigits(peerDigits)) {
+      this.logger.warn(`Webhook ignorado: identificador LID sin teléfono (${peerDigits})`);
+      return { ok: true, ignored: 'lid_peer' };
+    }
+
     if (msg.waMessageId) {
       const dup = await this.prisma.crmWhatsappMessage.findFirst({
         where: {
@@ -1565,26 +1592,55 @@ export class WhatsappService {
     }
 
     let flotaProspecto = await this.findFlotaProspectoByPhone(peerDigits);
-    // Si existe un prospecto activo, vincular el mensaje. Si no, se guarda sin prospecto.
+    const pushName = extractPushName(parsed.data) ?? '';
+    let prospectoEliminado = false;
+
     if (flotaProspecto?.id) {
       const existing = await this.prisma.flotaProspecto.findUnique({
         where: { id: flotaProspecto.id },
         select: { eliminadoAt: true, nombreCompleto: true },
       });
-      // Si está eliminado, actualizar nombre placeholder si aplica (sin reactivar)
       if (existing?.eliminadoAt) {
-        const senderName = String(parsed.data['pushName'] || parsed.data['PushName'] || '').trim();
-        if (senderName && /^Contacto \d{9}$/.test(existing.nombreCompleto ?? '')) {
-          await this.prisma.flotaProspecto.update({
-            where: { id: flotaProspecto.id },
-            data: { nombreCompleto: senderName },
-          });
-        }
-        flotaProspecto = null; // no vincular mensaje a prospectos eliminados
+        prospectoEliminado = true;
+        flotaProspecto = null;
       }
     }
+
     const instance = await this.findInstanceByEvent(parsed);
     const instanceToUse = instance ?? (await this.findSharedInstance());
+    const evoInstanceName = parsed.instanceName || this.sharedInstanceName();
+
+    let linkProspectoId = flotaProspecto?.id ?? null;
+
+    if (!linkProspectoId) {
+      const ensured = await this.prospectoNameSync.ensureProspectoForInbound({
+        peerDigits,
+        pushName: pushName || null,
+        evoInstanceName,
+      });
+      if (ensured) {
+        flotaProspecto = ensured;
+        linkProspectoId = ensured.id;
+        prospectoEliminado = false;
+      }
+    }
+
+    if (linkProspectoId && !prospectoEliminado) {
+      void this.prospectoNameSync
+        .syncOnInboundMatch({
+          prospectoId: linkProspectoId,
+          peerDigits,
+          pushName: pushName || null,
+          evoInstanceName,
+          instanceApiKey: instanceToUse?.instanceApiKey ?? null,
+        })
+        .catch((err) => {
+          this.logger.warn(
+            `Sync nombre WhatsApp falló prospecto ${linkProspectoId}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        });
+    }
+
     const ourLine =
       instanceToUse?.displayLineId || parsed.instanceName || this.displaySenderId();
 
@@ -1601,28 +1657,29 @@ export class WhatsappService {
         body: textBody,
         payloadJson: stripHeavyPayload(parsed.data) as Prisma.InputJsonValue,
         contactId: null,
-        flotaProspectoId: flotaProspecto?.id ?? null,
+        flotaProspectoId: linkProspectoId,
         whatsappInstanceId: instanceToUse?.id ?? null,
       },
     });
 
-    if (flotaProspecto?.id) {
-      await this.emitListItemById(flotaProspecto.id, created.id);
-    }
+    const socketContactId = this.flotaSocketContactId({
+      flotaProspectoId: linkProspectoId,
+      peerDigits,
+    });
+    await this.emitListItemById(socketContactId, created.id);
 
     if (media) {
-      const prospectoId = flotaProspecto?.id;
       const msgId = created.id;
       this.persistInboundMediaAttachment({
         messageId: created.id,
         contact: null,
-        flotaProspecto: flotaProspecto?.id ? flotaProspecto as FlotaProspectoMediaRef : undefined,
+        flotaProspecto: linkProspectoId
+          ? ({ id: linkProspectoId, nombreCompleto: flotaProspecto?.nombreCompleto ?? '' } as FlotaProspectoMediaRef)
+          : undefined,
         instance: instanceToUse,
         media,
       }).then(async () => {
-        if (prospectoId) {
-          await this.emitListItemById(prospectoId, msgId);
-        }
+        await this.emitListItemById(socketContactId, msgId);
       }).catch((backgroundErr) => {
         this.logger.warn(`Error background persistInboundMediaAttachment msg=${msgId}: ${String(backgroundErr)}`);
       });
@@ -1631,16 +1688,33 @@ export class WhatsappService {
     return { ok: true };
   }
 
-  private async findFlotaProspectoByPhone(peerDigits: string) {
+  private async findFlotaProspectoByPhone(
+    peerDigits: string,
+    opts?: { includeDeleted?: boolean },
+  ) {
     const candidates = this.waNumberCandidates(peerDigits);
     if (candidates.length === 0) return null;
-    const rows = await this.prisma.$queryRaw<{ id: string; nombreCompleto: string; celular: string | null; movil: string | null }[]>`
-      SELECT id, "nombreCompleto", celular, movil
-      FROM "FlotaProspecto"
-      WHERE (celular IS NOT NULL AND regexp_replace(celular, '\D', '', 'g') = ANY(${candidates}::text[]))
-         OR (movil IS NOT NULL AND regexp_replace(movil, '\D', '', 'g') = ANY(${candidates}::text[]))
-      LIMIT 1
-    `;
+    const rows = opts?.includeDeleted
+      ? await this.prisma.$queryRaw<{ id: string; nombreCompleto: string; celular: string | null; movil: string | null }[]>`
+          SELECT id, "nombreCompleto", celular, movil
+          FROM "FlotaProspecto"
+          WHERE (
+              (celular IS NOT NULL AND regexp_replace(celular, '\\D', '', 'g') = ANY(${candidates}::text[]))
+              OR (movil IS NOT NULL AND regexp_replace(movil, '\\D', '', 'g') = ANY(${candidates}::text[]))
+            )
+          ORDER BY "eliminadoAt" NULLS FIRST, "fechaRegistro" DESC
+          LIMIT 1
+        `
+      : await this.prisma.$queryRaw<{ id: string; nombreCompleto: string; celular: string | null; movil: string | null }[]>`
+          SELECT id, "nombreCompleto", celular, movil
+          FROM "FlotaProspecto"
+          WHERE "eliminadoAt" IS NULL
+            AND (
+              (celular IS NOT NULL AND regexp_replace(celular, '\\D', '', 'g') = ANY(${candidates}::text[]))
+              OR (movil IS NOT NULL AND regexp_replace(movil, '\\D', '', 'g') = ANY(${candidates}::text[]))
+            )
+          LIMIT 1
+        `;
     if (rows[0]) return { id: rows[0].id, nombreCompleto: rows[0].nombreCompleto, celular: rows[0].celular };
     return null;
   }
@@ -1649,6 +1723,19 @@ export class WhatsappService {
 
   private sharedInstanceName(): string {
     return this.config.get<string>('EVOGO_FLOTA_INSTANCE_NAME')?.trim() || 'crm-flota';
+  }
+
+  private flotaWaConversationId(peerDigits: string): string {
+    const normalized = peerDigits.replace(/^\+?51/, '').replace(/\D/g, '').slice(-9);
+    return `wa-${normalized}`;
+  }
+
+  private flotaSocketContactId(params: {
+    flotaProspectoId: string | null;
+    peerDigits: string;
+  }): string {
+    if (params.flotaProspectoId) return params.flotaProspectoId;
+    return this.flotaWaConversationId(params.peerDigits);
   }
 
   private async findSharedInstance(): Promise<WhatsappInstanceRow | null> {
@@ -1850,19 +1937,15 @@ export class WhatsappService {
   /* ======== Flota multi-instancia ======== */
 
   async listFlotaInstances() {
-    const nodeInstances = await this.prisma.whatsappInstance.findMany({
-      where: { instanceType: 'flota_node' },
+    const crmInstances = await this.prisma.whatsappInstance.findMany({
+      where: { instanceType: { in: ['flota_node', 'shared_flota'] } },
       select: WHATSAPP_INSTANCE_SELECT,
       orderBy: { createdAt: 'asc' },
     }) as WhatsappInstanceRow[];
     const synced = await Promise.all(
-      nodeInstances.map((inst) => this.syncConnectionState(inst, true)),
+      crmInstances.map((inst) => this.syncConnectionState(inst, true)),
     );
-    // Also include the original shared_flota instance
-    const shared = await this.findSharedInstance();
-    const sharedSynced = shared ? await this.syncConnectionState(shared, true) : null;
-    const all = [...synced, ...(sharedSynced ? [sharedSynced] : [])].filter(Boolean);
-    return all.map((inst) => this.serializeInstance(inst));
+    return synced.map((inst) => this.serializeInstance(inst)).filter(Boolean);
   }
 
   async createFlotaInstance(name: string, apiKey?: string) {
@@ -1871,12 +1954,52 @@ export class WhatsappService {
         'Faltan EVOGO_MANAGER_API_KEY o EVOGO_WEBHOOK_URL para crear instancias de Flota',
       );
     }
+    const normalized = name.trim();
+    if (!normalized) throw new BadRequestException('name es obligatorio');
+
+    const existingCrm = await this.prisma.whatsappInstance.findFirst({
+      where: {
+        instanceName: normalized,
+        instanceType: { in: ['flota_node', 'shared_flota'] },
+      },
+      select: WHATSAPP_INSTANCE_SELECT,
+    }) as WhatsappInstanceRow | null;
+    if (existingCrm) {
+      const synced = await this.syncConnectionState(existingCrm, true);
+      return { instance: this.serializeInstance(synced) };
+    }
+
     const webhookUrl = this.webhookUrl();
-    const created = await this.evogo.createInstance({
-      instanceName: name,
-      webhook: { url: webhookUrl },
-      token: apiKey || undefined,
-    });
+    let created;
+    try {
+      created = await this.evogo.createInstance({
+        instanceName: normalized,
+        webhook: { url: webhookUrl },
+        token: apiKey || undefined,
+      });
+    } catch (e) {
+      const msg = (e instanceof Error ? e.message : '').toLowerCase();
+      if (!msg.includes('already exists')) {
+        throw new ServiceUnavailableException(
+          e instanceof Error ? e.message : 'Error al crear instancia de Flota',
+        );
+      }
+      const remote = await this.evogo.findRemoteInstance(normalized);
+      if (!remote) {
+        throw new ServiceUnavailableException(
+          `La instancia "${normalized}" ya existe en Evolution GO pero no se pudo vincular`,
+        );
+      }
+      created = {
+        instanceName: remote.instanceName,
+        instanceId: remote.instanceId,
+        instanceApiKey: remote.instanceApiKey || apiKey || '',
+        status: remote.state,
+        qrCode: null,
+        qrText: null,
+        pairingCode: null,
+      };
+    }
     const now = new Date();
     const instance = await this.prisma.whatsappInstance.create({
       data: {
@@ -1935,7 +2058,7 @@ export class WhatsappService {
     }) as WhatsappInstanceRow | null;
     if (!instance) throw new NotFoundException('Instancia no encontrada');
     try {
-      await this.evogo.logoutInstance({
+      await this.evogo.disconnectInstance({
         instanceName: instance.instanceName,
         instanceApiKey: instance.instanceApiKey,
       });
@@ -1958,20 +2081,169 @@ export class WhatsappService {
 
   async deleteFlotaInstance(id: string) {
     const instance = await this.prisma.whatsappInstance.findFirst({
-      where: { id, instanceType: 'flota_node' },
+      where: { id, instanceType: { in: ['flota_node', 'shared_flota'] } },
       select: WHATSAPP_INSTANCE_SELECT,
     }) as WhatsappInstanceRow | null;
     if (!instance) throw new NotFoundException('Instancia no encontrada');
     try {
-      await this.evogo.logoutInstance({
+      await this.evogo.deleteRemoteInstance({
         instanceName: instance.instanceName,
+        instanceId: instance.evoInstanceId,
         instanceApiKey: instance.instanceApiKey,
       });
-    } catch {
-      // ignore
+    } catch (e) {
+      this.logger.warn(
+        `Evolution delete falló para ${instance.instanceName}: ${e instanceof Error ? e.message : e}`,
+      );
     }
     await this.prisma.whatsappInstance.delete({ where: { id: instance.id } });
     return { ok: true };
+  }
+
+  async reconnectFlotaInstance(id: string) {
+    const instance = await this.prisma.whatsappInstance.findFirst({
+      where: { id, instanceType: { in: ['flota_node', 'shared_flota'] } },
+      select: WHATSAPP_INSTANCE_SELECT,
+    }) as WhatsappInstanceRow | null;
+    if (!instance) throw new NotFoundException('Instancia no encontrada');
+
+    const synced = await this.syncConnectionState(instance, true);
+    if (synced.status === 'open') {
+      return { instance: this.serializeInstance(synced) };
+    }
+
+    const webhookUrl = this.webhookUrl();
+    const qr = await this.evogo.forceReconnectInstance({
+      instanceName: instance.instanceName,
+      instanceId: instance.evoInstanceId,
+      instanceApiKey: instance.instanceApiKey,
+      webhookUrl,
+    });
+    const now = new Date();
+    const hasQr = Boolean(qr.qrCode || qr.qrText || qr.pairingCode);
+    const updated = await this.updateInstance(instance.id, {
+      status: hasQr ? 'qr_ready' : instance.status,
+      qrCode: qr.qrCode,
+      qrText: qr.qrText,
+      pairingCode: qr.pairingCode,
+      qrGeneratedAt: hasQr ? now : null,
+      qrExpiresAt: hasQr ? this.qrExpiryDate(now) : null,
+      lastError: null,
+    });
+    return { instance: this.serializeInstance(updated) };
+  }
+
+  private async findFlotaInstanceById(id: string): Promise<WhatsappInstanceRow> {
+    const instance = await this.prisma.whatsappInstance.findFirst({
+      where: { id, instanceType: { in: ['flota_node', 'shared_flota'] } },
+      select: WHATSAPP_INSTANCE_SELECT,
+    }) as WhatsappInstanceRow | null;
+    if (!instance) throw new NotFoundException('Instancia no encontrada');
+    return instance;
+  }
+
+  private async resolveEvoInstanceId(instance: WhatsappInstanceRow): Promise<string> {
+    if (instance.evoInstanceId?.trim()) return instance.evoInstanceId.trim();
+    const remote = await this.evogo.findRemoteInstance(instance.instanceName);
+    if (!remote?.instanceId) {
+      throw new NotFoundException(
+        `No se encontró "${instance.instanceName}" en Evolution GO`,
+      );
+    }
+    await this.updateInstance(instance.id, {
+      evoInstanceId: remote.instanceId,
+      ...(remote.instanceApiKey && !instance.instanceApiKey
+        ? { instanceApiKey: remote.instanceApiKey }
+        : {}),
+    });
+    return remote.instanceId;
+  }
+
+  private defaultWebhookEventsForUi(): string[] {
+    return ['MESSAGE', 'CONNECTION', 'READ_RECEIPT', 'QRCODE'];
+  }
+
+  async getFlotaInstanceConfig(id: string) {
+    const instance = await this.findFlotaInstanceById(id);
+    const synced = await this.syncConnectionState(instance, true);
+    const evoInstanceId = await this.resolveEvoInstanceId(synced);
+    const remote = await this.evogo.getInstanceInfo({
+      instanceId: evoInstanceId,
+      instanceApiKey: synced.instanceApiKey,
+    });
+    const advanced = await this.evogo.getAdvancedSettings({
+      instanceId: evoInstanceId,
+      instanceApiKey: synced.instanceApiKey,
+    });
+    const suggestedWebhookUrl = this.webhookUrl();
+    const webhookEvents =
+      remote.webhookEvents.length > 0
+        ? remote.webhookEvents.map((event) => event.toUpperCase())
+        : this.defaultWebhookEventsForUi();
+
+    return {
+      instance: this.serializeInstance(synced),
+      suggestedWebhookUrl,
+      token: synced.instanceApiKey,
+      profileName: remote.profileName || synced.instanceName,
+      number: remote.number || synced.displayLineId,
+      webhook: {
+        url: remote.webhookUrl || suggestedWebhookUrl,
+        events: webhookEvents,
+        rabbitmqEnable: remote.rabbitmqEnable || 'Padrão',
+        websocketEnable: remote.websocketEnable || 'Padrão',
+        natsEnable: remote.natsEnable || 'Padrão',
+      },
+      advanced,
+      availableEvents: [...EVOGO_WEBHOOK_EVENT_OPTIONS],
+    };
+  }
+
+  async updateFlotaInstanceConfig(
+    id: string,
+    body: {
+      webhookUrl?: string;
+      webhookEvents?: string[];
+      rabbitmqEnable?: string;
+      websocketEnable?: string;
+      natsEnable?: string;
+      advanced?: Partial<EvogoAdvancedSettings>;
+    },
+  ) {
+    const instance = await this.findFlotaInstanceById(id);
+    const evoInstanceId = await this.resolveEvoInstanceId(instance);
+
+    if (body.advanced) {
+      const current = await this.evogo.getAdvancedSettings({
+        instanceId: evoInstanceId,
+        instanceApiKey: instance.instanceApiKey,
+      });
+      await this.evogo.updateAdvancedSettings({
+        instanceId: evoInstanceId,
+        instanceApiKey: instance.instanceApiKey,
+        settings: {
+          ...current,
+          ...body.advanced,
+          msgRejectCall: body.advanced.msgRejectCall ?? current.msgRejectCall ?? '',
+        },
+      });
+    }
+
+    if (body.webhookUrl || body.webhookEvents) {
+      const currentConfig = await this.getFlotaInstanceConfig(id);
+      await this.evogo.updateInstanceWebhook({
+        instanceName: instance.instanceName,
+        instanceApiKey: instance.instanceApiKey,
+        webhookUrl: body.webhookUrl?.trim() || currentConfig.webhook.url,
+        events: body.webhookEvents ?? currentConfig.webhook.events,
+        rabbitmqEnable: body.rabbitmqEnable ?? currentConfig.webhook.rabbitmqEnable ?? undefined,
+        websocketEnable: body.websocketEnable ?? currentConfig.webhook.websocketEnable ?? undefined,
+        natsEnable: body.natsEnable ?? currentConfig.webhook.natsEnable ?? undefined,
+      });
+    }
+
+    const synced = await this.syncConnectionState(instance, true);
+    return { instance: this.serializeInstance(synced) };
   }
 
   /* ======== Flota Bulk Campaigns (historial) ======== */
@@ -2062,6 +2334,115 @@ export class WhatsappService {
       return p.replace(/^\+?51/, '').replace(/\D/g, '').slice(-9);
     }
 
+    type ConvEntry = {
+      contactId: string;
+      name: string;
+      phone: string;
+      lastMessage: string;
+      lastTime: Date;
+      lastDirection: string;
+      unread: number;
+      lastReadAt: Date | null;
+      estado?: string;
+      operador?: string | null;
+      lastSender?: string;
+      llamadaCount: number;
+      prospectoActivo: boolean;
+    };
+
+    const grouped = new Map<string, ConvEntry>();
+
+    const findEntryByPhone = (normalized: string): ConvEntry | undefined => {
+      for (const entry of grouped.values()) {
+        if (normalizePhone(entry.phone) === normalized) return entry;
+      }
+      return undefined;
+    };
+
+    const isPhoneLikeName = (name: string, normalized: string) => {
+      const digits = name.replace(/\D/g, '');
+      return digits.length >= 8 && digits.slice(-9) === normalized;
+    };
+
+    const promoteWaEntry = (
+      entry: ConvEntry,
+      prospectoId: string,
+      meta: {
+        name?: string | null;
+        phone?: string | null;
+        prospectoActivo: boolean;
+        estado?: string | null;
+        operador?: string | null;
+        llamadaCount?: number;
+        lastReadAt?: Date | null;
+      },
+    ) => {
+      if (!entry.contactId.startsWith('wa-')) return;
+      grouped.delete(entry.contactId);
+      entry.contactId = prospectoId;
+      if (meta.name?.trim() && !isPhoneLikeName(meta.name, normalizePhone(entry.phone))) {
+        entry.name = meta.name.trim();
+      }
+      if (meta.phone?.trim()) entry.phone = meta.phone.trim();
+      entry.prospectoActivo = meta.prospectoActivo;
+      entry.estado = meta.prospectoActivo ? meta.estado ?? undefined : undefined;
+      entry.operador = meta.prospectoActivo ? meta.operador ?? null : null;
+      entry.llamadaCount = meta.llamadaCount ?? entry.llamadaCount;
+      if (meta.lastReadAt !== undefined) entry.lastReadAt = meta.lastReadAt;
+      grouped.set(prospectoId, entry);
+    };
+
+    const applyRow = (
+      entry: ConvEntry,
+      row: {
+        createdAt: Date;
+        body: string;
+        direction: string;
+        flotaProspecto?: { nombreCompleto?: string | null } | null;
+        createdBy?: { name?: string | null } | null;
+      },
+      opts: { lastReadAt?: Date | null; inboundCountsAsUnread?: boolean },
+    ) => {
+      if (row.createdAt.getTime() > entry.lastTime.getTime()) {
+        entry.lastTime = row.createdAt;
+        entry.lastMessage = row.body.slice(0, 100);
+        entry.lastDirection = row.direction;
+      }
+      if (row.direction === 'outbound' && (row as any).createdBy?.name) {
+        entry.lastSender = (row as any).createdBy.name;
+      } else if (row.direction === 'inbound' && row.flotaProspecto?.nombreCompleto) {
+        entry.lastSender = row.flotaProspecto.nombreCompleto;
+      }
+      if (row.direction === 'inbound' && opts.inboundCountsAsUnread !== false) {
+        const readAt = opts.lastReadAt ?? entry.lastReadAt;
+        if (!readAt || row.createdAt > readAt) {
+          entry.unread++;
+        }
+      }
+    };
+
+    const mergeEntries = (target: ConvEntry, source: ConvEntry) => {
+      if (source.lastTime.getTime() > target.lastTime.getTime()) {
+        target.lastTime = source.lastTime;
+        target.lastMessage = source.lastMessage;
+        target.lastDirection = source.lastDirection;
+      }
+      target.unread += source.unread;
+      if (!target.lastSender && source.lastSender) target.lastSender = source.lastSender;
+      if (!target.estado && source.estado) target.estado = source.estado;
+      if (!target.operador && source.operador) target.operador = source.operador;
+      if (!target.prospectoActivo && source.prospectoActivo) {
+        target.prospectoActivo = source.prospectoActivo;
+      }
+      if (
+        isPhoneLikeName(target.name, normalizePhone(target.phone)) &&
+        source.name &&
+        !isPhoneLikeName(source.name, normalizePhone(source.phone))
+      ) {
+        target.name = source.name;
+      }
+    };
+
     const rows = await this.prisma.crmWhatsappMessage.findMany({
       where: {
         evoInstanceName: instanceName,
@@ -2080,7 +2461,16 @@ export class WhatsappService {
         waOutboundStatus: true,
         flotaProspectoId: true,
         flotaProspecto: {
-          select: { id: true, nombreCompleto: true, celular: true, estado: true, lastReadAt: true, operador: true, _count: { select: { llamadas: true } } },
+          select: {
+            id: true,
+            nombreCompleto: true,
+            celular: true,
+            estado: true,
+            lastReadAt: true,
+            operador: true,
+            eliminadoAt: true,
+            _count: { select: { llamadas: true } },
+          },
         },
         createdBy: { select: { name: true } },
       },
@@ -2088,31 +2478,63 @@ export class WhatsappService {
       take: 1000,
     });
 
-    const grouped = new Map<string, {
-      contactId: string;
-      name: string;
-      phone: string;
-      lastMessage: string;
-      lastTime: Date;
-      lastDirection: string;
-      unread: number;
-      lastReadAt: Date | null;
-      estado?: string;
-      operador?: string | null;
-      lastSender?: string;
-      llamadaCount: number;
-    }>();
+    const readRows = await this.prisma.flotaWhatsappConversationRead.findMany({
+      where: { evoInstanceName: instanceName },
+      select: { phoneDigits: true, lastReadAt: true },
+    });
+    const waReadMap = new Map(readRows.map((r) => [r.phoneDigits, r.lastReadAt]));
 
     for (const row of rows) {
-      if (!row.flotaProspectoId) continue;
+      if (!row.flotaProspectoId) {
+        const phoneRaw = row.direction === 'inbound' ? row.fromWaId : row.toWaId;
+        if (isWhatsappLidDigits(phoneRaw)) continue;
+        const normalized = normalizePhone(phoneRaw);
+        if (normalized.length < 8) continue;
+
+        const waLastReadAt = waReadMap.get(normalized) ?? null;
+        const existing = findEntryByPhone(normalized);
+        if (existing) {
+          if (existing.contactId.startsWith('wa-') && !existing.lastReadAt && waLastReadAt) {
+            existing.lastReadAt = waLastReadAt;
+          }
+          applyRow(existing, row, {
+            lastReadAt: existing.lastReadAt ?? waLastReadAt,
+            inboundCountsAsUnread: true,
+          });
+          continue;
+        }
+
+        const waId = `wa-${normalized}`;
+        const entry: ConvEntry = {
+          contactId: waId,
+          name: phoneRaw || normalized,
+          phone: phoneRaw || normalized,
+          lastMessage: row.body.slice(0, 100),
+          lastTime: row.createdAt,
+          lastDirection: row.direction,
+          unread: 0,
+          lastReadAt: waLastReadAt,
+          lastSender:
+            row.direction === 'outbound'
+              ? (row as any).createdBy?.name
+              : phoneRaw,
+          llamadaCount: 0,
+          prospectoActivo: false,
+        };
+        applyRow(entry, row, { lastReadAt: waLastReadAt, inboundCountsAsUnread: true });
+        grouped.set(waId, entry);
+        continue;
+      }
+
+      const prospectoActivo = !row.flotaProspecto?.eliminadoAt;
       const phoneRaw = row.flotaProspecto?.celular ?? row.fromWaId ?? '';
       const normalized = normalizePhone(phoneRaw);
-      const existingEntry = Array.from(grouped.values()).find(
-        (e) => normalizePhone(e.phone) === normalized,
-      );
-      if (!existingEntry) {
-        const prospectLastReadAt = row.flotaProspecto?.lastReadAt ?? null;
-        const isUnread = row.direction === 'inbound' && (!prospectLastReadAt || row.createdAt > prospectLastReadAt);
+      if (normalized.length < 8) continue;
+
+      const prospectLastReadAt = row.flotaProspecto?.lastReadAt ?? null;
+      let entry = findEntryByPhone(normalized);
+
+      if (!entry) {
         grouped.set(row.flotaProspectoId, {
           contactId: row.flotaProspectoId,
           name: row.flotaProspecto?.nombreCompleto ?? row.fromWaId,
@@ -2120,30 +2542,71 @@ export class WhatsappService {
           lastMessage: row.body.slice(0, 100),
           lastTime: row.createdAt,
           lastDirection: row.direction,
-          unread: isUnread ? 1 : 0,
+          unread: 0,
           lastReadAt: prospectLastReadAt,
-          estado: row.flotaProspecto?.estado ?? undefined,
-          operador: row.flotaProspecto?.operador ?? null,
-          lastSender: row.direction === 'outbound' ? (row as any).createdBy?.name : row.flotaProspecto?.nombreCompleto,
+          estado: prospectoActivo ? row.flotaProspecto?.estado ?? undefined : undefined,
+          operador: prospectoActivo ? row.flotaProspecto?.operador ?? null : null,
+          lastSender:
+            row.direction === 'outbound'
+              ? (row as any).createdBy?.name
+              : row.flotaProspecto?.nombreCompleto,
           llamadaCount: row.flotaProspecto?._count?.llamadas ?? 0,
+          prospectoActivo,
         });
-      } else {
-        if (row.createdAt.getTime() > existingEntry.lastTime.getTime()) {
-          existingEntry.lastTime = row.createdAt;
-          existingEntry.lastMessage = row.body.slice(0, 100);
-          existingEntry.lastDirection = row.direction;
-        }
-        if (row.direction === 'outbound' && (row as any).createdBy?.name) {
-          existingEntry.lastSender = (row as any).createdBy?.name;
-        }
-        if (row.direction === 'inbound' && (!existingEntry.lastReadAt || row.createdAt > existingEntry.lastReadAt)) {
-          existingEntry.unread++;
-        }
+        entry = grouped.get(row.flotaProspectoId)!;
+        applyRow(entry, row, { lastReadAt: prospectLastReadAt });
+        continue;
       }
+
+      promoteWaEntry(entry, row.flotaProspectoId, {
+        name: row.flotaProspecto?.nombreCompleto,
+        phone: phoneRaw,
+        prospectoActivo,
+        estado: row.flotaProspecto?.estado,
+        operador: row.flotaProspecto?.operador,
+        llamadaCount: row.flotaProspecto?._count?.llamadas,
+        lastReadAt: prospectLastReadAt,
+      });
+
+      if (entry.contactId !== row.flotaProspectoId && !entry.contactId.startsWith('wa-')) {
+        grouped.delete(entry.contactId);
+        entry.contactId = row.flotaProspectoId;
+        entry.name = row.flotaProspecto?.nombreCompleto ?? entry.name;
+        grouped.set(row.flotaProspectoId, entry);
+      }
+
+      applyRow(entry, row, { lastReadAt: prospectLastReadAt });
     }
 
-    let conversations = Array.from(grouped.values())
+    const dedupedByPhone = new Map<string, ConvEntry>();
+    for (const entry of grouped.values()) {
+      const phoneKey = normalizePhone(entry.phone);
+      if (phoneKey.length < 8) continue;
+      const prev = dedupedByPhone.get(phoneKey);
+      if (!prev) {
+        dedupedByPhone.set(phoneKey, entry);
+        continue;
+      }
+      const preferProspecto = !prev.contactId.startsWith('wa-') ? prev : entry;
+      const other = preferProspecto === prev ? entry : prev;
+      mergeEntries(preferProspecto, other);
+      if (other.contactId.startsWith('wa-')) {
+        grouped.delete(other.contactId);
+      }
+      dedupedByPhone.set(phoneKey, preferProspecto);
+    }
+
+    let conversations = Array.from(dedupedByPhone.values())
       .sort((a, b) => b.lastTime.getTime() - a.lastTime.getTime());
+
+    for (const entry of conversations) {
+      if (entry.contactId.startsWith('wa-')) continue;
+      const digits = normalizePhone(entry.phone);
+      if (digits.length < 8) continue;
+      void this.prospectoNameSync
+        .linkMessagesToProspecto(entry.contactId, digits, instanceName)
+        .catch(() => {});
+    }
 
     if (query?.trim()) {
       const q = query.trim().toLowerCase();
@@ -2167,14 +2630,192 @@ export class WhatsappService {
       operador: c.operador ?? undefined,
       lastSender: c.lastSender ?? c.name,
       llamadaCount: c.llamadaCount,
+      prospectoActivo: c.prospectoActivo,
     }));
   }
 
+  async linkMessagesToProspecto(prospectoId: string, phone: string) {
+    const digits = phone.replace(/\D/g, '').slice(-9);
+    if (digits.length < 8) {
+      throw new BadRequestException('Teléfono inválido para vincular mensajes');
+    }
+    await this.prospectoNameSync.linkMessagesToProspecto(
+      prospectoId,
+      digits,
+      this.sharedEvoInstanceName(),
+    );
+    return { ok: true, prospectoId };
+  }
+
+  async listForFlotaPhone(phoneKey: string, limit = 50, before?: string) {
+    const digits = phoneKey.replace(/\D/g, '').slice(-9);
+    if (digits.length < 8) {
+      return { items: [], hasMore: false };
+    }
+    const instanceName = this.sharedEvoInstanceName();
+    const candidates = this.waNumberCandidates(digits);
+    const take = Math.min(200, Math.max(1, limit));
+
+    const idRows = before
+      ? await this.prisma.$queryRaw<{ id: string }[]>`
+          SELECT id FROM "CrmWhatsappMessage"
+          WHERE "flotaProspectoId" IS NULL
+            AND "contactId" IS NULL
+            AND "evoInstanceName" = ${instanceName}
+            AND (
+              regexp_replace(COALESCE("fromWaId", ''), '\D', '', 'g') = ANY(${candidates}::text[])
+              OR regexp_replace(COALESCE("toWaId", ''), '\D', '', 'g') = ANY(${candidates}::text[])
+            )
+            AND "createdAt" < ${new Date(before)}
+          ORDER BY "createdAt" DESC
+          LIMIT ${take + 1}
+        `
+      : await this.prisma.$queryRaw<{ id: string }[]>`
+          SELECT id FROM "CrmWhatsappMessage"
+          WHERE "flotaProspectoId" IS NULL
+            AND "contactId" IS NULL
+            AND "evoInstanceName" = ${instanceName}
+            AND (
+              regexp_replace(COALESCE("fromWaId", ''), '\D', '', 'g') = ANY(${candidates}::text[])
+              OR regexp_replace(COALESCE("toWaId", ''), '\D', '', 'g') = ANY(${candidates}::text[])
+            )
+          ORDER BY "createdAt" DESC
+          LIMIT ${take + 1}
+        `;
+
+    const hasMore = idRows.length > take;
+    const pageIds = (hasMore ? idRows.slice(0, take) : idRows).map((row) => row.id);
+    if (pageIds.length === 0) {
+      return { items: [], hasMore: false };
+    }
+
+    const rows = await this.prisma.crmWhatsappMessage.findMany({
+      where: { id: { in: pageIds } },
+      orderBy: { createdAt: 'asc' },
+      select: WHATSAPP_LIST_SELECT,
+    });
+    const items = await this.buildMessageItems(rows as unknown as WhatsappListItemRow[]);
+    return { items, hasMore };
+  }
+
   async markProspectoAsRead(prospectoId: string) {
+    const now = new Date();
+    if (prospectoId.startsWith('wa-')) {
+      const digits = prospectoId.slice(3).replace(/\D/g, '').slice(-9);
+      if (digits.length < 8) return;
+      const evoInstanceName = this.sharedEvoInstanceName();
+      await this.prisma.flotaWhatsappConversationRead.upsert({
+        where: {
+          evoInstanceName_phoneDigits: { evoInstanceName, phoneDigits: digits },
+        },
+        create: { evoInstanceName, phoneDigits: digits, lastReadAt: now },
+        update: { lastReadAt: now },
+      });
+      return;
+    }
     await this.prisma.flotaProspecto.update({
       where: { id: prospectoId },
-      data: { lastReadAt: new Date() },
+      data: { lastReadAt: now },
     });
+  }
+
+  async deleteFlotaConversation(
+    conversationId: string,
+    opts?: { removeProspecto?: boolean },
+  ): Promise<{ ok: true; deletedMessages: number; removedProspecto: boolean }> {
+    const trimmedId = conversationId.trim();
+    if (!trimmedId) throw new BadRequestException('Conversación inválida');
+
+    const evoInstanceName = this.sharedEvoInstanceName();
+    let prospectoId: string | null = null;
+    let phoneDigits = '';
+    let prospectoMeta: { origen: string; eliminadoAt: Date | null } | null = null;
+
+    if (trimmedId.startsWith('wa-')) {
+      phoneDigits = trimmedId.slice(3).replace(/\D/g, '').slice(-9);
+    } else {
+      prospectoId = trimmedId;
+      const prospecto = await this.prisma.flotaProspecto.findUnique({
+        where: { id: prospectoId },
+        select: { celular: true, movil: true, origen: true, eliminadoAt: true },
+      });
+      if (!prospecto) throw new NotFoundException('Conversación no encontrada');
+      prospectoMeta = { origen: prospecto.origen, eliminadoAt: prospecto.eliminadoAt };
+      phoneDigits = (prospecto.celular ?? prospecto.movil ?? '').replace(/\D/g, '').slice(-9);
+    }
+
+    const candidates =
+      phoneDigits.length >= 8
+        ? this.waNumberCandidates(phoneDigits)
+        : trimmedId.startsWith('wa-')
+          ? this.waNumberCandidates(trimmedId.slice(3))
+          : [];
+
+    const messageFilters: Prisma.CrmWhatsappMessageWhereInput[] = [];
+    if (prospectoId) {
+      messageFilters.push({ flotaProspectoId: prospectoId });
+    }
+    if (candidates.length > 0) {
+      const orphanIds = await this.prisma.$queryRaw<{ id: string }[]>`
+        SELECT id FROM "CrmWhatsappMessage"
+        WHERE "flotaProspectoId" IS NULL
+          AND "contactId" IS NULL
+          AND "evoInstanceName" = ${evoInstanceName}
+          AND (
+            regexp_replace(COALESCE("fromWaId", ''), '\D', '', 'g') = ANY(${candidates}::text[])
+            OR regexp_replace(COALESCE("toWaId", ''), '\D', '', 'g') = ANY(${candidates}::text[])
+          )
+      `;
+      if (orphanIds.length > 0) {
+        messageFilters.push({ id: { in: orphanIds.map((row) => row.id) } });
+      }
+    }
+
+    const messages =
+      messageFilters.length > 0
+        ? await this.prisma.crmWhatsappMessage.findMany({
+            where: { evoInstanceName, OR: messageFilters },
+            select: { id: true },
+          })
+        : [];
+
+    const messageIds = messages.map((m) => m.id);
+    if (messageIds.length > 0) {
+      await this.prisma.crmFile.deleteMany({
+        where: {
+          relatedEntityType: 'whatsapp-message',
+          relatedEntityId: { in: messageIds },
+        },
+      });
+      await this.prisma.crmWhatsappMessage.deleteMany({
+        where: { id: { in: messageIds } },
+      });
+    }
+
+    if (phoneDigits.length >= 8) {
+      await this.prisma.flotaWhatsappConversationRead.deleteMany({
+        where: { evoInstanceName, phoneDigits },
+      });
+    }
+
+    let removedProspecto = false;
+    if (prospectoId && !prospectoMeta?.eliminadoAt) {
+      const origen = prospectoMeta?.origen ?? 'MANUAL';
+      if (origen === 'WHATSAPP' && opts?.removeProspecto !== false) {
+        await this.prisma.flotaProspecto.update({
+          where: { id: prospectoId },
+          data: { eliminadoAt: new Date() },
+        });
+        removedProspecto = true;
+      }
+    }
+
+    this.logger.log(
+      `Conversación Flota eliminada ${trimmedId}: ${messageIds.length} mensajes` +
+        (removedProspecto ? ', prospecto archivado' : ''),
+    );
+
+    return { ok: true, deletedMessages: messageIds.length, removedProspecto };
   }
 
   async deleteFlotaMessage(messageId: string, userId: string, forEveryone = true) {
@@ -2294,14 +2935,31 @@ export class WhatsappService {
       throw new ServiceUnavailableException('No hay ninguna instancia de WhatsApp conectada para enviar mensajes.');
     }
 
-    const prospecto = await this.prisma.flotaProspecto.findUnique({ where: { id: prospectoId } });
-    if (!prospecto) {
-      throw new BadRequestException('Prospecto no encontrado');
+    const isWaChat = prospectoId.startsWith('wa-');
+    let resolvedProspectoId: string | null = isWaChat ? null : prospectoId;
+    let phoneRaw: string | null = null;
+    let flotaProspecto:
+      | { id: string; nombreCompleto: string; celular: string | null; movil: string | null; eliminadoAt: Date | null }
+      | null = null;
+
+    if (isWaChat) {
+      phoneRaw = prospectoId.slice(3);
+    } else {
+      flotaProspecto = await this.prisma.flotaProspecto.findUnique({
+        where: { id: prospectoId },
+        select: { id: true, nombreCompleto: true, celular: true, movil: true, eliminadoAt: true },
+      });
+      if (!flotaProspecto) {
+        throw new BadRequestException('Prospecto no encontrado');
+      }
+      phoneRaw = flotaProspecto.celular ?? flotaProspecto.movil;
+      if (flotaProspecto.eliminadoAt) {
+        resolvedProspectoId = null;
+      }
     }
 
-    const phoneRaw = prospecto.celular ?? prospecto.movil;
     if (!phoneRaw) {
-      throw new BadRequestException('El prospecto no tiene un celular registrado');
+      throw new BadRequestException('El contacto no tiene un celular registrado');
     }
 
     const to = normalizePeWaNumber(phoneRaw);
@@ -2364,12 +3022,14 @@ export class WhatsappService {
         toWaId: to,
         body,
         payloadJson: stripHeavyPayload(sent.raw) as Prisma.InputJsonValue,
-        flotaProspectoId: prospectoId,
+        flotaProspectoId: resolvedProspectoId,
         whatsappInstanceId: instance.id,
         createdByUserId: userId,
         waOutboundStatus: 'sent',
       },
     });
+
+    const socketContactId = isWaChat ? prospectoId : (resolvedProspectoId ?? prospectoId);
 
     const attachmentPayload: {
       id: string; name: string; mimeType: string; size: number; mediaType: string; url: string; downloadUrl: string;
@@ -2399,45 +3059,53 @@ export class WhatsappService {
           relName = 'documento-enviado';
           attachmentPayload.push({ id: `sent:${created.id}:doc`, name: documentName || 'documento', mimeType: documentMimeType || 'application/octet-stream', size: 0, mediaType: 'document', url: documentUrl, downloadUrl: documentUrl });
         }
-        await this.prisma.crmFile.create({
-          data: {
-            storageKey,
-            originalName,
-            mimeType: fileMimeType,
-            size: 0,
-            entityType: 'flota-prospecto',
-            entityId: prospectoId,
-            entityName: prospecto.nombreCompleto?.trim() || null,
-            relatedEntityType: 'whatsapp-message',
-            relatedEntityId: created.id,
-            relatedEntityName: relName,
-            uploadedBy: userId,
-          },
-        });
+        if (resolvedProspectoId && flotaProspecto) {
+          await this.prisma.crmFile.create({
+            data: {
+              storageKey,
+              originalName,
+              mimeType: fileMimeType,
+              size: 0,
+              entityType: 'flota-prospecto',
+              entityId: resolvedProspectoId,
+              entityName: flotaProspecto.nombreCompleto?.trim() || null,
+              relatedEntityType: 'whatsapp-message',
+              relatedEntityId: created.id,
+              relatedEntityName: relName,
+              uploadedBy: userId,
+            },
+          });
+        }
       } catch (e) {
         this.logger.warn(`No se pudo crear adjunto de medio saliente ${created.id}: ${String(e)}`);
       }
     }
 
-    await this.emitListItemById(prospectoId, created.id);
+    await this.emitListItemById(socketContactId, created.id);
 
-    this.gateway.emitToContact(prospectoId, {
+    this.gateway.emitToContact(socketContactId, {
       type: 'message',
-      contactId: prospectoId,
+      contactId: socketContactId,
       item: { ...created, attachments: attachmentPayload } as unknown as Record<string, unknown>,
     });
 
     // Auto-asignar al operador que envía el primer mensaje
-    if (!prospecto.operador?.trim()) {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { name: true, role: { select: { slug: true } } },
+    if (resolvedProspectoId && flotaProspecto && !flotaProspecto.eliminadoAt) {
+      const fullProspecto = await this.prisma.flotaProspecto.findUnique({
+        where: { id: resolvedProspectoId },
+        select: { operador: true },
       });
-      if (user?.name && user?.role?.slug === 'operador') {
-        await this.prisma.flotaProspecto.update({
-          where: { id: prospectoId },
-          data: { operador: user.name },
+      if (!fullProspecto?.operador?.trim()) {
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId },
+          select: { name: true, role: { select: { slug: true } } },
         });
+        if (user?.name && user?.role?.slug === 'operador') {
+          await this.prisma.flotaProspecto.update({
+            where: { id: resolvedProspectoId },
+            data: { operador: user.name },
+          });
+        }
       }
     }
 

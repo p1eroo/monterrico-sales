@@ -51,6 +51,7 @@ export type FlotaConversation = {
   operador?: string;
   lastSender?: string;
   llamadaCount?: number;
+  prospectoActivo?: boolean;
 };
 
 export type FlotaBulkResult = {
@@ -105,6 +106,16 @@ export async function fetchMasivoProspectos(search?: string, estado?: string): P
   return api(`/flota-prospectos/masivo-list${qsStr ? '?' + qsStr : ''}`);
 }
 
+export async function linkWhatsappProspecto(
+  prospectoId: string,
+  phone: string,
+): Promise<{ ok: boolean; prospectoId: string }> {
+  return api('/api/whatsapp/flota/link-prospecto', {
+    method: 'POST',
+    body: JSON.stringify({ prospectoId, phone }),
+  });
+}
+
 export async function fetchFlotaProspectoMessages(
   prospectoId: string,
   limit = 50,
@@ -144,6 +155,19 @@ export async function sendFlotaWhatsappMessage(
 
 export async function deleteFlotaWhatsappMessage(messageId: string, forEveryone = true): Promise<void> {
   return api(`/api/whatsapp/flota/messages/${messageId}?forEveryone=${forEveryone}`, { method: 'DELETE' });
+}
+
+export async function deleteFlotaConversation(
+  conversationId: string,
+  opts?: { removeProspecto?: boolean },
+): Promise<{ ok: boolean; deletedMessages: number; removedProspecto: boolean }> {
+  const params = new URLSearchParams();
+  if (opts?.removeProspecto === true) params.set('removeProspecto', 'true');
+  if (opts?.removeProspecto === false) params.set('removeProspecto', 'false');
+  const qs = params.toString();
+  return api(`/api/whatsapp/flota/conversations/${encodeURIComponent(conversationId)}${qs ? `?${qs}` : ''}`, {
+    method: 'DELETE',
+  });
 }
 
 export async function uploadFlotaImage(file: File): Promise<string> {
@@ -285,7 +309,10 @@ export async function resumeFlotaBulk(jobId: string): Promise<void> {
   return api(`/api/whatsapp/flota/send-bulk/${jobId}/resume`, { method: 'POST' });
 }
 
-export type FlotaInstanceDetail = FlotaWhatsappConnection & { id: string };
+export type FlotaInstanceDetail = FlotaWhatsappConnection & {
+  id: string;
+  instanceType?: string;
+};
 
 export async function fetchFlotaInstances(): Promise<FlotaInstanceDetail[]> {
   return api<FlotaInstanceDetail[]>('/api/whatsapp/flota/instances');
@@ -308,6 +335,57 @@ export async function disconnectFlotaInstance(id: string): Promise<{ instance: F
 
 export async function deleteFlotaInstance(id: string): Promise<{ ok: boolean }> {
   return api(`/api/whatsapp/flota/instances/${id}`, { method: 'DELETE' });
+}
+
+export async function reconnectFlotaInstance(id: string): Promise<{ instance: FlotaInstanceDetail }> {
+  return api(`/api/whatsapp/flota/instances/${id}/reconnect`, { method: 'POST' });
+}
+
+export type FlotaEvolutionAdvancedSettings = {
+  alwaysOnline: boolean;
+  rejectCall: boolean;
+  readMessages: boolean;
+  ignoreGroups: boolean;
+  ignoreStatus: boolean;
+  msgRejectCall: string;
+};
+
+export type FlotaEvolutionInstanceConfig = {
+  instance: FlotaInstanceDetail;
+  suggestedWebhookUrl: string;
+  token: string;
+  profileName: string | null;
+  number: string | null;
+  webhook: {
+    url: string;
+    events: string[];
+    rabbitmqEnable: string;
+    websocketEnable: string;
+    natsEnable: string;
+  };
+  advanced: FlotaEvolutionAdvancedSettings;
+  availableEvents: string[];
+};
+
+export async function fetchFlotaInstanceConfig(id: string): Promise<FlotaEvolutionInstanceConfig> {
+  return api<FlotaEvolutionInstanceConfig>(`/api/whatsapp/flota/instances/${id}/config`);
+}
+
+export async function updateFlotaInstanceConfig(
+  id: string,
+  payload: {
+    webhookUrl?: string;
+    webhookEvents?: string[];
+    rabbitmqEnable?: string;
+    websocketEnable?: string;
+    natsEnable?: string;
+    advanced?: Partial<FlotaEvolutionAdvancedSettings>;
+  },
+): Promise<{ instance: FlotaInstanceDetail }> {
+  return api(`/api/whatsapp/flota/instances/${id}/config`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function updateFlotaInstanceFlags(id: string, flags: { useForInbox?: boolean; useForMasivo?: boolean }): Promise<{ instance: FlotaInstanceDetail }> {

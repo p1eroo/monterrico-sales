@@ -41,6 +41,55 @@ export type EvogoConnectResult = {
   count: number | null;
 };
 
+export type EvogoRemoteInstance = {
+  instanceName: string;
+  instanceId: string | null;
+  instanceApiKey: string | null;
+  state: string | null;
+  wid: string | null;
+  connected: boolean | null;
+};
+
+export type EvogoAdvancedSettings = {
+  alwaysOnline: boolean;
+  rejectCall: boolean;
+  readMessages: boolean;
+  ignoreGroups: boolean;
+  ignoreStatus: boolean;
+  msgRejectCall: string;
+};
+
+export type EvogoInstanceConfig = {
+  instanceId: string | null;
+  instanceName: string;
+  token: string | null;
+  webhookUrl: string | null;
+  webhookEvents: string[];
+  profileName: string | null;
+  number: string | null;
+  connected: boolean;
+  state: string | null;
+  rabbitmqEnable: string | null;
+  websocketEnable: string | null;
+  natsEnable: string | null;
+};
+
+export const EVOGO_WEBHOOK_EVENT_OPTIONS = [
+  'ALL',
+  'MESSAGE',
+  'PRESENCE',
+  'CHAT_PRESENCE',
+  'CONNECTION',
+  'READ_RECEIPT',
+  'HISTORY_SYNC',
+  'CALL',
+  'QRCODE',
+  'LABEL',
+  'CONTACT',
+  'GROUP',
+  'NEWSLETTER',
+] as const;
+
 @Injectable()
 export class EvogoClient {
   private readonly logger = new Logger(EvogoClient.name);
@@ -206,28 +255,6 @@ export class EvogoClient {
     instanceApiKey?: string;
     webhookUrl?: string;
   }): Promise<EvogoConnectResult> {
-    const parseQr = (raw: unknown): EvogoConnectResult => {
-      const root = this.asRecord(raw);
-      const data = this.asRecord(root?.data);
-      const qrcode =
-        this.asRecord(root?.qrcode) ??
-        this.asRecord(root?.qr) ??
-        this.asRecord(data?.qrcode) ??
-        data ??
-        root;
-      return {
-        qrCode: this.pickQrBase64(qrcode),
-        qrText: this.pickQrText(qrcode),
-        pairingCode: this.asString(qrcode?.pairingCode) || null,
-        count:
-          typeof qrcode?.count === 'number'
-            ? qrcode.count
-            : typeof data?.count === 'number'
-              ? data.count
-              : null,
-      };
-    };
-
     const connectRes = await this.requestJsonWithManagerFallback('/instance/connect', {
       method: 'POST',
       apiKey: params.instanceApiKey,
@@ -240,7 +267,7 @@ export class EvogoClient {
       }),
     });
     let res = connectRes;
-    let parsed = parseQr(connectRes.raw);
+    let parsed = this.parseConnectQr(connectRes.raw);
     const connectLooksLikeQr = Boolean(parsed.qrCode || parsed.qrText);
     if (connectRes.ok && !connectLooksLikeQr) {
       for (let attempt = 0; attempt < 6; attempt++) {
@@ -249,7 +276,7 @@ export class EvogoClient {
           apiKey: params.instanceApiKey,
         });
         if (res.ok) {
-          parsed = parseQr(res.raw);
+          parsed = this.parseConnectQr(res.raw);
           if (parsed.qrCode || parsed.qrText) break;
         }
         await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -281,7 +308,7 @@ export class EvogoClient {
     if (!res.ok) {
       throw new Error(this.readErrorMessage(res.raw, 'No se pudo generar el QR'));
     }
-    parsed = parseQr(res.raw);
+    parsed = this.parseConnectQr(res.raw);
     return parsed;
   }
 
@@ -303,31 +330,21 @@ export class EvogoClient {
       );
     }
     const listInstances = async () => {
-      const attempts = ['/instance/all', '/instance/fetchInstances'];
-      for (const path of attempts) {
-        try {
-          const listRes = await this.requestJson(path, {
-            method: 'GET',
-          });
-          if (!listRes.ok) continue;
-          const candidates = Array.isArray(listRes.raw)
-            ? listRes.raw
-            : Array.isArray(this.asRecord(listRes.raw)?.data)
-              ? (this.asRecord(listRes.raw)?.data as unknown[])
-              : Array.isArray(this.asRecord(listRes.raw)?.Data)
-                ? (this.asRecord(listRes.raw)?.Data as unknown[])
-                : [];
-          const match = candidates.find((item) => {
-            const candidate = this.readConnectionNode(item);
-            return candidate.instanceName === params.instanceName;
-          });
-          if (match) return this.readConnectionNode(match);
-          return null;
-        } catch {
-          // Intentamos la siguiente variante.
+      try {
+        const all = await this.listAllInstances();
+        const match = all.find((item) => item.instanceName === params.instanceName);
+        if (match) {
+          return {
+            instanceName: match.instanceName,
+            state: match.state,
+            connected: match.connected,
+            wid: match.wid,
+          };
         }
+        return null;
+      } catch {
+        return undefined;
       }
-      return undefined;
     };
 
     let parsed = res.ok ? this.readConnectionNode(res.raw) : null;
@@ -444,6 +461,223 @@ export class EvogoClient {
     throw new Error(lastError);
   }
 
+  async listAllInstances(): Promise<EvogoRemoteInstance[]> {
+    const attempts = ['/instance/all', '/instance/fetchInstances'];
+    for (const path of attempts) {
+      const listRes = await this.requestJson(path, { method: 'GET' });
+      if (!listRes.ok) continue;
+      const candidates = this.extractInstanceArray(listRes.raw);
+      if (candidates.length === 0) continue;
+      return candidates
+        .map((item) => this.readRemoteInstanceNode(item))
+        .filter((item) => Boolean(item.instanceName));
+    }
+    return [];
+  }
+
+  async findRemoteInstance(instanceName: string): Promise<EvogoRemoteInstance | null> {
+    const normalized = instanceName.trim().toLowerCase();
+    if (!normalized) return null;
+    const all = await this.listAllInstances();
+    return (
+      all.find((item) => item.instanceName.trim().toLowerCase() === normalized) ?? null
+    );
+  }
+
+  async disconnectInstance(params: {
+    instanceName: string;
+    instanceApiKey?: string;
+  }): Promise<void> {
+    const body = JSON.stringify({
+      instanceName: params.instanceName,
+      name: params.instanceName,
+      instance: params.instanceName,
+    });
+    const attempts: Array<{ path: string; method: 'POST' | 'DELETE'; body?: string; apiKey?: string }> = [
+      { path: '/instance/disconnect', method: 'POST', body, apiKey: params.instanceApiKey },
+      { path: '/instance/disconnect', method: 'POST', body },
+    ];
+    for (const attempt of attempts) {
+      const res = await this.requestJson(attempt.path, {
+        method: attempt.method,
+        apiKey: attempt.apiKey,
+        body: attempt.body,
+      });
+      if (res.ok) return;
+    }
+    await this.logoutInstance(params);
+  }
+
+  async deleteRemoteInstance(params: {
+    instanceName: string;
+    instanceId?: string | null;
+    instanceApiKey?: string;
+  }): Promise<void> {
+    let instanceId = params.instanceId?.trim() || null;
+    if (!instanceId) {
+      const remote = await this.findRemoteInstance(params.instanceName);
+      instanceId = remote?.instanceId ?? null;
+    }
+
+    if (instanceId) {
+      const res = await this.requestJson(
+        `/instance/delete/${encodeURIComponent(instanceId)}`,
+        { method: 'DELETE', apiKey: params.instanceApiKey },
+      );
+      if (res.ok) return;
+      this.logger.warn(
+        `Evogo delete ${params.instanceName} HTTP ${res.status}: ${this.readErrorMessage(res.raw, 'delete failed')}`,
+      );
+    }
+
+    try {
+      await this.disconnectInstance({
+        instanceName: params.instanceName,
+        instanceApiKey: params.instanceApiKey,
+      });
+    } catch (e) {
+      this.logger.warn(
+        `Evogo delete fallback disconnect for ${params.instanceName}: ${e instanceof Error ? e.message : e}`,
+      );
+    }
+  }
+
+  async forceReconnectInstance(params: {
+    instanceName: string;
+    instanceId?: string | null;
+    instanceApiKey?: string;
+    webhookUrl?: string;
+  }): Promise<EvogoConnectResult> {
+    let instanceId = params.instanceId?.trim() || null;
+    if (!instanceId) {
+      const remote = await this.findRemoteInstance(params.instanceName);
+      instanceId = remote?.instanceId ?? null;
+    }
+
+    if (instanceId) {
+      const res = await this.requestJsonWithManagerFallback(
+        `/instance/forcereconnect/${encodeURIComponent(instanceId)}`,
+        {
+          method: 'POST',
+          apiKey: params.instanceApiKey,
+          body: JSON.stringify({
+            instanceName: params.instanceName,
+            name: params.instanceName,
+            instance: params.instanceName,
+            webhookUrl: params.webhookUrl,
+          }),
+        },
+      );
+      if (res.ok) {
+        const parsed = this.parseConnectQr(res.raw);
+        if (parsed.qrCode || parsed.qrText) return parsed;
+      }
+    }
+
+    const reconnectRes = await this.requestJsonWithManagerFallback('/instance/reconnect', {
+      method: 'POST',
+      apiKey: params.instanceApiKey,
+      body: JSON.stringify({
+        instanceName: params.instanceName,
+        name: params.instanceName,
+        instance: params.instanceName,
+        webhookUrl: params.webhookUrl,
+      }),
+    });
+    if (reconnectRes.ok) {
+      const parsed = this.parseConnectQr(reconnectRes.raw);
+      if (parsed.qrCode || parsed.qrText) return parsed;
+    }
+
+    return this.connectInstance({
+      instanceName: params.instanceName,
+      instanceApiKey: params.instanceApiKey,
+      webhookUrl: params.webhookUrl,
+    });
+  }
+
+  async getInstanceInfo(params: {
+    instanceId: string;
+    instanceApiKey?: string;
+  }): Promise<EvogoInstanceConfig> {
+    const res = await this.requestJsonWithManagerFallback(
+      `/instance/info/${encodeURIComponent(params.instanceId)}`,
+      { method: 'GET', apiKey: params.instanceApiKey },
+    );
+    if (!res.ok) {
+      throw new Error(this.readErrorMessage(res.raw, 'No se pudo obtener la instancia'));
+    }
+    return this.parseInstanceConfig(res.raw);
+  }
+
+  async getAdvancedSettings(params: {
+    instanceId: string;
+    instanceApiKey?: string;
+  }): Promise<EvogoAdvancedSettings> {
+    const res = await this.requestJsonWithManagerFallback(
+      `/instance/${encodeURIComponent(params.instanceId)}/advanced-settings`,
+      { method: 'GET', apiKey: params.instanceApiKey },
+    );
+    if (!res.ok) {
+      return {
+        alwaysOnline: false,
+        rejectCall: true,
+        readMessages: false,
+        ignoreGroups: true,
+        ignoreStatus: false,
+        msgRejectCall: '',
+      };
+    }
+    return this.parseAdvancedSettings(res.raw);
+  }
+
+  async updateAdvancedSettings(params: {
+    instanceId: string;
+    instanceApiKey?: string;
+    settings: EvogoAdvancedSettings;
+  }): Promise<void> {
+    const res = await this.requestJsonWithManagerFallback(
+      `/instance/${encodeURIComponent(params.instanceId)}/advanced-settings`,
+      {
+        method: 'PUT',
+        apiKey: params.instanceApiKey,
+        body: JSON.stringify(params.settings),
+      },
+    );
+    if (!res.ok) {
+      throw new Error(this.readErrorMessage(res.raw, 'No se pudieron guardar las opciones avanzadas'));
+    }
+  }
+
+  async updateInstanceWebhook(params: {
+    instanceName: string;
+    instanceApiKey?: string;
+    webhookUrl: string;
+    events: string[];
+    rabbitmqEnable?: string;
+    websocketEnable?: string;
+    natsEnable?: string;
+  }): Promise<void> {
+    const subscribe = this.normalizeWebhookEvents(params.events);
+    const res = await this.requestJsonWithManagerFallback('/instance/connect', {
+      method: 'POST',
+      apiKey: params.instanceApiKey,
+      body: JSON.stringify({
+        instanceName: params.instanceName,
+        name: params.instanceName,
+        instance: params.instanceName,
+        webhookUrl: params.webhookUrl,
+        subscribe,
+        rabbitmqEnable: params.rabbitmqEnable || 'Padrão',
+        websocketEnable: params.websocketEnable || 'Padrão',
+        natsEnable: params.natsEnable || 'Padrão',
+      }),
+    });
+    if (!res.ok) {
+      throw new Error(this.readErrorMessage(res.raw, 'No se pudo guardar el webhook'));
+    }
+  }
+
   /**
    * Evolution GO autentica rutas de instancia con el header `apikey`
    * igual al **token de la instancia** (no la GLOBAL_API_KEY).
@@ -525,13 +759,42 @@ export class EvogoClient {
     return { ok: res.ok, status: res.status, raw: res.raw };
   }
 
+  /** Guarda/renombra contacto en la agenda de WhatsApp (Evolution API). */
+  async saveContact(params: {
+    instanceApiKey: string;
+    number: string;
+    name: string;
+    saveOnDevice?: boolean;
+  }): Promise<EvogoSendTextResult> {
+    const body = JSON.stringify({
+      number: params.number,
+      name: params.name,
+      saveOnDevice: params.saveOnDevice ?? true,
+    });
+    const paths = ['/chat/saveContact', '/contact/save', '/chat/contact/save'];
+    let last: EvogoSendTextResult = { ok: false, status: 0, raw: null };
+    for (const path of paths) {
+      const res = await this.requestJsonWithManagerFallback(path, {
+        method: 'POST',
+        apiKey: params.instanceApiKey,
+        body,
+      });
+      last = { ok: res.ok, status: res.status, raw: res.raw };
+      if (res.ok) return last;
+    }
+    this.logger.warn(
+      `Evogo saveContact falló para ${params.number}: HTTP ${last.status}: ${JSON.stringify(last.raw)?.slice(0, 300)}`,
+    );
+    return last;
+  }
+
   async downloadMedia(params: {
     instanceApiKey: string;
     message: Record<string, unknown>;
   }): Promise<Buffer | null> {
     const preferredApiKey = params.instanceApiKey.trim() || null;
     const body = JSON.stringify({ message: params.message });
-    const url = `${this.baseUrl}/message/downloadimage/${params.instanceApiKey}`;
+    const url = `${this.baseUrl()}/message/downloadimage/${params.instanceApiKey}`;
 
     let response = await fetch(url, {
       method: 'POST',
@@ -608,6 +871,161 @@ export class EvogoClient {
       'logout',
       'offline',
     ].includes(normalized);
+  }
+
+  private parseAdvancedSettings(raw: unknown): EvogoAdvancedSettings {
+    const root = this.asRecord(raw);
+    const data = this.asRecord(root?.data) ?? root;
+    return {
+      alwaysOnline: data?.alwaysOnline === true,
+      rejectCall: data?.rejectCall !== false,
+      readMessages: data?.readMessages === true,
+      ignoreGroups: data?.ignoreGroups === true,
+      ignoreStatus: data?.ignoreStatus === true,
+      msgRejectCall: this.asString(data?.msgRejectCall) || '',
+    };
+  }
+
+  private parseInstanceConfig(raw: unknown): EvogoInstanceConfig {
+    const root = this.asRecord(raw);
+    const data = this.asRecord(root?.data) ?? root;
+    const conn = this.readConnectionNode(raw);
+    const eventsRaw =
+      data?.webhookEvents ??
+      data?.WebhookEvents ??
+      data?.subscribe ??
+      data?.events ??
+      root?.webhookEvents ??
+      root?.subscribe;
+    const webhookEvents = Array.isArray(eventsRaw)
+      ? eventsRaw.filter((item): item is string => typeof item === 'string')
+      : typeof eventsRaw === 'string'
+        ? eventsRaw.split(',').map((s) => s.trim()).filter(Boolean)
+        : [];
+    return {
+      instanceId:
+        this.asString(data?.id) ||
+        this.asString(data?.instanceId) ||
+        this.asString(root?.id) ||
+        null,
+      instanceName: conn.instanceName || this.asString(data?.name) || '',
+      token:
+        this.asString(data?.token) ||
+        this.asString(this.asRecord(data?.hash)?.apikey) ||
+        this.asString(root?.token) ||
+        null,
+      webhookUrl:
+        this.asString(data?.webhookUrl) ||
+        this.asString(data?.webhook) ||
+        this.asString(root?.webhookUrl) ||
+        null,
+      webhookEvents,
+      profileName:
+        this.asString(data?.profileName) ||
+        this.asString(data?.pushName) ||
+        conn.instanceName,
+      number: conn.wid,
+      connected: conn.connected === true || this.normalizeConnectionState(conn.state) === 'open',
+      state: conn.state,
+      rabbitmqEnable: this.asString(data?.rabbitmqEnable),
+      websocketEnable: this.asString(data?.websocketEnable),
+      natsEnable: this.asString(data?.natsEnable),
+    };
+  }
+
+  private normalizeWebhookEvents(events: string[]): string[] {
+    const normalized = events
+      .map((event) => event.trim().toUpperCase())
+      .filter(Boolean);
+    if (normalized.includes('ALL')) {
+      return [...this.defaultWebhookEvents, 'ALL'];
+    }
+    const expanded = new Set<string>(normalized);
+    if (expanded.has('MESSAGE')) {
+      expanded.add('MESSAGES_UPSERT');
+      expanded.add('MESSAGES_SET');
+    }
+    if (expanded.has('CONNECTION')) {
+      expanded.add('CONNECTION_UPDATE');
+    }
+    if (expanded.has('QRCODE')) {
+      expanded.add('QRCODE_UPDATED');
+    }
+    if (expanded.has('READ_RECEIPT')) {
+      expanded.add('RECEIPT');
+      expanded.add('MESSAGES_UPDATE');
+    }
+    return [...expanded];
+  }
+
+  private normalizeConnectionState(state: string | null | undefined): string {
+    const s = (state || '').trim().toLowerCase();
+    if (s.includes('open') || s.includes('connected')) return 'open';
+    if (s.includes('connect')) return 'connecting';
+    if (s.includes('close') || s.includes('disconnect')) return 'close';
+    if (s.includes('qr')) return 'qr_ready';
+    return s || 'pending';
+  }
+
+  private extractInstanceArray(raw: unknown): unknown[] {
+    if (Array.isArray(raw)) return raw;
+    const root = this.asRecord(raw);
+    if (Array.isArray(root?.data)) return root.data as unknown[];
+    if (Array.isArray(root?.Data)) return root.Data as unknown[];
+    if (Array.isArray(root?.instances)) return root.instances as unknown[];
+    return [];
+  }
+
+  private readRemoteInstanceNode(node: unknown): EvogoRemoteInstance {
+    const conn = this.readConnectionNode(node);
+    const root = this.asRecord(node);
+    const instance = this.asRecord(root?.instance) ?? this.asRecord(root?.Instance);
+    const data = this.asRecord(root?.data) ?? this.asRecord(root?.Data);
+    const hash = this.asRecord(root?.hash) ?? this.asRecord(data?.hash);
+    const instanceId =
+      this.asString(root?.id) ||
+      this.asString(root?.instanceId) ||
+      this.asString(instance?.id) ||
+      this.asString(instance?.instanceId) ||
+      this.asString(data?.id) ||
+      this.asString(data?.instanceId) ||
+      null;
+    const instanceApiKey =
+      this.asString(hash?.apikey) ||
+      this.asString(root?.token) ||
+      this.asString(data?.token) ||
+      this.asString(instance?.token) ||
+      null;
+    return {
+      instanceName: conn.instanceName || '',
+      instanceId,
+      instanceApiKey,
+      state: conn.state,
+      wid: conn.wid,
+      connected: conn.connected,
+    };
+  }
+
+  private parseConnectQr(raw: unknown): EvogoConnectResult {
+    const root = this.asRecord(raw);
+    const data = this.asRecord(root?.data);
+    const qrcode =
+      this.asRecord(root?.qrcode) ??
+      this.asRecord(root?.qr) ??
+      this.asRecord(data?.qrcode) ??
+      data ??
+      root;
+    return {
+      qrCode: this.pickQrBase64(qrcode),
+      qrText: this.pickQrText(qrcode),
+      pairingCode: this.asString(qrcode?.pairingCode) || null,
+      count:
+        typeof qrcode?.count === 'number'
+          ? qrcode.count
+          : typeof data?.count === 'number'
+            ? data.count
+            : null,
+    };
   }
 
   private readConnectionNode(node: unknown): {

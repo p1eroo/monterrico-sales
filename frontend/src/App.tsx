@@ -47,6 +47,9 @@ const FlotaProspectoDetail = lazy(() => import('@/pages/flota/FlotaProspectoDeta
 const FlotaConductores = lazy(() => import('@/pages/flota/FlotaConductores'));
 const FlotaReportes = lazy(() => import('@/pages/flota/FlotaReportes'));
 const FlotaMensajes = lazy(() => import('@/pages/flota/FlotaMensajes'));
+const FlotaChatpool = lazy(() => import('@/pages/flota/FlotaChatpool'));
+const FlotaIntegracionesLayout = lazy(() => import('@/pages/flota/FlotaIntegracionesLayout'));
+const FlotaIntegracionEvolution = lazy(() => import('@/pages/flota/FlotaIntegracionEvolution'));
 const FlotaCalendario = lazy(() => import('@/pages/flota/FlotaCalendario'));
 const PrivacyPolicy = lazy(() => import('@/pages/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('@/pages/TermsOfService'));
@@ -193,6 +196,13 @@ function MainRoutes() {
         <Route path="/flota/conductores" element={<FlotaConductores />} />
         <Route path="/flota/reportes" element={<FlotaReportes />} />
         <Route path="/flota/calendario" element={<FlotaCalendario />} />
+        <Route path="/flota/whatsapp" element={<FlotaChatpool />} />
+        <Route path="/flota/integraciones" element={<FlotaIntegracionesLayout />}>
+          <Route index element={<Navigate to="evolution" replace />} />
+          <Route path="evolution" element={<FlotaIntegracionEvolution />} />
+        </Route>
+        <Route path="/flota/bandeja/*" element={<Navigate to="/flota/whatsapp" replace />} />
+        <Route path="/flota/chatpool" element={<Navigate to="/flota/whatsapp" replace />} />
         <Route path="/marketing" element={<Navigate to="/marketing/dashboard" replace />} />
         <Route path="/marketing/dashboard" element={<MarketingDashboard />} />
         <Route path="/marketing/leads" element={<MarketingLeads />} />

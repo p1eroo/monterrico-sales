@@ -283,6 +283,24 @@ export async function fetchOperadores(): Promise<OperadorUser[]> {
   return api<OperadorUser[]>('/flota-prospectos/operadores');
 }
 
+export async function flotaProspectoSetEstado(
+  id: string,
+  estado: string,
+  extra?: { fechaCita?: string },
+): Promise<void> {
+  await api(`/flota-prospectos/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ estado, ...extra }),
+  });
+}
+
+export async function flotaProspectoSetOperador(id: string, operador: string | null): Promise<void> {
+  await api(`/flota-prospectos/${id}/operador`, {
+    method: 'PATCH',
+    body: JSON.stringify({ operador }),
+  });
+}
+
 export interface FlotaProspectoDetalle {
   id: string; nombreCompleto: string; celular: string | null; operador: string | null; estado: string;
   edad?: number | null; modalidad?: string | null; placa?: string | null; aireAcondicionado?: string | null; anioVehiculo?: number | null;

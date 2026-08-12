@@ -11,6 +11,7 @@ import { FLOTA_PROSPECTO_FIELD_LABELS } from '../audit-detail/audit-field-labels
 import { buildChangeEntries } from '../common/audit-diff.util';
 import { ChatwootOperadorSyncService } from '../chatwoot/chatwoot-operador-sync.service';
 import { ChatwootContactNameSyncService } from '../chatwoot/chatwoot-contact-name-sync.service';
+import { WhatsappProspectoNameSyncService } from '../whatsapp/whatsapp-prospecto-name-sync.service';
 import { FlotaProspectosGateway } from './flota-prospectos.gateway';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import type { ImportJobProgressInput } from '../import-export/import-export-jobs.service';
@@ -152,6 +153,7 @@ export class FlotaProspectosService {
     private operadorSync: ChatwootOperadorSyncService,
     private prospectosGateway: FlotaProspectosGateway,
     private contactNameSync: ChatwootContactNameSyncService,
+    private whatsappNameSync: WhatsappProspectoNameSyncService,
   ) {}
 
   private normalizeCelular(celular?: string | null): string | null {
@@ -661,6 +663,7 @@ export class FlotaProspectosService {
       safeData.nombreCompleto !== existing.nombreCompleto
     ) {
       void this.contactNameSync.pushNameToChatwoot(id, updated.nombreCompleto);
+      void this.whatsappNameSync.pushNameFromProspecto(id, updated.nombreCompleto);
     }
 
     return updated;

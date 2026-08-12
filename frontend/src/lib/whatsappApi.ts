@@ -35,6 +35,8 @@ export type WhatsappMessageItem = {
   evoInstanceName: string | null;
   /** Solo salientes: sent | delivered | read (webhook Receipt / MESSAGES_UPDATE). */
   waOutboundStatus?: string | null;
+  /** Usuario CRM que envió el mensaje (salientes). */
+  senderName?: string | null;
   attachments?: {
     id: string;
     name: string;
@@ -60,6 +62,11 @@ export type WhatsappSocketPayload =
       contactId: string;
       messageId: string;
       forEveryone?: boolean;
+    }
+  | {
+      type: 'prospecto_updated';
+      contactId: string;
+      name: string;
     };
 
 export async function fetchWhatsappMessages(

@@ -190,6 +190,42 @@ export class WhatsappController {
     return this.whatsapp.deleteFlotaInstance(id);
   }
 
+  @Post('flota/instances/:id/reconnect')
+  @RequirePermissions('flota_mensajes.ver')
+  async reconnectFlotaInstance(@Param('id') id: string) {
+    return this.whatsapp.reconnectFlotaInstance(id);
+  }
+
+  @Get('flota/instances/:id/config')
+  @RequirePermissions('flota_mensajes.ver')
+  async getFlotaInstanceConfig(@Param('id') id: string) {
+    return this.whatsapp.getFlotaInstanceConfig(id);
+  }
+
+  @Patch('flota/instances/:id/config')
+  @RequirePermissions('flota_mensajes.ver')
+  async updateFlotaInstanceConfig(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      webhookUrl?: string;
+      webhookEvents?: string[];
+      rabbitmqEnable?: string;
+      websocketEnable?: string;
+      natsEnable?: string;
+      advanced?: {
+        alwaysOnline?: boolean;
+        rejectCall?: boolean;
+        readMessages?: boolean;
+        ignoreGroups?: boolean;
+        ignoreStatus?: boolean;
+        msgRejectCall?: string;
+      };
+    },
+  ) {
+    return this.whatsapp.updateFlotaInstanceConfig(id, body);
+  }
+
   @Patch('flota/instances/:id/flags')
   @RequirePermissions('flota_mensajes.ver')
   async updateFlotaInstanceFlags(
@@ -225,6 +261,19 @@ export class WhatsappController {
       ? Number.parseInt(limit ?? '50', 10)
       : 50;
     return this.whatsapp.listForFlotaProspecto(id, Math.min(200, Math.max(1, lim)), before);
+  }
+
+  @Post('flota/link-prospecto')
+  @RequirePermissions('flota_prospectos.editar')
+  async linkFlotaProspecto(
+    @Body() body: { prospectoId?: string; phone?: string },
+  ) {
+    const prospectoId = body.prospectoId?.trim();
+    const phone = body.phone?.trim();
+    if (!prospectoId || !phone) {
+      throw new BadRequestException('prospectoId y phone son obligatorios');
+    }
+    return this.whatsapp.linkMessagesToProspecto(prospectoId, phone);
   }
 
   @Post('flota/send')
@@ -417,6 +466,18 @@ export class WhatsappController {
     const ok = this.whatsapp.resumeFlotaBulk(jobId);
     if (!ok) throw new NotFoundException('Job no encontrado o ya finalizó');
     return { ok: true };
+  }
+
+  @Delete('flota/conversations/:id')
+  @RequirePermissions('flota_mensajes.editar')
+  async deleteFlotaConversation(
+    @Param('id') id: string,
+    @Query('removeProspecto') removeProspecto?: string,
+  ) {
+    return this.whatsapp.deleteFlotaConversation(id, {
+      removeProspecto:
+        removeProspecto === 'true' ? true : removeProspecto === 'false' ? false : undefined,
+    });
   }
 
   @Delete('flota/messages/:id')
