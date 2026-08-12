@@ -66,6 +66,8 @@ export function ChatComposer() {
 
   if (!activeConversationId || connectionState !== 'ready') return null;
 
+  const conversationId = activeConversationId;
+
   function clearPendingAttachment() {
     setPendingAttachment((prev) => {
       if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl);
@@ -106,7 +108,7 @@ export function ChatComposer() {
     setContent('');
     setSending(true);
     try {
-      await sendMessage(activeConversationId, text);
+      await sendMessage(conversationId, text);
     } finally {
       setSending(false);
     }
@@ -116,7 +118,7 @@ export function ChatComposer() {
     if (!pendingAttachment || sendingAttachment) return;
     setSendingAttachment(true);
     try {
-      await sendMediaMessage(activeConversationId, {
+      await sendMediaMessage(conversationId, {
         type: pendingAttachment.type,
         file: pendingAttachment.file,
         caption: pendingAttachment.caption,
@@ -169,11 +171,11 @@ export function ChatComposer() {
   }
 
   async function sendAudioBlob(blob: Blob) {
-    if (!activeConversationId) return;
+    if (!conversationId) return;
     const file = new File([blob], 'audio.webm', { type: blob.type });
     setSending(true);
     try {
-      await sendMediaMessage(activeConversationId, { type: 'audio', file });
+      await sendMediaMessage(conversationId, { type: 'audio', file });
     } catch {
       /* toast handled in store */
     } finally {
