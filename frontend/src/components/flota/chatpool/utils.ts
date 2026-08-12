@@ -1,5 +1,5 @@
 import { API_BASE } from '@/lib/api';
-import type { Message } from './types';
+import type { Conversation, Message } from './types';
 
 export function formatTime(date: Date): string {
   const now = new Date();
@@ -90,9 +90,9 @@ export function resolveCanonicalConversationId(
 
 /** Resuelve la conversación visible para un id activo (directo o por teléfono). */
 export function findConversationInList(
-  conversations: { id: string; contact: { phone?: string | null } }[],
+  conversations: Conversation[],
   activeId: string | null,
-): { id: string; contact: { phone?: string | null }; prospectoActivo?: boolean } | null {
+): Conversation | null {
   if (!activeId) return null;
   const direct = conversations.find((c) => c.id === activeId);
   if (direct) return direct;

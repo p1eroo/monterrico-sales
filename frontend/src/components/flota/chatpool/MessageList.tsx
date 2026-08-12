@@ -12,6 +12,7 @@ export function MessageList() {
   const messages = useChatpoolStore((s) => s.messages);
   const messagesLoading = useChatpoolStore((s) => s.messagesLoading);
   const connectionState = useChatpoolStore((s) => s.connectionState);
+  const currentAgentName = useChatpoolStore((s) => s.currentAgentName);
   const openLightbox = useChatpoolStore((s) => s.openLightbox);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -125,6 +126,7 @@ export function MessageList() {
                     key={msg.id}
                     message={msg}
                     contactName={activeConversation.contact.name}
+                    agentFallbackName={currentAgentName}
                     isLastInGroup={isLastInGroup}
                     onImageClick={openLightbox}
                   />

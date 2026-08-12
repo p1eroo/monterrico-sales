@@ -2944,6 +2944,24 @@ export class WhatsappService {
 
     if (isWaChat) {
       phoneRaw = prospectoId.slice(3);
+      const found = await this.findFlotaProspectoByPhone(phoneRaw);
+      if (found) {
+        flotaProspecto = await this.prisma.flotaProspecto.findUnique({
+          where: { id: found.id },
+          select: { id: true, nombreCompleto: true, celular: true, movil: true, eliminadoAt: true },
+        });
+        if (flotaProspecto && !flotaProspecto.eliminadoAt) {
+          resolvedProspectoId = flotaProspecto.id;
+          const peerDigits = phoneRaw.replace(/\D/g, '').slice(-9);
+          if (peerDigits.length >= 8) {
+            await this.prospectoNameSync.linkMessagesToProspecto(
+              flotaProspecto.id,
+              peerDigits,
+              instance.instanceName,
+            );
+          }
+        }
+      }
     } else {
       flotaProspecto = await this.prisma.flotaProspecto.findUnique({
         where: { id: prospectoId },
@@ -3029,7 +3047,7 @@ export class WhatsappService {
       },
     });
 
-    const socketContactId = isWaChat ? prospectoId : (resolvedProspectoId ?? prospectoId);
+    const socketContactId = resolvedProspectoId ?? prospectoId;
 
     const attachmentPayload: {
       id: string; name: string; mimeType: string; size: number; mediaType: string; url: string; downloadUrl: string;
@@ -3083,33 +3101,54 @@ export class WhatsappService {
 
     await this.emitListItemById(socketContactId, created.id);
 
-    this.gateway.emitToContact(socketContactId, {
-      type: 'message',
-      contactId: socketContactId,
-      item: { ...created, attachments: attachmentPayload } as unknown as Record<string, unknown>,
-    });
-
-    // Auto-asignar al operador que envía el primer mensaje
-    if (resolvedProspectoId && flotaProspecto && !flotaProspecto.eliminadoAt) {
-      const fullProspecto = await this.prisma.flotaProspecto.findUnique({
-        where: { id: resolvedProspectoId },
-        select: { operador: true },
-      });
-      if (!fullProspecto?.operador?.trim()) {
-        const user = await this.prisma.user.findUnique({
-          where: { id: userId },
-          select: { name: true, role: { select: { slug: true } } },
-        });
-        if (user?.name && user?.role?.slug === 'operador') {
-          await this.prisma.flotaProspecto.update({
-            where: { id: resolvedProspectoId },
-            data: { operador: user.name },
-          });
-        }
-      }
+    let operadorAssigned: string | null = null;
+    if (resolvedProspectoId) {
+      operadorAssigned = await this.autoAssignOperadorOnFirstOutbound(resolvedProspectoId, userId);
     }
 
-    return { ok: true, waMessageId: sent.waMessageId ?? null };
+    return {
+      ok: true,
+      waMessageId: sent.waMessageId ?? null,
+      ...(operadorAssigned ? { operadorAssigned } : {}),
+      ...(resolvedProspectoId && isWaChat ? { linkedProspectoId: resolvedProspectoId } : {}),
+    };
+  }
+
+  /** Auto-asigna al operador que envía el primer mensaje si el prospecto no tiene operador. */
+  private async autoAssignOperadorOnFirstOutbound(
+    prospectoId: string,
+    userId: string,
+  ): Promise<string | null> {
+    const prospecto = await this.prisma.flotaProspecto.findUnique({
+      where: { id: prospectoId },
+      select: { operador: true, eliminadoAt: true },
+    });
+    if (!prospecto || prospecto.eliminadoAt || prospecto.operador?.trim()) {
+      return null;
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true, role: { select: { slug: true } } },
+    });
+    if (!user?.name?.trim() || user.role?.slug !== 'operador') {
+      return null;
+    }
+
+    const operador = user.name.trim();
+    await this.prisma.flotaProspecto.update({
+      where: { id: prospectoId },
+      data: { operador, asignadoAt: new Date() },
+    });
+
+    this.gateway.emitToContact(prospectoId, {
+      type: 'operador_assigned',
+      contactId: prospectoId,
+      operador,
+    });
+
+    this.logger.log(`Operador auto-asignado en primer envío: ${operador} → prospecto ${prospectoId}`);
+    return operador;
   }
 
   async sendBulk(dto: {

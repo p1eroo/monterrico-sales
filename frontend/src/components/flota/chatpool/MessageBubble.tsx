@@ -8,6 +8,7 @@ import type { Message } from './types';
 interface MessageBubbleProps {
   message: Message;
   contactName: string;
+  agentFallbackName?: string | null;
   isLastInGroup: boolean;
   onImageClick?: (messageId: string) => void;
 }
@@ -21,7 +22,7 @@ function StatusIcon({ status }: { status?: Message['status'] }) {
 
 const PLACEHOLDER_BODIES = new Set(['[Imagen]', '[Documento]', '[Video]', '[Audio]', '[Sticker]']);
 
-export function MessageBubble({ message, contactName, isLastInGroup, onImageClick }: MessageBubbleProps) {
+export function MessageBubble({ message, contactName, agentFallbackName, isLastInGroup, onImageClick }: MessageBubbleProps) {
   if (message.senderType === 'system') {
     return (
       <div className="flex justify-center my-3 px-4">
@@ -33,7 +34,7 @@ export function MessageBubble({ message, contactName, isLastInGroup, onImageClic
   }
 
   const isAgent = message.senderType === 'agent' || message.senderType === 'bot';
-  const senderName = isAgent ? (message.senderName ?? 'Agente') : contactName;
+  const senderName = isAgent ? (message.senderName ?? agentFallbackName ?? 'Agente') : contactName;
   const hasAttachment = message.contentType !== 'text';
   const isImageMessage = message.contentType === 'image';
   const showText =

@@ -85,7 +85,11 @@ export function mapWhatsappMessage(item: WhatsappMessageItem, conversationId: st
   const resolvedUrl = fileUrl ? fileUrl : undefined;
 
   const senderName =
-    item.direction === 'outbound' ? item.senderName?.trim() || undefined : undefined;
+    item.direction === 'outbound'
+      ? item.senderName?.trim() ||
+        (item as { createdBy?: { name?: string | null } }).createdBy?.name?.trim() ||
+        undefined
+      : undefined;
 
   if (content === 'Este mensaje fue eliminado') {
     return {

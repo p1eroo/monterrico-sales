@@ -97,6 +97,7 @@ function mergeMessageUpdate(prev: Message, next: Message): Message {
   return {
     ...prev,
     ...next,
+    senderName: next.senderName ?? prev.senderName,
     fileUrl,
     attachmentUrl,
     attachmentId: next.attachmentId ?? prev.attachmentId,
@@ -148,6 +149,7 @@ interface ChatpoolState {
     prospectoId: string,
     patch: { name?: string; phone?: string | null; operador?: string | null; estado?: string },
   ) => void;
+  applyOperadorAssigned: (contactId: string, operador: string) => void;
   createProspectoFromConversation: (conversationId: string) => Promise<void>;
   removeProspectoFromConversation: (prospectoId: string) => Promise<void>;
   deleteConversation: (conversationId: string, opts?: { removeProspecto?: boolean }) => Promise<void>;
@@ -174,6 +176,25 @@ function patchConversation(
 function operadorToAssignee(operador: string) {
   const name = operador.trim();
   return { id: `op-${name}`, name, avatar: name.slice(0, 2).toUpperCase() };
+}
+
+function patchOperadorForContact(
+  list: Conversation[],
+  contactId: string,
+  operador: string | null,
+): Conversation[] {
+  const target = list.find((c) => c.id === contactId);
+  const key = target ? conversationPhoneKey(target) : '';
+  return list.map((c) => {
+    const sameContact = c.id === contactId || (key.length >= 8 && conversationPhoneKey(c) === key);
+    if (!sameContact) return c;
+    return {
+      ...c,
+      operador,
+      assignee: operador ? operadorToAssignee(operador) : undefined,
+      prospectoActivo: c.prospectoActivo !== false,
+    };
+  });
 }
 
 function upsertConversation(list: Conversation[], next: Conversation): Conversation[] {
@@ -430,6 +451,12 @@ export const useChatpoolStore = create<ChatpoolState>((set, get) => ({
     }));
   },
 
+  applyOperadorAssigned: (contactId, operador) => {
+    set((s) => ({
+      conversations: patchOperadorForContact(s.conversations, contactId, operador),
+    }));
+  },
+
   createProspectoFromConversation: async (conversationId) => {
     const conv = get().conversations.find((c) => c.id === conversationId);
     if (!conv) return;
@@ -589,7 +616,10 @@ export const useChatpoolStore = create<ChatpoolState>((set, get) => ({
     });
 
     try {
-      await sendFlotaWhatsappMessage(conversationId, trimmed);
+      const result = await sendFlotaWhatsappMessage(conversationId, trimmed);
+      if (result.operadorAssigned) {
+        get().applyOperadorAssigned(result.linkedProspectoId ?? conversationId, result.operadorAssigned);
+      }
       markConversationAsRead(conversationId).catch(() => {});
     } catch (e) {
       set((s) => ({
@@ -651,7 +681,7 @@ export const useChatpoolStore = create<ChatpoolState>((set, get) => ({
       else if (params.type === 'audio') url = await uploadFlotaAudio(params.file);
       else url = await uploadFlotaDocument(params.file);
 
-      await sendFlotaWhatsappMessage(
+      const result = await sendFlotaWhatsappMessage(
         conversationId,
         caption,
         params.type === 'image' ? url : undefined,
@@ -660,6 +690,9 @@ export const useChatpoolStore = create<ChatpoolState>((set, get) => ({
         params.type === 'document' ? params.file.name : undefined,
         params.type === 'document' ? params.file.type : undefined,
       );
+      if (result.operadorAssigned) {
+        get().applyOperadorAssigned(result.linkedProspectoId ?? conversationId, result.operadorAssigned);
+      }
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       markConversationAsRead(conversationId).catch(() => {});
     } catch (e) {
@@ -815,6 +848,13 @@ export const useChatpoolStore = create<ChatpoolState>((set, get) => ({
             ? { ...c, contact: { ...c.contact, name: payload.name } }
             : c,
         ),
+      }));
+      return;
+    }
+
+    if (payload.type === 'operador_assigned') {
+      set((s) => ({
+        conversations: patchOperadorForContact(s.conversations, payload.contactId, payload.operador),
       }));
       return;
     }

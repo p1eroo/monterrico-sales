@@ -138,8 +138,18 @@ export async function sendFlotaWhatsappMessage(
   documentUrl?: string,
   documentName?: string,
   documentMimeType?: string,
-): Promise<{ ok: boolean; waMessageId: string | null }> {
-  return api<{ ok: boolean; waMessageId: string | null }>('/api/whatsapp/flota/send', {
+): Promise<{
+  ok: boolean;
+  waMessageId: string | null;
+  operadorAssigned?: string;
+  linkedProspectoId?: string;
+}> {
+  return api<{
+    ok: boolean;
+    waMessageId: string | null;
+    operadorAssigned?: string;
+    linkedProspectoId?: string;
+  }>('/api/whatsapp/flota/send', {
     method: 'POST',
     body: JSON.stringify({
       prospectoId,

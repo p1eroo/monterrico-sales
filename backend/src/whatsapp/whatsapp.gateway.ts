@@ -29,6 +29,11 @@ export type WhatsappSocketPayload =
       type: 'prospecto_updated';
       contactId: string;
       name: string;
+    }
+  | {
+      type: 'operador_assigned';
+      contactId: string;
+      operador: string;
     };
 
 export type FlotaBulkProgressPayload = {
