@@ -38,9 +38,12 @@ export function MessageBubble({ message, contactName, agentFallbackName, isLastI
   const senderName = isAgent ? (message.senderName ?? agentFallbackName ?? 'Agente') : contactName;
   const hasAttachment = message.contentType !== 'text';
   const isImageMessage = message.contentType === 'image';
+  const isAudioMessage = message.contentType === 'audio';
   const showText =
     message.content.trim().length > 0 &&
-    !(hasAttachment && PLACEHOLDER_BODIES.has(message.content.trim()));
+    !isAudioMessage &&
+    !(hasAttachment && PLACEHOLDER_BODIES.has(message.content.trim())) &&
+    !(hasAttachment && message.fileName && message.content.trim() === message.fileName);
 
   return (
     <div

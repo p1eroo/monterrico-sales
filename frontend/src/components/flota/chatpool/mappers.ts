@@ -82,7 +82,10 @@ export function mapWhatsappMessage(item: WhatsappMessageItem, conversationId: st
     fileName = attachment.name;
     fileSize = attachment.size;
     fileUrl = attachment.proxyUrl || attachment.downloadUrl || attachment.url || undefined;
-    if (!content && fileName) content = fileName;
+    // No usar el nombre de archivo como body en audio/imagen (evita "audio-enviado.mp3" bajo el player)
+    if (!content && fileName && contentType === 'file') content = fileName;
+    if (!content && contentType === 'audio') content = '[Audio]';
+    if (!content && contentType === 'image') content = '[Imagen]';
   }
 
   const resolvedUrl = fileUrl ? fileUrl : undefined;

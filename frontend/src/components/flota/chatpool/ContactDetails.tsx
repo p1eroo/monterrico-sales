@@ -2,17 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   PanelRightClose,
   Phone,
-  Download,
-  ExternalLink,
   X,
   Pencil,
-  FileText,
   Lock,
   UserPlus,
   UserMinus,
   Loader2,
   ImageIcon,
-  Music2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,7 +28,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { fetchOperadores, getOperatorDisplayName, type OperadorUser } from '@/lib/flotaProspectosApi';
-import { downloadWhatsappAttachment } from '@/lib/whatsappApi';
 import { toast } from '@/lib/notify';
 import { useAppStore } from '@/store';
 import { cn } from '@/lib/utils';
@@ -42,12 +37,12 @@ import { ProspectoEditDialog } from './ProspectoEditDialog';
 import {
   collectConversationAttachments,
   findConversationInList,
-  formatFileSize,
   getConductorCodigo,
   getMessagesForConversation,
   type ConversationAttachment,
 } from './utils';
 import { ConductorCodigoBadge } from './ui/ConductorCodigoBadge';
+import { FileAttachmentCard } from './FileAttachmentCard';
 import type { Conversation } from './types';
 
 const channelLabels: Record<string, string> = {
@@ -543,73 +538,18 @@ function FilesSection({ files }: { files: ConversationAttachment[] }) {
       ) : (
         <div className="space-y-2">
           {files.map((file) => (
-            <AttachmentFileRow key={file.id} file={file} />
+            <FileAttachmentCard
+              key={file.id}
+              fileName={file.name}
+              fileSize={file.size}
+              fileUrl={file.url}
+              attachmentUrl={file.url}
+              attachmentId={file.id}
+              variant="incoming"
+            />
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function AttachmentFileRow({ file }: { file: ConversationAttachment }) {
-  const [downloading, setDownloading] = useState(false);
-  const isAudio = file.mediaType === 'audio';
-
-  async function handleDownload() {
-    if (downloading) return;
-    setDownloading(true);
-    try {
-      await downloadWhatsappAttachment({
-        id: file.id,
-        name: file.name,
-        url: file.url,
-      });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'No se pudo descargar');
-    } finally {
-      setDownloading(false);
-    }
-  }
-
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/50 p-3">
-      <div
-        className={cn(
-          'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
-          isAudio ? 'bg-violet-500/15' : 'bg-red-500/15',
-        )}
-      >
-        {isAudio ? (
-          <Music2 className="h-5 w-5 text-violet-400" />
-        ) : (
-          <FileText className="h-5 w-5 text-red-400" />
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-foreground">{file.name}</p>
-        {file.size ? <p className="text-[11px] text-muted-foreground">{formatFileSize(file.size)}</p> : null}
-      </div>
-      <div className="flex shrink-0 items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-muted-foreground"
-          title="Descargar"
-          onClick={() => void handleDownload()}
-          disabled={downloading}
-        >
-          {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="w-4 h-4" />}
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-muted-foreground"
-          title="Abrir"
-          onClick={() => window.open(file.url, '_blank', 'noopener,noreferrer')}
-        >
-          <ExternalLink className="w-4 h-4" />
-        </Button>
-      </div>
     </div>
   );
 }

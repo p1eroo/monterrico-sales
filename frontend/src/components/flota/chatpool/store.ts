@@ -138,6 +138,8 @@ interface ChatpoolState {
   currentAgentName: string | null;
   lightboxMessageId: string | null;
   conductorCodigoByPhone: Record<string, string>;
+  /** Bridge DnD desde ChatArea → ChatComposer */
+  attachFileRequest: File | null;
 
   bootstrap: (currentAgentName?: string | null) => Promise<void>;
   refreshConversations: (opts?: { silent?: boolean }) => Promise<void>;
@@ -152,6 +154,8 @@ interface ChatpoolState {
   setContactSidebarOpen: (open: boolean) => void;
   openLightbox: (messageId: string) => void;
   closeLightbox: () => void;
+  requestAttachFile: (file: File) => void;
+  clearAttachFileRequest: () => void;
   updateOperador: (prospectoId: string, operador: string | null, operadores: OperadorUser[]) => Promise<void>;
   updateEstado: (prospectoId: string, estado: string, extra?: { fechaCita?: string }) => Promise<void>;
   applyProspectoPatch: (
@@ -246,6 +250,7 @@ export const useChatpoolStore = create<ChatpoolState>((set, get) => ({
   currentAgentName: null,
   lightboxMessageId: null,
   conductorCodigoByPhone: {},
+  attachFileRequest: null,
 
   bootstrap: async (currentAgentName) => {
     const prev = get();
@@ -492,6 +497,8 @@ export const useChatpoolStore = create<ChatpoolState>((set, get) => ({
   setContactSidebarOpen: (open) => set({ contactSidebarOpen: open }),
   openLightbox: (messageId) => set({ lightboxMessageId: messageId }),
   closeLightbox: () => set({ lightboxMessageId: null }),
+  requestAttachFile: (file) => set({ attachFileRequest: file }),
+  clearAttachFileRequest: () => set({ attachFileRequest: null }),
 
   updateOperador: async (prospectoId, operador, operadores) => {
     if (isWaConversationId(prospectoId)) {
@@ -779,7 +786,11 @@ export const useChatpoolStore = create<ChatpoolState>((set, get) => ({
     const state = get();
     const optimisticId = `opt:${Date.now()}`;
     const caption = params.caption?.trim() ?? '';
-    const previewUrl = params.type === 'image' ? URL.createObjectURL(params.file) : undefined;
+    // Preview local también para audio (evita burbuja "audio.webm" sin player)
+    const previewUrl =
+      params.type === 'image' || params.type === 'audio'
+        ? URL.createObjectURL(params.file)
+        : undefined;
     const contentType = params.type === 'image' ? 'image' : params.type === 'audio' ? 'audio' : 'file';
 
     const optimistic: Message = {
@@ -836,6 +847,14 @@ export const useChatpoolStore = create<ChatpoolState>((set, get) => ({
       if (result.operadorAssigned) {
         get().applyOperadorAssigned(result.linkedProspectoId ?? conversationId, result.operadorAssigned);
       }
+
+      // Quitar optimista al confirmar envío (el socket traerá el mensaje real)
+      set((s) => ({
+        messages: {
+          ...s.messages,
+          [conversationId]: (s.messages[conversationId] ?? []).filter((m) => m.id !== optimisticId),
+        },
+      }));
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       markConversationAsRead(conversationId).catch(() => {});
     } catch (e) {
@@ -877,7 +896,20 @@ export const useChatpoolStore = create<ChatpoolState>((set, get) => ({
 
         const bucketId = resolveMessageBucketId(activeId, resolvedId, isActive);
         const existing = s.messages[bucketId] ?? [];
-        const withoutOpt = existing.filter((m) => !m.id.startsWith('opt:') || m.content !== mapped.content);
+        // Quitar optimistas: mismo texto, o media saliente del mismo tipo (audio/imagen/archivo)
+        const withoutOpt = existing.filter((m) => {
+          if (!m.id.startsWith('opt:')) return true;
+          if (m.content === mapped.content) return false;
+          if (
+            mapped.senderType === 'agent' &&
+            m.senderType === 'agent' &&
+            mapped.contentType !== 'text' &&
+            m.contentType === mapped.contentType
+          ) {
+            return false;
+          }
+          return true;
+        });
         const deduped = withoutOpt.filter((m) => m.id !== mapped.id);
         const previous = existing.find((m) => m.id === mapped.id);
         const mappedForBucket = {

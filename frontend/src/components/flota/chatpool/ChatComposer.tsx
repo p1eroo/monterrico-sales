@@ -1,4 +1,12 @@
-import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type KeyboardEvent, type ReactNode } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ClipboardEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react';
 import {
   FileText,
   ImageIcon,
@@ -9,7 +17,6 @@ import {
   Plus,
   Send,
   Smile,
-  StopCircle,
   X,
   Zap,
 } from 'lucide-react';
@@ -27,79 +34,129 @@ import { toast } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 import { useChatpoolStore } from './store';
 import { FLOTA_QUICK_REPLIES } from './quickReplies';
-import { formatFileSize } from './utils';
+import {
+  attachmentTypeOf,
+  getClipboardAttachmentFile,
+  mergePendingAttachments,
+} from './attachmentUtils';
+import {
+  ComposerPendingAttachments,
+  type ComposerPendingAttachment,
+} from './ComposerPendingAttachments';
+import { VoiceRecorderBar, type VoiceRecordingResult } from './VoiceRecorderBar';
 
-type PendingAttachment = {
-  type: 'image' | 'audio' | 'document';
-  file: File;
-  previewUrl?: string;
-  caption: string;
-};
+function makePending(file: File): ComposerPendingAttachment {
+  return {
+    id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    file,
+    url: URL.createObjectURL(file),
+  };
+}
 
 export function ChatComposer() {
   const activeConversationId = useChatpoolStore((s) => s.activeConversationId);
   const connectionState = useChatpoolStore((s) => s.connectionState);
   const sendMessage = useChatpoolStore((s) => s.sendMessage);
   const sendMediaMessage = useChatpoolStore((s) => s.sendMediaMessage);
+  const attachFileRequest = useChatpoolStore((s) => s.attachFileRequest);
+  const clearAttachFileRequest = useChatpoolStore((s) => s.clearAttachFileRequest);
 
   const [content, setContent] = useState('');
   const [sending, setSending] = useState(false);
   const [toolbarOpen, setToolbarOpen] = useState(false);
   const [quickRepliesOpen, setQuickRepliesOpen] = useState(false);
-  const [pendingAttachment, setPendingAttachment] = useState<PendingAttachment | null>(null);
+  const [pendingAttachments, setPendingAttachments] = useState<ComposerPendingAttachment[]>([]);
+  const [caption, setCaption] = useState('');
   const [sendingAttachment, setSendingAttachment] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [recordingDuration, setRecordingDuration] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recordingChunksRef = useRef<Blob[]>([]);
-  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pendingRef = useRef(pendingAttachments);
+  pendingRef.current = pendingAttachments;
 
   useEffect(() => {
     return () => {
-      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
-      mediaRecorderRef.current?.stream?.getTracks().forEach((t) => t.stop());
+      pendingRef.current.forEach((item) => URL.revokeObjectURL(item.url));
     };
   }, []);
+
+  useEffect(() => {
+    setPendingAttachments((prev) => {
+      prev.forEach((item) => URL.revokeObjectURL(item.url));
+      return [];
+    });
+    setCaption('');
+    setIsRecording(false);
+  }, [activeConversationId]);
+
+  function stageFiles(incoming: File[]) {
+    const currentFiles = pendingRef.current.map((p) => p.file);
+    const result = mergePendingAttachments(currentFiles, incoming);
+    if (!result.ok) {
+      toast.error(result.reason);
+      return false;
+    }
+
+    setPendingAttachments((prev) => {
+      const next = result.files.map((file) => {
+        const existing = prev.find((p) => p.file === file);
+        return existing ?? makePending(file);
+      });
+      prev.forEach((item) => {
+        if (!next.some((n) => n.id === item.id)) {
+          URL.revokeObjectURL(item.url);
+        }
+      });
+      return next;
+    });
+
+    if (result.truncated) {
+      toast.error('Algunos archivos no se adjuntaron (límite alcanzado)');
+    }
+    setToolbarOpen(false);
+    return true;
+  }
+
+  useEffect(() => {
+    if (!attachFileRequest) return;
+    stageFiles([attachFileRequest]);
+    clearAttachFileRequest();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attachFileRequest, clearAttachFileRequest]);
 
   if (!activeConversationId || connectionState !== 'ready') return null;
 
   const conversationId = activeConversationId;
 
-  function clearPendingAttachment() {
-    setPendingAttachment((prev) => {
-      if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl);
-      return null;
+  function clearPendingAttachments() {
+    setPendingAttachments((prev) => {
+      prev.forEach((item) => URL.revokeObjectURL(item.url));
+      return [];
+    });
+    setCaption('');
+  }
+
+  function removePending(id: string) {
+    setPendingAttachments((prev) => {
+      const target = prev.find((p) => p.id === id);
+      if (target) URL.revokeObjectURL(target.url);
+      return prev.filter((p) => p.id !== id);
     });
   }
 
   function handleFileSelect(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     e.target.value = '';
+    if (files.length === 0) return;
+    stageFiles(files);
+  }
+
+  function handlePaste(e: ClipboardEvent<HTMLTextAreaElement>) {
+    const file = getClipboardAttachmentFile(e.clipboardData);
     if (!file) return;
-    queueAttachment(file);
-  }
-
-  function queueAttachment(file: File) {
-    const isImage = file.type.startsWith('image/');
-    const isAudio = file.type.startsWith('audio/');
-    clearPendingAttachment();
-    setPendingAttachment({
-      type: isImage ? 'image' : isAudio ? 'audio' : 'document',
-      file,
-      previewUrl: isImage ? URL.createObjectURL(file) : undefined,
-      caption: '',
-    });
-    setToolbarOpen(false);
-  }
-
-  function handleDrop(e: DragEvent<HTMLDivElement>) {
     e.preventDefault();
-    e.stopPropagation();
-    const file = e.dataTransfer.files?.[0];
-    if (file) queueAttachment(file);
+    stageFiles([file]);
   }
 
   async function handleSendText() {
@@ -114,16 +171,19 @@ export function ChatComposer() {
     }
   }
 
-  async function handleSendAttachment() {
-    if (!pendingAttachment || sendingAttachment) return;
+  async function handleSendAttachments() {
+    if (pendingAttachments.length === 0 || sendingAttachment) return;
     setSendingAttachment(true);
     try {
-      await sendMediaMessage(conversationId, {
-        type: pendingAttachment.type,
-        file: pendingAttachment.file,
-        caption: pendingAttachment.caption,
-      });
-      clearPendingAttachment();
+      for (let i = 0; i < pendingAttachments.length; i++) {
+        const item = pendingAttachments[i];
+        await sendMediaMessage(conversationId, {
+          type: attachmentTypeOf(item.file),
+          file: item.file,
+          caption: i === 0 ? caption : undefined,
+        });
+      }
+      clearPendingAttachments();
     } catch {
       /* toast handled in store */
     } finally {
@@ -131,50 +191,13 @@ export function ChatComposer() {
     }
   }
 
-  async function startRecording() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? 'audio/webm;codecs=opus'
-        : 'audio/webm';
-      const recorder = new MediaRecorder(stream, { mimeType });
-      const chunks: Blob[] = [];
-      recordingChunksRef.current = chunks;
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunks.push(e.data);
-      };
-      recorder.onstop = () => {
-        stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(chunks, { type: mimeType });
-        void sendAudioBlob(blob);
-      };
-      recorder.start(250);
-      mediaRecorderRef.current = recorder;
-      setIsRecording(true);
-      setRecordingDuration(0);
-      recordingTimerRef.current = setInterval(() => {
-        setRecordingDuration((d) => d + 1);
-      }, 1000);
-      setToolbarOpen(false);
-    } catch {
-      toast.error('No se pudo acceder al micrófono.');
-    }
-  }
-
-  function stopRecording() {
-    const recorder = mediaRecorderRef.current;
-    if (recorder?.state === 'recording') recorder.stop();
-    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
-    recordingTimerRef.current = null;
+  async function handleVoiceSend(result: VoiceRecordingResult) {
     setIsRecording(false);
-    setRecordingDuration(0);
-  }
-
-  async function sendAudioBlob(blob: Blob) {
-    if (!conversationId) return;
-    const file = new File([blob], 'audio.webm', { type: blob.type });
     setSending(true);
     try {
+      const file = new File([result.blob], 'audio.webm', {
+        type: result.blob.type || 'audio/webm',
+      });
       await sendMediaMessage(conversationId, { type: 'audio', file });
     } catch {
       /* toast handled in store */
@@ -192,8 +215,8 @@ export function ChatComposer() {
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Escape') {
       e.preventDefault();
-      if (pendingAttachment) {
-        clearPendingAttachment();
+      if (pendingAttachments.length > 0) {
+        clearPendingAttachments();
         return;
       }
       if (quickRepliesOpen) {
@@ -206,6 +229,10 @@ export function ChatComposer() {
     }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      if (pendingAttachments.length > 0) {
+        void handleSendAttachments();
+        return;
+      }
       void handleSendText();
       return;
     }
@@ -223,171 +250,101 @@ export function ChatComposer() {
       )
     : FLOTA_QUICK_REPLIES;
 
-  if (pendingAttachment) {
+  if (isRecording) {
     return (
       <div className="shrink-0 border-t border-border bg-card">
-        <div className="flex items-center justify-between border-b border-border px-4 py-2">
-          <span className="text-sm font-medium">
-            {pendingAttachment.type === 'image'
-              ? 'Enviar foto'
-              : pendingAttachment.type === 'audio'
-                ? 'Enviar audio'
-                : 'Enviar documento'}
-          </span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={clearPendingAttachment}
-            disabled={sendingAttachment}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="flex flex-col items-center gap-3 px-4 py-4">
-          {pendingAttachment.type === 'image' && pendingAttachment.previewUrl ? (
-            <img
-              src={pendingAttachment.previewUrl}
-              alt="Vista previa"
-              className="max-h-64 rounded-lg object-contain"
-            />
-          ) : null}
-          {pendingAttachment.type === 'audio' ? (
-            <div className="flex items-center gap-3 rounded-lg bg-muted/50 px-4 py-3">
-              <Music2 className="h-8 w-8 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">{pendingAttachment.file.name}</span>
-            </div>
-          ) : null}
-          {pendingAttachment.type === 'document' ? (
-            <div className="flex items-center gap-3 rounded-lg bg-muted/50 px-4 py-3">
-              <FileText className="h-8 w-8 text-muted-foreground" />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium max-w-[300px]">{pendingAttachment.file.name}</p>
-                <p className="text-xs text-muted-foreground">{formatFileSize(pendingAttachment.file.size)}</p>
-              </div>
-            </div>
-          ) : null}
-          <div className="flex w-full items-end gap-2">
-            <Textarea
-              value={pendingAttachment.caption}
-              onChange={(e) =>
-                setPendingAttachment((prev) => (prev ? { ...prev, caption: e.target.value } : null))
-              }
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') {
-                  e.preventDefault();
-                  clearPendingAttachment();
-                  return;
-                }
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  void handleSendAttachment();
-                }
-              }}
-              placeholder="Añade un mensaje..."
-              className="min-h-[44px] max-h-32 flex-1 resize-none bg-muted/50 border-transparent"
-              rows={1}
-              disabled={sendingAttachment}
-            />
-            <Button
-              type="button"
-              size="icon"
-              className="h-10 w-10 shrink-0 rounded-full"
-              onClick={() => void handleSendAttachment()}
-              disabled={sendingAttachment}
-            >
-              {sendingAttachment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            </Button>
-          </div>
-        </div>
+        <VoiceRecorderBar
+          onSend={(result) => void handleVoiceSend(result)}
+          onCancel={() => setIsRecording(false)}
+          onError={(msg) => toast.error(msg)}
+        />
       </div>
     );
   }
 
+  const hasPending = pendingAttachments.length > 0;
+
   return (
-    <div
-      className="shrink-0 border-t border-border bg-card"
-      onDragOver={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      }}
-      onDrop={handleDrop}
-    >
-      <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+    <div className="shrink-0 border-t border-border bg-card">
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={handleFileSelect}
+      />
       <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect} />
 
       <Popover open={quickRepliesOpen} onOpenChange={setQuickRepliesOpen}>
-      {toolbarOpen ? (
-        <div className="grid grid-cols-3 gap-2 border-b border-border px-4 py-3">
-          <ToolbarAction
-            label="Audio"
-            color="text-rose-500"
-            onClick={() => void startRecording()}
-            icon={<Mic className="h-5 w-5" />}
-          />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="flex flex-col items-center gap-1.5 rounded-lg py-1 text-xs text-muted-foreground hover:bg-muted/50 transition-colors"
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-500/15 text-sky-500">
-                  <Paperclip className="h-5 w-5" />
-                </span>
-                Archivos
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" side="top">
-              <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
-                <ImageIcon className="mr-2 h-4 w-4" /> Foto
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  if (fileInputRef.current) {
-                    fileInputRef.current.accept = 'audio/*';
-                    fileInputRef.current.click();
-                    fileInputRef.current.accept = '';
-                  }
-                }}
-              >
-                <Music2 className="mr-2 h-4 w-4" /> Audio
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                <FileText className="mr-2 h-4 w-4" /> Documento
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <ToolbarAction
-            label="Respuestas"
-            color="text-violet-500"
-            onClick={() => setQuickRepliesOpen(true)}
-            icon={<Zap className="h-5 w-5" />}
-          />
-        </div>
-      ) : null}
-
-      <div className="px-4 py-3">
-        {isRecording ? (
-          <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-destructive" />
-            <span className="text-sm font-medium text-destructive">Grabando...</span>
-            <span className="text-sm tabular-nums text-muted-foreground">
-              {Math.floor(recordingDuration / 60)}:{String(recordingDuration % 60).padStart(2, '0')}
-            </span>
-            <div className="flex-1" />
-            <Button type="button" size="icon" variant="ghost" className="text-destructive" onClick={stopRecording}>
-              <StopCircle className="h-5 w-5" />
-            </Button>
+        {toolbarOpen ? (
+          <div className="grid grid-cols-3 gap-2 border-b border-border px-4 py-3">
+            <ToolbarAction
+              label="Audio"
+              color="text-rose-500"
+              onClick={() => {
+                setIsRecording(true);
+                setToolbarOpen(false);
+              }}
+              icon={<Mic className="h-5 w-5" />}
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex flex-col items-center gap-1.5 rounded-lg py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/50"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-500/15 text-sky-500">
+                    <Paperclip className="h-5 w-5" />
+                  </span>
+                  Archivos
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" side="top">
+                <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
+                  <ImageIcon className="mr-2 h-4 w-4" /> Foto
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (fileInputRef.current) {
+                      fileInputRef.current.accept = 'audio/*';
+                      fileInputRef.current.click();
+                      fileInputRef.current.accept = '';
+                    }
+                  }}
+                >
+                  <Music2 className="mr-2 h-4 w-4" /> Audio
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                  <FileText className="mr-2 h-4 w-4" /> Documento
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <ToolbarAction
+              label="Respuestas"
+              color="text-violet-500"
+              onClick={() => setQuickRepliesOpen(true)}
+              icon={<Zap className="h-5 w-5" />}
+            />
           </div>
-        ) : (
+        ) : null}
+
+        <div className="px-4 py-3">
+          {hasPending ? (
+            <ComposerPendingAttachments
+              attachments={pendingAttachments}
+              onRemove={removePending}
+              onAddImages={() => imageInputRef.current?.click()}
+            />
+          ) : null}
+
           <div className="flex items-end gap-2">
             <PopoverAnchor asChild>
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
-                className={cn('h-8 w-8 shrink-0 mb-0.5', toolbarOpen && 'border-primary text-primary')}
+                className={cn('mb-0.5 h-8 w-8 shrink-0', toolbarOpen && 'border-primary text-primary')}
                 onClick={() => setToolbarOpen((v) => !v)}
                 title={toolbarOpen ? 'Ocultar acciones' : 'Más acciones'}
               >
@@ -397,8 +354,13 @@ export function ChatComposer() {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 mb-0.5 text-muted-foreground" title="Adjuntar">
-                  <Paperclip className="w-4 h-4" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="mb-0.5 h-8 w-8 shrink-0 text-muted-foreground"
+                  title="Adjuntar"
+                >
+                  <Paperclip className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" side="top">
@@ -424,54 +386,79 @@ export function ChatComposer() {
 
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 mb-0.5 text-muted-foreground" title="Emoji">
-                  <Smile className="w-4 h-4" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="mb-0.5 h-8 w-8 shrink-0 text-muted-foreground"
+                  title="Emoji"
+                >
+                  <Smile className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent side="top" align="start" className="w-auto border-0 p-0">
-                <EmojiGrid onSelect={(emoji) => setContent((prev) => prev + emoji.replace(/\uFE0F/g, ''))} />
+                <EmojiGrid
+                  onSelect={(emoji) =>
+                    setContent((prev) => prev + emoji.replace(/\uFE0F/g, ''))
+                  }
+                />
               </PopoverContent>
             </Popover>
 
             <Textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
+              value={hasPending ? caption : content}
+              onChange={(e) =>
+                hasPending ? setCaption(e.target.value) : setContent(e.target.value)
+              }
               onKeyDown={handleKeyDown}
-              placeholder="Escribe un mensaje... o / para respuestas"
+              onPaste={handlePaste}
+              placeholder={
+                hasPending
+                  ? 'Añade un mensaje...'
+                  : 'Escribe un mensaje... o / para respuestas'
+              }
               rows={1}
-              className="min-h-[42px] max-h-32 resize-none bg-muted/50 border-transparent focus-visible:border-primary text-message"
+              className="min-h-[42px] max-h-32 resize-none border-transparent bg-muted/50 text-message focus-visible:border-primary"
             />
 
             <Button
               type="button"
               size="icon"
-              className="h-10 w-10 shrink-0 mb-0.5 rounded-full"
-              onClick={() => void handleSendText()}
-              disabled={!content.trim() || sending}
+              className="mb-0.5 h-10 w-10 shrink-0 rounded-full"
+              onClick={() =>
+                hasPending ? void handleSendAttachments() : void handleSendText()
+              }
+              disabled={
+                sending ||
+                sendingAttachment ||
+                (hasPending ? false : !content.trim())
+              }
               title="Enviar"
             >
-              {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              {sending || sendingAttachment ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
             </Button>
           </div>
-        )}
-      </div>
-
-      <PopoverContent side="top" align="start" className="w-80 p-2">
-        <p className="mb-2 px-2 text-xs font-medium text-muted-foreground">Respuestas rápidas</p>
-        <div className="max-h-64 space-y-1 overflow-y-auto">
-          {(showSlashHint ? filteredReplies : FLOTA_QUICK_REPLIES).map((reply) => (
-            <button
-              key={reply.id}
-              type="button"
-              className="w-full rounded-lg px-2 py-2 text-left hover:bg-muted transition-colors"
-              onClick={() => applyQuickReply(reply.text)}
-            >
-              <p className="text-sm font-medium">{reply.label}</p>
-              <p className="line-clamp-2 text-xs text-muted-foreground">{reply.text}</p>
-            </button>
-          ))}
         </div>
-      </PopoverContent>
+
+        <PopoverContent side="top" align="start" className="w-80 p-2">
+          <p className="mb-2 px-2 text-xs font-medium text-muted-foreground">Respuestas rápidas</p>
+          <div className="max-h-64 space-y-1 overflow-y-auto">
+            {(showSlashHint ? filteredReplies : FLOTA_QUICK_REPLIES).map((reply) => (
+              <button
+                key={reply.id}
+                type="button"
+                className="w-full rounded-lg px-2 py-2 text-left transition-colors hover:bg-muted"
+                onClick={() => applyQuickReply(reply.text)}
+              >
+                <p className="text-sm font-medium">{reply.label}</p>
+                <p className="line-clamp-2 text-xs text-muted-foreground">{reply.text}</p>
+              </button>
+            ))}
+          </div>
+        </PopoverContent>
       </Popover>
     </div>
   );
@@ -492,9 +479,11 @@ function ToolbarAction({
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-col items-center gap-1.5 rounded-lg py-1 text-xs text-muted-foreground hover:bg-muted/50 transition-colors"
+      className="flex flex-col items-center gap-1.5 rounded-lg py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/50"
     >
-      <span className={cn('flex h-10 w-10 items-center justify-center rounded-full bg-muted', color)}>{icon}</span>
+      <span className={cn('flex h-10 w-10 items-center justify-center rounded-full bg-muted', color)}>
+        {icon}
+      </span>
       {label}
     </button>
   );
