@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, type ComponentProps } from 'react';
 import { LlamadaSvgIcon } from '@/components/icons/LlamadaSvgIcon';
-import { Button, type ButtonProps } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import {
   FormDialogActions,
   FormDialogField,
@@ -26,7 +26,7 @@ function nowDateParts() {
   };
 }
 
-interface RegistrarLlamadaButtonProps extends Omit<ButtonProps, 'onClick'> {
+interface RegistrarLlamadaButtonProps extends Omit<ComponentProps<typeof Button>, 'onClick'> {
   prospectoId: string;
   prospectoNombre: string;
   label?: string;
