@@ -927,17 +927,20 @@ export class ActivitiesService {
       data.description = dto.description?.trim() ?? '';
     }
     if (dto.assignedTo !== undefined) {
-      if (scope && !scope.unrestricted) {
-        throw new BadRequestException(
-          'No tienes permiso para reasignar esta actividad',
-        );
+      const a = dto.assignedTo?.trim() || '';
+      const current = existingRow.assignedTo ?? '';
+      if (a !== current) {
+        if (scope && !scope.unrestricted) {
+          throw new BadRequestException(
+            'No tienes permiso para reasignar esta actividad',
+          );
+        }
+        if (a) {
+          const u = await this.prisma.user.findUnique({ where: { id: a } });
+          if (!u) throw new BadRequestException('El usuario asignado no existe');
+        }
+        data.assignedTo = a || undefined;
       }
-      const a = dto.assignedTo?.trim();
-      if (a) {
-        const u = await this.prisma.user.findUnique({ where: { id: a } });
-        if (!u) throw new BadRequestException('El usuario asignado no existe');
-      }
-      data.assignedTo = a || undefined;
     }
     if (dto.status !== undefined) {
       const s = dto.status?.trim();

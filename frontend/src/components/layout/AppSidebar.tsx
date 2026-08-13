@@ -140,7 +140,7 @@ const navItemsAdmin: NavDef[] = [
 ];
 
 const navItemsMarketing: NavDef[] = [
-  { to: '/marketing', label: 'Dashboard', icon: DashboardSvgIcon },
+  { to: '/marketing/dashboard', label: 'Dashboard', icon: DashboardSvgIcon },
   { to: '/marketing/leads', label: 'Leads', icon: UserPlus },
   { to: '/marketing/facebook', label: 'Facebook', icon: Facebook },
   { to: '/marketing/integrations', label: 'Integraciones', icon: ArrowRightLeft },

@@ -43,6 +43,8 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from '@/lib/notify';
 import type { UpdateActivityPayload } from '@/lib/activityApi';
+import { usePermissions } from '@/hooks/usePermissions';
+import { canUserReassignCommercialAdvisor } from '@/lib/advisorAssigneeDefaults';
 
 const activityTypeColorMap: Record<string, string> = {
   nota: 'text-slate-600',
@@ -131,6 +133,8 @@ export function ActivityDetailDialog({
   onUpdateActivity,
   onDeleteActivity,
 }: ActivityDetailDialogProps) {
+  const { hasPermission } = usePermissions();
+  const canReassign = canUserReassignCommercialAdvisor(hasPermission, 'actividades');
   const [currentActivity, setCurrentActivity] = useState<Activity | null>(activity);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -177,7 +181,7 @@ export function ActivityDetailDialog({
     try {
       const updated = await onUpdateActivity(
         currentActivity.id,
-        buildActivityUpdatePayload(editForm),
+        buildActivityUpdatePayload(editForm, { includeAssignedTo: canReassign }),
       );
       setCurrentActivity(updated);
       setEditForm(activityToEditForm(updated));

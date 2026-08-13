@@ -63,7 +63,10 @@ export function activityToEditForm(activity: Activity): ActivityEditFormState {
   };
 }
 
-export function buildActivityUpdatePayload(form: ActivityEditFormState): UpdateActivityPayload {
+export function buildActivityUpdatePayload(
+  form: ActivityEditFormState,
+  opts?: { includeAssignedTo?: boolean },
+): UpdateActivityPayload {
   const type = form.type.trim().toLowerCase();
   const extra: string[] = [];
   let dueDate = form.date.trim();
@@ -92,7 +95,9 @@ export function buildActivityUpdatePayload(form: ActivityEditFormState): UpdateA
     description,
   };
 
-  if (form.assignedTo.trim()) payload.assignedTo = form.assignedTo.trim();
+  if (opts?.includeAssignedTo !== false && form.assignedTo.trim()) {
+    payload.assignedTo = form.assignedTo.trim();
+  }
   if (dueDate) payload.dueDate = dueDate;
   if (startDate) payload.startDate = startDate;
   if (startTime) payload.startTime = startTime;

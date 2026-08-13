@@ -895,6 +895,8 @@ model FacebookForm {
   account         FacebookAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
   locale          String?
   status          String         @default("active")
+  /** Preguntas del lead form según Meta: [{ key, label }] */
+  questions       Json?
   leadsCount      Int            @default(0)
   lastLeadAt      DateTime?
   createdAt       DateTime       @default(now())
@@ -916,15 +918,23 @@ model FacebookLead {
   email               String?
   adId                String?
   adName              String?
+  /** Origen del anuncio según Meta: fb, ig, an, msg */
+  platform            String?
+  isOrganic           Boolean?
   createdTime         DateTime
   importedAsContactId String?
+  importedAsCompanyId String?
+  importedAsOpportunityId String?
   importedAsFlotaProspectoId String?
   importedAt          DateTime?
   createdAt           DateTime      @default(now())
 
   @@index([formId])
   @@index([createdTime])
+  @@index([platform])
   @@index([importedAsContactId])
+  @@index([importedAsCompanyId])
+  @@index([importedAsOpportunityId])
   @@index([importedAsFlotaProspectoId])
   @@index([importedAt])
 }

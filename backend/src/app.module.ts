@@ -34,6 +34,7 @@ import { ChatwootModule } from './chatwoot/chatwoot.module';
 import { GmailModule } from './gmail/gmail.module';
 import { GoogleCalendarModule } from './google-calendar/google-calendar.module';
 import { ClienteCarteraModule } from './cliente-cartera/cliente-cartera.module';
+import { WebLeadsModule } from './web-leads/web-leads.module';
 
 @Module({
   imports: [
@@ -81,6 +82,7 @@ import { ClienteCarteraModule } from './cliente-cartera/cliente-cartera.module';
     GmailModule,
     GoogleCalendarModule,
     ClienteCarteraModule,
+    WebLeadsModule,
   ],
   controllers: [AppController],
   providers: [

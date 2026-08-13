@@ -16,6 +16,7 @@ import { RequirePermissions } from '../auth/decorators/require-permissions.decor
 import { FacebookLeadsService } from './facebook-leads.service';
 import { ConnectAccountDto } from './dto/connect-account.dto';
 import { QueryLeadsDto } from './dto/query-leads.dto';
+import { ImportComercialDto, ImportFlotaDto } from './dto/import-lead.dto';
 
 type AuthedRequest = { user: { userId: string; name: string } };
 
@@ -75,16 +76,27 @@ export class FacebookLeadsController {
     return this.facebookLeads.getFormsList(req.user.userId);
   }
 
+  @Get('leads/:id/preview-import')
+  @RequirePermissions('marketing.ver')
+  async previewImport(
+    @Param('id') id: string,
+    @Query('target') target: 'flota' | 'comercial' = 'flota',
+    @Query('entity') entity?: string,
+  ) {
+    const t = target === 'comercial' ? 'comercial' : 'flota';
+    return this.facebookLeads.previewImport(id, t, entity);
+  }
+
   @Post('leads/:id/send-to-comercial')
   @RequirePermissions('marketing.ver')
-  async sendToComercial(@Param('id') id: string, @Req() req: AuthedRequest) {
-    return this.facebookLeads.sendToComercial(id, req.user.userId);
+  async sendToComercial(@Param('id') id: string, @Body() dto: ImportComercialDto, @Req() req: AuthedRequest) {
+    return this.facebookLeads.sendToComercial(id, req.user.userId, dto);
   }
 
   @Post('leads/:id/send-to-flota')
   @RequirePermissions('marketing.ver')
-  async sendToFlota(@Param('id') id: string, @Req() req: AuthedRequest) {
-    return this.facebookLeads.sendToFlota(id, req.user.userId);
+  async sendToFlota(@Param('id') id: string, @Body() dto: ImportFlotaDto, @Req() req: AuthedRequest) {
+    return this.facebookLeads.sendToFlota(id, req.user.userId, dto);
   }
 
   @Delete('leads/:id')

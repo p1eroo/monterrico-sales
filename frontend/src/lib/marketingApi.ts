@@ -27,6 +27,7 @@ export interface FacebookForm {
   status: string;
   leadsCount: number;
   lastLeadAt: string | null;
+  questions: { key: string; label: string }[] | null;
   createdAt: string;
   updatedAt: string;
   account?: { id: string; pageName: string; lastSyncedAt: string | null };
@@ -42,12 +43,21 @@ export interface FacebookLead {
   email: string | null;
   adId: string | null;
   adName: string | null;
+  platform: string | null;
+  isOrganic: boolean | null;
   createdTime: string;
   importedAsContactId: string | null;
+  importedAsCompanyId: string | null;
+  importedAsOpportunityId: string | null;
   importedAsFlotaProspectoId: string | null;
   importedAt: string | null;
   createdAt: string;
   form: { id: string; name: string; facebookFormId: string };
+}
+
+export interface LeadTableColumn {
+  key: string;
+  label: string;
 }
 
 export interface FacebookLeadsResponse {
@@ -55,6 +65,7 @@ export interface FacebookLeadsResponse {
   total: number;
   page: number;
   limit: number;
+  columns: LeadTableColumn[];
 }
 
 export interface FacebookStats {
@@ -63,6 +74,19 @@ export interface FacebookStats {
   lastSync: string | null;
   formsCount: number;
   byForm: { id: string; name: string; leadsCount: number }[];
+  byPlatform: { key: string; name: string; value: number }[];
+}
+
+export const FACEBOOK_PLATFORM_LABELS: Record<string, string> = {
+  fb: 'Facebook',
+  ig: 'Instagram',
+  an: 'Audience Network',
+  msg: 'Messenger',
+};
+
+export function facebookPlatformLabel(platform?: string | null): string {
+  if (!platform) return 'Sin dato';
+  return FACEBOOK_PLATFORM_LABELS[platform] ?? platform;
 }
 
 export interface ConnectAccountDto {
@@ -132,15 +156,66 @@ export async function fetchFacebookForms(): Promise<FacebookForm[]> {
   return api<FacebookForm[]>('/facebook/forms');
 }
 
-export async function sendLeadToComercial(leadId: string): Promise<{ contactId: string }> {
-  return api<{ contactId: string }>(`/facebook/leads/${encodeURIComponent(leadId)}/send-to-comercial`, {
+export function leadImportedToComercial(lead: Pick<FacebookLead, 'importedAsContactId' | 'importedAsCompanyId' | 'importedAsOpportunityId'>) {
+  return !!(lead.importedAsContactId || lead.importedAsCompanyId || lead.importedAsOpportunityId);
+}
+
+export async function previewLeadImport(
+  leadId: string,
+  target: 'flota' | 'comercial',
+  entity?: 'contacto' | 'empresa' | 'oportunidad',
+): Promise<Record<string, string>> {
+  const qs = new URLSearchParams({ target });
+  if (entity) qs.set('entity', entity);
+  return api<Record<string, string>>(
+    `/facebook/leads/${encodeURIComponent(leadId)}/preview-import?${qs.toString()}`,
+  );
+}
+
+export async function sendLeadToComercial(
+  leadId: string,
+  dto: {
+    entityType: 'contacto' | 'empresa' | 'oportunidad';
+    name?: string;
+    telefono?: string;
+    correo?: string;
+    cargo?: string;
+    notes?: string;
+    ruc?: string;
+    dominio?: string;
+    distrito?: string;
+    title?: string;
+    amount?: string;
+    etapa?: string;
+    expectedCloseDate?: string;
+    contactName?: string;
+  },
+): Promise<{ entityType: string; contactId?: string; companyId?: string; opportunityId?: string }> {
+  return api(`/facebook/leads/${encodeURIComponent(leadId)}/send-to-comercial`, {
     method: 'POST',
+    body: JSON.stringify(dto),
   });
 }
 
-export async function sendLeadToFlota(leadId: string): Promise<{ flotaProspectoId: string }> {
+export async function sendLeadToFlota(
+  leadId: string,
+  dto: {
+    nombreCompleto: string;
+    celular: string;
+    redSocial?: string;
+    operador?: string;
+    modalidad?: string;
+    ciudad?: string;
+    distrito?: string;
+    edad?: string;
+    anioVehiculo?: string;
+    placa?: string;
+    observaciones?: string;
+  },
+): Promise<{ flotaProspectoId: string }> {
   return api<{ flotaProspectoId: string }>(`/facebook/leads/${encodeURIComponent(leadId)}/send-to-flota`, {
     method: 'POST',
+    body: JSON.stringify(dto),
   });
 }
 

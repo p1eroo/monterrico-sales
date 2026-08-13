@@ -204,6 +204,7 @@ export const contactSourceLabels: Record<string, string> = {
   feria: 'Feria',
   masivo: 'Masivo',
   apollo: 'Apollo',
+  marketing: 'Marketing',
 };
 
 export const companyTipoLabels: Record<string, string> = {

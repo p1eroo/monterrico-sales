@@ -1,18 +1,29 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-interface FacebookFormResponse {
+export interface FacebookFormQuestion {
+  id?: string;
+  key?: string;
+  label?: string;
+  type?: string;
+}
+
+export interface FacebookFormResponse {
   id: string;
   name: string;
   locale?: string;
   status?: string;
+  questions?: FacebookFormQuestion[] | { data?: FacebookFormQuestion[] };
 }
 
-interface FacebookLeadResponse {
+export interface FacebookLeadResponse {
   id: string;
   created_time: string;
   ad_id?: string;
   ad_name?: string;
+  form_id?: string;
+  platform?: string;
+  is_organic?: boolean;
   field_data: Array<{ name: string; values: string[] }>;
 }
 
@@ -67,14 +78,16 @@ export class FacebookGraphApiService {
 
   async getPageForms(pageId: string, accessToken: string): Promise<FacebookFormResponse[]> {
     const version = this.getApiVersion();
-    const url = `${this.baseUrl}/${version}/${pageId}/leadgen_forms?access_token=${encodeURIComponent(accessToken)}&fields=id,name,locale,status`;
+    const url = `${this.baseUrl}/${version}/${pageId}/leadgen_forms?access_token=${encodeURIComponent(accessToken)}&fields=id,name,locale,status,questions`;
     const result = await this.fetchFromGraph<FacebookFormsListResponse>(url);
     return result.data || [];
   }
 
   async getFormLeads(formId: string, accessToken: string, since?: string): Promise<FacebookLeadResponse[]> {
     const version = this.getApiVersion();
-    let url = `${this.baseUrl}/${version}/${formId}/leads?access_token=${encodeURIComponent(accessToken)}&fields=id,created_time,ad_id,ad_name,field_data`;
+    const leadFields = 'id,created_time,ad_id,ad_name,form_id,platform,is_organic,field_data';
+
+    let url = `${this.baseUrl}/${version}/${formId}/leads?access_token=${encodeURIComponent(accessToken)}&fields=${leadFields}`;
     if (since) {
       url += `&since=${since}`;
     }
@@ -90,7 +103,7 @@ export class FacebookGraphApiService {
 
   async getLeadDetails(leadgenId: string, accessToken: string): Promise<FacebookLeadResponse> {
     const version = this.getApiVersion();
-    const url = `${this.baseUrl}/${version}/${leadgenId}?access_token=${encodeURIComponent(accessToken)}&fields=id,created_time,ad_id,ad_name,field_data`;
+    const url = `${this.baseUrl}/${version}/${leadgenId}?access_token=${encodeURIComponent(accessToken)}&fields=id,created_time,ad_id,ad_name,form_id,platform,is_organic,field_data`;
     return this.fetchFromGraph<FacebookLeadResponse>(url);
   }
 }

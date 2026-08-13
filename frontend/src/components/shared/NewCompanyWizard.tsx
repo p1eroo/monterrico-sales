@@ -411,6 +411,10 @@ export function NewCompanyWizard({
         toast.error(domainConflictToastMessage(domainMatches[0], getUserName));
         return;
       }
+      setForm((s) => ({
+        ...s,
+        nombreNegocio: s.nombreNegocio.trim() || s.nombreComercial.trim(),
+      }));
     }
     if (step === 1) {
       if (!existingCompanyId) {
@@ -748,7 +752,7 @@ export function NewCompanyWizard({
                 }}
               />
             </FormDialogField>
-            <FormDialogField label="Teléfono">
+            <FormDialogField label="Teléfono empresa">
               <Input
                 className={formDialogInputClass}
                 placeholder="+51 999 999 999"
@@ -870,7 +874,7 @@ export function NewCompanyWizard({
                     disabled={!!existingCompanyId}
                   />
                 </FormDialogField>
-                <FormDialogField label="Teléfono">
+                <FormDialogField label="Teléfono contacto">
                   <Input
                     className={formDialogInputClass}
                     placeholder="+51 999 999 999"
@@ -913,7 +917,7 @@ export function NewCompanyWizard({
                   <Input
                     className={formDialogInputClass}
                     placeholder="Nombre de la oportunidad"
-                    value={form.nombreNegocio}
+                    value={form.nombreNegocio || form.nombreComercial}
                     onChange={(e) => set('nombreNegocio', e.target.value)}
                   />
                 </FormDialogField>

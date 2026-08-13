@@ -1,15 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Users, UserPlus, TrendingUp, BarChart3, MessageCircle } from 'lucide-react';
+import Chart from 'react-apexcharts';
+import type { ApexOptions } from 'apexcharts';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { fetchFacebookStats, type FacebookStats } from '@/lib/marketingApi';
 import { useChartTheme } from '@/hooks/useChartTheme';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, Legend,
-} from 'recharts';
+import { cn } from '@/lib/utils';
 
-const PIE_COLORS = ['#13944C', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
+const GREEN = '#13944C';
+const BLUE = '#3b82f6';
+const PIE_COLORS = ['#1DB954', '#2ECC87', '#064E31', '#52D68A', '#0E6B40', '#7AD9AE'];
+
+const PLATFORM_COLORS: Record<string, string> = {
+  fb: '#1877F2',
+  ig: '#E4405F',
+  an: '#f59e0b',
+  msg: '#0084FF',
+  unknown: '#94a3b8',
+};
 
 const dailyData = [
   { name: 'Lun', leads: 12, contactados: 8 },
@@ -37,29 +46,295 @@ const monthlyData = [
   { name: 'Jun', leads: 88, importados: 70 },
 ];
 
+const chartWrapperClass =
+  'min-w-0 w-full leading-none [&_.apexcharts-canvas]:!w-full [&_.apexcharts-svg]:overflow-visible';
+
+const chartBase = {
+  toolbar: { show: false },
+  fontFamily: 'inherit',
+  animations: { enabled: true, speed: 450 },
+  background: 'transparent',
+} as const;
+
+const legendBase = {
+  show: true,
+  position: 'bottom' as const,
+  horizontalAlign: 'center' as const,
+  fontSize: '12px',
+  fontWeight: 500,
+  markers: { size: 6, shape: 'circle' as const, offsetX: -2 },
+  itemMargin: { horizontal: 12, vertical: 4 },
+  onItemHover: { highlightDataSeries: false },
+};
+
+function DailyLeadsBarChart({ data }: { data: typeof dailyData }) {
+  const chartTheme = useChartTheme();
+
+  const categories = useMemo(() => data.map((d) => d.name), [data]);
+
+  const series = useMemo(
+    () => [
+      { name: 'Nuevos Leads', data: data.map((d) => d.leads) },
+      { name: 'Contactados', data: data.map((d) => d.contactados) },
+    ],
+    [data],
+  );
+
+  const options = useMemo<ApexOptions>(
+    () => ({
+      chart: { ...chartBase, type: 'bar' },
+      colors: [GREEN, BLUE],
+      plotOptions: {
+        bar: {
+          horizontal: false,
+          columnWidth: '42%',
+          borderRadius: 4,
+          borderRadiusApplication: 'end',
+        },
+      },
+      stroke: { width: 0, colors: ['transparent'] },
+      dataLabels: { enabled: false },
+      grid: {
+        borderColor: chartTheme.gridStroke,
+        strokeDashArray: 4,
+        xaxis: { lines: { show: false } },
+        yaxis: { lines: { show: true } },
+        padding: { top: 0, right: 8, bottom: 0, left: 8 },
+      },
+      xaxis: {
+        categories,
+        axisBorder: { show: false },
+        axisTicks: { show: false },
+        labels: { style: { colors: chartTheme.axisColor, fontSize: '11px', fontWeight: 500 } },
+      },
+      yaxis: {
+        labels: { style: { colors: chartTheme.axisColor, fontSize: '11px' } },
+      },
+      legend: { ...legendBase, labels: { colors: chartTheme.axisColor } },
+      tooltip: {
+        theme: chartTheme.isDark ? 'dark' : 'light',
+        shared: false,
+        y: { formatter: (val) => (val == null ? '' : String(Math.round(Number(val)))) },
+      },
+      fill: { opacity: 1 },
+    }),
+    [categories, chartTheme.axisColor, chartTheme.gridStroke, chartTheme.isDark],
+  );
+
+  return (
+    <div className={chartWrapperClass}>
+      <Chart options={options} series={series} type="bar" height={288} />
+    </div>
+  );
+}
+
+function CampaignBarChart({ data }: { data: typeof campaignData }) {
+  const chartTheme = useChartTheme();
+
+  const categories = useMemo(() => data.map((d) => d.name), [data]);
+
+  const series = useMemo(
+    () => [
+      { name: 'Leads', data: data.map((d) => d.leads) },
+      { name: 'Conversiones', data: data.map((d) => d.conversion) },
+    ],
+    [data],
+  );
+
+  const options = useMemo<ApexOptions>(
+    () => ({
+      chart: { ...chartBase, type: 'bar' },
+      colors: [GREEN, BLUE],
+      plotOptions: {
+        bar: {
+          horizontal: true,
+          barHeight: '48%',
+          borderRadius: 4,
+          borderRadiusApplication: 'end',
+        },
+      },
+      stroke: { width: 0, colors: ['transparent'] },
+      dataLabels: { enabled: false },
+      grid: {
+        borderColor: chartTheme.gridStroke,
+        strokeDashArray: 4,
+        xaxis: { lines: { show: false } },
+        yaxis: { lines: { show: true } },
+        padding: { top: 0, right: 12, bottom: 0, left: 8 },
+      },
+      xaxis: {
+        categories,
+        axisBorder: { show: false },
+        axisTicks: { show: false },
+        labels: { style: { colors: chartTheme.axisColor, fontSize: '11px', fontWeight: 500 } },
+      },
+      yaxis: {
+        labels: { style: { colors: chartTheme.axisColor, fontSize: '11px', fontWeight: 500 } },
+      },
+      legend: { ...legendBase, labels: { colors: chartTheme.axisColor } },
+      tooltip: {
+        theme: chartTheme.isDark ? 'dark' : 'light',
+        shared: false,
+        y: { formatter: (val) => (val == null ? '' : String(Math.round(Number(val)))) },
+      },
+      fill: { opacity: 1 },
+    }),
+    [categories, chartTheme.axisColor, chartTheme.gridStroke, chartTheme.isDark],
+  );
+
+  return (
+    <div className={chartWrapperClass}>
+      <Chart options={options} series={series} type="bar" height={288} />
+    </div>
+  );
+}
+
+function MonthlyTrendAreaChart({ data }: { data: typeof monthlyData }) {
+  const chartTheme = useChartTheme();
+
+  const categories = useMemo(() => data.map((d) => d.name), [data]);
+
+  const series = useMemo(
+    () => [
+      { name: 'Leads', data: data.map((d) => d.leads) },
+      { name: 'Importados', data: data.map((d) => d.importados) },
+    ],
+    [data],
+  );
+
+  const options = useMemo<ApexOptions>(
+    () => ({
+      chart: { ...chartBase, type: 'area', zoom: { enabled: false }, parentHeightOffset: 0 },
+      colors: [GREEN, BLUE],
+      stroke: { curve: 'smooth', width: 2.5 },
+      fill: {
+        type: 'gradient',
+        gradient: {
+          shadeIntensity: 1,
+          opacityFrom: chartTheme.isDark ? 0.28 : 0.35,
+          opacityTo: chartTheme.isDark ? 0.02 : 0.04,
+          stops: [0, 90, 100],
+        },
+      },
+      dataLabels: { enabled: false },
+      grid: {
+        borderColor: chartTheme.gridStroke,
+        strokeDashArray: 4,
+        xaxis: { lines: { show: false } },
+        yaxis: { lines: { show: true } },
+        padding: { top: 0, right: 4, bottom: -6, left: 4 },
+      },
+      xaxis: {
+        categories,
+        axisBorder: { show: false },
+        axisTicks: { show: false },
+        labels: { style: { colors: chartTheme.axisColor, fontSize: '11px', fontWeight: 500 } },
+      },
+      yaxis: {
+        labels: { style: { colors: chartTheme.axisColor, fontSize: '11px' } },
+      },
+      legend: { ...legendBase, labels: { colors: chartTheme.axisColor } },
+      tooltip: {
+        theme: chartTheme.isDark ? 'dark' : 'light',
+        shared: true,
+        intersect: false,
+        y: { formatter: (val) => (val == null ? '' : String(Math.round(Number(val)))) },
+      },
+    }),
+    [categories, chartTheme.axisColor, chartTheme.gridStroke, chartTheme.isDark],
+  );
+
+  return (
+    <div className={chartWrapperClass}>
+      <Chart options={options} series={series} type="area" height={288} />
+    </div>
+  );
+}
+
+function SourceDonutChart({ data }: { data: { key: string; name: string; value: number }[] }) {
+  const chartTheme = useChartTheme();
+
+  const labels = useMemo(() => data.map((d) => d.name), [data]);
+  const series = useMemo(() => data.map((d) => d.value), [data]);
+  const colors = useMemo(
+    () => data.map((d, i) => PLATFORM_COLORS[d.key] ?? PIE_COLORS[i % PIE_COLORS.length]),
+    [data],
+  );
+
+  const options = useMemo<ApexOptions>(
+    () => ({
+      chart: { ...chartBase, type: 'donut' },
+      colors,
+      labels,
+      stroke: { width: 0, colors: ['transparent'] },
+      dataLabels: {
+        enabled: true,
+        formatter: (val: number) => `${Math.round(Number(val))}%`,
+        style: {
+          fontSize: '12px',
+          fontWeight: 600,
+          colors: [chartTheme.isDark ? '#f8fafc' : '#334155'],
+        },
+        dropShadow: { enabled: false },
+      },
+      plotOptions: {
+        pie: {
+          expandOnClick: false,
+          donut: {
+            size: '62%',
+            labels: {
+              show: true,
+              total: {
+                show: true,
+                label: 'Total',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: chartTheme.axisColor,
+                formatter: (w) => {
+                  const total = w.globals.seriesTotals.reduce((a: number, b: number) => a + b, 0);
+                  return String(Math.round(total));
+                },
+              },
+              value: {
+                fontSize: '22px',
+                fontWeight: 700,
+                color: chartTheme.isDark ? '#f8fafc' : '#0f172a',
+              },
+            },
+          },
+        },
+      },
+      legend: { show: false },
+      tooltip: {
+        theme: chartTheme.isDark ? 'dark' : 'light',
+        y: { formatter: (val) => (val == null ? '' : String(Math.round(Number(val)))) },
+      },
+    }),
+    [colors, labels, chartTheme.axisColor, chartTheme.isDark],
+  );
+
+  return (
+    <div className={cn(chartWrapperClass, 'flex items-center justify-center')}>
+      <Chart options={options} series={series} type="donut" height={288} />
+    </div>
+  );
+}
+
 export default function MarketingDashboard() {
   const [stats, setStats] = useState<FacebookStats | null>(null);
-  const chartTheme = useChartTheme();
 
   useEffect(() => {
     fetchFacebookStats().then(setStats).catch(() => {});
   }, []);
 
-  const sourceData = [
-    { name: 'Facebook', value: stats?.total || 0 },
-  ];
+  const sourceData = useMemo(
+    () => (stats?.byPlatform ?? []).filter((s) => s.value > 0),
+    [stats],
+  );
 
   const conversionRate = stats && stats.total > 0
     ? ((stats.today / stats.total) * 100).toFixed(0) + '%'
     : '0%';
-
-  const tooltipStyle = {
-    borderRadius: '8px',
-    border: `1px solid ${chartTheme.tooltipBorder}`,
-    backgroundColor: chartTheme.tooltipBg,
-    color: chartTheme.tooltipText,
-    fontSize: '13px',
-  };
 
   return (
     <div className="space-y-6">
@@ -95,19 +370,7 @@ export default function MarketingDashboard() {
             <CardDescription>Últimos 7 días</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dailyData} barGap={4} barCategoryGap="20%">
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} opacity={0.4} />
-                  <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} dy={8} />
-                  <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Legend verticalAlign="top" align="center" height={24} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                  <Bar dataKey="leads" name="Nuevos Leads" fill="#13944C" radius={[4, 4, 0, 0]} maxBarSize={36} />
-                  <Bar dataKey="contactados" name="Contactados" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={36} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <DailyLeadsBarChart data={dailyData} />
           </CardContent>
         </Card>
 
@@ -117,24 +380,12 @@ export default function MarketingDashboard() {
             <CardDescription>Leads generados vs convertidos</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={campaignData} layout="vertical" barGap={4} barCategoryGap="20%">
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={chartTheme.gridStroke} opacity={0.4} />
-                  <XAxis type="number" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                  <YAxis dataKey="name" type="category" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} width={110} />
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Legend verticalAlign="top" align="center" height={24} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                  <Bar dataKey="leads" name="Leads" fill="#13944C" radius={[0, 4, 4, 0]} maxBarSize={20} />
-                  <Bar dataKey="conversion" name="Conversiones" fill="#3b82f6" radius={[0, 4, 4, 0]} maxBarSize={20} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <CampaignBarChart data={campaignData} />
           </CardContent>
         </Card>
       </div>
 
-      {/* Charts Row 2: Monthly trend + Source pie */}
+      {/* Charts Row 2: Monthly trend + Source donut */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader className="pb-2">
@@ -142,59 +393,23 @@ export default function MarketingDashboard() {
             <CardDescription>Leads vs importados por mes</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={monthlyData}>
-                  <defs>
-                    <linearGradient id="leadsGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#13944C" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#13944C" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="importedGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartTheme.gridStroke} opacity={0.4} />
-                  <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} dy={8} />
-                  <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Legend verticalAlign="top" align="center" height={24} iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-                  <Area type="monotone" dataKey="leads" name="Leads" stroke="#13944C" strokeWidth={2} fill="url(#leadsGrad)" dot={{ r: 3, fill: '#13944C', strokeWidth: 2, stroke: '#fff' }} />
-                  <Area type="monotone" dataKey="importados" name="Importados" stroke="#3b82f6" strokeWidth={2} fill="url(#importedGrad)" dot={{ r: 3, fill: '#3b82f6', strokeWidth: 2, stroke: '#fff' }} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+            <MonthlyTrendAreaChart data={monthlyData} />
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Leads por fuente</CardTitle>
-            <CardDescription>Distribución de origen</CardDescription>
+            <CardDescription>Facebook vs Instagram (según Meta)</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={sourceData}
-                    cx="50%" cy="50%"
-                    innerRadius={70} outerRadius={115}
-                    dataKey="value" nameKey="name"
-                    stroke="none" paddingAngle={2}
-                    animationDuration={300}
-                    label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
-                    labelLine={{ strokeWidth: 1 }}
-                  >
-                    {sourceData.map((_, i) => (
-                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+            {sourceData.length === 0 ? (
+              <p className="flex h-72 items-center justify-center text-sm text-muted-foreground">
+                Aún no hay leads con fuente. Sincroniza los formularios.
+              </p>
+            ) : (
+              <SourceDonutChart data={sourceData} />
+            )}
           </CardContent>
         </Card>
       </div>

@@ -261,7 +261,7 @@ export default function MarketingFacebook() {
               No hay formularios que coincidan con el filtro.
             </div>
           ) : (
-            <div className="overflow-auto border-t border-border/40 scrollbar-thin">
+            <div className="max-h-[calc(100vh-330px)] overflow-auto border-t border-border/40 scrollbar-thin">
               <table className="w-full">
                 <thead>
                   <tr className={cn('h-[36px] text-left', crmTableHeaderRowClass)}>
