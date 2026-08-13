@@ -382,10 +382,10 @@ export default function ClienteEmpresaDetailPage() {
     return (
       <div className="space-y-6">
         <Button variant="ghost" onClick={() => navigate(APP_PATHS.clientCompanies)}>
-          <Building2 className="size-4" /> Volver a Clientes
+          <Buildings2SvgIcon className="size-4" /> Volver a Clientes
         </Button>
         <EmptyState
-          icon={Building2}
+          icon={Buildings2SvgIcon}
           title="Empresa no encontrada"
           description={error ?? 'La empresa que buscas no existe o no tienes acceso.'}
           actionLabel="Volver a Clientes"
@@ -510,7 +510,7 @@ export default function ClienteEmpresaDetailPage() {
                   </div>
                 ) : timelineEvents.length === 0 ? (
                   <EmptyState
-                    icon={Building2}
+                    icon={Buildings2SvgIcon}
                     title="Sin actividad registrada"
                     description="Los cambios y actividades sobre esta empresa cliente aparecerán aquí."
                   />
