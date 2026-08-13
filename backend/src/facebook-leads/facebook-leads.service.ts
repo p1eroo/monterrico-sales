@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException, BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { Prisma } from '../generated/prisma';
+import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 import { FacebookGraphApiService } from './facebook-graph-api.service';
 import { storeCompanyRucValue } from '../common/company-ruc.util';
@@ -171,27 +171,19 @@ export class FacebookLeadsService {
       const fbLeads = await this.graphApi.getFormLeads(form.facebookFormId, account.pageAccessToken, since);
 
       for (const fbLead of fbLeads) {
-        const existing = await this.prisma.facebookLead.findUnique({
-          where: { facebookLeadId: fbLead.id },
-        });
-        if (existing) continue;
-
         const mapped = mapLeadFields(fbLead.field_data);
-
-        await this.prisma.facebookLead.create({
-          data: {
-            facebookLeadId: fbLead.id,
-            formId: form.id,
-            fieldData: toJsonValue(fbLead.field_data),
-            fullName: mapped.fullName,
-            phone: mapped.phone,
-            email: mapped.email,
-            adId: fbLead.ad_id,
-            adName: fbLead.ad_name,
-            createdTime: new Date(fbLead.created_time),
-          },
+        const created = await this.createLeadIfNew({
+          facebookLeadId: fbLead.id,
+          formId: form.id,
+          fieldData: toJsonValue(fbLead.field_data),
+          fullName: mapped.fullName,
+          phone: mapped.phone,
+          email: mapped.email,
+          adId: fbLead.ad_id,
+          adName: fbLead.ad_name,
+          createdTime: new Date(fbLead.created_time),
         });
-        totalImported++;
+        if (created) totalImported++;
       }
 
       await this.prisma.facebookForm.update({
@@ -219,11 +211,6 @@ export class FacebookLeadsService {
       this.logger.warn(`No active account for page ${pageId}, skipping lead ${leadgenId}`);
       return;
     }
-
-    const existing = await this.prisma.facebookLead.findUnique({
-      where: { facebookLeadId: leadgenId },
-    });
-    if (existing) return;
 
     let fbLead;
     try {
@@ -259,19 +246,18 @@ export class FacebookLeadsService {
 
     const mapped = mapLeadFields(fbLead.field_data);
 
-    await this.prisma.facebookLead.create({
-      data: {
-        facebookLeadId: leadgenId,
-        formId: form.id,
-        fieldData: toJsonValue(fbLead.field_data),
-        fullName: mapped.fullName,
-        phone: mapped.phone,
-        email: mapped.email,
-        adId: fbLead.ad_id,
-        adName: fbLead.ad_name,
-        createdTime: new Date(fbLead.created_time),
-      },
+    const created = await this.createLeadIfNew({
+      facebookLeadId: leadgenId,
+      formId: form.id,
+      fieldData: toJsonValue(fbLead.field_data),
+      fullName: mapped.fullName,
+      phone: mapped.phone,
+      email: mapped.email,
+      adId: fbLead.ad_id,
+      adName: fbLead.ad_name,
+      createdTime: new Date(fbLead.created_time),
     });
+    if (!created) return;
 
     await this.prisma.facebookForm.update({
       where: { id: form.id },
@@ -279,6 +265,18 @@ export class FacebookLeadsService {
     });
 
     this.logger.log(`Imported lead ${leadgenId} from form ${form.name}`);
+  }
+
+  private async createLeadIfNew(data: Prisma.FacebookLeadUncheckedCreateInput): Promise<boolean> {
+    try {
+      await this.prisma.facebookLead.create({ data });
+      return true;
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        return false;
+      }
+      throw e;
+    }
   }
 
   private extractField(fieldData: Array<{ name: string; values: string[] }>, fieldNames: string[]): string | undefined {

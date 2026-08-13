@@ -4,12 +4,11 @@ import { FacebookLeadsController } from './facebook-leads.controller';
 import { FacebookLeadsWebhookController } from './facebook-leads-webhook.controller';
 import { FacebookLeadsService } from './facebook-leads.service';
 import { FacebookGraphApiService } from './facebook-graph-api.service';
-import { FacebookLeadsScheduler } from './facebook-leads.scheduler';
 
 @Module({
   imports: [AuthModule],
   controllers: [FacebookLeadsController, FacebookLeadsWebhookController],
-  providers: [FacebookLeadsService, FacebookGraphApiService, FacebookLeadsScheduler],
+  providers: [FacebookLeadsService, FacebookGraphApiService],
   exports: [FacebookLeadsService],
 })
 export class FacebookLeadsModule {}

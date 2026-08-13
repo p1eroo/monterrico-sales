@@ -56,6 +56,7 @@ const TermsOfService = lazy(() => import('@/pages/TermsOfService'));
 const MarketingDashboard = lazy(() => import('@/pages/marketing/MarketingDashboard'));
 const MarketingLeads = lazy(() => import('@/pages/marketing/MarketingLeads'));
 const MarketingIntegrations = lazy(() => import('@/pages/marketing/MarketingIntegrations'));
+const MarketingFacebook = lazy(() => import('@/pages/marketing/MarketingFacebook'));
 const MarketingPersonal = lazy(() => import('@/pages/marketing/MarketingPersonal'));
 const AreaSelect = lazy(() => import('@/pages/AreaSelect'));
 const GoogleAuthCallback = lazy(() => import('@/pages/GoogleAuthCallback'));
@@ -206,6 +207,7 @@ function MainRoutes() {
         <Route path="/marketing" element={<Navigate to="/marketing/dashboard" replace />} />
         <Route path="/marketing/dashboard" element={<MarketingDashboard />} />
         <Route path="/marketing/leads" element={<MarketingLeads />} />
+        <Route path="/marketing/facebook" element={<MarketingFacebook />} />
         <Route path="/marketing/integrations" element={<MarketingIntegrations />} />
         <Route path="/marketing/personal" element={<MarketingPersonal />} />
       </Route>

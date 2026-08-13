@@ -1,7 +1,7 @@
 import { type ComponentType } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { UserPlus, Users, Shield, Settings,
-  FileSearch, Bot, ArrowRightLeft, ChevronDown, MessageCircle,
+  FileSearch, Bot, ArrowRightLeft, ChevronDown, MessageCircle, Facebook,
 } from 'lucide-react';
 import type { PermissionKey } from '@/types';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -142,6 +142,7 @@ const navItemsAdmin: NavDef[] = [
 const navItemsMarketing: NavDef[] = [
   { to: '/marketing', label: 'Dashboard', icon: DashboardSvgIcon },
   { to: '/marketing/leads', label: 'Leads', icon: UserPlus },
+  { to: '/marketing/facebook', label: 'Facebook', icon: Facebook },
   { to: '/marketing/integrations', label: 'Integraciones', icon: ArrowRightLeft },
   { to: '/marketing/personal', label: 'Personal', icon: Users },
 ];
