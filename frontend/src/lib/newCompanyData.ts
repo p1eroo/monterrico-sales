@@ -13,7 +13,13 @@ export interface NewCompanyData {
   direccion: string;
   dominio: string;
   linkedin: string;
+  /** Correo de la empresa (API / carga existente). El alta de contacto usa `contactoCorreo`. */
   correo: string;
+  /** Contacto inicial al crear la empresa (opcional). */
+  contactoNombre: string;
+  contactoCargo: string;
+  contactoTelefono: string;
+  contactoCorreo: string;
   origenLead: ContactSource | '';
   propietario: string;
   clienteRecuperado: 'si' | 'no';
@@ -37,6 +43,10 @@ export const emptyNewCompanyForm: NewCompanyData = {
   dominio: '',
   linkedin: '',
   correo: '',
+  contactoNombre: '',
+  contactoCargo: '',
+  contactoTelefono: '',
+  contactoCorreo: '',
   origenLead: '',
   propietario: '',
   clienteRecuperado: 'no',

@@ -51,6 +51,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
 import { TaskAssociationPickerLoadMore } from '@/components/shared/TaskAssociationPickerLoadMore';
+import { NewClienteContactoDialog } from '@/components/shared/NewClienteContactoDialog';
 import { NewContactWizard, type NewContactData } from '@/components/shared/NewContactWizard';
 import { createContactFromWizardForCompany } from '@/lib/createContactFromWizard';
 import {
@@ -877,27 +878,40 @@ export function TaskFormDialog({
       </div>
     </FormDialogShell>
 
-    <NewContactWizard
-      variant={isClienteCartera ? 'cliente-cartera' : 'crm'}
-      open={newContactWizardOpen}
-      onOpenChange={setNewContactWizardOpen}
-      onSubmit={(data) => { void handleCreateContactFromWizard(data); }}
-      title="Nuevo contacto"
-      description={
-        selectedCompanyName
-          ? `Crea un contacto vinculado a ${selectedCompanyName}.`
-          : 'Crea un contacto vinculado a la empresa seleccionada.'
-      }
-      submitLabel="Crear y vincular"
-      lockCompanySelection
-      defaultCompanyId={selectedCompanyId ?? undefined}
-      defaultValues={{
-        company: selectedCompanyName ?? '',
-        companyId: selectedCompanyId ?? undefined,
-        etapaCiclo: 'lead',
-        assignedTo: formAssignee,
-      }}
-    />
+    {isClienteCartera ? (
+      <NewClienteContactoDialog
+        open={newContactWizardOpen}
+        onOpenChange={setNewContactWizardOpen}
+        onSubmit={(data) => { void handleCreateContactFromWizard(data); }}
+        submitLabel="Crear y vincular"
+        lockCompanySelection
+        defaultCompanyId={selectedCompanyId ?? undefined}
+        defaultCompanyName={selectedCompanyName ?? undefined}
+        defaultAssignedTo={formAssignee}
+      />
+    ) : (
+      <NewContactWizard
+        variant="crm"
+        open={newContactWizardOpen}
+        onOpenChange={setNewContactWizardOpen}
+        onSubmit={(data) => { void handleCreateContactFromWizard(data); }}
+        title="Nuevo contacto"
+        description={
+          selectedCompanyName
+            ? `Crea un contacto vinculado a ${selectedCompanyName}.`
+            : 'Crea un contacto vinculado a la empresa seleccionada.'
+        }
+        submitLabel="Crear y vincular"
+        lockCompanySelection
+        defaultCompanyId={selectedCompanyId ?? undefined}
+        defaultValues={{
+          company: selectedCompanyName ?? '',
+          companyId: selectedCompanyId ?? undefined,
+          etapaCiclo: 'lead',
+          assignedTo: formAssignee,
+        }}
+      />
+    )}
     </>
   );
 }

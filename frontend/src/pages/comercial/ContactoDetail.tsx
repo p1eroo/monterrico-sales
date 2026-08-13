@@ -752,6 +752,39 @@ export default function ContactoDetailPage() {
           toast.success('Empresa actualizada y vinculada correctamente', { id: 'add-co-contact' });
           return;
         }
+
+        const created = await api<ApiCompanyRecord>('/companies', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: data.nombreComercial.trim(),
+            razonSocial: data.razonSocial.trim() || undefined,
+            ruc: data.ruc.trim() || undefined,
+            telefono: data.telefono.trim() || undefined,
+            domain: data.dominio.trim() || undefined,
+            rubro: data.rubro || undefined,
+            tipo: data.tipoEmpresa || undefined,
+            linkedin: data.linkedin.trim() || undefined,
+            correo: data.contactoCorreo.trim() || data.correo.trim() || undefined,
+            distrito: data.distrito.trim() || undefined,
+            provincia: data.provincia.trim() || undefined,
+            departamento: data.departamento.trim() || undefined,
+            direccion: data.direccion.trim() || undefined,
+            facturacionEstimada: (() => {
+              const f = Number(data.facturacion);
+              if (Number.isFinite(f) && f > 0) return f;
+              return 1;
+            })(),
+            fuente: data.origenLead || contact.fuente,
+            etapa: data.etapa || contact.etapa,
+            clienteRecuperado: data.clienteRecuperado,
+            ...(data.propietario && isLikelyContactCuid(data.propietario)
+              ? { assignedTo: data.propietario }
+              : {}),
+          }),
+        });
+        const isPrimary = !(apiRecord?.companies?.length);
+        const updated = await contactAddCompany(routeId, created.id, isPrimary);
+        setApiRecord(updated);
         setAddCompanyOpen(false);
         toast.success('Empresa creada y vinculada correctamente', { id: 'add-co-contact' });
       } catch (e) {
@@ -1121,6 +1154,7 @@ export default function ContactoDetailPage() {
         onSubmit={handleAddCompany}
         title="Agregar empresa"
         description={`Vincula una nueva empresa a ${contact.name}.`}
+        showContactSection={false}
       />
 
       {/* Vincular oportunidad existente Dialog */}

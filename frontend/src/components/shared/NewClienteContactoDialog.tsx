@@ -35,6 +35,14 @@ type Props = {
   title?: string;
   description?: string;
   submitLabel?: string;
+  /** Empresa de cartera preseleccionada al abrir. */
+  defaultCompanyId?: string;
+  /** Nombre de respaldo si la empresa aún no está en el listado cargado. */
+  defaultCompanyName?: string;
+  /** Impide cambiar o quitar la asociación preseleccionada. */
+  lockCompanySelection?: boolean;
+  /** Asesor inicial (p. ej. el de la tarea en curso). */
+  defaultAssignedTo?: string;
 };
 
 export function NewClienteContactoDialog({
@@ -44,6 +52,10 @@ export function NewClienteContactoDialog({
   title = 'Nuevo contacto',
   description = 'Registra un nuevo contacto de cartera.',
   submitLabel = 'Crear contacto',
+  defaultCompanyId,
+  defaultCompanyName,
+  lockCompanySelection = false,
+  defaultAssignedTo,
 }: Props) {
   const currentUser = useAppStore((s) => s.currentUser);
   const { hasPermission } = usePermissions();
@@ -54,9 +66,11 @@ export function NewClienteContactoDialog({
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [assignedTo, setAssignedTo] = useState(() =>
-    resolveAdvisorAssigneeId(undefined, currentUser, canReassign),
+    resolveAdvisorAssigneeId(defaultAssignedTo, currentUser, canReassign),
   );
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(
+    defaultCompanyId ?? null,
+  );
   const [empresas, setEmpresas] = useState<ClienteEmpresaOption[]>([]);
   const [assocPanelOpen, setAssocPanelOpen] = useState(false);
   const [assocSearch, setAssocSearch] = useState('');
@@ -67,17 +81,23 @@ export function NewClienteContactoDialog({
     setCargo('');
     setEmail('');
     setPhone('');
-    setAssignedTo(resolveAdvisorAssigneeId(undefined, currentUser, canReassign));
-    setSelectedCompanyId(null);
+    setAssignedTo(resolveAdvisorAssigneeId(defaultAssignedTo, currentUser, canReassign));
+    setSelectedCompanyId(defaultCompanyId ?? null);
     setAssocPanelOpen(false);
     setAssocSearch('');
     setSubmitting(false);
-  }, [currentUser, canReassign]);
+  }, [currentUser, canReassign, defaultAssignedTo, defaultCompanyId]);
 
   function handleOpenChange(next: boolean) {
     if (!next) reset();
     onOpenChange(next);
   }
+
+  useEffect(() => {
+    if (!open) return;
+    setAssignedTo(resolveAdvisorAssigneeId(defaultAssignedTo, currentUser, canReassign));
+    setSelectedCompanyId(defaultCompanyId ?? null);
+  }, [open, defaultAssignedTo, defaultCompanyId, currentUser, canReassign]);
 
   useEffect(() => {
     if (!open) return;
@@ -97,10 +117,14 @@ export function NewClienteContactoDialog({
     };
   }, [open]);
 
-  const selectedCompany = useMemo(
-    () => empresas.find((empresa) => empresa.id === selectedCompanyId) ?? null,
-    [empresas, selectedCompanyId],
-  );
+  const selectedCompany = useMemo(() => {
+    const fromList = empresas.find((empresa) => empresa.id === selectedCompanyId);
+    if (fromList) return fromList;
+    if (selectedCompanyId && defaultCompanyId === selectedCompanyId && defaultCompanyName) {
+      return { id: selectedCompanyId, name: defaultCompanyName };
+    }
+    return null;
+  }, [empresas, selectedCompanyId, defaultCompanyId, defaultCompanyName]);
 
   const filteredEmpresasAll = useMemo(() => {
     const query = assocSearch.trim().toLowerCase();
@@ -206,95 +230,99 @@ export function NewClienteContactoDialog({
                 <div className="flex items-center gap-1 rounded-md border border-input bg-muted/60 px-2 py-1 text-xs">
                   <Building2 className="size-3" />
                   <span className="max-w-[280px] truncate">{selectedCompany.name}</span>
-                  <button
-                    type="button"
-                    className="ml-0.5 rounded-sm p-0.5 hover:bg-muted"
-                    onClick={() => setSelectedCompanyId(null)}
-                  >
-                    <span className="text-xs leading-none">&times;</span>
-                  </button>
+                  {!lockCompanySelection && (
+                    <button
+                      type="button"
+                      className="ml-0.5 rounded-sm p-0.5 hover:bg-muted"
+                      onClick={() => setSelectedCompanyId(null)}
+                    >
+                      <span className="text-xs leading-none">&times;</span>
+                    </button>
+                  )}
                 </div>
               </div>
             )}
-            <Popover
-              open={assocPanelOpen}
-              onOpenChange={setAssocPanelOpen}
-              modal={false}
-            >
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className={formDialogPickerTriggerClass}
-                >
-                  {selectedCompany ? 'Cambiar asociación' : 'Buscar asociación'}
-                  <ChevronDown
-                    className={`size-4 text-muted-foreground transition-transform ${assocPanelOpen ? 'rotate-180' : ''}`}
-                  />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent
-                align="start"
-                side="bottom"
-                sideOffset={8}
-                collisionPadding={16}
-                className={formDialogPopoverContentClass}
-                onOpenAutoFocus={(event) => event.preventDefault()}
+            {!lockCompanySelection && (
+              <Popover
+                open={assocPanelOpen}
+                onOpenChange={setAssocPanelOpen}
+                modal={false}
               >
-                <div className="p-3">
-                  <div className="relative mb-3">
-                    <Search className="absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      placeholder="Buscar..."
-                      value={assocSearch}
-                      onChange={(event) => setAssocSearch(event.target.value)}
-                      className={`${formDialogInputClass} h-10 pl-9 text-sm`}
-                    />
-                  </div>
-                  <div
-                    className={cn(formDialogScrollListClass, 'space-y-0.5')}
-                    onWheel={(event) => event.stopPropagation()}
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={formDialogPickerTriggerClass}
                   >
-                    {filteredEmpresasAll.length === 0 ? (
-                      <p className="px-2 py-6 text-center text-xs text-muted-foreground">
-                        Sin resultados
-                      </p>
-                    ) : (
-                      filteredEmpresas.map((empresa) => {
-                        const isSelected = selectedCompanyId === empresa.id;
-                        return (
-                          <label
-                            key={empresa.id}
-                            className={`flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-muted/60 ${isSelected ? 'bg-muted/50' : ''}`}
-                          >
-                            <Checkbox
-                              checked={isSelected}
-                              className="size-3.5 shrink-0"
-                              onCheckedChange={(checked) => {
-                                if (checked === true) {
-                                  setSelectedCompanyId(empresa.id);
-                                  setAssocPanelOpen(false);
-                                  setAssocSearch('');
-                                } else {
-                                  setSelectedCompanyId(null);
-                                }
-                              }}
-                            />
-                            <Building2 className="size-3.5 shrink-0 text-muted-foreground" />
-                            <span className="min-w-0 truncate">{empresa.name}</span>
-                          </label>
-                        );
-                      })
-                    )}
-                    <TaskAssociationPickerLoadMore
-                      visibleCount={assocVisibleCount}
-                      totalCount={filteredEmpresasAll.length}
-                      onShowMore={showMoreAssocItems}
+                    {selectedCompany ? 'Cambiar asociación' : 'Buscar asociación'}
+                    <ChevronDown
+                      className={`size-4 text-muted-foreground transition-transform ${assocPanelOpen ? 'rotate-180' : ''}`}
                     />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="start"
+                  side="bottom"
+                  sideOffset={8}
+                  collisionPadding={16}
+                  className={formDialogPopoverContentClass}
+                  onOpenAutoFocus={(event) => event.preventDefault()}
+                >
+                  <div className="p-3">
+                    <div className="relative mb-3">
+                      <Search className="absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar..."
+                        value={assocSearch}
+                        onChange={(event) => setAssocSearch(event.target.value)}
+                        className={`${formDialogInputClass} h-10 pl-9 text-sm`}
+                      />
+                    </div>
+                    <div
+                      className={cn(formDialogScrollListClass, 'space-y-0.5')}
+                      onWheel={(event) => event.stopPropagation()}
+                    >
+                      {filteredEmpresasAll.length === 0 ? (
+                        <p className="px-2 py-6 text-center text-xs text-muted-foreground">
+                          Sin resultados
+                        </p>
+                      ) : (
+                        filteredEmpresas.map((empresa) => {
+                          const isSelected = selectedCompanyId === empresa.id;
+                          return (
+                            <label
+                              key={empresa.id}
+                              className={`flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-muted/60 ${isSelected ? 'bg-muted/50' : ''}`}
+                            >
+                              <Checkbox
+                                checked={isSelected}
+                                className="size-3.5 shrink-0"
+                                onCheckedChange={(checked) => {
+                                  if (checked === true) {
+                                    setSelectedCompanyId(empresa.id);
+                                    setAssocPanelOpen(false);
+                                    setAssocSearch('');
+                                  } else {
+                                    setSelectedCompanyId(null);
+                                  }
+                                }}
+                              />
+                              <Building2 className="size-3.5 shrink-0 text-muted-foreground" />
+                              <span className="min-w-0 truncate">{empresa.name}</span>
+                            </label>
+                          );
+                        })
+                      )}
+                      <TaskAssociationPickerLoadMore
+                        visibleCount={assocVisibleCount}
+                        totalCount={filteredEmpresasAll.length}
+                        onShowMore={showMoreAssocItems}
+                      />
+                    </div>
                   </div>
-                </div>
-              </PopoverContent>
-            </Popover>
+                </PopoverContent>
+              </Popover>
+            )}
           </FormDialogField>
 
           <FormDialogGrid>

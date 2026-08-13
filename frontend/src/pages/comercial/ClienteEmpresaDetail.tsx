@@ -12,10 +12,8 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { LinkedContactsCard } from '@/components/shared/LinkedContactsCard';
 import type { LinkedContact } from '@/components/shared/LinkedContactsCard';
 import { LinkExistingDialog } from '@/components/shared/LinkExistingDialog';
-import {
-  NewContactWizard,
-  type NewContactData,
-} from '@/components/shared/NewContactWizard';
+import { NewClienteContactoDialog } from '@/components/shared/NewClienteContactoDialog';
+import type { NewContactData } from '@/components/shared/NewContactWizard';
 import { CompanyHeader } from '@/components/company-detail/CompanyHeader';
 import { ClienteEmpresaMetricsCard } from '@/components/cliente-cartera/ClienteEmpresaMetricsCard';
 import { TimelinePanel } from '@/components/shared/TimelinePanel';
@@ -584,16 +582,13 @@ export default function ClienteEmpresaDetailPage() {
         confirmLabel={linking ? 'Vinculando…' : 'Vincular'}
       />
 
-      <NewContactWizard
-        variant="cliente-cartera"
+      <NewClienteContactoDialog
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         onSubmit={onSubmitNewContact}
         lockCompanySelection
         defaultCompanyId={empresa?.id}
-        defaultValues={empresa ? { company: empresa.empresa, companyId: empresa.id } : undefined}
-        title="Nuevo contacto"
-        description="Registra un nuevo contacto de cartera."
+        defaultCompanyName={empresa?.empresa}
         submitLabel="Crear y vincular"
       />
     </>

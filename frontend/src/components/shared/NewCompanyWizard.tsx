@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useCrmConfigStore, getLeadSourceOptionsFromCatalog } from '@/store/crmConfigStore';
-import { Check, ChevronLeft, ChevronRight, Loader2, Search } from 'lucide-react';
+import { Check, ChevronRight, Loader2, Search } from 'lucide-react';
 import { toast } from '@/lib/notify';
 import { factilizaApi } from '@/lib/factilizaApi';
 import type { CompanyRubro, CompanyTipo, ContactSource, Etapa } from '@/types';
@@ -15,11 +15,12 @@ import { cn } from '@/lib/utils';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   FormDialogShell,
+  FormDialogActions,
   FormDialogWizardFooter,
   FormDialogField,
+  FormDialogGrid,
   formDialogInputClass,
   formDialogSelectTriggerClass,
 } from '@/components/ui/form-dialog';
@@ -81,13 +82,13 @@ interface NewCompanyWizardProps {
   defaultValues?: Partial<NewCompanyData>;
   /** Texto del botón final (default: Crear Empresa) */
   confirmButtonLabel?: string;
+  /**
+   * Si false, oculta el bloque Contacto (p. ej. alta de empresa desde ficha de contacto,
+   * donde el vínculo ya es con ese contacto). Default true (flujo Empresas → Nueva empresa).
+   */
+  showContactSection?: boolean;
 }
 
-const steps = [
-  { label: 'Identificación' },
-  { label: 'Ubicación y Contacto' },
-  { label: 'Oportunidad' },
-];
 const COMPANY_NAME_LOOKUP_DEBOUNCE_MS = 700;
 
 function mergeCompanyForm(
@@ -107,15 +108,26 @@ export function NewCompanyWizard({
   open,
   onOpenChange,
   onSubmit,
-  title = 'Nueva Empresa',
+  title = 'Nueva empresa',
   description = 'Registra una nueva empresa en el sistema.',
   defaultValues,
-  confirmButtonLabel = 'Crear Empresa',
+  confirmButtonLabel = 'Crear empresa',
+  showContactSection = true,
 }: NewCompanyWizardProps) {
+  /** Flujo Empresas: wizard por pasos. Desde ficha de contacto/opp: formulario único. */
+  const multiStep = showContactSection;
   const currentUser = useAppStore((s) => s.currentUser);
   const { hasPermission } = usePermissions();
   const canReassign = canUserReassignCommercialAdvisor(hasPermission, 'empresas');
   const getUserName = useUsersStore((s) => s.getUserName);
+  const steps = useMemo(
+    () => [
+      { label: 'Identificación' },
+      { label: 'Contacto y oportunidad' },
+      { label: 'Ubicación' },
+    ],
+    [],
+  );
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<NewCompanyData>(() =>
     mergeCompanyForm(defaultValues, currentUser, canReassign),
@@ -400,6 +412,36 @@ export function NewCompanyWizard({
       }
     }
     if (step === 1) {
+      if (!existingCompanyId) {
+        if (showContactSection) {
+          const contactName = form.contactoNombre.trim();
+          const contactEmail = form.contactoCorreo.trim();
+          const contactPhone = form.contactoTelefono.trim();
+          const contactCargo = form.contactoCargo.trim();
+          const startedContact = !!(contactName || contactEmail || contactPhone || contactCargo);
+          if (startedContact && !contactName) {
+            toast.error('Indica el nombre completo del contacto');
+            return;
+          }
+          if (startedContact && !contactEmail) {
+            toast.error('Indica el correo del contacto');
+            return;
+          }
+          if (contactEmail && !contactEmail.includes('@')) {
+            toast.error('El correo del contacto no es válido');
+            return;
+          }
+        }
+        const fact = Number(form.facturacion);
+        if (!Number.isFinite(fact) || fact <= 0) {
+          toast.error('La facturación estimada es obligatoria y debe ser mayor que 0');
+          return;
+        }
+        if (!form.fechaCierre.trim()) {
+          toast.error('Selecciona la fecha estimada de cierre de la oportunidad');
+          return;
+        }
+      }
       setForm((s) => ({
         ...s,
         nombreNegocio: s.nombreNegocio.trim() || s.nombreComercial.trim(),
@@ -456,7 +498,7 @@ export function NewCompanyWizard({
       toast.error('La facturación estimada es obligatoria y debe ser mayor que 0');
       return;
     }
-    if (!form.fechaCierre.trim()) {
+    if (multiStep && !form.fechaCierre.trim()) {
       toast.error('Selecciona la fecha estimada de cierre de la oportunidad');
       return;
     }
@@ -495,7 +537,7 @@ export function NewCompanyWizard({
       onOpenChange={handleOpenChange}
       title={title}
       description={description}
-      footer={(
+      footer={multiStep ? (
         <FormDialogWizardFooter
           showBack={step > 0}
           onBack={() => setStep((s) => s - 1)}
@@ -511,13 +553,19 @@ export function NewCompanyWizard({
             </span>
           )}
         />
+      ) : (
+        <FormDialogActions
+          submitting={submitting}
+          submitLabel={existingCompanyId ? 'Actualizar empresa' : confirmButtonLabel}
+          onSubmit={() => void handleSubmit()}
+        />
       )}
       appendContent={showCard ? (
         <div
           data-coincidences-card
-          className="absolute right-full top-1/2 -translate-y-1/2 mr-2 w-80"
+          className="absolute right-full top-1/2 mr-2 w-80 -translate-y-1/2"
         >
-          <div className="rounded-lg border bg-background p-4 shadow-lg">
+          <div className="rounded-2xl border border-border/60 bg-background p-4 shadow-xl">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium">Coincidencias en el CRM</p>
@@ -530,12 +578,12 @@ export function NewCompanyWizard({
               ) : null}
             </div>
             {companyNameSuggestions.length > 0 ? (
-              <div className="mt-3 space-y-2">
+              <div className="mt-3 space-y-1.5">
                 {companyNameSuggestions.map((company) => (
                   <button
                     key={company.id}
                     type="button"
-                    className="flex w-full items-start justify-between rounded-md border bg-background px-3 py-2 text-left transition-colors hover:bg-accent"
+                    className="flex w-full items-start justify-between rounded-lg border border-border/60 bg-muted/40 px-3 py-2 text-left transition-colors hover:bg-muted/70"
                     onClick={() =>
                       applyCompanyRecord(
                         company,
@@ -568,252 +616,387 @@ export function NewCompanyWizard({
         </div>
       ) : null}
     >
-        <div className="space-y-6">
-          <div className="flex items-center justify-center gap-0 py-2">
+      <div className="space-y-6">
+        {multiStep ? (
+          <div className="flex items-center justify-center gap-0">
             {steps.map((s, i) => (
               <div key={s.label} className="flex items-center">
-                <div className="flex flex-col items-center gap-1">
+                <div className="flex flex-col items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => { if (i < step) setStep(i); }}
-                    className={`flex size-8 items-center justify-center rounded-full border-2 text-sm font-semibold transition-colors ${
+                    className={cn(
+                      'flex size-8 items-center justify-center rounded-full border-2 text-sm font-semibold transition-colors',
                       i < step
                         ? 'border-[#13944C] bg-[#13944C] text-white'
                         : i === step
-                          ? 'border-[#13944C] bg-white text-[#13944C]'
-                          : 'border-muted-foreground/30 bg-muted text-muted-foreground'
-                    }`}
+                          ? 'border-[#13944C] bg-background text-[#13944C]'
+                          : 'border-border bg-muted/60 text-muted-foreground',
+                    )}
                   >
                     {i < step ? <Check className="size-4" /> : i + 1}
                   </button>
-                  <span className={`text-xs whitespace-nowrap ${i === step ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
+                  <span
+                    className={cn(
+                      'text-xs whitespace-nowrap',
+                      i === step ? 'font-medium text-foreground' : 'text-muted-foreground',
+                    )}
+                  >
                     {s.label}
                   </span>
                 </div>
                 {i < steps.length - 1 && (
-                  <div className={`mx-2 mb-5 h-0.5 w-12 sm:w-16 ${i < step ? 'bg-[#13944C]' : 'bg-muted-foreground/20'}`} />
+                  <div
+                    className={cn(
+                      'mx-2 mb-5 h-px w-10 sm:w-14',
+                      i < step ? 'bg-[#13944C]' : 'bg-border',
+                    )}
+                  />
                 )}
               </div>
             ))}
           </div>
+        ) : null}
 
-          {step === 0 && (
-            <div className="grid gap-4 grid-cols-2">
-              <div className="space-y-2">
-                <Label>RUC</Label>
-                <div className="relative">
-                  <Input
-                    className={cn(formDialogInputClass, 'pr-10')}
-                    placeholder="20XXXXXXXXX"
-                    maxLength={11}
-                    value={form.ruc}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      set('ruc', v);
-                      const norm = v.replace(/\D/g, '');
-                      if (
-                        existingCompanyId &&
-                        loadedRucDigits &&
-                        norm !== loadedRucDigits
-                      ) {
-                        setExistingCompanyId(null);
-                        setLoadedRucDigits(null);
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      const val = (e.currentTarget as HTMLInputElement).value;
-                      if (e.key === 'Enter' && val.trim().replace(/\D/g, '').length === 11) {
-                        e.preventDefault();
-                        void handleRucLookup(val);
-                      }
-                    }}
-                  />
-                  <div className="absolute right-0.5 top-1/2 z-10 -translate-y-1/2">
-                    {rucLookupLoading ? (
-                      <div className="flex size-8 items-center justify-center" aria-hidden>
-                        <Loader2 className="size-4 animate-spin text-muted-foreground" />
-                      </div>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="size-8 shrink-0 text-muted-foreground hover:text-foreground"
-                        aria-label="Buscar empresa por RUC"
-                        onClick={() => void handleRucLookup()}
-                      >
-                        <Search className="size-4" />
-                      </Button>
-                    )}
-                  </div>
+        {(!multiStep || step === 0) && (
+          <FormDialogGrid>
+            <FormDialogField label="RUC" compactControl={false}>
+              <div className="relative">
+                <Input
+                  className={cn(formDialogInputClass, 'pr-10')}
+                  placeholder="20XXXXXXXXX"
+                  maxLength={11}
+                  value={form.ruc}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    set('ruc', v);
+                    const norm = v.replace(/\D/g, '');
+                    if (
+                      existingCompanyId &&
+                      loadedRucDigits &&
+                      norm !== loadedRucDigits
+                    ) {
+                      setExistingCompanyId(null);
+                      setLoadedRucDigits(null);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    const val = (e.currentTarget as HTMLInputElement).value;
+                    if (e.key === 'Enter' && val.trim().replace(/\D/g, '').length === 11) {
+                      e.preventDefault();
+                      void handleRucLookup(val);
+                    }
+                  }}
+                />
+                <div className="absolute top-1/2 right-0.5 z-10 -translate-y-1/2">
+                  {rucLookupLoading ? (
+                    <div className="flex size-8 items-center justify-center" aria-hidden>
+                      <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 shrink-0 text-muted-foreground hover:text-foreground"
+                      aria-label="Buscar empresa por RUC"
+                      onClick={() => void handleRucLookup()}
+                    >
+                      <Search className="size-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Razón social</Label>
-                <Input
-                  className={formDialogInputClass}
-                  placeholder="Razón social - Enter para cargar coincidencia"
-                  value={form.razonSocial}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    set('razonSocial', value);
-                    setCompanyNameLookupQuery(value);
-                  }}
-                  onKeyDown={(e) => {
-                    const value = (e.currentTarget as HTMLInputElement).value;
-                    if (e.key === 'Enter' && value.trim().length >= 3) {
-                      e.preventDefault();
-                      void searchCompaniesByName(value, { loadFirstMatch: true });
-                    }
-                  }}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Nombre comercial <span className="text-destructive">*</span></Label>
-                <Input
-                  className={formDialogInputClass}
-                  placeholder="Nombre comercial - Enter para cargar coincidencia"
-                  value={form.nombreComercial}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    set('nombreComercial', value);
-                    setCompanyNameLookupQuery(value);
-                  }}
-                  onKeyDown={(e) => {
-                    const value = (e.currentTarget as HTMLInputElement).value;
-                    if (e.key === 'Enter' && value.trim().length >= 3) {
-                      e.preventDefault();
-                      void searchCompaniesByName(value, { loadFirstMatch: true });
-                    }
-                  }}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Teléfono</Label>
-                <Input className={formDialogInputClass} placeholder="+51 999 999 999" value={form.telefono} onChange={(e) => set('telefono', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Rubro de la empresa</Label>
-                <Select value={form.rubro} onValueChange={(v) => set('rubro', v as CompanyRubro)}>
-                  <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue placeholder="Seleccionar rubro" /></SelectTrigger>
-                  <SelectContent>
-                    {rubroOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Tipo de empresa</Label>
-                <Select value={form.tipoEmpresa} onValueChange={(v) => set('tipoEmpresa', v as CompanyTipo)}>
-                  <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue placeholder="-- Seleccionar --" /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(companyTipoLabels).map(([key, label]) => (
-                      <SelectItem key={key} value={key}>{label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Dominio <span className="text-destructive">*</span></Label>
-                <Input className={formDialogInputClass} placeholder="empresa.com" value={form.dominio} onChange={(e) => set('dominio', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Fuente <span className="text-destructive">*</span></Label>
-                <Select value={form.origenLead} onValueChange={(v) => set('origenLead', v as ContactSource)}>
-                  <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue placeholder="Seleccionar fuente" /></SelectTrigger>
-                  <SelectContent>
-                    {sourceOptions.map(({ value, label }) => (
-                      <SelectItem key={value} value={value}>{label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-
-          {step === 1 && (
-            <div className="grid grid-cols-2 items-start gap-4">
-              <FormDialogField label="Distrito">
-                <Input className={formDialogInputClass} placeholder="Ej: Surco" value={form.distrito} onChange={(e) => set('distrito', e.target.value)} />
-              </FormDialogField>
-              <FormDialogField label="Provincia">
-                <Input className={formDialogInputClass} placeholder="Ej: Lima" value={form.provincia} onChange={(e) => set('provincia', e.target.value)} />
-              </FormDialogField>
-              <FormDialogField label="Departamento">
-                <Input className={formDialogInputClass} placeholder="Ej: Lima" value={form.departamento} onChange={(e) => set('departamento', e.target.value)} />
-              </FormDialogField>
-              <FormDialogField label="Dirección">
-                <Input className={formDialogInputClass} placeholder="Ej: Av. Primavera 1234" value={form.direccion} onChange={(e) => set('direccion', e.target.value)} />
-              </FormDialogField>
-              <FormDialogField label="LinkedIn">
-                <Input className={formDialogInputClass} placeholder="https://www.linkedin.com/company/..." value={form.linkedin} onChange={(e) => set('linkedin', e.target.value)} />
-              </FormDialogField>
-              <FormDialogField label="Correo">
-                <Input className={formDialogInputClass} type="email" placeholder="contacto@empresa.com" value={form.correo} onChange={(e) => set('correo', e.target.value)} />
-              </FormDialogField>
-              <AssignedAdvisorFormField
-                htmlId="company-wizard-propietario"
-                value={form.propietario}
-                onChange={(v) => set('propietario', v)}
-                assignModule="empresas"
-                disabled={false}
-                fallbackName={currentUser.name}
-                label="Propietario"
-                formStyle
+            </FormDialogField>
+            <FormDialogField label="Razón social">
+              <Input
+                className={formDialogInputClass}
+                placeholder="Razón social - Enter para cargar coincidencia"
+                value={form.razonSocial}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  set('razonSocial', value);
+                  setCompanyNameLookupQuery(value);
+                }}
+                onKeyDown={(e) => {
+                  const value = (e.currentTarget as HTMLInputElement).value;
+                  if (e.key === 'Enter' && value.trim().length >= 3) {
+                    e.preventDefault();
+                    void searchCompaniesByName(value, { loadFirstMatch: true });
+                  }
+                }}
               />
-              <FormDialogField label="Cliente Recuperado">
-                <Select value={form.clienteRecuperado} onValueChange={(v) => set('clienteRecuperado', v as 'si' | 'no')}>
-                  <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="no">No</SelectItem>
-                    <SelectItem value="si">Sí</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormDialogField>
-            </div>
-          )}
+            </FormDialogField>
+            <FormDialogField label="Nombre comercial" required>
+              <Input
+                className={formDialogInputClass}
+                placeholder="Nombre comercial - Enter para cargar coincidencia"
+                value={form.nombreComercial}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  set('nombreComercial', value);
+                  setCompanyNameLookupQuery(value);
+                }}
+                onKeyDown={(e) => {
+                  const value = (e.currentTarget as HTMLInputElement).value;
+                  if (e.key === 'Enter' && value.trim().length >= 3) {
+                    e.preventDefault();
+                    void searchCompaniesByName(value, { loadFirstMatch: true });
+                  }
+                }}
+              />
+            </FormDialogField>
+            <FormDialogField label="Teléfono">
+              <Input
+                className={formDialogInputClass}
+                placeholder="+51 999 999 999"
+                value={form.telefono}
+                onChange={(e) => set('telefono', e.target.value)}
+              />
+            </FormDialogField>
+            <FormDialogField label="Rubro de la empresa">
+              <Select value={form.rubro} onValueChange={(v) => set('rubro', v as CompanyRubro)}>
+                <SelectTrigger className={formDialogSelectTriggerClass}>
+                  <SelectValue placeholder="Seleccionar rubro" />
+                </SelectTrigger>
+                <SelectContent>
+                  {rubroOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormDialogField>
+            <FormDialogField label="Tipo de empresa">
+              <Select value={form.tipoEmpresa} onValueChange={(v) => set('tipoEmpresa', v as CompanyTipo)}>
+                <SelectTrigger className={formDialogSelectTriggerClass}>
+                  <SelectValue placeholder="-- Seleccionar --" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(companyTipoLabels).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormDialogField>
+            <FormDialogField label="Dominio" required>
+              <Input
+                className={formDialogInputClass}
+                placeholder="empresa.com"
+                value={form.dominio}
+                onChange={(e) => set('dominio', e.target.value)}
+              />
+            </FormDialogField>
+            <FormDialogField label="Fuente" required>
+              <Select value={form.origenLead} onValueChange={(v) => set('origenLead', v as ContactSource)}>
+                <SelectTrigger className={formDialogSelectTriggerClass}>
+                  <SelectValue placeholder="Seleccionar fuente" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sourceOptions.map(({ value, label }) => (
+                    <SelectItem key={value} value={value}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormDialogField>
+            <AssignedAdvisorFormField
+              htmlId="company-wizard-propietario"
+              value={form.propietario}
+              onChange={(v) => set('propietario', v)}
+              assignModule="empresas"
+              disabled={false}
+              fallbackName={currentUser.name}
+              label="Propietario"
+              formStyle
+            />
+            <FormDialogField label="Cliente recuperado">
+              <Select value={form.clienteRecuperado} onValueChange={(v) => set('clienteRecuperado', v as 'si' | 'no')}>
+                <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="no">No</SelectItem>
+                  <SelectItem value="si">Sí</SelectItem>
+                </SelectContent>
+              </Select>
+            </FormDialogField>
+            {!multiStep ? (
+              <>
+                <FormDialogField label="Etapa">
+                  <Select value={form.etapa} onValueChange={(v) => set('etapa', v as Etapa)}>
+                    <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {stageOptions.map(({ value, label }) => (
+                        <SelectItem key={value} value={value}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormDialogField>
+                <FormDialogField label="Facturación estimada (S/)" required>
+                  <Input
+                    className={formDialogInputClass}
+                    type="number"
+                    min={0.01}
+                    step="0.01"
+                    placeholder="Mayor que 0"
+                    value={form.facturacion}
+                    onChange={(e) => set('facturacion', e.target.value)}
+                  />
+                </FormDialogField>
+              </>
+            ) : null}
+          </FormDialogGrid>
+        )}
 
-          {step === 2 && (
+        {multiStep && step === 1 && (
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-foreground/80">Contacto</p>
+              <FormDialogGrid>
+                <FormDialogField label="Nombre completo">
+                  <Input
+                    className={formDialogInputClass}
+                    placeholder="Nombre del contacto"
+                    value={form.contactoNombre}
+                    onChange={(e) => set('contactoNombre', e.target.value)}
+                    disabled={!!existingCompanyId}
+                  />
+                </FormDialogField>
+                <FormDialogField label="Cargo">
+                  <Input
+                    className={formDialogInputClass}
+                    placeholder="Ej: Gerente de Compras"
+                    value={form.contactoCargo}
+                    onChange={(e) => set('contactoCargo', e.target.value)}
+                    disabled={!!existingCompanyId}
+                  />
+                </FormDialogField>
+                <FormDialogField label="Teléfono">
+                  <Input
+                    className={formDialogInputClass}
+                    placeholder="+51 999 999 999"
+                    value={form.contactoTelefono}
+                    onChange={(e) => set('contactoTelefono', e.target.value)}
+                    disabled={!!existingCompanyId}
+                  />
+                </FormDialogField>
+                <FormDialogField label="Correo contacto">
+                  <Input
+                    className={formDialogInputClass}
+                    type="email"
+                    placeholder="email@empresa.com"
+                    value={form.contactoCorreo}
+                    onChange={(e) => set('contactoCorreo', e.target.value)}
+                    disabled={!!existingCompanyId}
+                  />
+                </FormDialogField>
+              </FormDialogGrid>
+            </div>
+
             <div
               className={cn(
-                'grid gap-4 grid-cols-2',
+                'space-y-3',
                 existingCompanyId && 'pointer-events-none opacity-60',
               )}
               aria-disabled={existingCompanyId ? true : undefined}
             >
-              {existingCompanyId ? (
-                <p className="col-span-2 text-sm text-muted-foreground">
-                  Esta empresa ya está en el sistema: solo se actualizarán los datos de la cuenta.
-                  La sección de oportunidad no aplica en este flujo.
-                </p>
-              ) : null}
-              <div className="space-y-2">
-                <Label>Nombre de la oportunidad</Label>
-                <Input className={formDialogInputClass} placeholder="Nombre de la oportunidad" value={form.nombreNegocio} onChange={(e) => set('nombreNegocio', e.target.value)} />
+              <div className="space-y-0.5">
+                <p className="text-sm font-semibold text-foreground/80">Oportunidad</p>
+                {existingCompanyId ? (
+                  <p className="text-xs text-muted-foreground">
+                    Esta empresa ya está en el sistema: solo se actualizarán los datos de la cuenta.
+                    La sección de oportunidad no aplica en este flujo.
+                  </p>
+                ) : null}
               </div>
-              <div className="space-y-2">
-                <Label>Etapa</Label>
-                <Select value={form.etapa} onValueChange={(v) => set('etapa', v as Etapa)}>
-                  <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {stageOptions.map(({ value, label }) => (
-                      <SelectItem key={value} value={value}>{label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Facturación estimada (S/) <span className="text-destructive">*</span></Label>
-                <Input className={formDialogInputClass} type="number" min={0.01} step="0.01" placeholder="Mayor que 0" value={form.facturacion} onChange={(e) => set('facturacion', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Fecha de Cierre</Label>
-                <Input className={formDialogInputClass} type="date" value={form.fechaCierre} onChange={(e) => set('fechaCierre', e.target.value)} />
-              </div>
+              <FormDialogGrid>
+                <FormDialogField label="Nombre de la oportunidad">
+                  <Input
+                    className={formDialogInputClass}
+                    placeholder="Nombre de la oportunidad"
+                    value={form.nombreNegocio}
+                    onChange={(e) => set('nombreNegocio', e.target.value)}
+                  />
+                </FormDialogField>
+                <FormDialogField label="Etapa">
+                  <Select value={form.etapa} onValueChange={(v) => set('etapa', v as Etapa)}>
+                    <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {stageOptions.map(({ value, label }) => (
+                        <SelectItem key={value} value={value}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormDialogField>
+                <FormDialogField label="Facturación estimada (S/)" required>
+                  <Input
+                    className={formDialogInputClass}
+                    type="number"
+                    min={0.01}
+                    step="0.01"
+                    placeholder="Mayor que 0"
+                    value={form.facturacion}
+                    onChange={(e) => set('facturacion', e.target.value)}
+                  />
+                </FormDialogField>
+                <FormDialogField label="Fecha de cierre" required>
+                  <Input
+                    className={formDialogInputClass}
+                    type="date"
+                    value={form.fechaCierre}
+                    onChange={(e) => set('fechaCierre', e.target.value)}
+                  />
+                </FormDialogField>
+              </FormDialogGrid>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {(!multiStep || step === 2) && (
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-foreground/80">Ubicación</p>
+            <FormDialogGrid>
+              <FormDialogField label="Distrito">
+                <Input
+                  className={formDialogInputClass}
+                  placeholder="Ej: Surco"
+                  value={form.distrito}
+                  onChange={(e) => set('distrito', e.target.value)}
+                />
+              </FormDialogField>
+              <FormDialogField label="Provincia">
+                <Input
+                  className={formDialogInputClass}
+                  placeholder="Ej: Lima"
+                  value={form.provincia}
+                  onChange={(e) => set('provincia', e.target.value)}
+                />
+              </FormDialogField>
+              <FormDialogField label="Departamento">
+                <Input
+                  className={formDialogInputClass}
+                  placeholder="Ej: Lima"
+                  value={form.departamento}
+                  onChange={(e) => set('departamento', e.target.value)}
+                />
+              </FormDialogField>
+              <FormDialogField label="Dirección">
+                <Input
+                  className={formDialogInputClass}
+                  placeholder="Ej: Av. Primavera 1234"
+                  value={form.direccion}
+                  onChange={(e) => set('direccion', e.target.value)}
+                />
+              </FormDialogField>
+              <FormDialogField label="LinkedIn" className="sm:col-span-2">
+                <Input
+                  className={formDialogInputClass}
+                  placeholder="https://www.linkedin.com/company/..."
+                  value={form.linkedin}
+                  onChange={(e) => set('linkedin', e.target.value)}
+                />
+              </FormDialogField>
+            </FormDialogGrid>
+          </div>
+        )}
+      </div>
     </FormDialogShell>
 
     {domainMatches.length > 0 && !domainLookupLoading && createPortal(

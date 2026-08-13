@@ -786,7 +786,7 @@ export default function ContactosPage() {
         rubro: w.rubro || undefined,
         tipo: w.tipoEmpresa || undefined,
         linkedin: w.linkedin.trim() || undefined,
-        correo: w.correo.trim() || undefined,
+        correo: w.contactoCorreo.trim() || w.correo.trim() || undefined,
         distrito: w.distrito.trim() || undefined,
         provincia: w.provincia.trim() || undefined,
         departamento: w.departamento.trim() || undefined,

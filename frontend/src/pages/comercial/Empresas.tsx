@@ -1017,7 +1017,7 @@ export default function EmpresasPage() {
           rubro: data.rubro || undefined,
           tipo: data.tipoEmpresa || undefined,
           linkedin: data.linkedin.trim() || undefined,
-          correo: data.correo.trim() || undefined,
+          correo: data.contactoCorreo.trim() || data.correo.trim() || undefined,
           distrito: data.distrito.trim() || undefined,
           provincia: data.provincia.trim() || undefined,
           departamento: data.departamento.trim() || undefined,
@@ -1042,22 +1042,24 @@ export default function EmpresasPage() {
       data.nombreNegocio.trim() || data.nombreComercial.trim() || 'Sin título';
     const expectedCloseDate =
       data.fechaCierre.trim() || addCalendarDaysLocalIso(30);
-    const rawCorreo = (data.correo || '').trim();
-    const useEmailAsContactName =
-      !!rawCorreo &&
-      !rawCorreo.toLowerCase().endsWith('@temp.local') &&
-      rawCorreo.includes('@');
-    const contactDisplayName = useEmailAsContactName
-      ? rawCorreo
-      : data.nombreComercial.trim();
+    const contactName = (data.contactoNombre || '').trim();
+    const contactEmail = (data.contactoCorreo || '').trim();
+    const contactPhone = (data.contactoTelefono || '').trim();
+    const contactCargo = (data.contactoCargo || '').trim();
+    const shouldCreateContact =
+      !!contactName &&
+      !!contactEmail &&
+      contactEmail.includes('@') &&
+      !contactEmail.toLowerCase().endsWith('@temp.local');
     let contactId: string | undefined;
     let contactApiError: string | null = null;
-    if (rawCorreo) {
+    if (shouldCreateContact) {
       try {
         const contactBody: Record<string, unknown> = {
-          name: contactDisplayName,
-          telefono: (data.telefono || '').trim(),
-          correo: rawCorreo,
+          name: contactName,
+          cargo: contactCargo || undefined,
+          telefono: contactPhone,
+          correo: contactEmail,
           fuente: (data.origenLead || 'base') as ContactSource,
           etapa: data.etapa,
           estimatedValue: monto,
@@ -1105,7 +1107,7 @@ export default function EmpresasPage() {
     if (!opportunityApiError && !contactApiError) {
       const suffix = contactId
         ? `con contacto y oportunidad "${oppTitle}"`
-        : `con oportunidad "${oppTitle}" (sin contacto: indica un correo para crearlo)`;
+        : `con oportunidad "${oppTitle}" (sin contacto)`;
       toast.success(`Empresa "${data.nombreComercial}" creada ${suffix}`);
     } else if (!opportunityApiError && contactApiError) {
       toast.warning(

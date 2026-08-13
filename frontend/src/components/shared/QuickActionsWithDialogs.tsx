@@ -383,6 +383,7 @@ export function QuickActionsWithDialogs({
         companies={companies}
         opportunities={opportunities}
         defaultAssociations={taskDefaultAssociations}
+        associationVariant={clienteEmpresaId ? 'cliente-cartera' : 'crm'}
         onSave={handleTaskFormSave}
       />
 
@@ -395,6 +396,7 @@ export function QuickActionsWithDialogs({
         companies={companies}
         opportunities={opportunities}
         defaultAssociations={taskDefaultAssociations}
+        associationVariant={clienteEmpresaId ? 'cliente-cartera' : 'crm'}
         onSave={handleTaskFormSave}
       />
     </>

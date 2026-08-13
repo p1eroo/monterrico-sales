@@ -193,27 +193,32 @@ export function FormDialogActions({
   submitting,
   submitDisabled,
   cancelLabel = 'Cancelar',
+  /** Por defecto oculto: el cierre va por la X del header. */
+  showCancel = false,
   className,
 }: {
-  onCancel: () => void;
+  onCancel?: () => void;
   submitLabel?: string;
   onSubmit: () => void;
   submitting?: boolean;
   submitDisabled?: boolean;
   cancelLabel?: string;
+  showCancel?: boolean;
   className?: string;
 }) {
   return (
     <div className={cn('flex flex-row justify-end gap-3', className)}>
-      <Button
-        type="button"
-        variant="outline"
-        className={cn('min-w-[7.5rem]', formDialogBtnOutlineClass)}
-        onClick={onCancel}
-        disabled={submitting}
-      >
-        {cancelLabel}
-      </Button>
+      {showCancel && onCancel ? (
+        <Button
+          type="button"
+          variant="outline"
+          className={cn('min-w-[7.5rem]', formDialogBtnOutlineClass)}
+          onClick={onCancel}
+          disabled={submitting}
+        >
+          {cancelLabel}
+        </Button>
+      ) : null}
       <Button
         type="button"
         className={cn('min-w-[7.5rem]', formDialogBtnPrimaryClass)}
@@ -230,7 +235,6 @@ export function FormDialogActions({
 export function FormDialogWizardFooter({
   showBack,
   onBack,
-  onCancel,
   onPrimary,
   primaryLabel,
   submitting,
@@ -239,7 +243,8 @@ export function FormDialogWizardFooter({
 }: {
   showBack?: boolean;
   onBack?: () => void;
-  onCancel: () => void;
+  /** @deprecated Ya no se muestra Cancelar; el cierre es la X del header. */
+  onCancel?: () => void;
   onPrimary: () => void;
   primaryLabel: React.ReactNode;
   submitting?: boolean;
@@ -247,41 +252,33 @@ export function FormDialogWizardFooter({
   primaryIcon?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-row items-center justify-between gap-3">
-      <div>
-        {showBack ? (
-          <Button
-            type="button"
-            variant="outline"
-            className={formDialogBtnOutlineClass}
-            disabled={submitting}
-            onClick={onBack}
-          >
-            <ChevronLeft className="size-4" />
-            Anterior
-          </Button>
-        ) : null}
-      </div>
-      <div className="flex gap-3">
+    <div
+      className={cn(
+        'flex flex-row items-center gap-3',
+        showBack ? 'justify-between' : 'justify-end',
+      )}
+    >
+      {showBack ? (
         <Button
           type="button"
           variant="outline"
           className={formDialogBtnOutlineClass}
           disabled={submitting}
-          onClick={onCancel}
+          onClick={onBack}
         >
-          Cancelar
+          <ChevronLeft className="size-4" />
+          Anterior
         </Button>
-        <Button
-          type="button"
-          className={formDialogBtnPrimaryClass}
-          disabled={submitting || primaryDisabled}
-          onClick={onPrimary}
-        >
-          {primaryIcon}
-          {primaryLabel}
-        </Button>
-      </div>
+      ) : null}
+      <Button
+        type="button"
+        className={formDialogBtnPrimaryClass}
+        disabled={submitting || primaryDisabled}
+        onClick={onPrimary}
+      >
+        {primaryIcon}
+        {primaryLabel}
+      </Button>
     </div>
   );
 }
@@ -377,7 +374,7 @@ export function FormDialogShell({
           <div className={cn('mt-6 pb-2', bodyClassName)}>{children}</div>
         </div>
         {footer ? (
-          <div className={cn('shrink-0 border-t border-border/60 bg-background px-8 py-5', footerClassName)}>
+          <div className={cn('shrink-0 bg-background px-8 py-5', footerClassName)}>
             {footer}
           </div>
         ) : null}

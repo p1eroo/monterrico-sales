@@ -234,6 +234,7 @@ export function ActivityDetailDialog({
         description="Modifica los detalles de la actividad."
         footer={(
           <FormDialogActions
+            showCancel
             cancelLabel="Cancelar"
             submitLabel={saving ? 'Guardando…' : 'Guardar actividad'}
             submitting={saving}

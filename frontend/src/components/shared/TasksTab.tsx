@@ -648,6 +648,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
         opportunities={opportunities}
         defaultAssigneeId={resolvedDefaultAssignee}
         defaultAssociations={linkedTaskDefaultAssociations}
+        associationVariant={clienteEmpresaId ? 'cliente-cartera' : 'crm'}
         onSave={handleLinkedTaskFormSave}
       />
 

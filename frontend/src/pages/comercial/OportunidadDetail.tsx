@@ -561,7 +561,7 @@ async function handleCreateNewContact(data: NewContactData) {
             rubro: w.rubro || undefined,
             tipo: w.tipoEmpresa || undefined,
             linkedin: w.linkedin.trim() || undefined,
-            correo: w.correo.trim() || undefined,
+            correo: w.contactoCorreo.trim() || w.correo.trim() || undefined,
             distrito: w.distrito.trim() || undefined,
             provincia: w.provincia.trim() || undefined,
             departamento: w.departamento.trim() || undefined,
@@ -706,7 +706,7 @@ async function handleCreateNewContact(data: NewContactData) {
             rubro: data.rubro || undefined,
             tipo: data.tipoEmpresa || undefined,
             linkedin: data.linkedin.trim() || undefined,
-            correo: data.correo.trim() || undefined,
+            correo: data.contactoCorreo.trim() || data.correo.trim() || undefined,
             distrito: data.distrito.trim() || undefined,
             provincia: data.provincia.trim() || undefined,
             departamento: data.departamento.trim() || undefined,
@@ -1174,6 +1174,7 @@ async function handleCreateNewContact(data: NewContactData) {
       onSubmit={handleAddCompany}
       title="Agregar empresa"
       description={`Vincula una nueva empresa al contacto de esta oportunidad.`}
+      showContactSection={false}
     />
 
     {/* Vincular empresa existente */}
