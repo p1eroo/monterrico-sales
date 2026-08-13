@@ -95,33 +95,31 @@ export function NewRuleDialog({ open, onOpenChange }: Props) {
               placeholder={`Ej.: intent = soporte AND confidence < 0.6\nO: channel IN {email, chat} AND segment = smb`}
             />
           </div>
-          <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="rule-prio">Prioridad</Label>
-              <Input
-                id="rule-prio"
-                type="number"
-                min={1}
-                max={99}
-                value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Estado</Label>
-              <Select
-                value={status}
-                onValueChange={(v) => setStatus(v as 'activo' | 'inactivo')}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="activo">Activo</SelectItem>
-                  <SelectItem value="inactivo">Inactivo</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="grid gap-2">
+            <Label htmlFor="rule-prio">Prioridad</Label>
+            <Input
+              id="rule-prio"
+              type="number"
+              min={1}
+              max={99}
+              value={priority}
+              onChange={(e) => setPriority(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label>Estado</Label>
+            <Select
+              value={status}
+              onValueChange={(v) => setStatus(v as 'activo' | 'inactivo')}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="activo">Activo</SelectItem>
+                <SelectItem value="inactivo">Inactivo</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid gap-2">
             <Label>Agente destino</Label>

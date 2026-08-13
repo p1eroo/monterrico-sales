@@ -116,7 +116,6 @@ export function NewContactWizard({
 }: NewContactWizardProps) {
   const multiStep = !singlePage;
   /** Vista detalle: una columna (label + input por fila), como formularios tipo HubSpot. */
-  const fieldsGridClass = multiStep ? undefined : 'sm:grid-cols-1';
   const defaultValuesRef = useRef(defaultValues);
   defaultValuesRef.current = defaultValues;
   const defaultCompanyIdRef = useRef(defaultCompanyId);
@@ -495,7 +494,7 @@ return () => {
         >
           {(!multiStep || step === 0) && (
             <>
-              <FormDialogGrid className={fieldsGridClass}>
+              <FormDialogGrid>
                 <FormDialogField label="Nombre completo" required>
                   <Input
                     className={formDialogInputClass}
@@ -709,7 +708,7 @@ return () => {
                 )}
               </div>
 
-              <FormDialogGrid className={fieldsGridClass}>
+              <FormDialogGrid>
                 <FormDialogField label="Etapa">
                   <Select value={etapaCiclo} onValueChange={(v) => setEtapaCiclo(v as Etapa)}>
                     <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue /></SelectTrigger>
@@ -742,7 +741,7 @@ return () => {
           )}
 
           {(!multiStep || step === 1) && (
-            <FormDialogGrid className={fieldsGridClass}>
+            <FormDialogGrid>
               <FormDialogField label="Fuente">
                 <Select value={source} onValueChange={(v) => setSource(v as ContactSource)}>
                   <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue /></SelectTrigger>
@@ -780,7 +779,7 @@ return () => {
               {!multiStep ? (
                 <p className="pt-1 text-sm font-semibold text-foreground/80">Ubicación</p>
               ) : null}
-              <FormDialogGrid className={fieldsGridClass}>
+              <FormDialogGrid>
                 <FormDialogField label="Departamento">
                   <Input
                     className={formDialogInputClass}

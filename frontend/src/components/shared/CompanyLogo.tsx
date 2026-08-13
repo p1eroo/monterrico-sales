@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Building2 } from 'lucide-react';
+import { Buildings2SvgIcon } from '@/components/icons/Buildings2SvgIcon';
 import { API_BASE } from '@/lib/api';
 import { isLikelyCompanyCuid } from '@/lib/companyApi';
 import { cn } from '@/lib/utils';
@@ -57,7 +57,7 @@ export function CompanyLogo({
   const current = sources[index >= 0 ? index : 0];
 
   if (!current || failedSrc.has(current.src)) {
-    return <Building2 className={cn('size-4 text-muted-foreground', iconClassName)} />;
+    return <Buildings2SvgIcon className={cn('size-4 text-muted-foreground', iconClassName)} />;
   }
 
   return (

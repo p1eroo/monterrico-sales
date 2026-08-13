@@ -61,7 +61,7 @@ export function ActivityTypeFormFields({ type, form, onChange }: Props) {
             onChange={(e) => set('title', e.target.value)}
           />
         </FormDialogField>
-        <FormDialogGrid className="sm:grid-cols-3">
+        <FormDialogGrid>
           <FormDialogField label="Fecha">
             <Input
               type="date"

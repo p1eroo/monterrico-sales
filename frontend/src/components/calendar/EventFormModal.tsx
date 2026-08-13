@@ -189,66 +189,62 @@ export function EventFormModal({
             {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Tipo</Label>
-              <Controller
-                control={control}
-                name="type"
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(eventTypeConfig).map(([key, config]) => (
-                        <SelectItem key={key} value={key}>
-                          {config.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Estado</Label>
-              <Controller
-                control={control}
-                name="status"
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pendiente">Pendiente</SelectItem>
-                      <SelectItem value="completada">Completada</SelectItem>
-                      <SelectItem value="en_progreso">En progreso</SelectItem>
-                      <SelectItem value="vencida">Vencida</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label>Tipo</Label>
+            <Controller
+              control={control}
+              name="type"
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(eventTypeConfig).map(([key, config]) => (
+                      <SelectItem key={key} value={key}>
+                        {config.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Estado</Label>
+            <Controller
+              control={control}
+              name="status"
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pendiente">Pendiente</SelectItem>
+                    <SelectItem value="completada">Completada</SelectItem>
+                    <SelectItem value="en_progreso">En progreso</SelectItem>
+                    <SelectItem value="vencida">Vencida</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="date">Fecha</Label>
-              <Input id="date" type="date" {...register('date')} />
-              {errors.date && <p className="text-xs text-destructive">{errors.date.message}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="startTime">Inicio</Label>
-              <Input id="startTime" type="time" {...register('startTime')} />
-              {errors.startTime && <p className="text-xs text-destructive">{errors.startTime.message}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="endTime">Fin</Label>
-              <Input id="endTime" type="time" {...register('endTime')} />
-              {errors.endTime && <p className="text-xs text-destructive">{errors.endTime.message}</p>}
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="date">Fecha</Label>
+            <Input id="date" type="date" {...register('date')} />
+            {errors.date && <p className="text-xs text-destructive">{errors.date.message}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="startTime">Inicio</Label>
+            <Input id="startTime" type="time" {...register('startTime')} />
+            {errors.startTime && <p className="text-xs text-destructive">{errors.startTime.message}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="endTime">Fin</Label>
+            <Input id="endTime" type="time" {...register('endTime')} />
+            {errors.endTime && <p className="text-xs text-destructive">{errors.endTime.message}</p>}
           </div>
 
           <Controller

@@ -180,7 +180,7 @@ export function FormDialogGrid({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn('grid grid-cols-1 items-start gap-x-4 gap-y-3.5 sm:grid-cols-2', className)}>
+    <div className={cn('grid grid-cols-1 items-start gap-y-3.5', className)}>
       {children}
     </div>
   );

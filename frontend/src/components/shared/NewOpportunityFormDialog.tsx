@@ -400,7 +400,7 @@ export function NewOpportunityFormDialog({
           onSubmit={form.handleSubmit((d) => void handleSubmit(d))}
           className="space-y-3.5"
         >
-          <FormDialogGrid className="sm:grid-cols-1">
+          <FormDialogGrid>
             <FormDialogField label="Nombre" required>
               <Input id="opp-form-title" className={formDialogInputClass} {...form.register('title')} placeholder="Ej: Servicio Corporativo Empresa X" />
               <FormDialogFieldError>{form.formState.errors.title?.message}</FormDialogFieldError>

@@ -117,7 +117,6 @@ export function NewCompanyWizard({
   /** Flujo Empresas: wizard por pasos. Desde ficha de contacto/opp: formulario único. */
   const multiStep = showContactSection;
   /** Un campo por fila (misma densidad en pasos y en vista única). */
-  const fieldsGridClass = 'sm:grid-cols-1';
   const currentUser = useAppStore((s) => s.currentUser);
   const { hasPermission } = usePermissions();
   const canReassign = canUserReassignCommercialAdvisor(hasPermission, 'empresas');
@@ -662,7 +661,7 @@ export function NewCompanyWizard({
         ) : null}
 
         {(!multiStep || step === 0) && (
-          <FormDialogGrid className={fieldsGridClass}>
+          <FormDialogGrid>
             <FormDialogField label="RUC" compactControl={false}>
               <div className="relative">
                 <Input
@@ -852,7 +851,7 @@ export function NewCompanyWizard({
           <div className="space-y-6">
             <div className="space-y-3">
               <p className="text-sm font-semibold text-foreground/80">Contacto</p>
-              <FormDialogGrid className={fieldsGridClass}>
+              <FormDialogGrid>
                 <FormDialogField label="Nombre completo">
                   <Input
                     className={formDialogInputClass}
@@ -909,7 +908,7 @@ export function NewCompanyWizard({
                   </p>
                 ) : null}
               </div>
-              <FormDialogGrid className={fieldsGridClass}>
+              <FormDialogGrid>
                 <FormDialogField label="Nombre de la oportunidad">
                   <Input
                     className={formDialogInputClass}
@@ -955,7 +954,7 @@ export function NewCompanyWizard({
         {(!multiStep || step === 2) && (
           <div className="space-y-3">
             <p className="text-sm font-semibold text-foreground/80">Ubicación</p>
-            <FormDialogGrid className={fieldsGridClass}>
+            <FormDialogGrid>
               <FormDialogField label="Distrito">
                 <Input
                   className={formDialogInputClass}

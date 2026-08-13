@@ -173,7 +173,7 @@ export function FlotaEvolutionConfigDialog({ instance, open, onOpenChange, onUpd
           <div className="space-y-6">
             <section className="space-y-3 rounded-xl border p-4">
               <h3 className="text-sm font-semibold">Información de la instancia</h3>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3">
                 <InfoRow label="Nombre" value={instance.instanceName} />
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Estado</Label>
@@ -223,7 +223,7 @@ export function FlotaEvolutionConfigDialog({ instance, open, onOpenChange, onUpd
                   })}
                 </div>
               </div>
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="rabbitmq">RabbitMQ</Label>
                   <Input id="rabbitmq" value={rabbitmqEnable} onChange={(e) => setRabbitmqEnable(e.target.value)} />

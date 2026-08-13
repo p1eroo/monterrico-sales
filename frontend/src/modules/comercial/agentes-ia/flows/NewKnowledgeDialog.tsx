@@ -580,7 +580,7 @@ export function NewKnowledgeDialog({ open, onOpenChange }: Props) {
                   autoComplete="off"
                 />
               </div>
-              <div className="grid gap-y-3 gap-x-4 sm:grid-cols-2 sm:gap-x-6">
+              <div className="grid grid-cols-1 gap-y-3">
                 <div className="grid min-w-0 gap-2">
                   <Label htmlFor="kb-url-method">Método HTTP</Label>
                   <Select
@@ -738,25 +738,23 @@ export function NewKnowledgeDialog({ open, onOpenChange }: Props) {
             </div>
           )}
 
-          <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="kb-chunk">Tamaño de chunk (tokens)</Label>
-              <Input
-                id="kb-chunk"
-                inputMode="numeric"
-                value={chunking}
-                onChange={(e) => setChunking(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="kb-overlap">Solapamiento (tokens)</Label>
-              <Input
-                id="kb-overlap"
-                inputMode="numeric"
-                value={overlap}
-                onChange={(e) => setOverlap(e.target.value)}
-              />
-            </div>
+          <div className="grid gap-2">
+            <Label htmlFor="kb-chunk">Tamaño de chunk (tokens)</Label>
+            <Input
+              id="kb-chunk"
+              inputMode="numeric"
+              value={chunking}
+              onChange={(e) => setChunking(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="kb-overlap">Solapamiento (tokens)</Label>
+            <Input
+              id="kb-overlap"
+              inputMode="numeric"
+              value={overlap}
+              onChange={(e) => setOverlap(e.target.value)}
+            />
           </div>
 
           <div className="grid gap-2">

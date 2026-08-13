@@ -4,12 +4,13 @@ import { navigateOnAuxClick, navigateOnClick } from '@/lib/navigateOnClick';
 import { toast, notify } from '@/lib/notify';
 import * as XLSX from 'xlsx';
 import {
-  Search, Building2, Users, Briefcase,
+  Search, Users, Briefcase,
   Plus, Loader2,
   Eye, Pencil, Trash2, MoreVertical,
   X, ChevronDown,
   ChevronsUpDown, ChevronUp,
 } from 'lucide-react';
+import { Buildings2SvgIcon } from '@/components/icons/Buildings2SvgIcon';
 import {
   flexRender,
   getCoreRowModel,
@@ -334,7 +335,7 @@ const logoCache = new Map<string, boolean>();
 function CompanyLogoImg({ companyId, isLocal }: { companyId: string; isLocal: boolean }) {
   const [errored, setErrored] = useState(() => logoCache.get(companyId) === true);
   if (isLocal || !isLikelyCompanyCuid(companyId) || errored) {
-    return <Building2 className="size-4 text-muted-foreground" />;
+    return <Buildings2SvgIcon className="size-4 text-muted-foreground" />;
   }
   return (
     <img
@@ -2276,7 +2277,7 @@ export default function EmpresasPage() {
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-                      <Building2 className="size-5 text-muted-foreground" />
+                      <Buildings2SvgIcon className="size-5 text-muted-foreground" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <h3 className="truncate font-semibold">

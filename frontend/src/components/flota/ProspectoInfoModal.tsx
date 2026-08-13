@@ -194,7 +194,7 @@ function InfoSection({
           {title}
         </h3>
       </div>
-      <dl className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">{children}</dl>
+      <dl className="grid grid-cols-1 gap-y-3">{children}</dl>
     </section>
   );
 }

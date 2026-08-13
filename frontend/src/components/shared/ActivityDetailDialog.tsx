@@ -308,7 +308,7 @@ export function ActivityDetailDialog({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3">
             <div className="flex items-center gap-2.5 rounded-lg border border-border bg-muted/25 p-3">
               <User className="size-4 shrink-0 text-text-tertiary" />
               <div className="min-w-0">

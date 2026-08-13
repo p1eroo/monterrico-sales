@@ -566,7 +566,7 @@ export function TaskDetailDialog({
       >
         {task && !taskEditMode && (
           <div className="space-y-5">
-            <FormDialogGrid className="gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+            <FormDialogGrid className="gap-y-4">
               <DetailReadonlyField label="Responsable">
                 <User className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                 <span className="truncate">{task.assignee}</span>
@@ -582,7 +582,7 @@ export function TaskDetailDialog({
                 </DetailReadonlyField>
               ) : null}
               {task.startDate ? (
-                <DetailReadonlyField label="Fecha de inicio" className="sm:col-span-2 lg:col-span-1">
+                <DetailReadonlyField label="Fecha de inicio">
                   <CalendarDays className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                   <span className="truncate">{formatDate(task.startDate)}</span>
                 </DetailReadonlyField>

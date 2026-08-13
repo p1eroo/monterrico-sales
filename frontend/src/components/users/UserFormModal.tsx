@@ -272,7 +272,7 @@ export function UserFormModal({
 
           <div className="space-y-3 rounded-lg border p-4">
             <Label>Áreas Permitidas *</Label>
-            <div className="grid grid-cols-3 gap-4 pt-1">
+            <div className="grid grid-cols-1 gap-3 pt-1">
               <div className="flex items-center gap-2">
                 <Switch
                   id="area-comercial"
