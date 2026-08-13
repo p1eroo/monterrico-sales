@@ -72,12 +72,12 @@ export type EmpresaImportForm = typeof EMPTY_EMPRESA_IMPORT;
 export type OportunidadImportForm = typeof EMPTY_OPORTUNIDAD_IMPORT;
 
 export function applyLeadImportPreview<T extends Record<string, string>>(empty: T, preview: Record<string, string>): T {
-  const next = { ...empty };
-  for (const key of Object.keys(empty) as (keyof T)[]) {
-    const v = preview[key as string];
+  const next: Record<string, string> = { ...empty };
+  for (const key of Object.keys(empty)) {
+    const v = preview[key];
     if (typeof v === 'string') next[key] = v;
   }
-  return next;
+  return next as T;
 }
 
 const COMERCIAL_ENTITY_OPTIONS: {
