@@ -4,14 +4,9 @@ import { cn } from '@/lib/utils';
 import {
   Phone,
   MapPin,
-  Calendar,
-  User,
   FileArchive,
   MoreVertical,
   Edit,
-  Globe,
-  CalendarDays,
-  Car,
   ClipboardList,
   MessageSquare,
   AlertTriangle,
@@ -29,6 +24,13 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
+import { CalendarSvgIcon } from '@/components/icons/CalendarSvgIcon';
+import { LlamadaSvgIcon } from '@/components/icons/LlamadaSvgIcon';
+import { MapArrowSquareSvgIcon } from '@/components/icons/MapArrowSquareSvgIcon';
+import { UsersGroupTwoRoundedSvgIcon } from '@/components/icons/UsersGroupTwoRoundedSvgIcon';
+import { WheelSvgIcon } from '@/components/icons/WheelSvgIcon';
+import { ChatRoundLineSvgIcon } from '@/components/icons/ChatRoundLineSvgIcon';
+import { FileNewSvgIcon } from '@/components/icons/FileNewSvgIcon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -91,21 +93,36 @@ function getEstadoColor(estado: string): string | undefined {
 function ProspectoInformacionAside({ prospecto, operadores }: { prospecto: FlotaProspectoRow; operadores: OperadorUser[] }) {
   return (
     <EntityInfoCard
-      title="INFORMACION"
+      title="Información"
       collapsible
       fields={[
-        { icon: User, value: prospecto.nombreCompleto },
-        { icon: Phone, value: prospecto.celular || 'Sin teléfono', href: prospecto.celular ? `tel:${prospecto.celular}` : undefined },
-        { icon: Globe, value: prospecto.redSocial || 'Sin fuente' },
+        { icon: UsersGroupTwoRoundedSvgIcon, value: prospecto.nombreCompleto },
+        {
+          icon: LlamadaSvgIcon,
+          value: prospecto.celular || 'Sin teléfono',
+          href: prospecto.celular ? `tel:${prospecto.celular}` : undefined,
+        },
+        { icon: MapArrowSquareSvgIcon, value: prospecto.redSocial || 'Sin fuente' },
         { icon: MapPin, value: prospecto.distrito || 'Sin distrito' },
         { icon: MapPin, value: `Ciudad: ${prospecto.ciudad || '—'}` },
-        { icon: CalendarDays, value: `Registrado: ${prospecto.fechaRegistro ? formatDate(prospecto.fechaRegistro) : '—'}` },
-        { icon: User, value: `Operador: ${getOperatorDisplayName(prospecto.operador, operadores) || '—'}` },
-        { icon: Car, value: `Año Veh.: ${prospecto.anioVehiculo || '—'}` },
-        { icon: MessageSquare, value: `Modalidad: ${prospecto.modalidad || '—'}` },
+        {
+          icon: CalendarSvgIcon,
+          value: `Registrado: ${prospecto.fechaRegistro ? formatDate(prospecto.fechaRegistro) : '—'}`,
+        },
+        {
+          icon: UsersGroupTwoRoundedSvgIcon,
+          value: `Operador: ${getOperatorDisplayName(prospecto.operador, operadores) || '—'}`,
+        },
+        { icon: WheelSvgIcon, value: `Año Veh.: ${prospecto.anioVehiculo || '—'}` },
+        { icon: ChatRoundLineSvgIcon, value: `Modalidad: ${prospecto.modalidad || '—'}` },
         { icon: ClipboardList, value: `Móvil: ${prospecto.movil || '—'}` },
-        ...(prospecto.fechaAfiliacion ? [{ icon: Calendar, value: `Afiliación: ${formatDate(prospecto.fechaAfiliacion)}` }] : []),
-        { icon: FileText, value: `Obs.: ${(prospecto.observaciones || '').split('\n---\n')[0].replace(/^(?:\[.+?\]\s*)+/, '').trim() || '—'}` },
+        ...(prospecto.fechaAfiliacion
+          ? [{ icon: CalendarSvgIcon, value: `Afiliación: ${formatDate(prospecto.fechaAfiliacion)}` }]
+          : []),
+        {
+          icon: FileNewSvgIcon,
+          value: `Obs.: ${(prospecto.observaciones || '').split('\n---\n')[0].replace(/^(?:\[.+?\]\s*)+/, '').trim() || '—'}`,
+        },
       ]}
     />
   );
@@ -114,7 +131,7 @@ function ProspectoInformacionAside({ prospecto, operadores }: { prospecto: Flota
 function ProspectoArchivosAside() {
   return (
     <EntityInfoCard
-      title="ARCHIVOS"
+      title="Archivos"
       collapsible
       fields={[]}
       extraContent={

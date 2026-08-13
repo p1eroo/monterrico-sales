@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useCrmConfigStore, getLeadSourceOptionsFromCatalog } from '@/store/crmConfigStore';
 import { toast } from '@/lib/notify';
-import { Check, ChevronLeft, ChevronRight, Building2, Link2, Briefcase, Search, ChevronDown, Loader2 } from 'lucide-react';
+import { Check, ChevronRight, Building2, Briefcase, Search, Loader2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { Etapa, ContactSource } from '@/types';
 import { contactSourceLabels, etapaLabels } from '@/data/mock';
@@ -9,19 +9,23 @@ import { useAppStore } from '@/store';
 import { canUserReassignCommercialAdvisor, resolveAdvisorAssigneeId } from '@/lib/advisorAssigneeDefaults';
 import { usePermissions } from '@/hooks/usePermissions';
 import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
+import {
+  AssociationChip,
+  AssociationPickerStatic,
+  AssociationPickerTrigger,
+} from '@/components/shared/AssociationPickerField';
 import { companyListAll, type ApiCompanyRecord } from '@/lib/companyApi';
 import { fetchClienteEmpresas } from '@/lib/clienteCarteraApi';
 import { opportunityListAll, type ApiOpportunityListRow } from '@/lib/opportunityApi';
 
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
+  FormDialogActions,
   FormDialogShell,
   FormDialogWizardFooter,
   FormDialogField,
   FormDialogGrid,
   formDialogInputClass,
-  formDialogPickerTriggerClass,
   formDialogPopoverContentClass,
   formDialogScrollListClass,
   formDialogSelectTriggerClass,
@@ -80,6 +84,11 @@ interface NewContactWizardProps {
   defaultOpportunityIds?: string[];
   /** CRM (default) o cartera de clientes (empresas cliente, sin oportunidades). */
   variant?: 'crm' | 'cliente-cartera';
+  /**
+   * Una sola pantalla (sin pasos), p. ej. alta desde ficha de empresa/oportunidad.
+   * Default false: wizard Identificación → Comercial → Ubicación.
+   */
+  singlePage?: boolean;
 }
 
 const WIZARD_STEPS = [
@@ -95,15 +104,19 @@ export function NewContactWizard({
   open,
   onOpenChange,
   onSubmit,
-  title = 'Nuevo contacto',
-  description = 'Registra un nuevo prospecto en el sistema.',
+  title = 'Crear nuevo contacto',
+  description,
   submitLabel = 'Crear contacto',
   defaultValues,
   lockCompanySelection = false,
   defaultCompanyId,
   defaultOpportunityIds = [],
   variant = 'crm',
+  singlePage = false,
 }: NewContactWizardProps) {
+  const multiStep = !singlePage;
+  /** Vista detalle: una columna (label + input por fila), como formularios tipo HubSpot. */
+  const fieldsGridClass = multiStep ? undefined : 'sm:grid-cols-1';
   const defaultValuesRef = useRef(defaultValues);
   defaultValuesRef.current = defaultValues;
   const defaultCompanyIdRef = useRef(defaultCompanyId);
@@ -135,11 +148,10 @@ export function NewContactWizard({
   const [distrito, setDistrito] = useState(defaultValues?.distrito ?? '');
   const [direccion, setDireccion] = useState(defaultValues?.direccion ?? '');
   const [apiOpportunities, setApiOpportunities] = useState<ApiOpportunityListRow[]>([]);
-  const [assocPanelOpen, setAssocPanelOpen] = useState(false);
-  const [assocCategory, setAssocCategory] = useState<'empresas' | 'oportunidades'>(() =>
-    (lockCompanySelection ? 'oportunidades' : 'empresas'),
-  );
-  const [assocSearch, setAssocSearch] = useState('');
+  const [companyPanelOpen, setCompanyPanelOpen] = useState(false);
+  const [oppPanelOpen, setOppPanelOpen] = useState(false);
+  const [companySearch, setCompanySearch] = useState('');
+  const [oppSearch, setOppSearch] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(defaultCompanyId ?? null);
   const [selectedOpportunityIds, setSelectedOpportunityIds] = useState<string[]>(defaultOpportunityIds);
@@ -175,7 +187,6 @@ export function NewContactWizard({
     const defCo = defaultCompanyIdRef.current;
     const defOpps = defaultOpportunityIdsRef.current ?? [];
     const lockCo = lockCompanySelectionRef.current;
-    const isCartera = variantRef.current === 'cliente-cartera';
     setStep(0);
     setName(d?.name ?? '');
     setCargo(d?.cargo ?? '');
@@ -196,9 +207,10 @@ export function NewContactWizard({
     setWizardCompanyPatchId(null);
     setCompanyWizardOpen(false);
     setCompanyWizardDefaults({});
-    setAssocPanelOpen(false);
-    setAssocCategory(isCartera || !lockCo ? 'empresas' : 'oportunidades');
-    setAssocSearch('');
+    setCompanyPanelOpen(false);
+    setOppPanelOpen(false);
+    setCompanySearch('');
+    setOppSearch('');
     setSelectedCompanyId(lockCo ? (defCo ?? null) : (defCo ?? d?.companyId ?? null));
     setSelectedOpportunityIds([...defOpps]);
     setSubmitting(false);
@@ -211,14 +223,16 @@ export function NewContactWizard({
     const defOpps = defaultOpportunityIds ?? [];
     if (lockCompanySelection) {
       setSelectedCompanyId(defCo ?? null);
-      setAssocCategory(isClienteCartera ? 'empresas' : 'oportunidades');
       if (!company.trim() && d?.company?.trim()) {
         setCompany(d.company);
       }
     } else {
       setSelectedCompanyId(defCo ?? d?.companyId ?? null);
-      setAssocCategory('empresas');
     }
+    setCompanyPanelOpen(false);
+    setOppPanelOpen(false);
+    setCompanySearch('');
+    setOppSearch('');
     setSelectedOpportunityIds([...defOpps]);
   }, [open, defaultCompanyId, lockCompanySelection, isClienteCartera, (defaultOpportunityIds ?? []).join(',')]);
 
@@ -231,13 +245,27 @@ export function NewContactWizard({
     }
   }, [apiCompanies, defaultCompanyId]);
 
-  const assocCompanyCount = apiCompanies.length;
-  const assocOppCount = apiOpportunities.length;
-  const associationCategories = isClienteCartera
-    ? (['empresas'] as const)
-    : lockCompanySelection
-      ? (['oportunidades'] as const)
-      : (['empresas', 'oportunidades'] as const);
+  const companiesForPicker = useMemo(() => {
+    let list = apiCompanies;
+    if (
+      lockCompanySelection &&
+      selectedCompanyId &&
+      !apiCompanies.some((c) => c.id === selectedCompanyId)
+    ) {
+      const name = company.trim() || defaultValuesRef.current?.company?.trim() || 'Empresa';
+      list = [
+        { id: selectedCompanyId, name, urlSlug: selectedCompanyId } as ApiCompanyRecord,
+        ...apiCompanies,
+      ];
+    }
+    if (lockCompanySelection && selectedCompanyId) {
+      const selected = list.find((c) => c.id === selectedCompanyId);
+      if (selected) {
+        return [selected, ...list.filter((c) => c.id !== selectedCompanyId)];
+      }
+    }
+    return list;
+  }, [apiCompanies, lockCompanySelection, selectedCompanyId, company]);
 
 function handleCompanyWizardSubmit(
     data: NewCompanyData,
@@ -293,7 +321,6 @@ function handleCompanyWizardSubmit(
         cancelled = true;
       };
     }
-    if (lockCompanySelection) return;
     companyListAll()
       .then((list) => {
         if (!cancelled) setApiCompanies(list);
@@ -307,7 +334,7 @@ function handleCompanyWizardSubmit(
     return () => {
       cancelled = true;
     };
-  }, [open, lockCompanySelection, isClienteCartera]);
+  }, [open, isClienteCartera]);
 
   useEffect(() => {
     if (!open || isClienteCartera) return;
@@ -399,7 +426,7 @@ return () => {
       maxWidthClassName="sm:max-w-lg"
       title={title}
       description={description}
-      footer={(
+      footer={multiStep ? (
         <FormDialogWizardFooter
           showBack={step > 0}
           onBack={() => setStep((s) => s - 1)}
@@ -412,52 +439,63 @@ return () => {
           ) : submitLabel}
           primaryIcon={step === 2 && submitting ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden /> : undefined}
         />
+      ) : (
+        <FormDialogActions
+          submitting={submitting}
+          submitLabel={submitLabel}
+          onSubmit={handleSubmit}
+        />
       )}
     >
       <div className="space-y-6">
-        <div className="flex items-center justify-center gap-0">
-          {WIZARD_STEPS.map((s, i) => (
-            <div key={s.label} className="flex items-center">
-              <div className="flex flex-col items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => { if (i < step) setStep(i); }}
-                  className={cn(
-                    'flex size-8 items-center justify-center rounded-full border-2 text-sm font-semibold transition-colors',
-                    i < step
-                      ? 'border-[#13944C] bg-[#13944C] text-white'
-                      : i === step
-                        ? 'border-[#13944C] bg-background text-[#13944C]'
-                        : 'border-border bg-muted/60 text-muted-foreground',
-                  )}
-                >
-                  {i < step ? <Check className="size-4" /> : i + 1}
-                </button>
-                <span
-                  className={cn(
-                    'text-xs whitespace-nowrap',
-                    i === step ? 'font-medium text-foreground' : 'text-muted-foreground',
-                  )}
-                >
-                  {s.label}
-                </span>
+        {multiStep ? (
+          <div className="flex items-center justify-center gap-0">
+            {WIZARD_STEPS.map((s, i) => (
+              <div key={s.label} className="flex items-center">
+                <div className="flex flex-col items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => { if (i < step) setStep(i); }}
+                    className={cn(
+                      'flex size-8 items-center justify-center rounded-full border-2 text-sm font-semibold transition-colors',
+                      i < step
+                        ? 'border-[#13944C] bg-[#13944C] text-white'
+                        : i === step
+                          ? 'border-[#13944C] bg-background text-[#13944C]'
+                          : 'border-border bg-muted/60 text-muted-foreground',
+                    )}
+                  >
+                    {i < step ? <Check className="size-4" /> : i + 1}
+                  </button>
+                  <span
+                    className={cn(
+                      'text-xs whitespace-nowrap',
+                      i === step ? 'font-medium text-foreground' : 'text-muted-foreground',
+                    )}
+                  >
+                    {s.label}
+                  </span>
+                </div>
+                {i < WIZARD_STEPS.length - 1 && (
+                  <div
+                    className={cn(
+                      'mx-2 mb-5 h-px w-10 sm:w-14',
+                      i < step ? 'bg-[#13944C]' : 'bg-border',
+                    )}
+                  />
+                )}
               </div>
-              {i < WIZARD_STEPS.length - 1 && (
-                <div
-                  className={cn(
-                    'mx-2 mb-5 h-px w-10 sm:w-14',
-                    i < step ? 'bg-[#13944C]' : 'bg-border',
-                  )}
-                />
-              )}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : null}
 
-        <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
-          {step === 0 && (
+        <form
+          onSubmit={(e) => e.preventDefault()}
+          className={multiStep ? 'space-y-6' : 'space-y-3.5'}
+        >
+          {(!multiStep || step === 0) && (
             <>
-              <FormDialogGrid>
+              <FormDialogGrid className={fieldsGridClass}>
                 <FormDialogField label="Nombre completo" required>
                   <Input
                     className={formDialogInputClass}
@@ -476,200 +514,202 @@ return () => {
                 </FormDialogField>
               </FormDialogGrid>
 
-              <FormDialogField
-                label={(
-                  <span className="inline-flex items-center gap-1.5">
-                    <Link2 className="size-3.5 text-muted-foreground" />
-                    Asociaciones
-                    {(selectedCompanyId || selectedOpportunityIds.length > 0) && (
-                      <span className="font-normal text-muted-foreground">
-                        · {(selectedCompanyId ? 1 : 0) + selectedOpportunityIds.length} registro
-                        {(selectedCompanyId ? 1 : 0) + selectedOpportunityIds.length !== 1 ? 's' : ''}
-                      </span>
-                    )}
-                  </span>
-                )}
-                compactControl={false}
-              >
-                {(selectedCompanyId || selectedOpportunityIds.length > 0) && (
-                  <div className="mb-2 flex flex-wrap gap-1.5">
-                    {selectedCompanyId && (() => {
-                      const comp = apiCompanies.find((c) => c.id === selectedCompanyId);
-                      const label = comp?.name ?? (company.trim() || 'Empresa');
-                      return (
-                        <div
-                          key={`company-${selectedCompanyId}`}
-                          className="flex items-center gap-1 rounded-md border border-input bg-muted/60 px-2 py-1 text-xs"
-                        >
-                          <Building2 className="size-3" />
-                          <span className="max-w-[280px] truncate">{label}</span>
-                          {!lockCompanySelection && (
-                            <button
-                              type="button"
-                              className="ml-0.5 rounded-sm p-0.5 hover:bg-muted"
-                              onClick={() => setSelectedCompanyId(null)}
-                            >
-                              <span className="text-xs leading-none">&times;</span>
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })()}
-                    {selectedOpportunityIds.map((oppId) => {
-                      if (isClienteCartera) return null;
-                      const opp = apiOpportunities.find((o) => o.id === oppId);
-                      const label = opp?.title ?? `Oportunidad ${oppId.slice(0, 8)}…`;
-                      return (
-                        <div
-                          key={`opp-${oppId}`}
-                          className="flex items-center gap-1 rounded-md border border-input bg-muted/60 px-2 py-1 text-xs"
-                        >
-                          <Briefcase className="size-3" />
-                          <span className="max-w-[280px] truncate">{label}</span>
-                          <button
-                            type="button"
-                            className="ml-0.5 rounded-sm p-0.5 hover:bg-muted"
-                            onClick={() => setSelectedOpportunityIds((prev) => prev.filter((id) => id !== oppId))}
-                          >
-                            <span className="text-xs leading-none">&times;</span>
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                <Popover open={assocPanelOpen} onOpenChange={setAssocPanelOpen} modal={false}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className={formDialogPickerTriggerClass}
-                    >
-                      Buscar asociaciones
-                      <ChevronDown
-                        className={cn(
-                          'size-4 text-muted-foreground transition-transform',
-                          assocPanelOpen ? 'rotate-180' : '',
-                        )}
-                      />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    align="start"
-                    side="bottom"
-                    sideOffset={8}
-                    collisionPadding={16}
-                    className={formDialogPopoverContentClass}
-                    onOpenAutoFocus={(e) => e.preventDefault()}
-                  >
-                    {associationCategories.length > 1 && (
-                      <div className="flex shrink-0 border-b border-border/60">
-                        {associationCategories.map((cat) => (
-                          <button
-                            key={cat}
-                            type="button"
-                            className={cn(
-                              'flex-1 px-2 py-2.5 text-xs font-medium capitalize transition-colors',
-                              assocCategory === cat
-                                ? 'border-b-2 border-[#13944C] text-foreground'
-                                : 'text-muted-foreground hover:text-foreground',
-                            )}
-                            onClick={() => { setAssocCategory(cat); setAssocSearch(''); }}
-                          >
-                            {cat === 'empresas' ? (
-                              <>Empresas <span className="text-muted-foreground">({assocCompanyCount})</span></>
-                            ) : (
-                              <>Oportunidades <span className="text-muted-foreground">({assocOppCount})</span></>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="p-3">
-                      <div className="relative mb-3">
-                        <Search className="absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                          placeholder="Buscar..."
-                          value={assocSearch}
-                          onChange={(e) => setAssocSearch(e.target.value)}
-                          className={`${formDialogInputClass} h-10 pl-9 text-sm`}
+              <div className={cn(multiStep ? 'space-y-4' : 'space-y-3.5')}>
+                <FormDialogField label="Empresa" compactControl={false}>
+                  {lockCompanySelection && selectedCompanyId ? (
+                    <AssociationPickerStatic
+                      chips={(
+                        <AssociationChip
+                          kind="empresa"
+                          label={
+                            companiesForPicker.find((c) => c.id === selectedCompanyId)?.name
+                            ?? (company.trim() || 'Empresa')
+                          }
+                          locked
+                          showTypeLabel={false}
                         />
-                      </div>
-                      <div
-                        className={cn(formDialogScrollListClass, 'space-y-0.5')}
-                        onWheel={(e) => e.stopPropagation()}
+                      )}
+                    />
+                  ) : (
+                    <Popover
+                      open={companyPanelOpen}
+                      onOpenChange={(next) => {
+                        setCompanyPanelOpen(next);
+                        if (next) {
+                          setOppPanelOpen(false);
+                          setCompanySearch('');
+                        }
+                      }}
+                      modal={false}
+                    >
+                      <PopoverTrigger asChild>
+                        <AssociationPickerTrigger
+                          open={companyPanelOpen}
+                          placeholder="Buscar empresa"
+                          chips={selectedCompanyId ? (
+                            <AssociationChip
+                              kind="empresa"
+                              label={
+                                companiesForPicker.find((c) => c.id === selectedCompanyId)?.name
+                                ?? (company.trim() || 'Empresa')
+                              }
+                              showTypeLabel={false}
+                              onRemove={() => setSelectedCompanyId(null)}
+                            />
+                          ) : null}
+                        />
+                      </PopoverTrigger>
+                      <PopoverContent
+                        align="start"
+                        side="bottom"
+                        sideOffset={8}
+                        collisionPadding={16}
+                        className={formDialogPopoverContentClass}
+                        onOpenAutoFocus={(e) => e.preventDefault()}
                       >
-                        {(!lockCompanySelection || isClienteCartera) && assocCategory === 'empresas' &&
-                          apiCompanies
-                            .filter((c) => c.name.toLowerCase().includes(assocSearch.toLowerCase()))
-                            .slice(0, ASSOCIATION_PICKER_PAGE_SIZE)
-                            .map((c) => {
-                              const isSelected = selectedCompanyId === c.id;
-                              return (
-                                <label
-                                  key={c.id}
-                                  className={cn(
-                                    'flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-muted/60',
-                                    isSelected ? 'bg-muted/50' : '',
-                                  )}
-                                >
-                                  <Checkbox
-                                    checked={isSelected}
-                                    className="size-3.5 shrink-0"
-                                    onCheckedChange={() => {
-                                      if (isSelected) {
-                                        setSelectedCompanyId(null);
-                                      } else {
-                                        setSelectedCompanyId(c.id);
-                                        setCompany(c.name);
-                                      }
-                                    }}
-                                  />
-                                  <Building2 className="size-3.5 shrink-0 text-muted-foreground" />
-                                  <span className="min-w-0 truncate text-left">{c.name}</span>
-                                </label>
-                              );
-                            })}
+                        <div className="p-3">
+                          <div className="relative mb-3">
+                            <Search className="absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                              placeholder="Buscar..."
+                              value={companySearch}
+                              onChange={(e) => setCompanySearch(e.target.value)}
+                              className={`${formDialogInputClass} h-10 pl-9 text-sm`}
+                            />
+                          </div>
+                          <div
+                            className={cn(formDialogScrollListClass, 'space-y-0.5')}
+                            onWheel={(e) => e.stopPropagation()}
+                          >
+                            {companiesForPicker
+                              .filter((c) => c.name.toLowerCase().includes(companySearch.toLowerCase()))
+                              .slice(0, ASSOCIATION_PICKER_PAGE_SIZE)
+                              .map((c) => {
+                                const isSelected = selectedCompanyId === c.id;
+                                return (
+                                  <label
+                                    key={c.id}
+                                    className={cn(
+                                      'flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-muted/60',
+                                      isSelected ? 'bg-muted/50' : '',
+                                    )}
+                                  >
+                                    <Checkbox
+                                      checked={isSelected}
+                                      className="size-3.5 shrink-0"
+                                      onCheckedChange={() => {
+                                        if (isSelected) {
+                                          setSelectedCompanyId(null);
+                                        } else {
+                                          setSelectedCompanyId(c.id);
+                                          setCompany(c.name);
+                                        }
+                                      }}
+                                    />
+                                    <Building2 className="size-3.5 shrink-0 text-muted-foreground" />
+                                    <span className="min-w-0 truncate text-left">{c.name}</span>
+                                  </label>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </FormDialogField>
 
-                        {!isClienteCartera && (lockCompanySelection || assocCategory === 'oportunidades') &&
-                          apiOpportunities
-                            .filter((o) => o.title.toLowerCase().includes(assocSearch.toLowerCase()))
-                            .slice(0, ASSOCIATION_PICKER_PAGE_SIZE)
-                            .map((o) => {
-                              const isSelected = selectedOpportunityIds.includes(o.id);
-                              return (
-                                <label
-                                  key={o.id}
-                                  className={cn(
-                                    'flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-muted/60',
-                                    isSelected ? 'bg-muted/50' : '',
-                                  )}
-                                >
-                                  <Checkbox
-                                    checked={isSelected}
-                                    className="size-3.5 shrink-0"
-                                    onCheckedChange={() => {
-                                      if (isSelected) {
-                                        setSelectedOpportunityIds((prev) => prev.filter((id) => id !== o.id));
-                                      } else {
-                                        setSelectedOpportunityIds((prev) => [...prev, o.id]);
-                                      }
-                                    }}
-                                  />
-                                  <Briefcase className="size-3.5 shrink-0 text-muted-foreground" />
-                                  <span className="min-w-0 truncate text-left">{o.title}</span>
-                                </label>
-                              );
-                            })}
-                      </div>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </FormDialogField>
+                {!isClienteCartera && (
+                  <FormDialogField label="Oportunidad" compactControl={false}>
+                    <Popover
+                      open={oppPanelOpen}
+                      onOpenChange={(next) => {
+                        setOppPanelOpen(next);
+                        if (next) {
+                          setCompanyPanelOpen(false);
+                          setOppSearch('');
+                        }
+                      }}
+                      modal={false}
+                    >
+                      <PopoverTrigger asChild>
+                        <AssociationPickerTrigger
+                          open={oppPanelOpen}
+                          placeholder="Buscar oportunidad"
+                          chips={selectedOpportunityIds.map((oppId) => {
+                            const opp = apiOpportunities.find((o) => o.id === oppId);
+                            const label = opp?.title ?? `Oportunidad ${oppId.slice(0, 8)}…`;
+                            return (
+                              <AssociationChip
+                                key={`opp-${oppId}`}
+                                kind="oportunidad"
+                                label={label}
+                                showTypeLabel={false}
+                                onRemove={() => setSelectedOpportunityIds((prev) => prev.filter((id) => id !== oppId))}
+                              />
+                            );
+                          })}
+                        />
+                      </PopoverTrigger>
+                      <PopoverContent
+                        align="start"
+                        side="bottom"
+                        sideOffset={8}
+                        collisionPadding={16}
+                        className={formDialogPopoverContentClass}
+                        onOpenAutoFocus={(e) => e.preventDefault()}
+                      >
+                        <div className="p-3">
+                          <div className="relative mb-3">
+                            <Search className="absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                              placeholder="Buscar..."
+                              value={oppSearch}
+                              onChange={(e) => setOppSearch(e.target.value)}
+                              className={`${formDialogInputClass} h-10 pl-9 text-sm`}
+                            />
+                          </div>
+                          <div
+                            className={cn(formDialogScrollListClass, 'space-y-0.5')}
+                            onWheel={(e) => e.stopPropagation()}
+                          >
+                            {apiOpportunities
+                              .filter((o) => o.title.toLowerCase().includes(oppSearch.toLowerCase()))
+                              .slice(0, ASSOCIATION_PICKER_PAGE_SIZE)
+                              .map((o) => {
+                                const isSelected = selectedOpportunityIds.includes(o.id);
+                                return (
+                                  <label
+                                    key={o.id}
+                                    className={cn(
+                                      'flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-muted/60',
+                                      isSelected ? 'bg-muted/50' : '',
+                                    )}
+                                  >
+                                    <Checkbox
+                                      checked={isSelected}
+                                      className="size-3.5 shrink-0"
+                                      onCheckedChange={() => {
+                                        if (isSelected) {
+                                          setSelectedOpportunityIds((prev) => prev.filter((id) => id !== o.id));
+                                        } else {
+                                          setSelectedOpportunityIds((prev) => [...prev, o.id]);
+                                        }
+                                      }}
+                                    />
+                                    <Briefcase className="size-3.5 shrink-0 text-muted-foreground" />
+                                    <span className="min-w-0 truncate text-left">{o.title}</span>
+                                  </label>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </FormDialogField>
+                )}
+              </div>
 
-              <FormDialogGrid>
+              <FormDialogGrid className={fieldsGridClass}>
                 <FormDialogField label="Etapa">
                   <Select value={etapaCiclo} onValueChange={(v) => setEtapaCiclo(v as Etapa)}>
                     <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue /></SelectTrigger>
@@ -688,22 +728,21 @@ return () => {
                     placeholder="+51 999 999 999"
                   />
                 </FormDialogField>
+                <FormDialogField label="Email" required>
+                  <Input
+                    className={formDialogInputClass}
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="email@empresa.com"
+                  />
+                </FormDialogField>
               </FormDialogGrid>
-
-              <FormDialogField label="Email" required>
-                <Input
-                  className={formDialogInputClass}
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="email@empresa.com"
-                />
-              </FormDialogField>
             </>
           )}
 
-          {step === 1 && (
-            <FormDialogGrid>
+          {(!multiStep || step === 1) && (
+            <FormDialogGrid className={fieldsGridClass}>
               <FormDialogField label="Fuente">
                 <Select value={source} onValueChange={(v) => setSource(v as ContactSource)}>
                   <SelectTrigger className={formDialogSelectTriggerClass}><SelectValue /></SelectTrigger>
@@ -736,41 +775,46 @@ return () => {
             </FormDialogGrid>
           )}
 
-          {step === 2 && (
-            <FormDialogGrid>
-              <FormDialogField label="Departamento">
-                <Input
-                  className={formDialogInputClass}
-                  value={departamento}
-                  onChange={(e) => setDepartamento(e.target.value)}
-                  placeholder="Ej: Lima"
-                />
-              </FormDialogField>
-              <FormDialogField label="Provincia">
-                <Input
-                  className={formDialogInputClass}
-                  value={provincia}
-                  onChange={(e) => setProvincia(e.target.value)}
-                  placeholder="Ej: Lima"
-                />
-              </FormDialogField>
-              <FormDialogField label="Distrito">
-                <Input
-                  className={formDialogInputClass}
-                  value={distrito}
-                  onChange={(e) => setDistrito(e.target.value)}
-                  placeholder="Ej: Surco"
-                />
-              </FormDialogField>
-              <FormDialogField label="Dirección">
-                <Input
-                  className={formDialogInputClass}
-                  value={direccion}
-                  onChange={(e) => setDireccion(e.target.value)}
-                  placeholder="Ej: Av. Primavera 1234"
-                />
-              </FormDialogField>
-            </FormDialogGrid>
+          {(!multiStep || step === 2) && (
+            <>
+              {!multiStep ? (
+                <p className="pt-1 text-sm font-semibold text-foreground/80">Ubicación</p>
+              ) : null}
+              <FormDialogGrid className={fieldsGridClass}>
+                <FormDialogField label="Departamento">
+                  <Input
+                    className={formDialogInputClass}
+                    value={departamento}
+                    onChange={(e) => setDepartamento(e.target.value)}
+                    placeholder="Ej: Lima"
+                  />
+                </FormDialogField>
+                <FormDialogField label="Provincia">
+                  <Input
+                    className={formDialogInputClass}
+                    value={provincia}
+                    onChange={(e) => setProvincia(e.target.value)}
+                    placeholder="Ej: Lima"
+                  />
+                </FormDialogField>
+                <FormDialogField label="Distrito">
+                  <Input
+                    className={formDialogInputClass}
+                    value={distrito}
+                    onChange={(e) => setDistrito(e.target.value)}
+                    placeholder="Ej: Surco"
+                  />
+                </FormDialogField>
+                <FormDialogField label="Dirección">
+                  <Input
+                    className={formDialogInputClass}
+                    value={direccion}
+                    onChange={(e) => setDireccion(e.target.value)}
+                    placeholder="Ej: Av. Primavera 1234"
+                  />
+                </FormDialogField>
+              </FormDialogGrid>
+            </>
           )}
         </form>
       </div>
@@ -781,7 +825,7 @@ return () => {
     onOpenChange={setCompanyWizardOpen}
     onSubmit={handleCompanyWizardSubmit}
     defaultValues={companyWizardDefaults}
-    title="Nueva empresa (vinculada al contacto)"
+    title="Crear nueva empresa"
     confirmButtonLabel="Usar estos datos"
     showContactSection={false}
   />

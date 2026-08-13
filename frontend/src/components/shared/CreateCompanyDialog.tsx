@@ -68,8 +68,7 @@ export function CreateCompanyDialog({
       open={open}
       onOpenChange={handleOpenChange}
       maxWidthClassName="sm:max-w-md"
-      title="Nueva empresa"
-      description="Crea una empresa de forma independiente. Podrás vincular contactos después."
+      title="Crear nueva empresa"
       footer={(
         <FormDialogActions
           submitLabel="Crear empresa"

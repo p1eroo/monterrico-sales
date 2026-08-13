@@ -396,13 +396,9 @@ export function ActivityFormDialog({
       open={newContactWizardOpen}
       onOpenChange={setNewContactWizardOpen}
       onSubmit={(data) => { void handleCreateContactFromWizard(data); }}
-      title="Nuevo contacto"
-      description={
-        linkedCompanyName
-          ? `Crea un contacto vinculado a ${linkedCompanyName}.`
-          : 'Crea un contacto vinculado a la empresa de la tarea.'
-      }
+      title="Crear nuevo contacto"
       submitLabel="Crear y vincular"
+      singlePage
       lockCompanySelection
       defaultCompanyId={linkedCompanyId}
       defaultValues={{

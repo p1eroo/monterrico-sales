@@ -895,13 +895,9 @@ export function TaskFormDialog({
         open={newContactWizardOpen}
         onOpenChange={setNewContactWizardOpen}
         onSubmit={(data) => { void handleCreateContactFromWizard(data); }}
-        title="Nuevo contacto"
-        description={
-          selectedCompanyName
-            ? `Crea un contacto vinculado a ${selectedCompanyName}.`
-            : 'Crea un contacto vinculado a la empresa seleccionada.'
-        }
+        title="Crear nuevo contacto"
         submitLabel="Crear y vincular"
+        singlePage
         lockCompanySelection
         defaultCompanyId={selectedCompanyId ?? undefined}
         defaultValues={{

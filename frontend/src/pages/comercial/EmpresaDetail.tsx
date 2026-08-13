@@ -2,11 +2,18 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { navigateOnClick } from '@/lib/navigateOnClick';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
-  Building2, Users, DollarSign, Globe, Briefcase,
-  Phone, FileArchive, Loader2,
-  MapPin, Mail, Linkedin, ChevronLeft, ChevronRight,
-  FileText, Hash, Tag, User, CalendarDays, RefreshCw,
+  Building2, Users, DollarSign,
+  FileArchive, Loader2,
+  MapPin, Linkedin, ChevronLeft, ChevronRight,
+  FileText, Hash, RefreshCw,
 } from 'lucide-react';
+import { Buildings2SvgIcon } from '@/components/icons/Buildings2SvgIcon';
+import { CalendarSvgIcon } from '@/components/icons/CalendarSvgIcon';
+import { LetterSvgIcon } from '@/components/icons/LetterSvgIcon';
+import { LlamadaSvgIcon } from '@/components/icons/LlamadaSvgIcon';
+import { MapArrowSquareSvgIcon } from '@/components/icons/MapArrowSquareSvgIcon';
+import { SuitcaseSvgIcon } from '@/components/icons/SuitcaseSvgIcon';
+import { UsersGroupTwoRoundedSvgIcon } from '@/components/icons/UsersGroupTwoRoundedSvgIcon';
 import { useCRMStore } from '@/store/crmStore';
 import { useAppStore } from '@/store';
 import { canPickOtherCommercialAdvisor } from '@/data/rbac';
@@ -33,6 +40,8 @@ import { LinkedContactsCard } from '@/components/shared/LinkedContactsCard';
 import {
   NewOpportunityFormDialog,
   buildOpportunityCreateBody,
+  linkOpportunityExtraContacts,
+  opportunityContactIdsFromForm,
   type NewOpportunityFormValues,
 } from '@/components/shared/NewOpportunityFormDialog';
 import { LinkExistingDialog, type LinkExistingItem } from '@/components/shared/LinkExistingDialog';
@@ -804,13 +813,19 @@ export default function EmpresaDetailPage() {
     ) {
       try {
         toast.loading('Guardando…', { id: 'create-opp-empresa' });
+        const contactIds = opportunityContactIdsFromForm(data);
         const merged: NewOpportunityFormValues = {
           ...data,
           companyId: companyIdStr,
-          contactId: '',
+          contactId: contactIds[0] ?? '',
+          contactIds,
         };
         const body = buildOpportunityCreateBody(merged);
-        await api('/opportunities', { method: 'POST', body: JSON.stringify(body) });
+        const created = await api<{ id: string }>('/opportunities', {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+        await linkOpportunityExtraContacts(created.id, contactIds);
         await reloadOpportunityLists();
         toast.success(`Oportunidad "${data.title.trim()}" creada`, { id: 'create-opp-empresa' });
       } catch (e) {
@@ -820,19 +835,34 @@ export default function EmpresaDetailPage() {
       return;
     }
 
-    if (!firstContact) {
+    const contactIds = opportunityContactIdsFromForm(data);
+    const ensuredIds =
+      contactIds.length > 0
+        ? contactIds
+        : firstContact
+          ? [firstContact.id]
+          : [];
+    if (ensuredIds.length === 0) {
       toast.error('Añade al menos un contacto vinculado a la empresa.');
       throw new Error('no contact');
     }
+    const primaryContact =
+      (firstContact && ensuredIds.includes(firstContact.id) ? firstContact : null)
+      ?? firstContact;
     const merged: NewOpportunityFormValues = {
       ...data,
-      contactId: firstContact.id,
+      contactId: ensuredIds[0],
+      contactIds: ensuredIds,
       companyId: companyIdStr || data.companyId,
     };
-    if (resolvedCompanyId && isLikelyContactCuid(firstContact.id)) {
+    if (resolvedCompanyId && isLikelyContactCuid(ensuredIds[0])) {
       try {
         const body = buildOpportunityCreateBody(merged);
-        await api('/opportunities', { method: 'POST', body: JSON.stringify(body) });
+        const created = await api<{ id: string }>('/opportunities', {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+        await linkOpportunityExtraContacts(created.id, ensuredIds);
         await reloadOpportunityLists();
         toast.success(`Oportunidad "${data.title.trim()}" creada`);
       } catch (e) {
@@ -843,8 +873,8 @@ export default function EmpresaDetailPage() {
     }
     addOpportunity({
       title: data.title.trim(),
-      contactId: firstContact.id,
-      contactName: firstContact.name,
+      contactId: ensuredIds[0],
+      contactName: primaryContact?.name ?? '',
       clientId: companyIdStr || data.companyId?.trim(),
       clientName: companyData?.name,
       amount: data.amount,
@@ -1358,14 +1388,14 @@ return (
             collapsible
             fields={[
               {
-                icon: Building2,
+                icon: Buildings2SvgIcon,
                 value: companyData?.name ?? companyName,
                 truncate: true,
               },
               ...(fromApiById && apiRecord?.razonSocial?.trim()
                 ? [
                     {
-                      icon: FileText as typeof Building2,
+                      icon: FileText,
                       value: apiRecord.razonSocial.trim(),
                       truncate: true,
                     },
@@ -1374,7 +1404,7 @@ return (
               ...(fromApiById && apiRecord?.ruc?.trim()
                 ? [
                     {
-                      icon: Hash as typeof Building2,
+                      icon: Hash,
                       value: apiRecord.ruc.trim(),
                     },
                   ]
@@ -1382,7 +1412,7 @@ return (
               ...(fromApiById && apiRecord?.telefono
                 ? [
                     {
-                      icon: Phone as typeof Building2,
+                      icon: LlamadaSvgIcon,
                       value: apiRecord.telefono,
                       href: `tel:${apiRecord.telefono}`,
                     },
@@ -1391,7 +1421,7 @@ return (
               ...(fromApiById && apiRecord?.correo?.trim()
                 ? [
                     {
-                      icon: Mail as typeof Building2,
+                      icon: LetterSvgIcon,
                       value: apiRecord.correo.trim(),
                       href: `mailto:${apiRecord.correo.trim()}`,
                     },
@@ -1400,7 +1430,7 @@ return (
               ...(companyData?.domain
                 ? [
                     {
-                      icon: Globe as typeof Building2,
+                      icon: MapArrowSquareSvgIcon,
                       value: companyData.domain,
                       href: companyData.domain.startsWith('http')
                         ? companyData.domain
@@ -1411,7 +1441,7 @@ return (
               ...(fromApiById && apiRecord?.linkedin?.trim()
                 ? [
                     {
-                      icon: Linkedin as typeof Building2,
+                      icon: Linkedin,
                       value: apiRecord.linkedin.trim(),
                       href: apiRecord.linkedin.trim().startsWith('http')
                         ? apiRecord.linkedin.trim()
@@ -1422,36 +1452,44 @@ return (
               ...(fromApiById && apiRecord?.direccion?.trim()
                 ? [{ icon: MapPin, value: apiRecord.direccion.trim(), truncate: true }]
                 : []),
-...(companyData?.rubro
-    ? [
-        {
-          icon: Briefcase as typeof Building2,
-          value: getRubroLabelFromCatalog(companyData.rubro, crmBundle),
-        },
-      ]
-    : []),
-  ...(companyData?.tipo ? [{ label: 'Tipo:', value: companyData.tipo }] : []),
-  ...(displayAssignedToName
-    ? [{ icon: User, value: displayAssignedToName }]
-    : []),
-  ...(displayClienteRecuperado
-    ? [{ icon: RefreshCw, value: displayClienteRecuperado === 'si' ? 'Sí' : 'No', label: 'Cliente recuperado:' }]
-    : []),
-  ...(displayCreatedAt
-    ? [{ icon: CalendarDays, value: `Creado: ${formatDate(displayCreatedAt)}` }]
-    : []),
-  ...(displayLastInteraction
-    ? [{ icon: CalendarDays, value: `Última interacción: ${formatDate(displayLastInteraction)}`, label: '' }]
-    : []),
-  ...(fromApiById && apiRecord?.fuente
-    ? [
-        {
-          icon: Tag as typeof Building2,
-          value: displayFuenteLabel,
-        },
-      ]
-    : []),
-]}
+              ...(companyData?.rubro
+                ? [
+                    {
+                      icon: SuitcaseSvgIcon,
+                      value: getRubroLabelFromCatalog(companyData.rubro, crmBundle),
+                    },
+                  ]
+                : []),
+              ...(companyData?.tipo ? [{ label: 'Tipo:', value: companyData.tipo }] : []),
+              ...(displayAssignedToName
+                ? [{ icon: UsersGroupTwoRoundedSvgIcon, value: displayAssignedToName }]
+                : []),
+              ...(displayClienteRecuperado
+                ? [{
+                    icon: RefreshCw,
+                    value: displayClienteRecuperado === 'si' ? 'Sí' : 'No',
+                    label: 'Cliente recuperado:',
+                  }]
+                : []),
+              ...(displayCreatedAt
+                ? [{ icon: CalendarSvgIcon, value: `Creado: ${formatDate(displayCreatedAt)}` }]
+                : []),
+              ...(displayLastInteraction
+                ? [{
+                    icon: CalendarSvgIcon,
+                    value: `Última interacción: ${formatDate(displayLastInteraction)}`,
+                    label: '',
+                  }]
+                : []),
+              ...(fromApiById && apiRecord?.fuente
+                ? [
+                    {
+                      icon: MapArrowSquareSvgIcon,
+                      value: displayFuenteLabel,
+                    },
+                  ]
+                : []),
+            ]}
           />
       }
       sidebar={
@@ -1613,10 +1651,14 @@ return (
     <NewOpportunityFormDialog
       open={newOppOpen}
       onOpenChange={setNewOppOpen}
-      title="Nueva Oportunidad"
-      description={`Registra una oportunidad para ${companyName}.`}
+      title="Crear nueva oportunidad"
       defaultContactId={firstContact?.id ?? ''}
+      defaultContactName={firstContact?.name ?? ''}
       defaultCompanyId={typeof resolvedCompanyId === 'string' ? resolvedCompanyId : ''}
+      defaultCompanyName={companyName}
+      defaultCompanyFuente={
+        (fromApiById && apiRecord?.fuente) || firstContact?.fuente || ''
+      }
       lockContactSelection={!!firstContact}
       lockCompanySelection={!!resolvedCompanyId}
       onCreate={handleCreateOpportunity}
@@ -1626,8 +1668,9 @@ return (
     <LinkExistingDialog
       open={addExistingOppOpen}
       onOpenChange={(open) => { setAddExistingOppOpen(open); if (!open) { setLinkOppIds([]); setLinkOppSearch(''); } }}
-      title="Vincular Oportunidad Existente"
+      title="Vincular oportunidad"
       searchPlaceholder="Buscar por título…"
+      itemKind="oportunidad"
       contactName={companyName}
       items={oppLinkItems}
       selectedIds={linkOppIds}
@@ -1649,13 +1692,11 @@ return (
   onOpenChange={setNewContactOpen}
   onSubmit={handleCreateNewContact}
   title="Crear nuevo contacto"
-  description={`Crea un nuevo contacto vinculado a ${companyName}.`}
   submitLabel="Crear y vincular"
+  singlePage
   lockCompanySelection
   defaultCompanyId={resolvedCompanyId}
-  defaultOpportunityIds={companyOpportunities
-    .filter(o => !o.contactId)
-    .map(o => o.id)}
+  defaultOpportunityIds={companyOpportunities.map((o) => o.id)}
   defaultValues={{
     company: companyName,
     companyId: resolvedCompanyId,
@@ -1667,8 +1708,9 @@ return (
     <LinkExistingDialog
       open={addExistingContactOpen}
       onOpenChange={(open) => { setAddExistingContactOpen(open); if (!open) { setLinkContactIds([]); setLinkContactSearch(''); } }}
-      title="Vincular Contacto Existente"
+      title="Vincular contacto"
       searchPlaceholder="Buscar por nombre, correo, cargo…"
+      itemKind="contacto"
       contactName={companyName}
       items={contactLinkItems}
       selectedIds={linkContactIds}

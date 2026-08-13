@@ -66,6 +66,8 @@ import { GlassCard } from '@/components/shared/GlassCard';
 import {
   NewOpportunityFormDialog,
   buildOpportunityCreateBody,
+  linkOpportunityExtraContacts,
+  opportunityContactIdsFromForm,
   type NewOpportunityFormValues,
 } from '@/components/shared/NewOpportunityFormDialog';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
@@ -448,14 +450,16 @@ export default function OpportunitiesPage() {
 
   async function handleCreateOpportunity(data: NewOpportunityFormValues) {
     const body = buildOpportunityCreateBody(data);
+    const contactIds = opportunityContactIdsFromForm(data);
     const optId = generateOptimisticId('o');
     addPendingOpportunity(buildOptimisticOpportunity(optId, data));
     toast.loading('Guardando…', { id: 'create-opp-list' });
     try {
-      await api('/opportunities', {
+      const created = await api<{ id: string }>('/opportunities', {
         method: 'POST',
         body: JSON.stringify(body),
       });
+      await linkOpportunityExtraContacts(created.id, contactIds);
     } catch (e) {
       removePendingOpportunity(optId);
       toast.error(

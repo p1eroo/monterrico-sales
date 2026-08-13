@@ -1,4 +1,7 @@
-import { Building2, Globe, DollarSign, Target } from 'lucide-react';
+import { Buildings2SvgIcon } from '@/components/icons/Buildings2SvgIcon';
+import { MapArrowSquareSvgIcon } from '@/components/icons/MapArrowSquareSvgIcon';
+import { MoneyBagSvgIcon } from '@/components/icons/MoneyBagSvgIcon';
+import { PrioritySvgIcon } from '@/components/icons/PrioritySvgIcon';
 import { etapaLabels, companyTipoLabels } from '@/data/mock';
 import { getRubroLabelFromCatalog, useCrmConfigStore } from '@/store/crmConfigStore';
 import { LinkedEntitiesCard } from './LinkedEntitiesCard';
@@ -7,6 +10,8 @@ import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/formatters';
 import type { LinkedCompany } from '@/types';
 import { companyDetailHref } from '@/lib/detailRoutes';
+
+const fieldIconClass = 'h-3.5 w-3.5 shrink-0 text-text-tertiary';
 
 interface LinkedCompaniesCardProps {
   companies: LinkedCompany[];
@@ -30,7 +35,7 @@ export function LinkedCompaniesCard({
   return (
     <LinkedEntitiesCard<LinkedCompany>
       title="Empresas"
-      icon={Building2}
+      icon={Buildings2SvgIcon}
       items={companies}
       maxItems={maxItems}
       emptyMessage="Sin empresas vinculadas."
@@ -81,7 +86,7 @@ export function LinkedCompaniesCard({
             {comp.domain && (
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 text-sm text-text-secondary">
-                  <Globe className="h-3.5 w-3.5 text-text-tertiary" />
+                  <MapArrowSquareSvgIcon className={fieldIconClass} />
                   Dominio
                 </div>
                 <span className="truncate text-right text-sm text-text-primary">{comp.domain}</span>
@@ -91,7 +96,7 @@ export function LinkedCompaniesCard({
             {comp.tipo && (
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 text-sm text-text-secondary">
-                  <Building2 className="h-3.5 w-3.5 text-text-tertiary" />
+                  <Buildings2SvgIcon className={fieldIconClass} />
                   Tipo
                 </div>
                 <span className="text-sm text-text-primary">
@@ -103,7 +108,7 @@ export function LinkedCompaniesCard({
             {facturacion != null && (
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 text-sm text-text-secondary">
-                  <DollarSign className="h-3.5 w-3.5 text-text-tertiary" />
+                  <MoneyBagSvgIcon className={fieldIconClass} />
                   Facturación
                 </div>
                 <span className="text-right text-sm text-text-primary tabular-nums">
@@ -115,7 +120,7 @@ export function LinkedCompaniesCard({
             {etapa && (
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 text-sm text-text-secondary">
-                  <Target className="h-3.5 w-3.5 text-text-tertiary" />
+                  <PrioritySvgIcon className={fieldIconClass} />
                   Etapa
                 </div>
                 <span className="text-right text-sm text-text-primary">

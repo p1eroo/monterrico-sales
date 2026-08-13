@@ -1,20 +1,29 @@
-import { Search, Link2, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { Search, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
+  AssociationChip,
+  type AssociationChipKind,
+} from '@/components/shared/AssociationPickerField';
+import {
+  FormDialogActions,
+  FormDialogShell,
+  formDialogInputClass,
+  formDialogScrollListClass,
+} from '@/components/ui/form-dialog';
 import { cn } from '@/lib/utils';
 
 export interface LinkExistingItem {
   id: string;
   title: string;
   subtitle?: string;
+  /** Etiqueta opcional a la derecha (p. ej. etapa real). Evitar valores fijos sin sentido. */
   status?: string;
   icon?: React.ReactNode;
+  /** Tipo para chips de selección (default: según `itemKind` del diálogo). */
+  kind?: AssociationChipKind;
 }
 
 interface LinkExistingDialogProps {
@@ -46,6 +55,8 @@ interface LinkExistingDialogProps {
   listLoadingMore?: boolean;
   hasMore?: boolean;
   onLoadMore?: () => void;
+  /** Tipo por defecto de chips cuando el ítem no define `kind`. */
+  itemKind?: AssociationChipKind;
 }
 
 export function LinkExistingDialog({
@@ -53,8 +64,8 @@ export function LinkExistingDialog({
   onOpenChange,
   title,
   searchPlaceholder,
-  leadName,
-  contactName,
+  leadName: _leadName,
+  contactName: _contactName,
   items,
   selectedIds,
   onSelectionChange,
@@ -71,10 +82,13 @@ export function LinkExistingDialog({
   listLoadingMore = false,
   hasMore = false,
   onLoadMore,
+  itemKind = 'empresa',
 }: LinkExistingDialogProps) {
-  const displayLead =
-    (leadName?.trim() || contactName?.trim() || 'este registro');
   const [confirming, setConfirming] = useState(false);
+
+  useEffect(() => {
+    if (!open) setConfirming(false);
+  }, [open]);
 
   const toggleSelection = (id: string) => {
     if (selectionMode === 'single') {
@@ -100,6 +114,10 @@ export function LinkExistingDialog({
           item.subtitle?.toLowerCase().includes(searchValue.toLowerCase()),
       );
 
+  const selectedItems = selectedIds
+    .map((id) => items.find((item) => item.id === id))
+    .filter((item): item is LinkExistingItem => !!item);
+
   const handleListScroll = (e: React.UIEvent<HTMLDivElement>) => {
     if (!onLoadMore || !hasMore || listLoadingMore || listLoading) return;
     const el = e.currentTarget;
@@ -109,38 +127,57 @@ export function LinkExistingDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        overlayClassName={overlayClassName}
-        className={cn('max-w-lg gap-0 p-0', contentClassName)}
-      >
-        <DialogHeader className="px-6 pt-6 pb-4">
-          <DialogTitle className="flex items-center gap-2 text-left">
-            <Link2 className="size-5 text-[#13944C]" />
-            {title}
-          </DialogTitle>
-          <DialogDescription className="text-left">
-            {selectionMode === 'single'
-              ? `Selecciona el registro que deseas vincular a ${displayLead}.`
-              : `Selecciona los registros que deseas vincular a ${displayLead}.`}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="px-6 pb-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={searchValue}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder={searchPlaceholder}
-              className="h-10 pl-9 rounded-lg border-[#13944C]/30 transition-[border-color] focus-visible:border-[#13944C]"
-            />
+    <FormDialogShell
+      open={open}
+      onOpenChange={onOpenChange}
+      title={title}
+      maxWidthClassName="sm:max-w-lg"
+      overlayClassName={overlayClassName}
+      contentClassName={contentClassName}
+      footer={(
+        <FormDialogActions
+          submitLabel={confirming ? 'Vinculando…' : confirmLabel}
+          submitting={confirming}
+          submitDisabled={selectedIds.length === 0}
+          onSubmit={() => {
+            setConfirming(true);
+            onConfirm();
+          }}
+        />
+      )}
+    >
+      <div className="space-y-3.5">
+        {selectedItems.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {selectedItems.map((item) => {
+              const kind = item.kind ?? itemKind;
+              return (
+                <AssociationChip
+                  key={item.id}
+                  kind={kind}
+                  label={item.title}
+                  showTypeLabel={false}
+                  onRemove={() => toggleSelection(item.id)}
+                />
+              );
+            })}
           </div>
+        ) : null}
+
+        <div className="relative">
+          <Search className="absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={searchValue}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder={searchPlaceholder}
+            className={`${formDialogInputClass} h-11 pl-9`}
+          />
         </div>
 
         <div
-          className="max-h-64 overflow-y-auto border-y px-6 py-3"
+          className={cn(formDialogScrollListClass, 'max-h-80 space-y-1.5 pr-1')}
           onScroll={handleListScroll}
+          onWheel={(e) => e.stopPropagation()}
         >
           {listLoading && filteredItems.length === 0 ? (
             <div className="flex justify-center py-12 text-muted-foreground">
@@ -149,68 +186,48 @@ export function LinkExistingDialog({
           ) : filteredItems.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">{emptyMessage}</p>
           ) : (
-            <div className="space-y-2">
-              {filteredItems.map((item) => (
-                <label
-                  key={item.id}
-                  className={cn(
-                    'flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50',
-                    selectedIds.includes(item.id) &&
-                      'border-primary/50 bg-emerald-50/50 dark:bg-emerald-950/30 dark:border-primary/40',
-                  )}
-                >
-                  <Checkbox
-                    checked={selectedIds.includes(item.id)}
-                    onCheckedChange={() => toggleSelection(item.id)}
-                  />
-                  {item.icon && (
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                      {item.icon}
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium truncate">{item.title}</p>
-                    {item.subtitle && (
-                      <p className="mt-0.5 text-sm text-muted-foreground truncate">{item.subtitle}</p>
+            <>
+              {filteredItems.map((item) => {
+                const isSelected = selectedIds.includes(item.id);
+                return (
+                  <label
+                    key={item.id}
+                    className={cn(
+                      'flex cursor-pointer items-center gap-3 rounded-xl border border-border/70 bg-background px-3 py-2.5 transition-colors hover:bg-muted/50',
+                      isSelected && 'border-[#13944C]/40 bg-[#13944C]/5',
                     )}
-                  </div>
-                  {item.status && (
-                    <Badge
-                      variant="secondary"
-                      className="shrink-0 bg-emerald-100 text-emerald-700 border-emerald-200"
-                    >
-                      {item.status}
-                    </Badge>
-                  )}
-                </label>
-              ))}
-              {listLoadingMore && (
+                  >
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => toggleSelection(item.id)}
+                      className="size-3.5 shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-foreground">{item.title}</p>
+                      {item.subtitle ? (
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">{item.subtitle}</p>
+                      ) : null}
+                    </div>
+                    {item.status ? (
+                      <Badge
+                        variant="secondary"
+                        className="shrink-0 border-[#13944C]/20 bg-[#13944C]/10 text-[11px] font-medium text-[#13944C]"
+                      >
+                        {item.status}
+                      </Badge>
+                    ) : null}
+                  </label>
+                );
+              })}
+              {listLoadingMore ? (
                 <div className="flex justify-center py-3 text-muted-foreground">
                   <Loader2 className="size-5 animate-spin" aria-label="Cargando más" />
                 </div>
-              )}
-            </div>
+              ) : null}
+            </>
           )}
         </div>
-
-        <DialogFooter className="flex-row items-center justify-between gap-4 px-6 py-4">
-          <span className="text-sm text-muted-foreground">
-            {selectedIds.length} seleccionado{selectedIds.length !== 1 ? 's' : ''}
-          </span>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={confirming}>
-              Cancelar
-            </Button>
-            <Button
-              className="bg-[#13944C] hover:bg-[#0f7a3d]"
-              onClick={() => { setConfirming(true); onConfirm(); }}
-              disabled={selectedIds.length === 0 || confirming}
-            >
-              {confirming ? 'Vinculando…' : confirmLabel}
-            </Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </FormDialogShell>
   );
 }

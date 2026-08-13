@@ -1,9 +1,14 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
-  Briefcase, DollarSign, Target, CalendarDays, User, Building2, Tag,
+  Briefcase, CalendarDays,
   Users, FileArchive, Loader2, ChevronLeft, ChevronRight,
 } from 'lucide-react';
+import { BusinessGraphBoardSvgIcon } from '@/components/icons/BusinessGraphBoardSvgIcon';
+import { CalendarSvgIcon } from '@/components/icons/CalendarSvgIcon';
+import { MapArrowSquareSvgIcon } from '@/components/icons/MapArrowSquareSvgIcon';
+import { MoneyBagSvgIcon } from '@/components/icons/MoneyBagSvgIcon';
+import { UsersGroupTwoRoundedSvgIcon } from '@/components/icons/UsersGroupTwoRoundedSvgIcon';
 import { useCRMStore } from '@/store/crmStore';
 import { useAppStore } from '@/store';
 import { canPickOtherCommercialAdvisor } from '@/data/rbac';
@@ -863,15 +868,26 @@ async function handleCreateNewContact(data: NewContactData) {
     return result;
   })();
 
-  const companyLinkItemsFromApiPicker: LinkExistingItem[] = linkCompanyPickerApiRows.map((row) => ({
-    id: row.id,
-    title: row.name,
-    subtitle: row.ruc?.trim() || row.domain?.trim() || undefined,
-    status: row.etapa
-      ? getStageLabelFromCatalog(row.etapa, crmBundle, etapaLabels as Record<string, string>)
-      : '—',
-    icon: <Building2 className="size-4" />,
-  }));
+  const companyLinkItemsFromApiPicker: LinkExistingItem[] = linkCompanyPickerApiRows.map((row) => {
+    const subtitleParts = [
+      row.ruc?.trim() || undefined,
+      row.domain?.trim() || undefined,
+    ].filter(Boolean) as string[];
+    return {
+      id: row.id,
+      title: row.name,
+      subtitle: subtitleParts.length ? subtitleParts.join(' · ') : undefined,
+      ...(row.etapa
+        ? {
+            status: getStageLabelFromCatalog(
+              row.etapa,
+              crmBundle,
+              etapaLabels as Record<string, string>,
+            ),
+          }
+        : {}),
+    };
+  });
 
   const companyLinkItems: LinkExistingItem[] =
     fromApi && oppDetailCompanyPickerOptions
@@ -880,8 +896,6 @@ async function handleCreateNewContact(data: NewContactData) {
           id: c.name,
           title: c.name,
           subtitle: c.rubro ? getRubroLabelFromCatalog(c.rubro, crmBundle) : undefined,
-          status: 'Activo',
-          icon: <Building2 className="size-4" />,
         }));
 
   const followUpAssociations = useMemo(() => {
@@ -981,12 +995,15 @@ async function handleCreateNewContact(data: NewContactData) {
             title="Información"
             collapsible
             fields={[
-              { icon: DollarSign, value: formatCurrency(opp.amount) },
-              { icon: Target, value: `${opp.probability}% probabilidad` },
-              { icon: CalendarDays, value: `Cierre: ${formatDate(opp.expectedCloseDate)}` },
-              { icon: Tag, value: getSourceLabelFromCatalog(opp.fuente ?? 'base', crmBundle, contactSourceLabels) },
-              { icon: User, value: opp.assignedToName },
-              { icon: CalendarDays, value: `Creada: ${formatDate(opp.createdAt)}` },
+              { icon: MoneyBagSvgIcon, value: formatCurrency(opp.amount) },
+              { icon: BusinessGraphBoardSvgIcon, value: `${opp.probability}% probabilidad` },
+              { icon: CalendarSvgIcon, value: `Cierre: ${formatDate(opp.expectedCloseDate)}` },
+              {
+                icon: MapArrowSquareSvgIcon,
+                value: getSourceLabelFromCatalog(opp.fuente ?? 'base', crmBundle, contactSourceLabels),
+              },
+              { icon: UsersGroupTwoRoundedSvgIcon, value: opp.assignedToName },
+              { icon: CalendarSvgIcon, value: `Creada: ${formatDate(opp.createdAt)}` },
             ]}
           />
       }
@@ -1141,18 +1158,19 @@ async function handleCreateNewContact(data: NewContactData) {
   onOpenChange={setNewContactOpen}
   onSubmit={handleCreateNewContact}
   title="Crear nuevo contacto"
-  description={`Crea un nuevo contacto vinculado a la oportunidad "${opp.title}".`}
   submitLabel="Crear y vincular"
+  singlePage
   defaultCompanyId={opp.clientId}
-          defaultOpportunityIds={[opp.id]}
+  defaultOpportunityIds={[opp.id]}
 />
 
     {/* Vincular contacto existente */}
     <LinkExistingDialog
       open={addExistingContactOpen}
       onOpenChange={(open) => { setAddExistingContactOpen(open); if (!open) { setLinkContactIds([]); setLinkContactSearch(''); } }}
-      title="Vincular Contacto Existente"
+      title="Vincular contacto"
       searchPlaceholder="Buscar por nombre, correo, cargo…"
+      itemKind="contacto"
       contactName={opp.title}
       items={contactLinkItems}
       selectedIds={linkContactIds}
@@ -1172,8 +1190,7 @@ async function handleCreateNewContact(data: NewContactData) {
       open={newCompanyDialogOpen}
       onOpenChange={setNewCompanyDialogOpen}
       onSubmit={handleAddCompany}
-      title="Agregar empresa"
-      description={`Vincula una nueva empresa al contacto de esta oportunidad.`}
+      title="Crear nueva empresa"
       showContactSection={false}
     />
 
@@ -1181,8 +1198,9 @@ async function handleCreateNewContact(data: NewContactData) {
     <LinkExistingDialog
       open={addExistingCompanyOpen}
       onOpenChange={(open) => { setAddExistingCompanyOpen(open); if (!open) { setLinkCompanyNames([]); setLinkCompanySearch(''); } }}
-      title="Vincular Empresa Existente"
+      title="Vincular empresa"
       searchPlaceholder="Buscar por nombre, RUC, dominio…"
+      itemKind="empresa"
       contactName={opp.title}
       items={companyLinkItems}
       selectedIds={linkCompanyNames}

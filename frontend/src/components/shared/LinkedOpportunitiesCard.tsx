@@ -1,5 +1,8 @@
 import { useMemo } from 'react';
-import { Briefcase, CalendarDays, DollarSign, Target, TrendingUp } from 'lucide-react';
+import { BusinessGraphBoardSvgIcon } from '@/components/icons/BusinessGraphBoardSvgIcon';
+import { CalendarSvgIcon } from '@/components/icons/CalendarSvgIcon';
+import { MoneyBagSvgIcon } from '@/components/icons/MoneyBagSvgIcon';
+import { PrioritySvgIcon } from '@/components/icons/PrioritySvgIcon';
 import { etapaLabels, priorityLabels } from '@/data/mock';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { LinkedEntitiesCard } from './LinkedEntitiesCard';
@@ -7,6 +10,8 @@ import { LinkedEntityItemHeader } from './LinkedEntityItemHeader';
 import type { Opportunity } from '@/types';
 import { opportunityDetailHref } from '@/lib/detailRoutes';
 import { getHighestPriorityOpportunity } from '@/lib/opportunityUtils';
+
+const fieldIconClass = 'h-3.5 w-3.5 shrink-0 text-text-tertiary';
 
 function resolvePrimaryOpportunityId(opportunities: Opportunity[]): string | undefined {
   if (opportunities.length < 2) return undefined;
@@ -36,7 +41,7 @@ export function LinkedOpportunitiesCard({
   return (
     <LinkedEntitiesCard<Opportunity>
       title="Oportunidades"
-      icon={Briefcase}
+      icon={MoneyBagSvgIcon}
       items={opportunities}
       maxItems={maxItems}
       emptyMessage="Sin oportunidades vinculadas."
@@ -72,7 +77,7 @@ export function LinkedOpportunitiesCard({
           <div className="space-y-2.5">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-sm text-text-secondary">
-                <DollarSign className="h-3.5 w-3.5 text-text-tertiary" />
+                <MoneyBagSvgIcon className={fieldIconClass} />
                 Monto
               </div>
               <span className="text-sm font-semibold text-text-primary">{formatCurrency(opp.amount)}</span>
@@ -80,7 +85,7 @@ export function LinkedOpportunitiesCard({
 
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-sm text-text-secondary">
-                <Target className="h-3.5 w-3.5 text-text-tertiary" />
+                <PrioritySvgIcon className={fieldIconClass} />
                 Etapa
               </div>
               <span className="text-right text-sm text-text-primary">
@@ -90,7 +95,7 @@ export function LinkedOpportunitiesCard({
 
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-sm text-text-secondary">
-                <CalendarDays className="h-3.5 w-3.5 text-text-tertiary" />
+                <CalendarSvgIcon className={fieldIconClass} />
                 Cierre est.
               </div>
               <span className="text-sm text-text-primary">{formatDate(opp.expectedCloseDate)}</span>
@@ -98,7 +103,7 @@ export function LinkedOpportunitiesCard({
 
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-sm text-text-secondary">
-                <TrendingUp className="h-3.5 w-3.5 text-text-tertiary" />
+                <BusinessGraphBoardSvgIcon className={fieldIconClass} />
                 Probabilidad
               </div>
               <div className="flex items-center gap-2">

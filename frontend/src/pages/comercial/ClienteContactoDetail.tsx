@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  UserPlus, Phone, Mail, User, CalendarDays, MapPin, Loader2,
-  ChevronLeft, ChevronRight, Globe,
+  UserPlus, Loader2,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react';
+import { Buildings2SvgIcon } from '@/components/icons/Buildings2SvgIcon';
+import { CalendarSvgIcon } from '@/components/icons/CalendarSvgIcon';
+import { LetterSvgIcon } from '@/components/icons/LetterSvgIcon';
+import { LlamadaSvgIcon } from '@/components/icons/LlamadaSvgIcon';
+import { MapArrowSquareSvgIcon } from '@/components/icons/MapArrowSquareSvgIcon';
+import { UsersGroupTwoRoundedSvgIcon } from '@/components/icons/UsersGroupTwoRoundedSvgIcon';
 import type { Activity, Contact, TimelineEvent } from '@/types';
 import { contactSourceLabels, etapaLabels } from '@/data/mock';
 import { DetailLayout } from '@/components/shared/DetailLayout';
@@ -510,28 +516,44 @@ export default function ClienteContactoDetailPage() {
             collapsible
             fields={[
               ...(contact.assignedToName
-                ? [{ icon: User, value: contact.assignedToName }]
+                ? [{ icon: UsersGroupTwoRoundedSvgIcon, value: contact.assignedToName }]
                 : []),
               ...(contact.telefono?.trim()
-                ? [{ icon: Phone, value: contact.telefono.trim(), href: `tel:${contact.telefono.trim()}` }]
+                ? [{
+                    icon: LlamadaSvgIcon,
+                    value: contact.telefono.trim(),
+                    href: `tel:${contact.telefono.trim()}`,
+                  }]
                 : []),
               ...(contact.email?.trim()
-                ? [{ icon: Mail, value: contact.email.trim(), href: `mailto:${contact.email.trim()}` }]
+                ? [{
+                    icon: LetterSvgIcon,
+                    value: contact.email.trim(),
+                    href: `mailto:${contact.email.trim()}`,
+                  }]
                 : []),
               ...(primaryEmpresaName
-                ? [{ icon: UserPlus, value: primaryEmpresaName, truncate: true, label: 'Empresa:' }]
+                ? [{
+                    icon: Buildings2SvgIcon,
+                    value: primaryEmpresaName,
+                    truncate: true,
+                    label: 'Empresa:',
+                  }]
                 : []),
               {
-                icon: Globe,
+                icon: MapArrowSquareSvgIcon,
                 value: getSourceLabelFromCatalog(
                   contact.source ?? 'base',
                   crmBundle,
                   contactSourceLabels,
                 ),
               },
-              { icon: CalendarDays, value: `Fecha de creación: ${formatDate(contact.createdAt)}` },
+              {
+                icon: CalendarSvgIcon,
+                value: `Fecha de creación: ${formatDate(contact.createdAt)}`,
+              },
               ...(contact.direccion?.trim()
-                ? [{ icon: MapPin, value: contact.direccion.trim() }]
+                ? [{ icon: MapArrowSquareSvgIcon, value: contact.direccion.trim() }]
                 : []),
             ]}
           />
@@ -684,8 +706,9 @@ export default function ClienteContactoDetailPage() {
       <LinkExistingDialog
         open={linkDialogOpen}
         onOpenChange={setLinkDialogOpen}
-        title="Vincular empresa existente"
+        title="Vincular empresa"
         searchPlaceholder="Buscar empresa cliente…"
+        itemKind="empresa"
         leadName={contact.nombre}
         items={linkableItems}
         selectedIds={selectedLinkIds}

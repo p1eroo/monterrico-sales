@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  Building2, Phone, Mail, User, Hash, CalendarDays, Briefcase, Loader2,
+  Hash, Loader2,
   ChevronLeft, ChevronRight,
 } from 'lucide-react';
+import { Buildings2SvgIcon } from '@/components/icons/Buildings2SvgIcon';
+import { CalendarSvgIcon } from '@/components/icons/CalendarSvgIcon';
+import { LetterSvgIcon } from '@/components/icons/LetterSvgIcon';
+import { LlamadaSvgIcon } from '@/components/icons/LlamadaSvgIcon';
+import { SuitcaseSvgIcon } from '@/components/icons/SuitcaseSvgIcon';
+import { UsersGroupTwoRoundedSvgIcon } from '@/components/icons/UsersGroupTwoRoundedSvgIcon';
 import type { Activity, TimelineEvent } from '@/types';
 import { DetailLayout } from '@/components/shared/DetailLayout';
 import { EntityInfoCard } from '@/components/shared/EntityInfoCard';
@@ -425,19 +431,27 @@ export default function ClienteEmpresaDetailPage() {
               title="Información"
               collapsible
               fields={[
-                { icon: Building2, value: empresa.empresa, truncate: true },
+                { icon: Buildings2SvgIcon, value: empresa.empresa, truncate: true },
                 ...(empresa.ruc?.trim() ? [{ icon: Hash, value: empresa.ruc.trim() }] : []),
                 ...(empresa.telefono
-                  ? [{ icon: Phone, value: empresa.telefono, href: `tel:${empresa.telefono}` }]
+                  ? [{ icon: LlamadaSvgIcon, value: empresa.telefono, href: `tel:${empresa.telefono}` }]
                   : []),
                 ...(empresa.email?.trim()
-                  ? [{ icon: Mail, value: empresa.email.trim(), href: `mailto:${empresa.email.trim()}` }]
+                  ? [{
+                      icon: LetterSvgIcon,
+                      value: empresa.email.trim(),
+                      href: `mailto:${empresa.email.trim()}`,
+                    }]
                   : []),
-                { icon: User, value: empresa.assignedToName },
-                { icon: CalendarDays, value: `Alta: ${formatDate(empresa.fechaAlta)}` },
-                ...(empresa.servicio ? [{ icon: Briefcase, value: empresa.servicio }] : []),
+                { icon: UsersGroupTwoRoundedSvgIcon, value: empresa.assignedToName },
+                { icon: CalendarSvgIcon, value: `Alta: ${formatDate(empresa.fechaAlta)}` },
+                ...(empresa.servicio ? [{ icon: SuitcaseSvgIcon, value: empresa.servicio }] : []),
                 ...(empresa.contactoNombre
-                  ? [{ icon: User, value: empresa.contactoNombre, label: 'Contacto ref.:' }]
+                  ? [{
+                      icon: UsersGroupTwoRoundedSvgIcon,
+                      value: empresa.contactoNombre,
+                      label: 'Contacto ref.:',
+                    }]
                   : []),
               ]}
             />
@@ -570,8 +584,9 @@ export default function ClienteEmpresaDetailPage() {
       <LinkExistingDialog
         open={linkDialogOpen}
         onOpenChange={setLinkDialogOpen}
-        title="Vincular contacto existente"
+        title="Vincular contacto"
         searchPlaceholder="Buscar por nombre, email o cargo…"
+        itemKind="contacto"
         leadName={empresa.empresa}
         items={linkableItems}
         selectedIds={selectedLinkIds}

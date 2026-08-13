@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useState, type ComponentType } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { LucideIcon } from 'lucide-react';
 import { navigateOnAuxClick, navigateOnClick } from '@/lib/navigateOnClick';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,9 +14,11 @@ import { Plus, Link2Off, ChevronDown, MoreHorizontal } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 
+type SvgIcon = ComponentType<{ className?: string }>;
+
 export interface LinkedEntitiesCardProps<T> {
   title: string;
-  icon: LucideIcon;
+  icon: SvgIcon;
   items: T[];
   maxItems?: number;
   emptyMessage: string;
@@ -238,7 +239,7 @@ export function LinkedEntitiesCard<T>({
 
   return (
     <>
-      <Card className="gap-2 border-border bg-surface-elevated shadow-none">
+      <Card className="gap-2 border-border bg-card">
         <CardHeader className="-mt-1 flex flex-row items-center justify-between gap-2 pb-0">
           <CardTitle className="flex items-center gap-1.5 text-[14px] text-text-primary">
             <Icon className="size-4 text-text-tertiary" />

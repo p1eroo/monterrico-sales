@@ -1,13 +1,16 @@
-import { useState } from 'react';
-import { ChevronDown, type LucideIcon } from 'lucide-react';
+import { useState, type ComponentType } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 
+type InfoIcon = ComponentType<{ className?: string }>;
+
 export interface InfoField {
-  icon?: LucideIcon;
+  icon?: InfoIcon;
   label?: string;
   value: string;
+  /** @deprecated Ya no se renderiza como enlace; se mantiene por compatibilidad. */
   href?: string;
   indent?: boolean;
   /** Una sola línea; el sobrante se muestra como "…". Usa `title` para el texto completo al hover. */
@@ -38,17 +41,10 @@ export function EntityInfoCard({
       {fields.map((field, i) => {
         const hint = field.title ?? (field.truncate ? field.value : undefined);
         const valueClasses = cn(
-          collapsible
-            ? 'crm-info-value'
-            : !field.href && 'text-text-primary',
-          field.href &&
-            (collapsible
-              ? 'crm-info-link'
-              : 'text-primary hover:text-primary/90 hover:underline'),
-          (field.icon || field.label || field.href || field.truncate) &&
-            'min-w-0 flex-1',
-          collapsible && (field.truncate || field.href) && 'crm-info-value--truncate',
-          !collapsible && (field.truncate || field.href) && 'truncate',
+          collapsible ? 'crm-info-value' : 'text-sm font-normal text-text-secondary',
+          (field.icon || field.label || field.truncate) && 'min-w-0 flex-1',
+          collapsible && field.truncate && 'crm-info-value--truncate',
+          !collapsible && field.truncate && 'truncate',
         );
         return (
           <div
@@ -68,19 +64,13 @@ export function EntityInfoCard({
               />
             ) : null}
             {field.label && !field.icon ? (
-              <span className={cn(collapsible ? 'crm-info-label' : 'shrink-0 text-text-secondary')}>
+              <span className={cn(collapsible ? 'crm-info-label' : 'shrink-0 text-sm font-normal text-text-secondary')}>
                 {field.label}
               </span>
             ) : null}
-            {field.href ? (
-              <a href={field.href} title={hint} className={valueClasses}>
-                {field.value}
-              </a>
-            ) : (
-              <span title={hint} className={valueClasses}>
-                {field.value}
-              </span>
-            )}
+            <span title={hint} className={valueClasses}>
+              {field.value}
+            </span>
           </div>
         );
       })}
@@ -119,7 +109,7 @@ export function EntityInfoCard({
   }
 
   return (
-    <Card className="min-w-0 gap-2 border-border bg-surface-elevated shadow-none">
+    <Card className="min-w-0 gap-2 border-border bg-card">
       <CardHeader className="-mb-1 -mt-1">
         <CardTitle className="text-[14px] text-text-primary">{title}</CardTitle>
       </CardHeader>

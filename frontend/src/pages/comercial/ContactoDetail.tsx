@@ -3,13 +3,17 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from '@/lib/notify';
 import {
   ArrowLeft,
-  Phone,
-  Mail,
   Users,
-  User,
-  Building2, Globe, DollarSign, CalendarDays, MapPin,
+  DollarSign,
+  CalendarDays,
   FileArchive, Loader2, ChevronLeft, ChevronRight,
 } from 'lucide-react';
+import { Buildings2SvgIcon } from '@/components/icons/Buildings2SvgIcon';
+import { CalendarSvgIcon } from '@/components/icons/CalendarSvgIcon';
+import { LetterSvgIcon } from '@/components/icons/LetterSvgIcon';
+import { LlamadaSvgIcon } from '@/components/icons/LlamadaSvgIcon';
+import { MapArrowSquareSvgIcon } from '@/components/icons/MapArrowSquareSvgIcon';
+import { UsersGroupTwoRoundedSvgIcon } from '@/components/icons/UsersGroupTwoRoundedSvgIcon';
 import type { Contact, Etapa, CompanyRubro, CompanyTipo, TimelineEvent, Activity } from '@/types';
 import {
   contactSourceLabels, etapaLabels,
@@ -49,6 +53,8 @@ import { newCompanyDataToPatchBody } from '@/lib/companyWizardMap';
 import {
   NewOpportunityFormDialog,
   buildOpportunityCreateBody,
+  linkOpportunityExtraContacts,
+  opportunityContactIdsFromForm,
   type NewOpportunityFormValues,
 } from '@/components/shared/NewOpportunityFormDialog';
 import { WhatsappContactDrawer } from '@/components/shared/WhatsappContactDrawer';
@@ -101,35 +107,41 @@ function parseRubroFromApi(s: string | null | undefined): CompanyRubro | undefin
 
 function ContactoInformacionAside({ contact }: { contact: Contact }) {
   const crmBundle = useCrmConfigStore((s) => s.bundle);
-return (
-<EntityInfoCard
-  title="Información"
-  collapsible
-  fields={[
-    ...(contact.assignedToName
-      ? [{ icon: User, value: contact.assignedToName }]
-      : []),
-    { icon: Phone, value: contact.telefono, href: `tel:${contact.telefono}` },
-    { icon: Mail, value: contact.correo, href: `mailto:${contact.correo}` },
-    {
-      icon: Building2,
-      value: getPrimaryCompany(contact)?.name ?? '—',
-      truncate: true,
-    },
-    { icon: Globe, value: getSourceLabelFromCatalog(contact.fuente, crmBundle, contactSourceLabels) },
-    { icon: CalendarDays, value: `Fecha de creación: ${formatDate(contact.createdAt)}` },
-    ...(contact.direccion?.trim()
-    ? [
+  return (
+    <EntityInfoCard
+      title="Información"
+      collapsible
+      fields={[
+        ...(contact.assignedToName
+          ? [{ icon: UsersGroupTwoRoundedSvgIcon, value: contact.assignedToName }]
+          : []),
+        { icon: LlamadaSvgIcon, value: contact.telefono, href: `tel:${contact.telefono}` },
+        { icon: LetterSvgIcon, value: contact.correo, href: `mailto:${contact.correo}` },
         {
-          icon: MapPin as typeof Phone,
-          value: contact.direccion.trim(),
+          icon: Buildings2SvgIcon,
+          value: getPrimaryCompany(contact)?.name ?? '—',
           truncate: true,
         },
-      ]
-    : []),
-  ]}
-/>
-);
+        {
+          icon: MapArrowSquareSvgIcon,
+          value: getSourceLabelFromCatalog(contact.fuente, crmBundle, contactSourceLabels),
+        },
+        {
+          icon: CalendarSvgIcon,
+          value: `Fecha de creación: ${formatDate(contact.createdAt)}`,
+        },
+        ...(contact.direccion?.trim()
+          ? [
+              {
+                icon: MapArrowSquareSvgIcon,
+                value: contact.direccion.trim(),
+                truncate: true,
+              },
+            ]
+          : []),
+      ]}
+    />
+  );
 }
 
 function ContactoArchivosAside({ state }: { state: UseEntityFilesReturn }) {
@@ -546,12 +558,26 @@ export default function ContactoDetailPage() {
     if (fromApi && linkCompanyPickerOpts) {
       return linkCompanyPickerRows.map((c) => {
         const rubro = parseRubroFromApi(c.rubro);
+        const subtitleParts = [
+          c.ruc?.trim() || undefined,
+          c.domain?.trim() || undefined,
+          !c.ruc?.trim() && !c.domain?.trim() && rubro
+            ? getRubroLabelFromCatalog(rubro, crmBundle)
+            : undefined,
+        ].filter(Boolean) as string[];
         return {
           id: c.id,
           title: c.name,
-          subtitle: c.ruc ?? (rubro ? getRubroLabelFromCatalog(rubro, crmBundle) : undefined),
-          status: 'Activo',
-          icon: <Building2 className="size-4" />,
+          subtitle: subtitleParts.length ? subtitleParts.join(' · ') : undefined,
+          ...(c.etapa
+            ? {
+                status: getStageLabelFromCatalog(
+                  c.etapa,
+                  crmBundle,
+                  etapaLabels as Record<string, string>,
+                ),
+              }
+            : {}),
         };
       });
     }
@@ -567,8 +593,6 @@ export default function ContactoDetailPage() {
         id: c.id,
         title: c.name,
         subtitle,
-        status: 'Activo',
-        icon: <Building2 className="size-4" />,
       };
     });
   }, [
@@ -689,20 +713,28 @@ export default function ContactoDetailPage() {
       toast.error('No hay contacto');
       throw new Error('no contact');
     }
-    const contactId = contact.id;
+    const contactIds = opportunityContactIdsFromForm(data);
+    const ensuredIds =
+      contactIds.length > 0
+        ? contactIds.includes(contact.id)
+          ? [contact.id, ...contactIds.filter((id) => id !== contact.id)]
+          : [contact.id, ...contactIds]
+        : [contact.id];
     const merged: NewOpportunityFormValues = {
       ...data,
-      contactId,
+      contactId: ensuredIds[0],
+      contactIds: ensuredIds,
       companyId: defaultCompanyIdForNewOpp || data.companyId,
     };
     if (fromApi) {
       try {
         toast.loading('Guardando…', { id: 'convert-opp-contact' });
         const body = buildOpportunityCreateBody(merged);
-        await api('/opportunities', {
+        const created = await api<{ id: string }>('/opportunities', {
           method: 'POST',
           body: JSON.stringify(body),
         });
+        await linkOpportunityExtraContacts(created.id, ensuredIds);
         await refreshApiContact();
         toast.success(`Oportunidad "${data.title.trim()}" creada correctamente`, { id: 'convert-opp-contact' });
       } catch (e) {
@@ -713,7 +745,7 @@ export default function ContactoDetailPage() {
     }
     addOpportunity({
       title: data.title.trim(),
-      contactId,
+      contactId: ensuredIds[0],
       contactName: contact.name,
       clientId: merged.companyId?.trim(),
       clientName: getPrimaryCompany(contact)?.name,
@@ -1152,8 +1184,7 @@ export default function ContactoDetailPage() {
         open={addCompanyOpen}
         onOpenChange={setAddCompanyOpen}
         onSubmit={handleAddCompany}
-        title="Agregar empresa"
-        description={`Vincula una nueva empresa a ${contact.name}.`}
+        title="Crear nueva empresa"
         showContactSection={false}
       />
 
@@ -1167,8 +1198,9 @@ export default function ContactoDetailPage() {
             setLinkOpportunitySearch('');
           }
         }}
-        title="Vincular Oportunidad Existente"
+        title="Vincular oportunidad"
         searchPlaceholder="Buscar por título…"
+        itemKind="oportunidad"
         contactName={contact.name}
         items={opportunityLinkItems}
         selectedIds={linkOpportunityIds}
@@ -1187,10 +1219,12 @@ export default function ContactoDetailPage() {
       <NewOpportunityFormDialog
         open={convertDialogOpen}
         onOpenChange={setConvertDialogOpen}
-        title="Nueva oportunidad"
-        description={`Registra una oportunidad para ${contact.name}.`}
+        title="Crear nueva oportunidad"
         defaultContactId={defaultContactIdForNewOpp}
+        defaultContactName={contact.name}
         defaultCompanyId={defaultCompanyIdForNewOpp}
+        defaultCompanyName={getPrimaryCompany(contact)?.name ?? ''}
+        defaultCompanyFuente={contact.fuente || ''}
         lockContactSelection={!!defaultContactIdForNewOpp}
         lockCompanySelection={!!defaultCompanyIdForNewOpp}
         onCreate={handleConvertToOpportunity}
@@ -1206,8 +1240,9 @@ export default function ContactoDetailPage() {
             setLinkCompanySearch('');
           }
         }}
-        title="Vincular Empresa Existente"
+        title="Vincular empresa"
         searchPlaceholder="Buscar empresas..."
+        itemKind="empresa"
         contactName={contact.name}
         items={companyLinkItems}
         selectedIds={linkCompanyNames}

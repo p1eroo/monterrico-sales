@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Building2, ChevronDown, Link2, Search } from 'lucide-react';
+import { Building2, Search } from 'lucide-react';
 import { toast } from '@/lib/notify';
 import { useAppStore } from '@/store';
 import { resolveAdvisorAssigneeId, canUserReassignCommercialAdvisor } from '@/lib/advisorAssigneeDefaults';
 import { usePermissions } from '@/hooks/usePermissions';
 import { fetchClienteEmpresas } from '@/lib/clienteCarteraApi';
 import type { NewContactData } from '@/components/shared/NewContactWizard';
+import {
+  AssociationChip,
+  AssociationPickerStatic,
+  AssociationPickerTrigger,
+} from '@/components/shared/AssociationPickerField';
 import { AssignedAdvisorFormField } from '@/components/shared/AssignedAdvisorFormField';
 import { TaskAssociationPickerLoadMore } from '@/components/shared/TaskAssociationPickerLoadMore';
 import { useTaskAssociationPickerPagination } from '@/hooks/useTaskAssociationPickerPagination';
 import { paginateAssociationPickerItems } from '@/lib/taskAssociationPicker';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -21,7 +25,6 @@ import {
   FormDialogGrid,
   FormDialogShell,
   formDialogInputClass,
-  formDialogPickerTriggerClass,
   formDialogPopoverContentClass,
   formDialogScrollListClass,
 } from '@/components/ui/form-dialog';
@@ -49,8 +52,8 @@ export function NewClienteContactoDialog({
   open,
   onOpenChange,
   onSubmit,
-  title = 'Nuevo contacto',
-  description = 'Registra un nuevo contacto de cartera.',
+  title = 'Crear nuevo contacto',
+  description,
   submitLabel = 'Crear contacto',
   defaultCompanyId,
   defaultCompanyName,
@@ -216,49 +219,40 @@ export function NewClienteContactoDialog({
           </FormDialogGrid>
 
           <FormDialogField
-            label={(
-              <span className="inline-flex items-center gap-1.5">
-                <Link2 className="size-3.5 text-muted-foreground" />
-                Asociación
-              </span>
-            )}
+            label="Empresa"
             required
             compactControl={false}
           >
-            {selectedCompany && (
-              <div className="mb-2 flex flex-wrap gap-1.5">
-                <div className="flex items-center gap-1 rounded-md border border-input bg-muted/60 px-2 py-1 text-xs">
-                  <Building2 className="size-3" />
-                  <span className="max-w-[280px] truncate">{selectedCompany.name}</span>
-                  {!lockCompanySelection && (
-                    <button
-                      type="button"
-                      className="ml-0.5 rounded-sm p-0.5 hover:bg-muted"
-                      onClick={() => setSelectedCompanyId(null)}
-                    >
-                      <span className="text-xs leading-none">&times;</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-            {!lockCompanySelection && (
+            {lockCompanySelection && selectedCompany ? (
+              <AssociationPickerStatic
+                chips={(
+                  <AssociationChip
+                    kind="empresa"
+                    label={selectedCompany.name}
+                    locked
+                    showTypeLabel={false}
+                  />
+                )}
+              />
+            ) : (
               <Popover
                 open={assocPanelOpen}
                 onOpenChange={setAssocPanelOpen}
                 modal={false}
               >
                 <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className={formDialogPickerTriggerClass}
-                  >
-                    {selectedCompany ? 'Cambiar asociación' : 'Buscar asociación'}
-                    <ChevronDown
-                      className={`size-4 text-muted-foreground transition-transform ${assocPanelOpen ? 'rotate-180' : ''}`}
-                    />
-                  </Button>
+                  <AssociationPickerTrigger
+                    open={assocPanelOpen}
+                    placeholder={selectedCompany ? 'Cambiar empresa' : 'Buscar empresa'}
+                    chips={selectedCompany ? (
+                      <AssociationChip
+                        kind="empresa"
+                        label={selectedCompany.name}
+                        showTypeLabel={false}
+                        onRemove={() => setSelectedCompanyId(null)}
+                      />
+                    ) : null}
+                  />
                 </PopoverTrigger>
                 <PopoverContent
                   align="start"
@@ -324,6 +318,7 @@ export function NewClienteContactoDialog({
               </Popover>
             )}
           </FormDialogField>
+
 
           <FormDialogGrid>
             <FormDialogField label="Correo" required>

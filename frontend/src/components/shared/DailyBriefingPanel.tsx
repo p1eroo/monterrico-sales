@@ -309,11 +309,19 @@ export function DailyBriefingPanel({
           onPointerDownOutside={handleDismissPointerDownOutside}
         >
           {briefingView === 'companies' ? (
-            <InactiveCompaniesPanel
-              onBack={() => setBriefingView('summary')}
-              onClose={canDismiss ? tryDismiss : undefined}
-              onCompanyClick={handleBriefingCompanyClick}
-            />
+            <>
+              <DialogPrimitive.Title className="sr-only">
+                Empresas sin cambio de etapa
+              </DialogPrimitive.Title>
+              <DialogPrimitive.Description className="sr-only">
+                Listado de empresas inactivas en etapa
+              </DialogPrimitive.Description>
+              <InactiveCompaniesPanel
+                onBack={() => setBriefingView('summary')}
+                onClose={canDismiss ? tryDismiss : undefined}
+                onCompanyClick={handleBriefingCompanyClick}
+              />
+            </>
           ) : (
             <>
           {/* Sticky Header */}
@@ -321,9 +329,13 @@ export function DailyBriefingPanel({
             <div className="min-w-0 space-y-0.5">
               <div className="flex items-center gap-2">
                 <Sparkles className="size-4 shrink-0 text-primary" aria-hidden />
-                <h2 className="text-lg font-semibold text-foreground">Resumen de hoy</h2>
+                <DialogPrimitive.Title className="text-lg font-semibold text-foreground">
+                  Resumen de hoy
+                </DialogPrimitive.Title>
               </div>
-              <p className="text-xs text-muted-foreground">{todayLabel}</p>
+              <DialogPrimitive.Description className="text-xs text-muted-foreground">
+                {todayLabel}
+              </DialogPrimitive.Description>
             </div>
             <Button
               variant="ghost"

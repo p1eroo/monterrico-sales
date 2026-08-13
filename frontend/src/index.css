@@ -77,7 +77,8 @@
 
 :root {
     --radius: 0.5rem;
-    --background: #ffffff;
+    /* Canvas suave para que las cards blancas “floten” (el oscuro ya tiene esta jerarquía). */
+    --background: #f0f3f5;
     --foreground: #0f172a;
     --card: #ffffff;
     --card-foreground: #0f172a;
@@ -85,15 +86,15 @@
     --popover-foreground: #0f172a;
     --primary: #13944C;
     --primary-foreground: #ffffff;
-    --secondary: #f1f5f9;
+    --secondary: #e7eef0;
     --secondary-foreground: #0f172a;
-    --muted: #f1f5f9;
-    --muted-foreground: #64748b;
-    --accent: #e8edf5;
+    --muted: #e5ecef;
+    --muted-foreground: #52606d;
+    --accent: #e6f4ec;
     --accent-foreground: #0f172a;
     --destructive: #ef4444;
-    --border: #e8edf2;
-    --input: #e2e8f0;
+    --border: #d7e0e6;
+    --input: #cfd9e0;
     --ring: #13944C;
     --chart-1: #13944C;
     --chart-2: #3b82f6;
@@ -101,10 +102,10 @@
     --chart-4: #8b5cf6;
     --chart-5: #ec4899;
     --surface-elevated: #ffffff;
-    --surface-hover: #f1f5f9;
+    --surface-hover: #e8eef1;
     --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-tertiary: #64748b;
+    --text-secondary: #3f4f5f;
+    --text-tertiary: #5c6b7a;
     --stage-lead: #f59e0b;
     --stage-prospect: #3b82f6;
     --stage-client: #16a34a;
@@ -141,15 +142,15 @@
     --info-foreground: #ffffff;
     /* Builder de flujos IA: puntos de cuadrícula y máscara del minimap */
     --workflow-grid-dot: rgba(15, 23, 42, 0.08);
-    --workflow-minimap-mask: rgba(241, 245, 249, 0.55);
+    --workflow-minimap-mask: rgba(240, 243, 245, 0.55);
     /* Pipeline Kanban (LeadCard + cabecera de columna; ver Pipeline.tsx) */
     --pipeline-kanban-surface: #ffffff;
-    --pipeline-kanban-column-header: rgba(255, 255, 255, 0.92);
+    --pipeline-kanban-column-header: rgba(255, 255, 255, 0.96);
     /* Scrollbars (thumb); el track siempre transparente en código para WebKit/Firefox */
-    --crm-scrollbar-thumb: #bcc9c4;
-    --crm-scrollbar-thumb-hover: color-mix(in srgb, var(--primary) 38%, #94a3af);
+    --crm-scrollbar-thumb: #a8b8b0;
+    --crm-scrollbar-thumb-hover: color-mix(in srgb, var(--primary) 42%, #94a3af);
     /* Chatpool (modo claro) */
-    --chat-surface: #eef1f4;
+    --chat-surface: #e6ebef;
     --chat-bubble-outbound: #13944C;
     --chat-bubble-outbound-foreground: #ffffff;
     --chat-bubble-inbound: #ffffff;
@@ -283,15 +284,15 @@
 
 @layer components {
     .crm-collapsible-card {
-        @apply min-w-0 overflow-hidden border-border bg-surface-elevated shadow-none;
+        @apply min-w-0 overflow-hidden border-border bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04),0_1px_3px_rgba(15,23,42,0.05)] dark:bg-surface-elevated dark:shadow-[0_1px_3px_rgba(0,0,0,0.35)];
     }
 
     .crm-collapsible-card__trigger {
-        @apply flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-muted/30;
+        @apply flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-muted/40 dark:hover:bg-muted/30;
     }
 
     .crm-collapsible-card__title {
-        @apply text-xs font-semibold uppercase tracking-[0.14em] text-text-tertiary;
+        @apply text-sm font-semibold normal-case tracking-normal text-text-secondary dark:text-text-tertiary;
     }
 
     .crm-collapsible-card__chevron {
@@ -328,19 +329,15 @@
     }
 
     .crm-info-label {
-        @apply shrink-0 text-sm text-text-secondary;
+        @apply shrink-0 text-sm font-normal text-text-secondary;
     }
 
     .crm-info-value {
-        @apply min-w-0 flex-1 text-sm text-text-secondary;
+        @apply min-w-0 flex-1 text-sm font-normal text-text-secondary;
     }
 
     .crm-info-value--truncate {
         @apply truncate;
-    }
-
-    .crm-info-link {
-        @apply text-text-secondary hover:text-primary hover:underline;
     }
 
     [data-sonner-toaster] {

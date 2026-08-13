@@ -64,6 +64,8 @@ import { useOpportunityCacheStore } from "@/store/opportunityCacheStore";
 import {
   NewOpportunityFormDialog,
   buildOpportunityCreateBody,
+  linkOpportunityExtraContacts,
+  opportunityContactIdsFromForm,
   type NewOpportunityFormValues,
 } from "@/components/shared/NewOpportunityFormDialog";
 import { MultiAdvisorFilter } from "@/components/shared/MultiAdvisorFilter";
@@ -1230,11 +1232,13 @@ export default function Pipeline() {
     data: NewOpportunityFormValues,
   ) {
     const body = buildOpportunityCreateBody(data);
+    const contactIds = opportunityContactIdsFromForm(data);
     try {
-      await api("/opportunities", {
+      const created = await api<{ id: string }>("/opportunities", {
         method: "POST",
         body: JSON.stringify(body),
       });
+      await linkOpportunityExtraContacts(created.id, contactIds);
       await reloadFromCache();
       toast.success(`Oportunidad "${data.title.trim()}" creada exitosamente`);
     } catch (e) {
@@ -1752,8 +1756,7 @@ export default function Pipeline() {
       <NewOpportunityFormDialog
         open={newOpportunityOpen}
         onOpenChange={setNewOpportunityOpen}
-        title="Nueva Oportunidad"
-        description="Registra una oportunidad en el pipeline. Vincula contacto y empresa ya existentes; no se crean desde aquí."
+        title="Crear nueva oportunidad"
         onCreate={handleCreateOpportunityFromPipeline}
       />
 

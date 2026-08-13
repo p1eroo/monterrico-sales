@@ -1,10 +1,15 @@
-import { Users, Mail, Phone, Target } from 'lucide-react';
+import { LetterSvgIcon } from '@/components/icons/LetterSvgIcon';
+import { LlamadaSvgIcon } from '@/components/icons/LlamadaSvgIcon';
+import { PrioritySvgIcon } from '@/components/icons/PrioritySvgIcon';
+import { UsersGroupTwoRoundedSvgIcon } from '@/components/icons/UsersGroupTwoRoundedSvgIcon';
 import { etapaLabels } from '@/data/mock';
 import { LinkedEntitiesCard } from './LinkedEntitiesCard';
 import { LinkedEntityItemHeader } from './LinkedEntityItemHeader';
 import type { Contact } from '@/types';
 import { contactDetailHref } from '@/lib/detailRoutes';
 import { optionalContactCargoFromApi } from '@/lib/contactCargo';
+
+const fieldIconClass = 'h-3.5 w-3.5 shrink-0 text-text-tertiary';
 
 export interface LinkedContact {
   id: string;
@@ -42,7 +47,7 @@ export function LinkedContactsCard({
   return (
     <LinkedEntitiesCard<LinkedContact>
       title={title}
-      icon={Users}
+      icon={UsersGroupTwoRoundedSvgIcon}
       items={contacts}
       maxItems={maxItems}
       emptyMessage="Sin contactos vinculados."
@@ -71,7 +76,7 @@ export function LinkedContactsCard({
               {contact.correo && (
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 text-sm text-text-secondary">
-                    <Mail className="h-3.5 w-3.5 text-text-tertiary" />
+                    <LetterSvgIcon className={fieldIconClass} />
                     Correo
                   </div>
                   <span className="truncate text-right text-sm text-text-primary">{contact.correo}</span>
@@ -81,7 +86,7 @@ export function LinkedContactsCard({
               {contact.telefono && variant === 'full' && (
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 text-sm text-text-secondary">
-                    <Phone className="h-3.5 w-3.5 text-text-tertiary" />
+                    <LlamadaSvgIcon className={fieldIconClass} />
                     Teléfono
                   </div>
                   <span className="text-sm text-text-primary">{contact.telefono}</span>
@@ -90,7 +95,7 @@ export function LinkedContactsCard({
 
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 text-sm text-text-secondary">
-                  <Target className="h-3.5 w-3.5 text-text-tertiary" />
+                  <PrioritySvgIcon className={fieldIconClass} />
                   Etapa
                 </div>
                 <span className="text-right text-sm text-text-primary">

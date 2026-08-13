@@ -108,14 +108,16 @@ export function NewCompanyWizard({
   open,
   onOpenChange,
   onSubmit,
-  title = 'Nueva empresa',
-  description = 'Registra una nueva empresa en el sistema.',
+  title = 'Crear nueva empresa',
+  description,
   defaultValues,
   confirmButtonLabel = 'Crear empresa',
   showContactSection = true,
 }: NewCompanyWizardProps) {
   /** Flujo Empresas: wizard por pasos. Desde ficha de contacto/opp: formulario único. */
   const multiStep = showContactSection;
+  /** Un campo por fila (misma densidad en pasos y en vista única). */
+  const fieldsGridClass = 'sm:grid-cols-1';
   const currentUser = useAppStore((s) => s.currentUser);
   const { hasPermission } = usePermissions();
   const canReassign = canUserReassignCommercialAdvisor(hasPermission, 'empresas');
@@ -535,6 +537,7 @@ export function NewCompanyWizard({
     <FormDialogShell
       open={open}
       onOpenChange={handleOpenChange}
+      maxWidthClassName="sm:max-w-lg"
       title={title}
       description={description}
       footer={multiStep ? (
@@ -616,7 +619,7 @@ export function NewCompanyWizard({
         </div>
       ) : null}
     >
-      <div className="space-y-6">
+      <div className={multiStep ? 'space-y-6' : 'space-y-3.5'}>
         {multiStep ? (
           <div className="flex items-center justify-center gap-0">
             {steps.map((s, i) => (
@@ -659,7 +662,7 @@ export function NewCompanyWizard({
         ) : null}
 
         {(!multiStep || step === 0) && (
-          <FormDialogGrid>
+          <FormDialogGrid className={fieldsGridClass}>
             <FormDialogField label="RUC" compactControl={false}>
               <div className="relative">
                 <Input
@@ -849,7 +852,7 @@ export function NewCompanyWizard({
           <div className="space-y-6">
             <div className="space-y-3">
               <p className="text-sm font-semibold text-foreground/80">Contacto</p>
-              <FormDialogGrid>
+              <FormDialogGrid className={fieldsGridClass}>
                 <FormDialogField label="Nombre completo">
                   <Input
                     className={formDialogInputClass}
@@ -906,7 +909,7 @@ export function NewCompanyWizard({
                   </p>
                 ) : null}
               </div>
-              <FormDialogGrid>
+              <FormDialogGrid className={fieldsGridClass}>
                 <FormDialogField label="Nombre de la oportunidad">
                   <Input
                     className={formDialogInputClass}
@@ -952,7 +955,7 @@ export function NewCompanyWizard({
         {(!multiStep || step === 2) && (
           <div className="space-y-3">
             <p className="text-sm font-semibold text-foreground/80">Ubicación</p>
-            <FormDialogGrid>
+            <FormDialogGrid className={fieldsGridClass}>
               <FormDialogField label="Distrito">
                 <Input
                   className={formDialogInputClass}
@@ -985,7 +988,7 @@ export function NewCompanyWizard({
                   onChange={(e) => set('direccion', e.target.value)}
                 />
               </FormDialogField>
-              <FormDialogField label="LinkedIn" className="sm:col-span-2">
+              <FormDialogField label="LinkedIn">
                 <Input
                   className={formDialogInputClass}
                   placeholder="https://www.linkedin.com/company/..."

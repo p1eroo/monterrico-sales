@@ -334,6 +334,7 @@ export function FormDialogShell({
       <DialogContent
         showCloseButton={false}
         overlayClassName={overlayClassName}
+        {...(description ? {} : { 'aria-describedby': undefined })}
         onPointerDownOutside={handleOutsideDismiss}
         onInteractOutside={handleInteractOutside}
         onFocusOutside={handleOutsideDismiss}

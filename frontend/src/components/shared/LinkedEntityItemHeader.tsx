@@ -1,20 +1,24 @@
-import type { LucideIcon } from 'lucide-react';
-import { Building2, Briefcase, User } from 'lucide-react';
+import type { ComponentType } from 'react';
+import { Buildings2SvgIcon } from '@/components/icons/Buildings2SvgIcon';
+import { MoneyBagSvgIcon } from '@/components/icons/MoneyBagSvgIcon';
+import { UsersGroupTwoRoundedSvgIcon } from '@/components/icons/UsersGroupTwoRoundedSvgIcon';
 import { cn } from '@/lib/utils';
+
+type SvgIcon = ComponentType<{ className?: string }>;
 
 const variantConfig = {
   company: {
-    Icon: Building2,
+    Icon: Buildings2SvgIcon,
     boxClass: 'bg-primary/10',
     iconClass: 'text-primary',
   },
   opportunity: {
-    Icon: Briefcase,
+    Icon: MoneyBagSvgIcon,
     boxClass: 'bg-primary/10',
     iconClass: 'text-primary',
   },
   contact: {
-    Icon: User,
+    Icon: UsersGroupTwoRoundedSvgIcon,
     boxClass: 'bg-primary/10',
     iconClass: 'text-primary',
   },
@@ -32,7 +36,7 @@ export interface LinkedEntityItemHeaderProps {
   subtitleHint?: string;
   trailing?: React.ReactNode;
   /** Sustituye el icono por defecto del variant (casos poco frecuentes) */
-  icon?: LucideIcon;
+  icon?: SvgIcon;
 }
 
 /**
