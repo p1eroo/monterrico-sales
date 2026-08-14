@@ -1161,7 +1161,7 @@ async function handleCreateNewContact(data: NewContactData) {
             companies={companiesForTaskForm}
             opportunities={opp ? [opp] : []}
             defaultAssigneeId={opp?.assignedTo}
-            onActivityCreated={(activity) => setOppActivities((prev) => [activity as any, ...prev])}
+            onActivityCreated={(activity) => setOppActivities((prev) => [activity, ...prev])}
             contactId={opp?.contactId}
             opportunityId={opp?.id}
           />

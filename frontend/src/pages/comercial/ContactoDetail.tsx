@@ -1114,7 +1114,7 @@ export default function ContactoDetailPage() {
               companies={contact?.companies ?? []}
               opportunities={contactOpportunities}
               defaultAssigneeId={contact?.assignedTo}
-              onActivityCreated={(activity) => setContactActivities((prev) => [activity as any, ...prev])}
+              onActivityCreated={(activity) => setContactActivities((prev) => [activity, ...prev])}
               contactId={contact.id}
             />
           </TabsContent>

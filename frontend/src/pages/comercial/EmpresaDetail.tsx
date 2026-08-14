@@ -1656,7 +1656,7 @@ return (
             opportunities={companyOpportunities}
             defaultAssigneeId={firstContact?.assignedTo}
             onActivityCreated={(activity) => {
-              setCompanyActivities((prev) => [activity as Activity, ...prev.filter((row) => row.id !== activity.id)]);
+              setCompanyActivities((prev) => [activity, ...prev.filter((row) => row.id !== activity.id)]);
               if (fromApiById && resolvedCompanyId) {
                 void fetchActivityLogs({
                   entityType: 'Empresa',

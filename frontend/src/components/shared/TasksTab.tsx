@@ -121,7 +121,7 @@ interface TasksTabProps {
   opportunities?: Opportunity[];
   defaultAssigneeId?: string;
   initialComments?: TaskComment[];
-  onActivityCreated?: (activity: { id: string; type: string; title: string; description: string; assignedTo: string; assignedToName: string; status: string; dueDate: string; createdAt: string; contactId?: string }) => void;
+  onActivityCreated?: (activity: Activity) => void;
   contactId?: string;
   companyId?: string;
   opportunityId?: string;
@@ -596,15 +596,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
               setActivityFromTaskOpen(false);
               setLinkedTaskPromptOpen(true);
               onActivityCreated?.({
-                id: savedActivity.id,
-                type: savedActivity.type,
-                title: savedActivity.title,
-                description: savedActivity.description,
-                assignedTo: savedActivity.assignedTo,
-                assignedToName: savedActivity.assignedToName,
-                status: savedActivity.status,
-                dueDate: savedActivity.dueDate,
-                createdAt: savedActivity.createdAt,
+                ...savedActivity,
                 contactId: savedActivity.contactId ?? contactId,
               });
               return savedActivity.callGoal ? { callGoal: savedActivity.callGoal } : undefined;
