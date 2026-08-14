@@ -750,11 +750,6 @@ export class FacebookLeadsService {
     fieldData: unknown;
   }): Record<string, string> {
     const fieldData = (Array.isArray(lead.fieldData) ? lead.fieldData : []) as Array<{ name: string; values: string[] }>;
-    const allFields = this.buildFieldMap(fieldData);
-    const extras = Object.entries(allFields)
-      .filter(([k]) => !['nombre', 'name', 'full_name', 'teléfono', 'celular', 'phone', 'cel', 'telefono', 'inbox_url'].some((x) => k.toLowerCase().includes(x)))
-      .map(([k, v]) => `${k}: ${v}`)
-      .join('\n');
     const redSocial = lead.platform === 'ig' ? 'Instagram' : 'Facebook';
     return {
       nombreCompleto: lead.fullName || this.extractField(fieldData, ['nombre', 'name', 'full_name']) || '',
@@ -767,7 +762,7 @@ export class FacebookLeadsService {
       modalidad: this.extractField(fieldData, ['modalidad', 'atu', 'setare']) || '',
       ciudad: this.extractField(fieldData, ['ciudad', 'city', 'lima', 'arequipa']) || '',
       distrito: this.extractField(fieldData, ['distrito', 'district', 'lince']) || '',
-      observaciones: [`Importado de Facebook · Formulario: ${lead.form.name}`, extras].filter(Boolean).join('\n\n'),
+      observaciones: '',
     };
   }
 
@@ -779,18 +774,12 @@ export class FacebookLeadsService {
     fieldData: unknown;
   }): Record<string, string> {
     const fieldData = (Array.isArray(lead.fieldData) ? lead.fieldData : []) as Array<{ name: string; values: string[] }>;
-    const allFields = this.buildFieldMap(fieldData);
-    const extras = Object.entries(allFields)
-      .filter(([k]) => !['nombre', 'name', 'full_name', 'teléfono', 'telefono', 'celular', 'phone', 'cel',
-        'email', 'correo', 'mail', 'inbox_url'].some((x) => k.toLowerCase().includes(x)))
-      .map(([k, v]) => `${k}: ${v}`)
-      .join('\n');
     return {
       name: lead.fullName || this.extractField(fieldData, ['nombre', 'name', 'full_name']) || '',
       telefono: lead.phone || this.extractField(fieldData, ['teléfono', 'telefono', 'celular', 'phone', 'cel']) || '',
       correo: lead.email || this.extractField(fieldData, ['email', 'correo', 'mail']) || '',
       cargo: this.extractField(fieldData, ['cargo', 'puesto', 'job', 'title']) || '',
-      notes: [`Importado de Facebook · Formulario: ${lead.form.name}`, extras].filter(Boolean).join('\n\n'),
+      notes: '',
     };
   }
 
@@ -802,13 +791,6 @@ export class FacebookLeadsService {
     fieldData: unknown;
   }): Record<string, string> {
     const fieldData = (Array.isArray(lead.fieldData) ? lead.fieldData : []) as Array<{ name: string; values: string[] }>;
-    const allFields = this.buildFieldMap(fieldData);
-    const extras = Object.entries(allFields)
-      .filter(([k]) => !['empresa', 'company', 'negocio', 'razon', 'ruc', 'teléfono', 'telefono', 'celular',
-        'phone', 'cel', 'email', 'correo', 'mail', 'dominio', 'domain', 'web', 'distrito', 'inbox_url']
-        .some((x) => k.toLowerCase().includes(x)))
-      .map(([k, v]) => `${k}: ${v}`)
-      .join('\n');
     const correo = lead.email || this.extractField(fieldData, ['email', 'correo', 'mail']) || '';
     return {
       name: this.extractField(fieldData, ['empresa', 'company', 'negocio', 'razon']) || lead.fullName || '',
@@ -817,7 +799,7 @@ export class FacebookLeadsService {
       correo,
       dominio: this.extractField(fieldData, ['dominio', 'domain', 'web', 'website', 'sitio']) || domainFromEmail(correo),
       distrito: this.extractField(fieldData, ['distrito', 'district']) || '',
-      notes: [`Importado de Facebook · Formulario: ${lead.form.name}`, extras].filter(Boolean).join('\n\n'),
+      notes: '',
     };
   }
 
@@ -868,15 +850,13 @@ export class FacebookLeadsService {
   "operador": string,
   "modalidad": "ATU" | "PARTICULAR" | "SETARE" | "",
   "ciudad": "Lima" | "Arequipa" | "",
-  "distrito": string,
-  "observaciones": string
+  "distrito": string
 }`,
       contacto: `{
   "name": string,
   "telefono": string,
   "correo": string,
-  "cargo": string,
-  "notes": string
+  "cargo": string
 }`,
       empresa: `{
   "name": string (nombre comercial o razón social),
@@ -884,8 +864,7 @@ export class FacebookLeadsService {
   "telefono": string,
   "correo": string,
   "dominio": string (sin https://),
-  "distrito": string,
-  "notes": string
+  "distrito": string
 }`,
       oportunidad: `{
   "title": string,
@@ -943,6 +922,8 @@ ${this.leadAnswersText(lead)}`;
         out[k] = String(v).trim();
       }
       if (out.celular) out.celular = peruCelular(out.celular);
+      delete out.notes;
+      delete out.observaciones;
       return out;
     } catch (e) {
       this.logger.warn(`OpenAI extract falló: ${e instanceof Error ? e.message : e}`);

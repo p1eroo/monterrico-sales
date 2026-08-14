@@ -56,10 +56,8 @@ export function isCompanyEligibleForContactGoal(
 
   const createdInWeek =
     company.createdAt >= clipStart && company.createdAt <= clipEnd;
-  if (createdInWeek) {
-    const probAtCreate = getProb(company.etapaFn(company.createdAt));
-    if (probAtCreate < minProspectProbability) return true;
-  }
+  // Alta de esta semana: Lead (<10 %) o nuevo ingreso (≥10 %, cualquier etapa).
+  if (createdInWeek) return true;
 
   const promoted = company.audits.some(
     (audit) =>

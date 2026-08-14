@@ -1,4 +1,4 @@
-import { Building2, Target, User } from 'lucide-react';
+import { Building2, User } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -74,6 +74,7 @@ export type OportunidadImportForm = typeof EMPTY_OPORTUNIDAD_IMPORT;
 export function applyLeadImportPreview<T extends Record<string, string>>(empty: T, preview: Record<string, string>): T {
   const next: Record<string, string> = { ...empty };
   for (const key of Object.keys(empty)) {
+    if (key === 'notes' || key === 'observaciones') continue;
     const v = preview[key];
     if (typeof v === 'string') next[key] = v;
   }
@@ -87,8 +88,7 @@ const COMERCIAL_ENTITY_OPTIONS: {
   icon: typeof User;
 }[] = [
   { id: 'contacto', title: 'Contacto', description: 'Persona en el CRM comercial', icon: User },
-  { id: 'empresa', title: 'Empresa', description: 'Cuenta o negocio', icon: Building2 },
-  { id: 'oportunidad', title: 'Oportunidad', description: 'Negocio en pipeline, con su contacto', icon: Target },
+  { id: 'empresa', title: 'Empresa', description: 'Cuenta o negocio. La oportunidad se crea después desde la empresa', icon: Building2 },
 ];
 
 export function ComercialEntityPicker({
