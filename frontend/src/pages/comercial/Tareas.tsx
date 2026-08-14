@@ -1395,7 +1395,7 @@ export default function TareasPage({ scope = 'all' }: { scope?: TareasPageScope 
               const t = completedTask;
               const kind = completedTask.taskKind!;
               try {
-                await completeTaskWithActivityForm({
+                const { savedActivity } = await completeTaskWithActivityForm({
                   kind,
                   form: data,
                   task: t,
@@ -1407,6 +1407,7 @@ export default function TareasPage({ scope = 'all' }: { scope?: TareasPageScope 
                 setTaskCompletionPreviewId(null);
                 setActivityFromTaskOpen(false);
                 setLinkedTaskPromptOpen(true);
+                return savedActivity.callGoal ? { callGoal: savedActivity.callGoal } : undefined;
               } catch (e) {
                 toast.error(
                   e instanceof Error ? e.message : 'Error al guardar la actividad; el estado se revirtió.',

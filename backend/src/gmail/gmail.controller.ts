@@ -23,7 +23,7 @@ import { EmailSignatureService } from './email-signature.service';
 import { Public } from '../auth/decorators/public.decorator';
 
 type AuthedReq = {
-  user: { userId: string };
+  user: { userId: string; username?: string; roleId?: string; name?: string };
   headers: { authorization?: string };
 };
 
@@ -173,11 +173,26 @@ export class GmailController {
   }
 
   @Get('register-activity/preview')
-  async previewRegisterEmailActivity(@Query('counterparty') counterparty?: string) {
+  async previewRegisterEmailActivity(
+    @Query('counterparty') counterparty?: string,
+    @Query('destination') destination?: string,
+    @Req() req?: AuthedReq,
+  ) {
     if (!counterparty?.trim()) {
       throw new BadRequestException('counterparty es obligatorio');
     }
-    return this.gmailService.previewRegisterEmailActivity(counterparty.trim());
+    const dest = destination === 'cartera' ? 'cartera' : 'comercial';
+    return this.gmailService.previewRegisterEmailActivity(
+      counterparty.trim(),
+      dest,
+      req?.user
+        ? {
+            userId: req.user.userId,
+            username: req.user.username,
+            roleId: req.user.roleId,
+          }
+        : undefined,
+    );
   }
 
   @Post('register-activity')
@@ -193,6 +208,8 @@ export class GmailController {
       dueDate?: string;
       startDate?: string;
       startTime?: string;
+      destination?: 'comercial' | 'cartera';
+      clienteEmpresaId?: string;
     },
   ) {
     if (!body?.counterparty?.trim()) {
@@ -202,6 +219,7 @@ export class GmailController {
       throw new BadRequestException('subject es obligatorio');
     }
     const direction = body.direction === 'outbound' ? 'outbound' : 'inbound';
+    const destination = body.destination === 'cartera' ? 'cartera' : 'comercial';
     return this.gmailService.registerEmailAsActivity(
       body.counterparty,
       body.subject,
@@ -213,6 +231,13 @@ export class GmailController {
         dueDate: body.dueDate,
         startDate: body.startDate,
         startTime: body.startTime,
+      },
+      destination,
+      body.clienteEmpresaId,
+      {
+        userId: req.user.userId,
+        username: req.user.username,
+        roleId: req.user.roleId,
       },
     );
   }

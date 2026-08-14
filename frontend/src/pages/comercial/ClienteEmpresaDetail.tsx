@@ -36,7 +36,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatDate, completedAtNowIso } from '@/lib/formatters';
 import { toast } from '@/lib/notify';
 import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLogsApi';
-import { useActivities } from '@/hooks/useActivities';
+import { useActivitiesStore } from '@/store/activitiesStore';
+import { useEntityActivityList } from '@/hooks/useEntityActivityList';
 import { useUsers } from '@/hooks/useUsers';
 import {
   createContactoCliente,
@@ -82,18 +83,30 @@ export default function ClienteEmpresaDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { users, activeAdvisors } = useUsers();
-  const {
-    activities: activitiesFromStore,
-    createActivity,
-    updateActivity,
-    deleteActivity,
-  } = useActivities();
+  const createActivity = useActivitiesStore((s) => s.createActivity);
+  const updateActivity = useActivitiesStore((s) => s.updateActivity);
+  const deleteActivity = useActivitiesStore((s) => s.deleteActivity);
 
   const [empresa, setEmpresa] = useState<ClienteEmpresaDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [detailSectionTab, setDetailSectionTab] = useState<string>('historial');
-  const [companyActivities, setCompanyActivities] = useState<Activity[]>([]);
+  const {
+    activities: companyActivities,
+    setActivities: setCompanyActivities,
+    wrapUpdate,
+    wrapDelete,
+  } = useEntityActivityList(
+    empresa?.id ? { linkedToClienteEmpresa: empresa.id, excludeType: 'tarea' } : null,
+  );
+  const updateEntityActivity = useMemo(
+    () => wrapUpdate(updateActivity),
+    [wrapUpdate, updateActivity],
+  );
+  const deleteEntityActivity = useMemo(
+    () => wrapDelete(deleteActivity),
+    [wrapDelete, deleteActivity],
+  );
   const [noteText, setNoteText] = useState('');
 
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
@@ -162,18 +175,6 @@ export default function ClienteEmpresaDetailPage() {
     return () => { cancelled = true; };
   }, [empresa?.id]);
 
-  const persistedActivities = useMemo(() => {
-    if (!empresa?.id) return [];
-    return activitiesFromStore.filter((activity) => {
-      if (activity.type === 'tarea') return false;
-      return activity.clienteEmpresaId === empresa.id;
-    });
-  }, [activitiesFromStore, empresa?.id]);
-
-  useEffect(() => {
-    setCompanyActivities(persistedActivities);
-  }, [persistedActivities]);
-
   const noteActivities = useMemo(
     () => companyActivities.filter((activity) => activity.type === 'nota'),
     [companyActivities],
@@ -189,7 +190,7 @@ export default function ClienteEmpresaDetailPage() {
     return [{ type: 'cliente_empresa' as const, id: empresa.id, name: empresa.empresa }];
   }, [empresa]);
 
-  const handleQuickActivityCreated = useCallback((draft: QuickActivityDraft) => {
+  const handleQuickActivityCreated = useCallback(async (draft: QuickActivityDraft) => {
     if (!empresa) return;
     const assignedTo =
       empresa.assignedTo ||
@@ -226,34 +227,35 @@ export default function ClienteEmpresaDetailPage() {
       ...prev,
     ]);
 
-    void createActivity({
-      type: draft.type,
-      title: draft.title,
-      description: draft.description,
-      assignedTo,
-      status: 'completada',
-      dueDate: draft.dueDate,
-      startDate: draft.startDate,
-      startTime: draft.startTime,
-      completedAt: completedAtNowIso(),
-      clienteEmpresaId: empresa.id,
-    })
-      .then((saved) => {
-        setCompanyActivities((prev) => [
-          saved,
-          ...prev.filter((activity) => activity.id !== optimisticId && activity.id !== saved.id),
-        ]);
-        void fetchActivityLogs({
-          entityType: 'ClienteEmpresa',
-          entityId: empresa.id,
-          page: 1,
-          limit: 80,
-        }).then((r) => setTimelineEvents(r.data.map(activityLogToTimelineEvent)));
-      })
-      .catch((err) => {
-        setCompanyActivities((prev) => prev.filter((activity) => activity.id !== optimisticId));
-        toast.error(err instanceof Error ? err.message : 'No se pudo guardar la actividad');
+    try {
+      const saved = await createActivity({
+        type: draft.type,
+        title: draft.title,
+        description: draft.description,
+        assignedTo,
+        status: 'completada',
+        dueDate: draft.dueDate,
+        startDate: draft.startDate,
+        startTime: draft.startTime,
+        completedAt: completedAtNowIso(),
+        clienteEmpresaId: empresa.id,
       });
+      setCompanyActivities((prev) => [
+        saved,
+        ...prev.filter((activity) => activity.id !== optimisticId && activity.id !== saved.id),
+      ]);
+      void fetchActivityLogs({
+        entityType: 'ClienteEmpresa',
+        entityId: empresa.id,
+        page: 1,
+        limit: 80,
+      }).then((r) => setTimelineEvents(r.data.map(activityLogToTimelineEvent)));
+      return saved.callGoal ? { callGoal: saved.callGoal } : undefined;
+    } catch (err) {
+      setCompanyActivities((prev) => prev.filter((activity) => activity.id !== optimisticId));
+      toast.error(err instanceof Error ? err.message : 'No se pudo guardar la actividad');
+      throw err;
+    }
   }, [empresa, activeAdvisors, users, createActivity]);
 
   function handleAddNote() {
@@ -420,6 +422,7 @@ export default function ClienteEmpresaDetailPage() {
                 clienteEmpresaName={empresa.empresa}
                 followUpAssociations={followUpAssociations}
                 onActivityCreated={handleQuickActivityCreated}
+                onTaskCreated={() => { void tasksTabRef.current?.reload(); }}
                 inline
               />
             )}
@@ -555,8 +558,8 @@ export default function ClienteEmpresaDetailPage() {
           <TabsContent value="actividades" className="mt-4">
             <ActivityPanel
               activities={companyActivities}
-              onUpdateActivity={updateActivity}
-              onDeleteActivity={deleteActivity}
+              onUpdateActivity={updateEntityActivity}
+              onDeleteActivity={deleteEntityActivity}
             />
           </TabsContent>
 
@@ -565,6 +568,9 @@ export default function ClienteEmpresaDetailPage() {
               ref={tasksTabRef}
               defaultAssigneeId={empresa.assignedTo}
               clienteEmpresaId={empresa.id}
+              onActivityCreated={(activity) =>
+                setCompanyActivities((prev) => [activity, ...prev.filter((row) => row.id !== activity.id)])
+              }
             />
           </TabsContent>
 
@@ -574,8 +580,8 @@ export default function ClienteEmpresaDetailPage() {
               noteText={noteText}
               onNoteTextChange={setNoteText}
               onAddNote={handleAddNote}
-              onUpdateActivity={updateActivity}
-              onDeleteActivity={deleteActivity}
+              onUpdateActivity={updateEntityActivity}
+              onDeleteActivity={deleteEntityActivity}
             />
           </TabsContent>
         </Tabs>

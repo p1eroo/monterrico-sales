@@ -1,10 +1,11 @@
-import { BadRequestException, Injectable, UnauthorizedException, Logger } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { google } from 'googleapis';
 import { simpleParser } from 'mailparser';
 import { PrismaService } from '../prisma/prisma.service';
 import { EntitySyncService } from '../sync/entity-sync.service';
 import { CompanyLogoService } from '../companies/company-logo.service';
 import { EmailSignatureService } from './email-signature.service';
+import { CrmDataScopeService } from '../auth/crm-data-scope.service';
 import {
   buildMultipartEmailLines,
   embedInlineImagesInHtml,
@@ -33,6 +34,12 @@ const PERSONAL_EMAIL_DOMAINS = new Set([
   'zoho.com',
 ]);
 
+function emailDomain(raw?: string | null): string {
+  const email = (raw || '').trim().toLowerCase();
+  if (!email.includes('@')) return '';
+  return email.split('@')[1]?.trim().toLowerCase() ?? '';
+}
+
 /** Dominios que no generan contacto, empresa ni oportunidad al vincular correo enviado. */
 const CRM_LINK_EXCLUDED_DOMAINS = new Set([
   'gmail.com',
@@ -58,6 +65,7 @@ export class GmailService {
     private readonly entitySync: EntitySyncService,
     private readonly companyLogo: CompanyLogoService,
     private readonly emailSignature: EmailSignatureService,
+    private readonly crmDataScope: CrmDataScopeService,
   ) {}
 
   /**
@@ -512,10 +520,20 @@ export class GmailService {
     return activity.id;
   }
 
-  async previewRegisterEmailActivity(counterparty: string) {
+  async previewRegisterEmailActivity(
+    counterparty: string,
+    destination: 'comercial' | 'cartera' = 'comercial',
+    viewer?: { userId: string; username?: string; roleId?: string },
+  ) {
     const parsed = this.parseEmailAddresses(counterparty)[0];
     if (!parsed) {
       throw new BadRequestException('Dirección de correo inválida');
+    }
+    if (destination === 'cartera') {
+      if (!viewer?.userId) {
+        throw new BadRequestException('Usuario no autenticado');
+      }
+      return this.buildRegisterCarteraPlan(parsed.email, viewer);
     }
     return this.buildRegisterEmailPlan(parsed.name, parsed.email);
   }
@@ -586,6 +604,217 @@ export class GmailService {
     };
   }
 
+  private async carteraEmpresaWhere(
+    viewer: { userId: string; username?: string; roleId?: string },
+  ) {
+    const scope = await this.crmDataScope.buildScope(
+      viewer.userId,
+      viewer.roleId,
+    );
+    if (scope.unrestricted) return {};
+    const agente = viewer.username?.trim().toLowerCase() || '';
+    if (!agente) return { id: '__none__' };
+    return { asesor: agente };
+  }
+
+  private async buildRegisterCarteraPlan(
+    rawEmail: string,
+    viewer: { userId: string; username?: string; roleId?: string },
+  ) {
+    const email = rawEmail.trim().toLowerCase();
+    const domain = emailDomain(email);
+    const where = await this.carteraEmpresaWhere(viewer);
+    const rows = await this.prisma.clienteEmpresa.findMany({
+      where,
+      orderBy: { empresa: 'asc' },
+      select: {
+        id: true,
+        empresa: true,
+        email: true,
+        ruc: true,
+        contactLinks: {
+          select: {
+            contactoCliente: {
+              select: { id: true, email: true, nombres: true, apellidos: true },
+            },
+          },
+        },
+      },
+    });
+
+    let suggestedExact: string | null = null;
+    let suggestedDomain: string | null = null;
+    const empresas = rows.map((row) => {
+      const contactoEmails = row.contactLinks
+        .map((l) => l.contactoCliente.email?.trim().toLowerCase())
+        .filter((v): v is string => !!v);
+      const exact =
+        row.email?.trim().toLowerCase() === email ||
+        contactoEmails.includes(email);
+      const sameDomain =
+        !!domain &&
+        !PERSONAL_EMAIL_DOMAINS.has(domain) &&
+        (emailDomain(row.email) === domain ||
+          contactoEmails.some((e) => emailDomain(e) === domain));
+      let reason: string | undefined;
+      if (exact) reason = 'mismo correo';
+      else if (sameDomain) reason = 'mismo dominio';
+      if (exact && !suggestedExact) suggestedExact = row.id;
+      if (sameDomain && !suggestedDomain) suggestedDomain = row.id;
+      return {
+        id: row.id,
+        empresa: row.empresa,
+        email: row.email,
+        ruc: row.ruc,
+        suggested: exact || sameDomain,
+        reason,
+      };
+    });
+
+    return {
+      destination: 'cartera' as const,
+      email,
+      domain,
+      suggestedId: suggestedExact ?? suggestedDomain,
+      empresas,
+    };
+  }
+
+  private async registerEmailAsCarteraActivity(
+    counterparty: string,
+    subject: string,
+    direction: 'inbound' | 'outbound',
+    assignedTo: string | undefined,
+    activityOverrides:
+      | {
+          title?: string;
+          description?: string;
+          dueDate?: string;
+          startDate?: string;
+          startTime?: string;
+        }
+      | undefined,
+    clienteEmpresaId: string | undefined,
+    viewer?: { userId: string; username?: string; roleId?: string },
+  ) {
+    if (!assignedTo) {
+      throw new BadRequestException('Usuario no autenticado');
+    }
+    if (!clienteEmpresaId?.trim()) {
+      throw new BadRequestException('Selecciona una empresa de cartera');
+    }
+    if (!viewer?.userId) {
+      throw new BadRequestException('Usuario no autenticado');
+    }
+
+    const parsed = this.parseEmailAddresses(counterparty)[0];
+    if (!parsed) {
+      throw new BadRequestException('Dirección de correo inválida');
+    }
+    const email = parsed.email.trim().toLowerCase();
+
+    const where = await this.carteraEmpresaWhere(viewer);
+    const empresa = await this.prisma.clienteEmpresa.findFirst({
+      where: { AND: [where, { id: clienteEmpresaId.trim() }] },
+      include: {
+        contactLinks: {
+          select: {
+            contactoCliente: {
+              select: { id: true, email: true },
+            },
+          },
+        },
+      },
+    });
+    if (!empresa) {
+      throw new ForbiddenException('No tienes acceso a esta empresa cliente');
+    }
+
+    const linkedContact = empresa.contactLinks.find(
+      (l) => l.contactoCliente.email?.trim().toLowerCase() === email,
+    )?.contactoCliente;
+
+    const activityId = await this.createCarteraEmailActivity(
+      assignedTo,
+      subject,
+      email,
+      empresa.id,
+      linkedContact?.id,
+      direction,
+      activityOverrides,
+    );
+
+    return {
+      linked: [
+        {
+          email,
+          clienteEmpresaId: empresa.id,
+          contactoClienteId: linkedContact?.id,
+          activityId,
+          created: { contact: false, company: false, opportunity: false },
+        },
+      ],
+    };
+  }
+
+  private async createCarteraEmailActivity(
+    assignedTo: string,
+    subject: string,
+    email: string,
+    clienteEmpresaId: string,
+    contactoClienteId: string | undefined,
+    direction: 'inbound' | 'outbound',
+    overrides?: {
+      title?: string;
+      description?: string;
+      dueDate?: string;
+      startDate?: string;
+      startTime?: string;
+    },
+  ): Promise<string> {
+    const now = new Date();
+    const dueDate = this.parseActivityDate(overrides?.dueDate) ?? now;
+    const startDate = this.parseActivityDate(overrides?.startDate) ?? dueDate;
+    const title =
+      overrides?.title?.trim() ||
+      subject.trim() ||
+      (direction === 'inbound' ? `Correo de ${email}` : `Correo a ${email}`);
+    const description =
+      overrides?.description?.trim() ||
+      (direction === 'inbound'
+        ? `Correo recibido de ${email}`
+        : `Correo enviado a ${email}`);
+    const activity = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.activity.create({
+        data: {
+          type: 'correo',
+          title,
+          description,
+          assignedTo,
+          status: 'completada',
+          priority: 'media',
+          dueDate,
+          startDate,
+          startTime: overrides?.startTime?.trim() || undefined,
+          completedAt: dueDate,
+        },
+      });
+      await tx.clienteEmpresaActivity.create({
+        data: { clienteEmpresaId, activityId: row.id },
+      });
+      if (contactoClienteId) {
+        await tx.contactoClienteActivity.create({
+          data: { contactoClienteId, activityId: row.id },
+        });
+      }
+      return row;
+    });
+    this.logger.log(
+      `Actividad correo de cartera creada: ${activity.id} (${email} → ${clienteEmpresaId})`,
+    );
+    return activity.id;
+  }
+
   async registerEmailAsActivity(
     counterparty: string,
     subject: string,
@@ -598,7 +827,21 @@ export class GmailService {
       startDate?: string;
       startTime?: string;
     },
+    destination: 'comercial' | 'cartera' = 'comercial',
+    clienteEmpresaId?: string,
+    viewer?: { userId: string; username?: string; roleId?: string },
   ) {
+    if (destination === 'cartera') {
+      return this.registerEmailAsCarteraActivity(
+        counterparty,
+        subject,
+        direction,
+        assignedTo,
+        activityOverrides,
+        clienteEmpresaId,
+        viewer,
+      );
+    }
     return this.linkCounterpartyEmails(
       counterparty,
       subject,

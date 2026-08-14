@@ -376,7 +376,7 @@ export default function CalendarioPage() {
         defaultAssigneeId,
       );
       const ctx = activityEntityCtx;
-      await apiCreateActivity(payload);
+      const saved = await apiCreateActivity(payload);
       void loadCalendarActivities();
       setActivityFormKind(null);
       setActivityEntityCtx(null);
@@ -384,6 +384,7 @@ export default function CalendarioPage() {
         taskAssociationsFromEntityCtx(ctx, taskContacts, taskCompanies, taskOpportunities),
       );
       setLinkedTaskPromptOpen(true);
+      return saved.callGoal ? { callGoal: saved.callGoal } : undefined;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al crear la actividad');
       throw e;

@@ -55,6 +55,7 @@ export function getRequiredPermissionForPath(
   pathname: string,
 ): PermissionKey | PermissionKey[] | null {
   if (pathname.startsWith('/profile')) return null;
+  if (pathname.startsWith('/dev')) return null;
 
   if (pathname.startsWith('/contacts') || pathname.startsWith('/contactos')) return 'contactos.ver';
   if (pathname.startsWith('/companies') || pathname.startsWith('/empresas')) return 'empresas.ver';

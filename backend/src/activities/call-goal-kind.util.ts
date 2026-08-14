@@ -4,6 +4,7 @@ import {
 } from '../common/crm-timezone.util';
 import {
   callOutcomeGroupFromResult,
+  callResultDetailLabel,
   parseCallResultFromDescription,
   type CallOutcomeGroup,
 } from './call-result.util';
@@ -35,12 +36,25 @@ export function callGoalKindLabel(kind: CallGoalKind): string {
   return 'No contacto';
 }
 
-export function isCompanyEligibleForContactGoal(
+/** Etiqueta de métricas (filtros / toast al registrar llamada). */
+export function callGoalKindMetricLabel(kind: CallGoalKind): string {
+  if (kind === 'meta') return 'Cuentan para meta';
+  if (kind === 'seguimiento') return 'Seguimiento';
+  return 'No contacto';
+}
+
+export type CallGoalExplanation = {
+  kind: CallGoalKind;
+  label: string;
+  reason: string;
+};
+
+export function explainCompanyContactGoalEligibility(
   company: CompanyContactGoalContext,
   activityCompletedAt: Date,
   getProb: (slug: string) => number,
   minProspectProbability = 10,
-): boolean {
+): { eligible: boolean; reason: string } {
   const activityWeekMonday = startOfWeekMondayLima(activityCompletedAt);
   const prevWeekMonday = addLimaWeeks(activityWeekMonday, -1);
   const prevWeekEnd = endOfWeekSundayLima(prevWeekMonday);
@@ -48,7 +62,13 @@ export function isCompanyEligibleForContactGoal(
 
   if (company.createdAt <= prevWeekEnd) {
     const probAtPrevClose = getProb(company.etapaFn(prevWeekEnd));
-    if (probAtPrevClose < minProspectProbability) return true;
+    if (probAtPrevClose < minProspectProbability) {
+      return {
+        eligible: true,
+        reason:
+          'Al cierre de la semana pasada la empresa seguía en lead (menos de 10 % de probabilidad).',
+      };
+    }
   }
 
   const clipStart = activityWeekMonday;
@@ -57,7 +77,12 @@ export function isCompanyEligibleForContactGoal(
   const createdInWeek =
     company.createdAt >= clipStart && company.createdAt <= clipEnd;
   // Alta de esta semana: Lead (<10 %) o nuevo ingreso (≥10 %, cualquier etapa).
-  if (createdInWeek) return true;
+  if (createdInWeek) {
+    return {
+      eligible: true,
+      reason: 'La empresa es un ingreso de esta semana.',
+    };
+  }
 
   const promoted = company.audits.some(
     (audit) =>
@@ -66,7 +91,90 @@ export function isCompanyEligibleForContactGoal(
       getProb(audit.oldSlug) < minProspectProbability &&
       getProb(audit.newSlug) >= minProspectProbability,
   );
-  return promoted;
+  if (promoted) {
+    return {
+      eligible: true,
+      reason: 'Esta semana la empresa pasó de lead a prospecto.',
+    };
+  }
+  return {
+    eligible: false,
+    reason:
+      'No es ingreso de esta semana ni un lead que entre a la meta: ya venía como prospecto o cliente de semanas anteriores.',
+  };
+}
+
+export function isCompanyEligibleForContactGoal(
+  company: CompanyContactGoalContext,
+  activityCompletedAt: Date,
+  getProb: (slug: string) => number,
+  minProspectProbability = 10,
+): boolean {
+  return explainCompanyContactGoalEligibility(
+    company,
+    activityCompletedAt,
+    getProb,
+    minProspectProbability,
+  ).eligible;
+}
+
+export function explainCallGoalKind(
+  completedAt: Date,
+  callResult: string | null | undefined,
+  companies: CompanyContactGoalContext[],
+  getProb: (slug: string) => number,
+  minProspectProbability = 10,
+): CallGoalExplanation {
+  const kind = classifyCallGoalKind(
+    completedAt,
+    callResult,
+    companies,
+    getProb,
+    minProspectProbability,
+  );
+  const label = callGoalKindMetricLabel(kind);
+  const outcome: CallOutcomeGroup = callOutcomeGroupFromResult(callResult);
+  if (outcome !== 'contacto') {
+    const detail = callResultDetailLabel(callResult);
+    return {
+      kind,
+      label,
+      reason: detail
+        ? `El resultado es «${detail}», no Contactado.`
+        : 'No se eligió resultado Contactado, así que no cuenta como contacto.',
+    };
+  }
+  if (companies.length === 0) {
+    return {
+      kind,
+      label,
+      reason:
+        'Quedó como Contactado, pero no hay empresa comercial vinculada, así que cuenta como seguimiento.',
+    };
+  }
+  const eligible = companies
+    .map((company) =>
+      explainCompanyContactGoalEligibility(
+        company,
+        completedAt,
+        getProb,
+        minProspectProbability,
+      ),
+    )
+    .find((item) => item.eligible);
+  if (eligible) {
+    return { kind, label, reason: eligible.reason };
+  }
+  return {
+    kind,
+    label,
+    reason: explainCompanyContactGoalEligibility(
+      companies[0],
+      completedAt,
+      getProb,
+      minProspectProbability,
+    ).reason,
+  };
 }
 
 export function classifyCallGoalKind(

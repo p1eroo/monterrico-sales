@@ -38,6 +38,7 @@ const CampaignBuilder = lazy(() => import('@/pages/comercial/CampaignBuilder'));
 const CampaignResults = lazy(() => import('@/pages/comercial/CampaignResults'));
 const Profile = lazy(() => import('@/pages/comercial/Profile'));
 const Settings = lazy(() => import('@/pages/comercial/Settings'));
+const UiMocks = lazy(() => import('@/pages/comercial/UiMocks'));
 const Files = lazy(() => import('@/pages/comercial/Files'));
 const AgentesIa = lazy(() => import('@/pages/comercial/AgentesIa'));
 const AgentesIaWorkflow = lazy(() => import('@/pages/comercial/AgentesIaWorkflow'));
@@ -187,6 +188,7 @@ function MainRoutes() {
         <Route path="/campaigns/:id/results" element={<CampaignResults />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/dev/mocks" element={<UiMocks />} />
         <Route path="/archivos" element={<Files />} />
         <Route path="/agentes-ia" element={<AgentesIa />} />
         <Route path="/integraciones/apollo" element={<Navigate to="/agentes-ia" replace />} />

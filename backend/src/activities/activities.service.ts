@@ -17,6 +17,12 @@ import {
   parseDateFilterStartLima,
   parseDayStartLima,
 } from '../common/crm-timezone.util';
+import { loadContactGoalCompanyContext } from './call-goal-context';
+import {
+  explainCallGoalKind,
+  type CallGoalExplanation,
+} from './call-goal-kind.util';
+import { parseCallResultFromDescription } from './call-result.util';
 
 const TASK_KINDS = new Set(['llamada', 'reunion', 'correo', 'whatsapp']);
 const YMD_ONLY = /^\d{4}-\d{2}-\d{2}$/;
@@ -792,7 +798,37 @@ export class ActivitiesService {
     void this.recordActivityOnLinkedEntities(actor ?? null, 'crear', row).catch(
       () => undefined,
     );
-    return row;
+    const callGoal = await this.explainCreatedCallGoal(row).catch(() => null);
+    return callGoal ? { ...row, callGoal } : row;
+  }
+
+  private async explainCreatedCallGoal(row: {
+    type: string;
+    status: string;
+    description: string | null;
+    completedAt: Date | null;
+    companies: { company: { id: string } | null }[];
+  }): Promise<CallGoalExplanation | null> {
+    if (row.type.toLowerCase().trim() !== 'llamada') return null;
+    if (row.status.toLowerCase().trim() !== 'completada') return null;
+    const completedAt = row.completedAt ?? new Date();
+    const companyIds = row.companies
+      .map((link) => link.company?.id)
+      .filter((id): id is string => Boolean(id));
+    const { getProb, byCompanyId } = await loadContactGoalCompanyContext(
+      this.prisma,
+      companyIds,
+      completedAt,
+    );
+    const companies = companyIds
+      .map((id) => byCompanyId.get(id))
+      .filter((c): c is NonNullable<typeof c> => Boolean(c));
+    return explainCallGoalKind(
+      completedAt,
+      parseCallResultFromDescription(row.description),
+      companies,
+      getProb,
+    );
   }
 
   async findAll(
@@ -806,6 +842,11 @@ export class ActivitiesService {
       to?: string;
       linkedToClienteEmpresa?: string;
       linkedToClienteCartera?: boolean;
+      linkedToCompanyId?: string;
+      linkedToContactId?: string;
+      linkedToOpportunityId?: string;
+      linkedToContactoCliente?: string;
+      excludeType?: string;
     },
     scope?: CrmDataScope,
   ) {
@@ -815,6 +856,7 @@ export class ActivitiesService {
 
     const where: Prisma.ActivityWhereInput = {};
     if (opts?.type?.trim()) where.type = opts.type.trim();
+    else if (opts?.excludeType?.trim()) where.type = { not: opts.excludeType.trim() };
     if (opts?.status?.trim()) where.status = opts.status.trim();
     if (opts?.from?.trim() || opts?.to?.trim()) {
       where.completedAt = {};
@@ -832,16 +874,54 @@ export class ActivitiesService {
     } else if (opts?.assignedTo?.trim()) {
       where.assignedTo = opts.assignedTo.trim();
     }
+    const linkFilters: Prisma.ActivityWhereInput[] = [];
+    const companyId = opts?.linkedToCompanyId?.trim();
+    if (companyId) {
+      linkFilters.push({
+        OR: [
+          { companies: { some: { companyId } } },
+          {
+            contacts: {
+              some: { contact: { companies: { some: { companyId } } } },
+            },
+          },
+        ],
+      });
+    }
+    const contactId = opts?.linkedToContactId?.trim();
+    if (contactId) {
+      linkFilters.push({ contacts: { some: { contactId } } });
+    }
+    const opportunityId = opts?.linkedToOpportunityId?.trim();
+    if (opportunityId) {
+      linkFilters.push({ opportunities: { some: { opportunityId } } });
+    }
     if (opts?.linkedToClienteEmpresa?.trim()) {
-      where.clienteEmpresas = {
-        some: { clienteEmpresaId: opts.linkedToClienteEmpresa.trim() },
-      };
+      linkFilters.push({
+        clienteEmpresas: {
+          some: { clienteEmpresaId: opts.linkedToClienteEmpresa.trim() },
+        },
+      });
+    }
+    if (opts?.linkedToContactoCliente?.trim()) {
+      linkFilters.push({
+        contactosCliente: {
+          some: { contactoClienteId: opts.linkedToContactoCliente.trim() },
+        },
+      });
     }
     if (opts?.linkedToClienteCartera) {
-      where.OR = [
-        { clienteEmpresas: { some: {} } },
-        { contactosCliente: { some: {} } },
-      ];
+      linkFilters.push({
+        OR: [
+          { clienteEmpresas: { some: {} } },
+          { contactosCliente: { some: {} } },
+        ],
+      });
+    }
+    if (linkFilters.length === 1) {
+      Object.assign(where, linkFilters[0]);
+    } else if (linkFilters.length > 1) {
+      where.AND = linkFilters;
     }
 
     const [rows, total] = await Promise.all([

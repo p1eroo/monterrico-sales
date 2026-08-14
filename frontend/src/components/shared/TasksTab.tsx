@@ -7,10 +7,10 @@ import { useAppStore } from '@/store';
 import { resolveAdvisorAssigneeId } from '@/lib/advisorAssigneeDefaults';
 import { canPickOtherCommercialAdvisor } from '@/data/rbac';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useActivities } from '@/hooks/useActivities';
+import { useActivitiesStore } from '@/store/activitiesStore';
+import { useEntityActivityList, type EntityActivitiesQuery } from '@/hooks/useEntityActivityList';
 import type { Contact, Opportunity, TaskAssociation, Activity, TaskKind } from '@/types';
 import { TASK_KINDS } from '@/types';
-import { activityMatchesTasksTabContext } from '@/lib/activityEntityLinks';
 import { completeTaskWithActivityForm } from '@/lib/activityPayloadFromForm';
 import {
   buildCreateTaskPayloadFromForm,
@@ -131,6 +131,31 @@ interface TasksTabProps {
   clienteEmpresaName?: string;
 }
 
+function entityTaskQuery(params: {
+  contactId?: string;
+  companyId?: string;
+  opportunityId?: string;
+  clienteEmpresaId?: string;
+  contactoClienteId?: string;
+}): EntityActivitiesQuery | null {
+  if (params.contactoClienteId) {
+    return { type: 'tarea', linkedToContactoCliente: params.contactoClienteId };
+  }
+  if (params.clienteEmpresaId) {
+    return { type: 'tarea', linkedToClienteEmpresa: params.clienteEmpresaId };
+  }
+  if (params.opportunityId) {
+    return { type: 'tarea', linkedToOpportunityId: params.opportunityId };
+  }
+  if (params.companyId) {
+    return { type: 'tarea', linkedToCompanyId: params.companyId };
+  }
+  if (params.contactId) {
+    return { type: 'tarea', linkedToContactId: params.contactId };
+  }
+  return null;
+}
+
 function isTaskActivity(a: Activity): boolean {
   return (
     a.type === 'tarea' &&
@@ -180,7 +205,8 @@ export interface TasksTabHandle {
     startTime?: string;
     assignee: string;
     associations?: TaskAssociation[];
-  }) => void;
+  }) => Promise<void>;
+  reload: () => Promise<void>;
 }
 
 export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function TasksTab({
@@ -203,21 +229,40 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
   const { hasPermission } = usePermissions();
   const canAssignOthers = canPickOtherCommercialAdvisor(hasPermission);
   const resolvedDefaultAssignee = resolveAdvisorAssigneeId(defaultAssigneeId, currentUser, canAssignOthers);
-  const { activities, createActivity, updateActivity, deleteActivity } = useActivities();
-
-  const tasks = useMemo(() => {
-    const filtered = activities.filter((a) => {
-      if (!isTaskActivity(a)) return false;
-      return activityMatchesTasksTabContext(a, {
+  const createActivity = useActivitiesStore((s) => s.createActivity);
+  const storeUpdateActivity = useActivitiesStore((s) => s.updateActivity);
+  const storeDeleteActivity = useActivitiesStore((s) => s.deleteActivity);
+  const taskQuery = useMemo(
+    () =>
+      entityTaskQuery({
         contactId,
         companyId,
         opportunityId,
         clienteEmpresaId,
         contactoClienteId,
-      });
-    });
-    return filtered.map(activityToMockTask);
-  }, [activities, contactId, companyId, opportunityId, clienteEmpresaId, contactoClienteId]);
+      }),
+    [contactId, companyId, opportunityId, clienteEmpresaId, contactoClienteId],
+  );
+  const {
+    activities,
+    setActivities,
+    reload,
+    wrapUpdate,
+    wrapDelete,
+  } = useEntityActivityList(taskQuery);
+  const updateActivity = useMemo(
+    () => wrapUpdate(storeUpdateActivity),
+    [wrapUpdate, storeUpdateActivity],
+  );
+  const deleteActivity = useMemo(
+    () => wrapDelete(storeDeleteActivity),
+    [wrapDelete, storeDeleteActivity],
+  );
+
+  const tasks = useMemo(
+    () => activities.filter(isTaskActivity).map(activityToMockTask),
+    [activities],
+  );
 
   useImperativeHandle(ref, () => ({
     addTask: async (task) => {
@@ -294,12 +339,14 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
       if (!taskFormHasEntityLinks(formLike)) return;
 
       try {
-        await createActivity(buildCreateTaskPayloadFromForm(formLike));
+        const saved = await createActivity(buildCreateTaskPayloadFromForm(formLike));
+        setActivities((prev) => [saved, ...prev.filter((row) => row.id !== saved.id)]);
         toast.success('Tarea creada');
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'Error al crear');
       }
     },
+    reload,
   }));
   const [completedTask, setCompletedTask] = useState<MockTask | null>(null);
   const [activityFromTaskOpen, setActivityFromTaskOpen] = useState(false);
@@ -361,11 +408,12 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
       throw new Error('TASK_FORM_VALIDATION');
     }
     try {
-      await createActivity(
+      const saved = await createActivity(
         buildCreateTaskPayloadFromForm(data, {
           sourceTaskId: linkPromptSourceTaskId ?? undefined,
         }),
       );
+      setActivities((prev) => [saved, ...prev.filter((row) => row.id !== saved.id)]);
       toast.success(`Tarea "${data.title}" creada`);
       setLinkedTaskOpen(false);
       setCompletedTask(null);
@@ -559,6 +607,7 @@ export const TasksTab = forwardRef<TasksTabHandle, TasksTabProps>(function Tasks
                 createdAt: savedActivity.createdAt,
                 contactId: savedActivity.contactId ?? contactId,
               });
+              return savedActivity.callGoal ? { callGoal: savedActivity.callGoal } : undefined;
             } catch (e) {
               toast.error(
                 e instanceof Error ? e.message : 'Error al guardar; el estado se revirtió.',

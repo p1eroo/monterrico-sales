@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { toast } from '@/lib/notify';
 import type { Contact, Opportunity, TaskAssociation } from '@/types';
-import { useActivities } from '@/hooks/useActivities';
+import { useActivitiesStore } from '@/store/activitiesStore';
 import {
   buildCreateTaskPayloadFromForm,
   taskFormHasEntityLinks,
@@ -26,7 +26,8 @@ import {
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { ActivityFormDialog } from './ActivityFormDialog';
+import { activityPayloadFromForm } from '@/lib/activityPayloadFromForm';
+import { ActivityFormDialog, type ActivityFormSaveResult } from './ActivityFormDialog';
 import { TaskFormDialog } from './TaskFormDialog';
 import type { TaskFormResult } from './TaskFormDialog';
 import { ACTIVITY_TYPE_ICON_CIRCLE, ACTIVITY_ICON_INHERIT } from '@/lib/activityTypeCircleStyles';
@@ -107,7 +108,9 @@ interface QuickActionsWithDialogsProps {
   companies?: { name: string; id?: string }[];
   opportunities?: Opportunity[];
   onTaskCreated?: (task: QuickTask) => void;
-  onActivityCreated?: (activity: QuickActivityDraft) => void | Promise<void>;
+  onActivityCreated?: (
+    activity: QuickActivityDraft,
+  ) => void | Promise<void | ActivityFormSaveResult>;
   contactId?: string;
   /** Vínculos prellenados al crear tarea de seguimiento tras registrar actividad */
   followUpAssociations?: TaskAssociation[];
@@ -125,6 +128,7 @@ export function QuickActionsWithDialogs({
   companies = [],
   opportunities = [],
   onActivityCreated,
+  onTaskCreated,
   followUpAssociations = [],
   excludeActions = [],
   inline = false,
@@ -133,7 +137,7 @@ export function QuickActionsWithDialogs({
   contactoClienteId,
   contactoClienteName,
 }: QuickActionsWithDialogsProps) {
-  const { createActivity } = useActivities();
+  const createActivity = useActivitiesStore((s) => s.createActivity);
   const [activeDialog, setActiveDialog] = useState<string | null>(null);
   const [noteContent, setNoteContent] = useState('');
 
@@ -205,6 +209,18 @@ export function QuickActionsWithDialogs({
       toast.success('Tarea creada');
       setTaskFormOpen(false);
       setLinkedTaskFormOpen(false);
+      onTaskCreated?.({
+        id: '',
+        title: data.title,
+        status: data.status as TaskStatus,
+        type: data.type as TaskType | undefined,
+        priority: data.priority,
+        dueDate: data.dueDate,
+        startDate: data.startDate,
+        startTime: data.startTime,
+        assignee: data.assigneeName,
+        associations: data.associations,
+      });
     } catch (e) {
       if (e instanceof Error && e.message === 'TASK_FORM_VALIDATION') return;
       toast.error(e instanceof Error ? e.message : 'Error al crear tarea');
@@ -214,32 +230,20 @@ export function QuickActionsWithDialogs({
 
   async function handleActivitySave(data: import('./ActivityFormDialog').ActivityFormData) {
     if (!activityDialogType) return;
-    const title = data.title || (activityDialogType === 'llamada' ? 'Llamada' : activityDialogType === 'reunion' ? 'Reunión' : 'Correo');
-    const dueDate = activityDialogType === 'reunion' && data.dateTime
-      ? data.dateTime.slice(0, 10)
-      : data.date || new Date().toISOString().slice(0, 10);
-    const startTime = activityDialogType === 'reunion' && data.dateTime
-      ? (data.dateTime.slice(11, 16) || undefined)
-      : activityDialogType === 'llamada'
-        ? (data.time || undefined)
-        : undefined;
-    const startDate = activityDialogType === 'reunion' && data.dateTime
-      ? dueDate
-      : activityDialogType === 'llamada'
-        ? dueDate
-        : undefined;
-    await Promise.resolve(onActivityCreated?.({
+    const payload = activityPayloadFromForm(activityDialogType, data, {}, '');
+    const result = await Promise.resolve(onActivityCreated?.({
       type: activityDialogType,
-      title,
-      description: data.description || '',
-      dueDate,
-      startDate,
-      startTime,
+      title: payload.title,
+      description: payload.description ?? '',
+      dueDate: payload.dueDate,
+      startDate: payload.startDate,
+      startTime: payload.startTime,
     }));
     setNoteContent('');
     setActivityDialogType(null);
     setActiveDialog(null);
     setLinkedTaskPromptOpen(true);
+    return result;
   }
 
   return (

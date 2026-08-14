@@ -5,6 +5,7 @@ import type {
   CalendarEvent,
   CalendarEventStatus,
   CalendarEventType,
+  CallGoalInfo,
   ContactPriority,
   RelatedEntityType,
   TaskKind,
@@ -34,6 +35,7 @@ export type ApiActivity = {
   contactosCliente?: {
     contactoCliente: { id: string; nombres: string; apellidos: string | null };
   }[];
+  callGoal?: CallGoalInfo;
 };
 
 const VALID_TYPES: ActivityType[] = [
@@ -141,6 +143,7 @@ export function mapApiActivityToActivity(row: ApiActivity): Activity {
     startTime: row.startTime ?? undefined,
     completedAt: row.completedAt ? toDateOnly(row.completedAt) : undefined,
     createdAt: toDateOnly(row.createdAt),
+    callGoal: row.callGoal,
   };
 }
 
@@ -213,6 +216,13 @@ export async function fetchActivitiesList(params: {
   limit?: number;
   from?: string;
   to?: string;
+  linkedToCompanyId?: string;
+  linkedToContactId?: string;
+  linkedToOpportunityId?: string;
+  linkedToClienteEmpresa?: string;
+  linkedToContactoCliente?: string;
+  type?: string;
+  excludeType?: string;
 }): Promise<Activity[]> {
   const q = new URLSearchParams();
   q.set('page', '1');
@@ -220,6 +230,13 @@ export async function fetchActivitiesList(params: {
   if (params.assignedTo) q.set('assignedTo', params.assignedTo);
   if (params.from) q.set('from', params.from);
   if (params.to) q.set('to', params.to);
+  if (params.linkedToCompanyId) q.set('linkedToCompanyId', params.linkedToCompanyId);
+  if (params.linkedToContactId) q.set('linkedToContactId', params.linkedToContactId);
+  if (params.linkedToOpportunityId) q.set('linkedToOpportunityId', params.linkedToOpportunityId);
+  if (params.linkedToClienteEmpresa) q.set('linkedToClienteEmpresa', params.linkedToClienteEmpresa);
+  if (params.linkedToContactoCliente) q.set('linkedToContactoCliente', params.linkedToContactoCliente);
+  if (params.type) q.set('type', params.type);
+  if (params.excludeType) q.set('excludeType', params.excludeType);
   const res = await api<{
     data: ApiActivity[];
     total: number;

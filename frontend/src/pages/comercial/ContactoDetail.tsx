@@ -20,7 +20,8 @@ import {
   activities,
 } from '@/data/mock';
 import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLogsApi';
-import { useActivities } from '@/hooks/useActivities';
+import { useActivitiesStore } from '@/store/activitiesStore';
+import { useEntityActivityList } from '@/hooks/useEntityActivityList';
 import { useUsers } from '@/hooks/useUsers';
 import { useCRMStore } from '@/store/crmStore';
 import { useAppStore } from '@/store';
@@ -28,10 +29,7 @@ import { canPickOtherCommercialAdvisor } from '@/data/rbac';
 import { usePermissions } from '@/hooks/usePermissions';
 import { getPrimaryCompany } from '@/lib/utils';
 import { taskAssociationsFromActivity } from '@/lib/taskAssociationsFromActivity';
-import {
-  activityIsLinkedToContact,
-  activityMatchesEntityFilter,
-} from '@/lib/activityEntityLinks';
+import { activityIsLinkedToContact } from '@/lib/activityEntityLinks';
 
 import { EmptyState } from '@/components/shared/EmptyState';
 import { LinkExistingDialog, type LinkExistingItem } from '@/components/shared/LinkExistingDialog';
@@ -207,7 +205,9 @@ export default function ContactoDetailPage() {
   const { contacts, opportunities, getOpportunitiesByContactId, addOpportunity, updateOpportunity, updateContact } = useCRMStore();
   const { users, activeAdvisors } = useUsers();
   const crmBundle = useCrmConfigStore((s) => s.bundle);
-  const { activities: activitiesFromStore, createActivity, updateActivity, deleteActivity } = useActivities();
+  const createActivity = useActivitiesStore((s) => s.createActivity);
+  const updateActivity = useActivitiesStore((s) => s.updateActivity);
+  const deleteActivity = useActivitiesStore((s) => s.deleteActivity);
 
   const [apiRecord, setApiRecord] = useState<ApiContactDetail | null>(null);
   const [apiLoading, setApiLoading] = useState(fromApi);
@@ -270,18 +270,30 @@ export default function ContactoDetailPage() {
   const mergedContacts = useMemo(() => contacts, [contacts]);
 
   const initialActivities = useMemo(
-    () => activities.filter((a) => activityIsLinkedToContact(a, routeId)),
-    [activities, routeId],
+    () => (fromApi ? [] : activities.filter((a) => activityIsLinkedToContact(a, routeId))),
+    [fromApi, activities, routeId],
   );
-
-  const persistedContactActivities = useMemo(() => activitiesFromStore.filter((activity) => {
-    if (activity.type === 'tarea') return false;
-    const primaryCompanyId = contact ? getPrimaryCompany(contact)?.id : undefined;
-    return activityMatchesEntityFilter(activity, {
-      contactId: contact?.id,
-      primaryCompanyId,
-    });
-  }), [activitiesFromStore, contact]);
+  const [mockActivities, setMockActivities] = useState(initialActivities);
+  const {
+    activities: apiActivities,
+    setActivities: setApiActivities,
+    wrapUpdate,
+    wrapDelete,
+  } = useEntityActivityList(
+    fromApi && contact?.id && isLikelyContactCuid(contact.id)
+      ? { linkedToContactId: contact.id, excludeType: 'tarea' }
+      : null,
+  );
+  const contactActivities = fromApi ? apiActivities : mockActivities;
+  const setContactActivities = fromApi ? setApiActivities : setMockActivities;
+  const updateEntityActivity = useMemo(
+    () => wrapUpdate(updateActivity),
+    [wrapUpdate, updateActivity],
+  );
+  const deleteEntityActivity = useMemo(
+    () => wrapDelete(deleteActivity),
+    [wrapDelete, deleteActivity],
+  );
 
   const contactOpportunities = useMemo(() => {
     if (fromApi && apiRecord?.opportunities?.length) {
@@ -306,7 +318,6 @@ export default function ContactoDetailPage() {
   }, [contact]);
 
   const tasksTabRef = useRef<TasksTabHandle>(null);
-  const [contactActivities, setContactActivities] = useState(initialActivities);
   const { hasPermission } = usePermissions();
   const canEditAssignee = canPickOtherCommercialAdvisor(hasPermission);
   const [whatsappDrawerOpen, setWhatsappDrawerOpen] = useState(false);
@@ -362,14 +373,14 @@ export default function ContactoDetailPage() {
   }, [contact?.id]);
 
   useEffect(() => {
-    if (fromApi) {
-      setContactActivities(persistedContactActivities);
-      return;
-    }
-    setContactActivities(initialActivities);
-  }, [fromApi, initialActivities, persistedContactActivities]);
+    if (!fromApi) setMockActivities(initialActivities);
+  }, [fromApi, initialActivities]);
 
-  const handleQuickActivityCreated = useCallback((draft: QuickActivityDraft) => {
+  const [contactTimelineEvents, setContactTimelineEvents] = useState<TimelineEvent[]>([]);
+  const [contactTimelineLoading, setContactTimelineLoading] = useState(false);
+  const [timelinePage, setTimelinePage] = useState(1);
+
+  const handleQuickActivityCreated = useCallback(async (draft: QuickActivityDraft) => {
     if (!contact) return;
 
     const assignedTo = contact.assignedTo || activeAdvisors[0]?.id;
@@ -427,30 +438,41 @@ export default function ContactoDetailPage() {
       ...prev,
     ]);
 
-    void createActivity({
-      type: draft.type,
-      title: draft.title,
-      description: draft.description,
-      assignedTo,
-      status: 'completada',
-      dueDate: draft.dueDate,
-      startDate: draft.startDate,
-      startTime: draft.startTime,
-      completedAt: completedAtNowIso(),
-      contactId: persistedContactId,
-      companyId: persistedCompanyId,
-    })
-      .then((saved) => {
-        setContactActivities((prev) => [
-          saved,
-          ...prev.filter((activity) => activity.id !== optimisticId && activity.id !== saved.id),
-        ]);
-      })
-      .catch((error) => {
-        setContactActivities((prev) => prev.filter((activity) => activity.id !== optimisticId));
-        toast.error(error instanceof Error ? error.message : 'No se pudo guardar la actividad');
+    try {
+      const saved = await createActivity({
+        type: draft.type,
+        title: draft.title,
+        description: draft.description,
+        assignedTo,
+        status: 'completada',
+        dueDate: draft.dueDate,
+        startDate: draft.startDate,
+        startTime: draft.startTime,
+        completedAt: completedAtNowIso(),
+        contactId: persistedContactId,
+        companyId: persistedCompanyId,
       });
-  }, [contact, activeAdvisors, users, createActivity]);
+      setContactActivities((prev) => [
+        saved,
+        ...prev.filter((activity) => activity.id !== optimisticId && activity.id !== saved.id),
+      ]);
+      if (fromApi && contact?.id) {
+        void fetchActivityLogs({
+          entityType: 'Contacto',
+          entityId: contact.id,
+          page: 1,
+          limit: 80,
+        })
+          .then((r) => setContactTimelineEvents(r.data.map(activityLogToTimelineEvent)))
+          .catch(() => undefined);
+      }
+      return saved.callGoal ? { callGoal: saved.callGoal } : undefined;
+    } catch (error) {
+      setContactActivities((prev) => prev.filter((activity) => activity.id !== optimisticId));
+      toast.error(error instanceof Error ? error.message : 'No se pudo guardar la actividad');
+      throw error;
+    }
+  }, [contact, fromApi, activeAdvisors, users, createActivity]);
 
   const noteActivities = useMemo(
     () => contactActivities.filter((activity) => activity.type === 'nota'),
@@ -473,10 +495,6 @@ export default function ContactoDetailPage() {
       /* handleQuickActivityCreated ya notifica el error */
     }
   }
-
-  const [contactTimelineEvents, setContactTimelineEvents] = useState<TimelineEvent[]>([]);
-  const [contactTimelineLoading, setContactTimelineLoading] = useState(false);
-  const [timelinePage, setTimelinePage] = useState(1);
 
   const totalTimelinePages = useMemo(
     () => Math.max(1, Math.ceil(contactTimelineEvents.length / TIMELINE_PAGE_SIZE)),
@@ -1019,6 +1037,7 @@ export default function ContactoDetailPage() {
               contactId={contact.id}
               followUpAssociations={followUpAssociations}
               onActivityCreated={handleQuickActivityCreated}
+              onTaskCreated={() => { void tasksTabRef.current?.reload(); }}
               excludeActions={['archivo']}
               inline
             />
@@ -1079,7 +1098,7 @@ export default function ContactoDetailPage() {
           </TabsList>
 
           <TabsContent value="actividades" className="mt-4">
-            <ActivityPanel activities={contactActivities} onRegisterActivity={() => toast.info('Usa las acciones rápidas para registrar una actividad')} onUpdateActivity={updateActivity} onDeleteActivity={deleteActivity} />
+            <ActivityPanel activities={contactActivities} onRegisterActivity={() => toast.info('Usa las acciones rápidas para registrar una actividad')} onUpdateActivity={updateEntityActivity} onDeleteActivity={deleteEntityActivity} />
           </TabsContent>
 
           {/* Archivos Tab */}
@@ -1106,8 +1125,8 @@ export default function ContactoDetailPage() {
               noteText={noteText}
               onNoteTextChange={setNoteText}
               onAddNote={handleAddNote}
-              onUpdateActivity={updateActivity}
-              onDeleteActivity={deleteActivity}
+              onUpdateActivity={updateEntityActivity}
+              onDeleteActivity={deleteEntityActivity}
             />
           </TabsContent>
 

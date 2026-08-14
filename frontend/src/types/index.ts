@@ -197,6 +197,14 @@ export interface Contact {
   lastInteractionAt?: string | null;
 }
 
+export type CallGoalKind = 'meta' | 'seguimiento' | 'no_contacto';
+
+export type CallGoalInfo = {
+  kind: CallGoalKind;
+  label: string;
+  reason: string;
+};
+
 export interface Activity {
   id: string;
   type: ActivityType;
@@ -233,6 +241,8 @@ export interface Activity {
   startTime?: string;
   completedAt?: string;
   createdAt: string;
+  /** Solo en POST de llamada completada: cómo cuenta en métricas. */
+  callGoal?: CallGoalInfo;
 }
 
 export interface Opportunity {

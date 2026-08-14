@@ -467,6 +467,82 @@
         background: var(--muted) !important;
         color: var(--foreground) !important;
     }
+
+    .crm-toast-preview {
+        position: relative;
+        display: flex;
+        width: min(380px, calc(100vw - 40px));
+        padding: 16px 44px 16px 16px;
+        background: var(--card);
+        border-radius: 12px;
+        box-shadow:
+            0 1px 2px rgb(15 23 42 / 0.04),
+            0 8px 24px rgb(15 23 42 / 0.08);
+        color: var(--foreground);
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .crm-toast-preview .crm-toast__content {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .crm-toast-preview .crm-toast__title {
+        font-weight: 600;
+        font-size: 0.875rem;
+        line-height: 1.4;
+        color: var(--foreground);
+    }
+
+    .crm-toast-preview .crm-toast__description {
+        font-size: 0.8125rem;
+        line-height: 1.45;
+        color: var(--muted-foreground);
+    }
+
+    .crm-toast-preview .crm-toast__icon-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        flex-shrink: 0;
+        border-radius: 9999px;
+    }
+
+    .crm-toast-preview .crm-toast__icon-badge--success {
+        background: color-mix(in srgb, var(--primary) 12%, transparent);
+        color: var(--primary);
+    }
+
+    .crm-toast-preview .crm-toast__icon-badge--warning {
+        background: color-mix(in srgb, var(--warning) 14%, transparent);
+        color: var(--warning);
+    }
+
+    .crm-toast-preview .crm-toast__icon-badge--info {
+        background: color-mix(in srgb, var(--info) 12%, transparent);
+        color: var(--info);
+    }
+
+    .crm-toast-preview .crm-toast__close {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border: 0;
+        border-radius: 9999px;
+        background: transparent;
+        color: var(--muted-foreground);
+    }
 }
 
 @layer utilities {

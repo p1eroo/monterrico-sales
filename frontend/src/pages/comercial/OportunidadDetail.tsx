@@ -15,11 +15,11 @@ import { canPickOtherCommercialAdvisor } from '@/data/rbac';
 import { usePermissions } from '@/hooks/usePermissions';
 import { etapaLabels, activities, contactSourceLabels } from '@/data/mock';
 import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLogsApi';
-import { useActivities } from '@/hooks/useActivities';
+import { useActivitiesStore } from '@/store/activitiesStore';
+import { useEntityActivityList } from '@/hooks/useEntityActivityList';
 import { useUsers } from '@/hooks/useUsers';
 import { getPrimaryCompany } from '@/lib/utils';
 import { mergeCompaniesForTaskPicker, taskAssociationsFromActivity } from '@/lib/taskAssociationsFromActivity';
-import { activityMatchesEntityFilter } from '@/lib/activityEntityLinks';
 import type { CompanyRubro, Etapa, TimelineEvent, Activity } from '@/types';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { DetailLayout } from '@/components/shared/DetailLayout';
@@ -121,7 +121,9 @@ export default function OportunidadDetailPage() {
   const crmBundle = useCrmConfigStore((s) => s.bundle);
   const { hasPermission } = usePermissions();
   const canEditAssignee = canPickOtherCommercialAdvisor(hasPermission);
-  const { activities: activitiesFromStore, createActivity, updateActivity, deleteActivity } = useActivities();
+  const createActivity = useActivitiesStore((s) => s.createActivity);
+  const updateActivity = useActivitiesStore((s) => s.updateActivity);
+  const deleteActivity = useActivitiesStore((s) => s.deleteActivity);
   const storeOpp = opportunities.find((o) => o.id === routeId);
 
   const opp = useMemo(() => {
@@ -157,36 +159,44 @@ export default function OportunidadDetailPage() {
   }, [fromApi, apiRecord, opp, linkedContact]);
 
   const initialOppActivities = useMemo(() => {
-    if (!opp?.id) return [];
-    return activities.filter((a) =>
-      activityMatchesEntityFilter(a, {
-        opportunityId: opp.id,
-        contactId: opp.contactId,
-      }),
-    );
-  }, [activities, opp?.id, opp?.contactId]);
-  const [oppActivities, setOppActivities] = useState(initialOppActivities);
-  const persistedOppActivities = useMemo(() => activitiesFromStore.filter((activity) => {
-    if (activity.type === 'tarea') return false;
-    return activityMatchesEntityFilter(activity, {
-      opportunityId: opp?.id,
-      contactId: opp?.contactId,
-    });
-  }), [activitiesFromStore, opp?.id, opp?.contactId]);
+    if (fromApi || !opp?.id) return [];
+    return activities.filter((a) => a.opportunityId === opp.id || a.contactId === opp.contactId);
+  }, [fromApi, activities, opp?.id, opp?.contactId]);
+  const [mockOppActivities, setMockOppActivities] = useState(initialOppActivities);
+  const {
+    activities: apiOppActivities,
+    setActivities: setApiOppActivities,
+    wrapUpdate,
+    wrapDelete,
+  } = useEntityActivityList(
+    fromApi && opp?.id && isLikelyOpportunityCuid(opp.id)
+      ? { linkedToOpportunityId: opp.id, excludeType: 'tarea' }
+      : null,
+  );
+  const oppActivities = fromApi ? apiOppActivities : mockOppActivities;
+  const setOppActivities = fromApi ? setApiOppActivities : setMockOppActivities;
+  const updateEntityActivity = useMemo(
+    () => wrapUpdate(updateActivity),
+    [wrapUpdate, updateActivity],
+  );
+  const deleteEntityActivity = useMemo(
+    () => wrapDelete(deleteActivity),
+    [wrapDelete, deleteActivity],
+  );
   const noteActivities = useMemo(
     () => oppActivities.filter((activity) => activity.type === 'nota'),
     [oppActivities],
   );
 
   useEffect(() => {
-    if (fromApi) {
-      setOppActivities(persistedOppActivities);
-      return;
-    }
-    setOppActivities(initialOppActivities);
-  }, [fromApi, initialOppActivities, persistedOppActivities]);
+    if (!fromApi) setMockOppActivities(initialOppActivities);
+  }, [fromApi, initialOppActivities]);
 
-  const handleQuickActivityCreated = useCallback((draft: QuickActivityDraft) => {
+  const [oppTimelineEvents, setOppTimelineEvents] = useState<TimelineEvent[]>([]);
+  const [oppTimelineLoading, setOppTimelineLoading] = useState(false);
+  const [timelinePage, setTimelinePage] = useState(1);
+
+  const handleQuickActivityCreated = useCallback(async (draft: QuickActivityDraft) => {
     if (!opp) return;
 
     const assignedTo = opp.assignedTo || activeAdvisors[0]?.id;
@@ -258,31 +268,42 @@ export default function OportunidadDetailPage() {
       ...prev,
     ]);
 
-    void createActivity({
-      type: draft.type,
-      title: draft.title,
-      description: draft.description,
-      assignedTo,
-      status: 'completada',
-      dueDate: draft.dueDate,
-      startDate: draft.startDate,
-      startTime: draft.startTime,
-      completedAt: completedAtNowIso(),
-      contactId: persistedContactId,
-      companyId: persistedCompanyId,
-      opportunityId: persistedOpportunityId,
-    })
-      .then((saved) => {
-        setOppActivities((prev) => [
-          saved,
-          ...prev.filter((activity) => activity.id !== optimisticId && activity.id !== saved.id),
-        ]);
-      })
-      .catch((error) => {
-        setOppActivities((prev) => prev.filter((activity) => activity.id !== optimisticId));
-        toast.error(error instanceof Error ? error.message : 'No se pudo guardar la actividad');
+    try {
+      const saved = await createActivity({
+        type: draft.type,
+        title: draft.title,
+        description: draft.description,
+        assignedTo,
+        status: 'completada',
+        dueDate: draft.dueDate,
+        startDate: draft.startDate,
+        startTime: draft.startTime,
+        completedAt: completedAtNowIso(),
+        contactId: persistedContactId,
+        companyId: persistedCompanyId,
+        opportunityId: persistedOpportunityId,
       });
-  }, [opp, linkedContact, primaryCompany, activeAdvisors, users, createActivity]);
+      setOppActivities((prev) => [
+        saved,
+        ...prev.filter((activity) => activity.id !== optimisticId && activity.id !== saved.id),
+      ]);
+      if (fromApi && opp?.id) {
+        void fetchActivityLogs({
+          entityType: 'Oportunidad',
+          entityId: opp.id,
+          page: 1,
+          limit: 80,
+        })
+          .then((r) => setOppTimelineEvents(r.data.map(activityLogToTimelineEvent)))
+          .catch(() => undefined);
+      }
+      return saved.callGoal ? { callGoal: saved.callGoal } : undefined;
+    } catch (error) {
+      setOppActivities((prev) => prev.filter((activity) => activity.id !== optimisticId));
+      toast.error(error instanceof Error ? error.message : 'No se pudo guardar la actividad');
+      throw error;
+    }
+  }, [opp, fromApi, linkedContact, primaryCompany, activeAdvisors, users, createActivity]);
 
   function handleAddNote() {
     const description = noteText.trim();
@@ -361,11 +382,6 @@ export default function OportunidadDetailPage() {
 
   // --- Edit / Etapa / Asignar dialogs ---
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-
-
-  const [oppTimelineEvents, setOppTimelineEvents] = useState<TimelineEvent[]>([]);
-  const [oppTimelineLoading, setOppTimelineLoading] = useState(false);
-  const [timelinePage, setTimelinePage] = useState(1);
 
   useEffect(() => {
     if (!fromApi || !opp?.id) {
@@ -984,6 +1000,7 @@ async function handleCreateNewContact(data: NewContactData) {
               contactId={opp?.contactId}
               followUpAssociations={followUpAssociations}
               onActivityCreated={handleQuickActivityCreated}
+              onTaskCreated={() => { void tasksTabRef.current?.reload(); }}
               inline
             />
           )}
@@ -1115,7 +1132,7 @@ async function handleCreateNewContact(data: NewContactData) {
         </TabsContent>
 
         <TabsContent value="actividades" className="mt-4">
-          <ActivityPanel activities={oppActivities} onUpdateActivity={updateActivity} onDeleteActivity={deleteActivity} />
+          <ActivityPanel activities={oppActivities} onUpdateActivity={updateEntityActivity} onDeleteActivity={deleteEntityActivity} />
         </TabsContent>
 
         <TabsContent value="archivos" className="mt-4">
@@ -1132,8 +1149,8 @@ async function handleCreateNewContact(data: NewContactData) {
             noteText={noteText}
             onNoteTextChange={setNoteText}
             onAddNote={handleAddNote}
-            onUpdateActivity={updateActivity}
-            onDeleteActivity={deleteActivity}
+            onUpdateActivity={updateEntityActivity}
+            onDeleteActivity={deleteEntityActivity}
           />
         </TabsContent>
 

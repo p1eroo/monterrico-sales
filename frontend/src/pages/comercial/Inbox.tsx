@@ -36,8 +36,8 @@ import {
   contactDetailHref,
   opportunityDetailHref,
 } from '@/lib/detailRoutes';
-import { fetchGmailMessages, fetchGmailThread, sendGmailMessage, filesToGmailAttachments, linkEmailToCRM, registerGmailEmailAsActivity, fetchGmailRegisterActivityPreview, downloadGmailAttachment, markGmailThreadRead, setGmailThreadStarred, archiveGmailThread, trashGmailThread, markGmailThreadUnread } from '@/lib/gmailApi';
-import type { GmailRegisterActivityPreview } from '@/lib/gmailApi';
+import { fetchGmailMessages, fetchGmailThread, sendGmailMessage, filesToGmailAttachments, linkEmailToCRM, registerGmailEmailAsActivity, fetchGmailRegisterActivityPreview, fetchGmailRegisterCarteraPreview, downloadGmailAttachment, markGmailThreadRead, setGmailThreadStarred, archiveGmailThread, trashGmailThread, markGmailThreadUnread } from '@/lib/gmailApi';
+import type { GmailRegisterActivityPreview, GmailRegisterCarteraPreview } from '@/lib/gmailApi';
 import { fetchEmailSignature, resolveSignatureHtmlForEditor, prepareBodyHtmlForSend } from '@/lib/emailSignatureApi';
 import { filterValidAttachmentFiles, ingestComposeFiles } from '@/lib/composeFiles';
 import { EmailSignatureSettingsDialog } from '@/components/shared/EmailSignatureSettingsDialog';
@@ -324,8 +324,11 @@ export default function InboxPage() {
   const [composeResetKey, setComposeResetKey] = useState(0);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [registerActivityDialogOpen, setRegisterActivityDialogOpen] = useState(false);
+  const [registerDestination, setRegisterDestination] = useState<'comercial' | 'cartera'>('comercial');
   const [emailRegisterPlan, setEmailRegisterPlan] = useState<GmailRegisterActivityPreview | null>(null);
   const [emailRegisterPlanLoading, setEmailRegisterPlanLoading] = useState(false);
+  const [carteraRegisterPlan, setCarteraRegisterPlan] = useState<GmailRegisterCarteraPreview | null>(null);
+  const [carteraEmpresaId, setCarteraEmpresaId] = useState<string | null>(null);
   const [composeMinimized, setComposeMinimized] = useState(false);
   const [composeFullscreen, setComposeFullscreen] = useState(false);
   const [composeShowCc, setComposeShowCc] = useState(false);
@@ -1032,27 +1035,45 @@ export default function InboxPage() {
   useEffect(() => {
     if (!registerActivityDialogOpen || !emailRegisterTarget?.counterparty) {
       setEmailRegisterPlan(null);
+      setCarteraRegisterPlan(null);
       setEmailRegisterPlanLoading(false);
       return;
     }
     let cancelled = false;
     setEmailRegisterPlanLoading(true);
-    void fetchGmailRegisterActivityPreview(emailRegisterTarget.counterparty)
-      .then((plan) => {
-        if (!cancelled) setEmailRegisterPlan(plan);
-      })
-      .catch(() => {
-        if (!cancelled) setEmailRegisterPlan(null);
-      })
-      .finally(() => {
-        if (!cancelled) setEmailRegisterPlanLoading(false);
-      });
+    if (registerDestination === 'cartera') {
+      void fetchGmailRegisterCarteraPreview(emailRegisterTarget.counterparty)
+        .then((plan) => {
+          if (cancelled) return;
+          setCarteraRegisterPlan(plan);
+          setCarteraEmpresaId(plan.suggestedId);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setCarteraRegisterPlan(null);
+          setCarteraEmpresaId(null);
+        })
+        .finally(() => {
+          if (!cancelled) setEmailRegisterPlanLoading(false);
+        });
+    } else {
+      void fetchGmailRegisterActivityPreview(emailRegisterTarget.counterparty)
+        .then((plan) => {
+          if (!cancelled) setEmailRegisterPlan(plan);
+        })
+        .catch(() => {
+          if (!cancelled) setEmailRegisterPlan(null);
+        })
+        .finally(() => {
+          if (!cancelled) setEmailRegisterPlanLoading(false);
+        });
+    }
     return () => {
       cancelled = true;
     };
-  }, [registerActivityDialogOpen, emailRegisterTarget?.counterparty]);
+  }, [registerActivityDialogOpen, registerDestination, emailRegisterTarget?.counterparty]);
 
-  const openRegisterActivityDialog = () => {
+  const openRegisterActivityDialog = (destination: 'comercial' | 'cartera' = 'comercial') => {
     if (!emailRegisterTarget) {
       notify.error('No hay un correo seleccionado para registrar');
       return;
@@ -1061,11 +1082,17 @@ export default function InboxPage() {
       notify.error('Conecta Gmail para registrar actividades desde el Inbox');
       return;
     }
+    setRegisterDestination(destination);
+    setCarteraEmpresaId(null);
     setRegisterActivityDialogOpen(true);
   };
 
   const handleRegisterActivitySave = async (data: ActivityFormData) => {
     if (!emailRegisterTarget) return;
+    if (registerDestination === 'cartera' && !carteraEmpresaId) {
+      notify.error('Selecciona una empresa de cartera');
+      throw new Error('Selecciona una empresa de cartera');
+    }
     const dueDate = data.date || formatTodayPeruYmd();
     try {
       const res = await registerGmailEmailAsActivity({
@@ -1074,6 +1101,8 @@ export default function InboxPage() {
         description: data.description?.trim(),
         dueDate,
         startDate: dueDate,
+        destination: registerDestination,
+        clienteEmpresaId: registerDestination === 'cartera' ? carteraEmpresaId ?? undefined : undefined,
       });
       if (!res.linked[0]) {
         throw new Error('No se pudo registrar la actividad');
@@ -1458,9 +1487,15 @@ export default function InboxPage() {
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem
                       disabled={!emailRegisterTarget}
-                      onClick={openRegisterActivityDialog}
+                      onClick={() => openRegisterActivityDialog('comercial')}
                     >
                       Registrar como actividad
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      disabled={!emailRegisterTarget}
+                      onClick={() => openRegisterActivityDialog('cartera')}
+                    >
+                      Registrar en cartera
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -1848,7 +1883,7 @@ export default function InboxPage() {
 
       {emailRegisterMeta && emailRegisterTarget ? (
         <ActivityFormDialog
-          key={`${selectedGmailThreadId ?? selectedThread?.id ?? 'thread'}-register`}
+          key={`${selectedGmailThreadId ?? selectedThread?.id ?? 'thread'}-register-${registerDestination}`}
           type="correo"
           open={registerActivityDialogOpen}
           onOpenChange={setRegisterActivityDialogOpen}
@@ -1857,23 +1892,45 @@ export default function InboxPage() {
           defaultDescription=""
           defaultDate={formatTodayPeruYmd()}
           defaultAssigneeId={currentUser.id}
-          dialogDescription="Completa el asunto y el resumen que quieras registrar. Al guardar se creará la actividad de correo y se vinculará según el plan indicado."
-          registerLinkPlan={{
-            emailSubject: emailRegisterMeta.emailSubject,
-            assignee: currentUser.name,
-            email: emailRegisterMeta.counterpartyEmail,
-            loading: emailRegisterPlanLoading,
-            excluded: emailRegisterPlan?.excluded,
-            contact: emailRegisterPlan?.contact ?? {
-              action: 'skip',
-              name: emailRegisterMeta.counterpartyLabel,
-            },
-            company: emailRegisterPlan?.company ?? {
-              action: 'skip',
-              name: emailRegisterMeta.counterpartyEmail.split('@')[1] ?? '—',
-            },
-            opportunity: emailRegisterPlan?.opportunity ?? { action: 'skip', name: '—' },
-          }}
+          dialogDescription={
+            registerDestination === 'cartera'
+              ? 'Elige la empresa de cartera y completa el correo. Al guardar, la actividad queda en Clientes, no en Empresas comerciales.'
+              : 'Completa el asunto y el resumen que quieras registrar. Al guardar se creará la actividad de correo y se vinculará según el plan indicado.'
+          }
+          registerLinkPlan={
+            registerDestination === 'comercial'
+              ? {
+                  emailSubject: emailRegisterMeta.emailSubject,
+                  assignee: currentUser.name,
+                  email: emailRegisterMeta.counterpartyEmail,
+                  loading: emailRegisterPlanLoading,
+                  excluded: emailRegisterPlan?.excluded,
+                  contact: emailRegisterPlan?.contact ?? {
+                    action: 'skip',
+                    name: emailRegisterMeta.counterpartyLabel,
+                  },
+                  company: emailRegisterPlan?.company ?? {
+                    action: 'skip',
+                    name: emailRegisterMeta.counterpartyEmail.split('@')[1] ?? '—',
+                  },
+                  opportunity: emailRegisterPlan?.opportunity ?? { action: 'skip', name: '—' },
+                }
+              : undefined
+          }
+          registerCarteraPlan={
+            registerDestination === 'cartera'
+              ? {
+                  emailSubject: emailRegisterMeta.emailSubject,
+                  assignee: currentUser.name,
+                  email: emailRegisterMeta.counterpartyEmail,
+                  domain: carteraRegisterPlan?.domain || emailRegisterMeta.counterpartyEmail.split('@')[1] || '',
+                  loading: emailRegisterPlanLoading,
+                  empresas: carteraRegisterPlan?.empresas ?? [],
+                  selectedId: carteraEmpresaId,
+                  onSelect: setCarteraEmpresaId,
+                }
+              : undefined
+          }
         />
       ) : null}
     </div>

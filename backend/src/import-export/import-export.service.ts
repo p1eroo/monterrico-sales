@@ -2964,6 +2964,8 @@ export class ImportExportService {
         etapa: true,
         createdAt: true,
         facturacionEstimada: true,
+        ruc: true,
+        domain: true,
         user: { select: { name: true } },
       },
     });
@@ -2979,6 +2981,8 @@ export class ImportExportService {
       'Fecha de Ingreso',
       'Empresa / Cliente',
       'Facturación',
+      'RUC',
+      'Dominio',
       'Origen',
       'Asesor',
     ];
@@ -3081,6 +3085,8 @@ export class ImportExportService {
         ingresoStr(c.createdAt),
         c.name,
         facturacionStr(c.facturacionEstimada),
+        c.ruc?.trim() ?? '',
+        c.domain?.trim() ?? '',
         fuenteLabel(c.fuente),
         c.user?.name ?? '',
       ];

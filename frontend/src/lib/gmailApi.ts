@@ -174,8 +174,37 @@ export type GmailRegisterActivityPreview = {
 
 export async function fetchGmailRegisterActivityPreview(
   counterparty: string,
+  destination: 'comercial' | 'cartera' = 'comercial',
 ): Promise<GmailRegisterActivityPreview> {
   const params = new URLSearchParams({ counterparty });
+  if (destination === 'cartera') params.set('destination', 'cartera');
+  return api(`/gmail/register-activity/preview?${params.toString()}`);
+}
+
+export type GmailCarteraEmpresaOption = {
+  id: string;
+  empresa: string;
+  email?: string | null;
+  ruc?: string | null;
+  suggested?: boolean;
+  reason?: string;
+};
+
+export type GmailRegisterCarteraPreview = {
+  destination: 'cartera';
+  email: string;
+  domain: string;
+  suggestedId: string | null;
+  empresas: GmailCarteraEmpresaOption[];
+};
+
+export async function fetchGmailRegisterCarteraPreview(
+  counterparty: string,
+): Promise<GmailRegisterCarteraPreview> {
+  const params = new URLSearchParams({
+    counterparty,
+    destination: 'cartera',
+  });
   return api(`/gmail/register-activity/preview?${params.toString()}`);
 }
 
@@ -188,6 +217,8 @@ export async function registerGmailEmailAsActivity(params: {
   dueDate?: string;
   startDate?: string;
   startTime?: string;
+  destination?: 'comercial' | 'cartera';
+  clienteEmpresaId?: string;
 }): Promise<{ linked: GmailLinkResult[] }> {
   return api('/gmail/register-activity', {
     method: 'POST',

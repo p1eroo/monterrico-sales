@@ -3,7 +3,7 @@
  * Permite: import { PageHeader, EmptyState } from '@/components/shared'
  */
 
-export { ActivityFormDialog, type ActivityFormData, type ActivityFormSaveMeta, type ActivityResult } from './ActivityFormDialog';
+export { ActivityFormDialog, type ActivityFormData, type ActivityFormSaveMeta, type ActivityFormSaveResult, type ActivityResult } from './ActivityFormDialog';
 export { ActivityPanel } from './ActivityPanel';
 export { AssignDialog } from './AssignDialog';
 export { ChangeEtapaDialog } from './ChangeEtapaDialog';

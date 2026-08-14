@@ -29,7 +29,7 @@ export function AreaGate() {
   }
 
   // Rutas Comerciales (todas las que no son flota, marketing o admin)
-  const isCommercialPath = !path.startsWith('/flota') && !path.startsWith('/marketing') && !path.startsWith('/admin') && !path.startsWith('/area-select') && !path.startsWith('/login') && !path.startsWith('/profile');
+  const isCommercialPath = !path.startsWith('/flota') && !path.startsWith('/marketing') && !path.startsWith('/admin') && !path.startsWith('/area-select') && !path.startsWith('/login') && !path.startsWith('/profile') && !path.startsWith('/dev');
   
   if (isCommercialPath) {
     if (!allowedAreas.includes('comercial')) {
