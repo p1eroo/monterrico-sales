@@ -13,12 +13,16 @@ interface NotificationDropdownProps {
   onOpenDrawer: () => void;
   onOpenInactiveCompanies: () => void;
   trigger: React.ReactNode;
+  openToTab?: string;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function NotificationDropdown({
   onOpenDrawer,
   onOpenInactiveCompanies,
   trigger,
+  openToTab,
+  onOpenChange,
 }: NotificationDropdownProps) {
   const { notifications, markAllAsRead, refreshNotifications } =
     useNotificationStore();
@@ -69,7 +73,11 @@ export function NotificationDropdown({
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (next) void refreshNotifications();
+        onOpenChange?.(next);
+        if (next) {
+          if (openToTab) setActiveTab(openToTab);
+          void refreshNotifications();
+        }
       }}
     >
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
@@ -140,6 +148,7 @@ export function NotificationDropdown({
                       notification={n}
                       variant="compact"
                       showActions={false}
+                      onActivate={() => setOpen(false)}
                     />
                   ))
                 )}

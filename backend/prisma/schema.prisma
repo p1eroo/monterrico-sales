@@ -122,7 +122,7 @@ model CrmNotification {
   id         String    @id @default(cuid())
   userId     String
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  /** contact_created | opportunity_won | task_overdue */
+  /** contact_created | opportunity_won | task_overdue | web_lead | whatsapp_inbound */
   kind       String
   /** p. ej. overdue:activityId; evita duplicados por tarea vencida */
   dedupeKey  String?

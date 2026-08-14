@@ -363,6 +363,8 @@ export interface NotificationItem {
   priority?: NotificationPriority;
   /** Para acciones: ver contacto */
   contactId?: string;
+  /** Para acciones: ver empresa */
+  companyId?: string;
   /** Para acciones: ver oportunidad */
   opportunityId?: string;
   /** Para acciones: reprogramar */
@@ -371,6 +373,8 @@ export interface NotificationItem {
   createdAt?: string;
   /** Marcar como importante */
   important?: boolean;
+  /** Tipo interno: contact_created | opportunity_won | task_overdue | web_lead */
+  kind?: string;
 }
 
 /** Audit: Módulo donde ocurrió la acción */

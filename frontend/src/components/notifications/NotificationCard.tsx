@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { NotificationItem } from '@/types';
 import { useNotificationStore } from '@/store/notificationStore';
-import { contactDetailHref, opportunityDetailHref } from '@/lib/detailRoutes';
+import { contactDetailHref, companyDetailHref, opportunityDetailHref } from '@/lib/detailRoutes';
 
 const TYPE_CONFIG: Record<
   string,
@@ -29,6 +29,12 @@ const TYPE_CONFIG: Record<
     icon: '👤',
     bg: 'bg-blue-100 dark:bg-blue-900/40',
     text: 'text-blue-700 dark:text-blue-300',
+  },
+  web_lead: {
+    label: 'Interesado',
+    icon: '🌱',
+    bg: 'bg-emerald-100 dark:bg-emerald-900/40',
+    text: 'text-emerald-700 dark:text-emerald-300',
   },
   sistema: {
     label: 'Sistema',
@@ -84,39 +90,72 @@ interface NotificationCardProps {
   notification: NotificationItem;
   variant?: 'compact' | 'full';
   showActions?: boolean;
+  onActivate?: () => void;
 }
 
 export function NotificationCard({
   notification,
   variant = 'full',
   showActions = true,
+  onActivate,
 }: NotificationCardProps) {
   const navigate = useNavigate();
   const { markAsRead, remove } = useNotificationStore();
   const [isHovered, setIsHovered] = useState(false);
 
-  const typeKey = notification.type as string;
+  const typeKey =
+    notification.kind === 'web_lead' ? 'web_lead' : (notification.type as string);
   const typeConfig = TYPE_CONFIG[typeKey] ?? TYPE_CONFIG.info;
   const priorityConfig = notification.priority
     ? PRIORITY_CONFIG[notification.priority]
     : null;
 
   const handleMarkRead = () => void markAsRead(notification.id);
+  const goTo = (href: string) => {
+    void markAsRead(notification.id);
+    onActivate?.();
+    navigate(href);
+  };
   const handleViewContact = () => {
     if (notification.contactId) {
-      void markAsRead(notification.id);
-      navigate(contactDetailHref({ id: notification.contactId }));
+      goTo(
+        contactDetailHref({
+          id: notification.contactId,
+          urlSlug: notification.contactId,
+        }),
+      );
+    }
+  };
+  const handleViewCompany = () => {
+    if (notification.companyId) {
+      goTo(
+        companyDetailHref({
+          id: notification.companyId,
+          urlSlug: notification.companyId,
+        }),
+      );
     }
   };
   const handleViewOpportunity = () => {
     if (notification.opportunityId) {
-      void markAsRead(notification.id);
-      navigate(opportunityDetailHref({ id: notification.opportunityId }));
+      goTo(
+        opportunityDetailHref({
+          id: notification.opportunityId,
+          urlSlug: notification.opportunityId,
+        }),
+      );
     }
+  };
+  const handleOpen = () => {
+    if (notification.contactId) handleViewContact();
+    else if (notification.companyId) handleViewCompany();
+    else if (notification.opportunityId) handleViewOpportunity();
+    else if (notification.activityId) handleReschedule();
   };
   const handleReschedule = () => {
     if (notification.activityId) {
       void markAsRead(notification.id);
+      onActivate?.();
       navigate('/calendario');
     }
   };
@@ -125,6 +164,13 @@ export function NotificationCard({
   const actionsVisible = showActions && (variant === 'full' ? isHovered : true);
 
   const isCompact = variant === 'compact';
+
+  const canOpen = Boolean(
+    notification.contactId ||
+      notification.companyId ||
+      notification.opportunityId ||
+      notification.activityId,
+  );
 
   return (
     <div
@@ -147,57 +193,62 @@ export function NotificationCard({
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className="flex gap-3">
-        <div className="relative shrink-0">
-          {isCompact && !notification.read && (
-            <span
-              className="absolute -left-1 top-0 size-1.5 rounded-full bg-primary"
-              aria-hidden
-            />
-          )}
-          <div
-            className={cn(
-              'flex size-9 items-center justify-center rounded-lg text-sm',
-              typeConfig.bg,
-              typeConfig.text,
+        <div
+          className={cn('flex min-w-0 flex-1 gap-3', canOpen && 'cursor-pointer')}
+          onClick={canOpen ? handleOpen : undefined}
+        >
+          <div className="relative shrink-0">
+            {isCompact && !notification.read && (
+              <span
+                className="absolute -left-1 top-0 size-1.5 rounded-full bg-primary"
+                aria-hidden
+              />
             )}
-          >
-            {typeConfig.icon}
-          </div>
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <p
-            className={cn(
-              'text-sm leading-tight',
-              !notification.read && 'font-semibold text-foreground',
-            )}
-          >
-            {notification.title}
-          </p>
-          <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-            {notification.description}
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <span className="text-[11px] text-muted-foreground">
-              {notification.time}
-            </span>
-            <span
+            <div
               className={cn(
-                'rounded px-1.5 py-0.5 text-[10px] font-medium',
+                'flex size-9 items-center justify-center rounded-lg text-sm',
                 typeConfig.bg,
                 typeConfig.text,
               )}
             >
-              {typeConfig.label}
-            </span>
-            {priorityConfig && (
-              <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                <span
-                  className={cn('size-1.5 rounded-full', priorityConfig.dot)}
-                />
-                {priorityConfig.label}
+              {typeConfig.icon}
+            </div>
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <p
+              className={cn(
+                'text-sm leading-tight',
+                !notification.read && 'font-semibold text-foreground',
+              )}
+            >
+              {notification.title}
+            </p>
+            <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+              {notification.description}
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className="text-[11px] text-muted-foreground">
+                {notification.time}
               </span>
-            )}
+              <span
+                className={cn(
+                  'rounded px-1.5 py-0.5 text-[10px] font-medium',
+                  typeConfig.bg,
+                  typeConfig.text,
+                )}
+              >
+                {typeConfig.label}
+              </span>
+              {priorityConfig && (
+                <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <span
+                    className={cn('size-1.5 rounded-full', priorityConfig.dot)}
+                  />
+                  {priorityConfig.label}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -208,6 +259,7 @@ export function NotificationCard({
               variant === 'compact' && 'opacity-0 group-hover:opacity-100',
               variant === 'full' && !actionsVisible && 'opacity-0',
             )}
+            onClick={(e) => e.stopPropagation()}
           >
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -215,6 +267,7 @@ export function NotificationCard({
                   variant="ghost"
                   size="icon-xs"
                   className="size-7 text-muted-foreground hover:text-foreground"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <MoreHorizontal className="size-3.5" />
                 </Button>
@@ -230,6 +283,12 @@ export function NotificationCard({
                   <DropdownMenuItem onClick={handleViewContact}>
                     <Eye className="size-3.5" />
                     Ver contacto
+                  </DropdownMenuItem>
+                )}
+                {notification.companyId && (
+                  <DropdownMenuItem onClick={handleViewCompany}>
+                    <Eye className="size-3.5" />
+                    Ver empresa
                   </DropdownMenuItem>
                 )}
                 {notification.opportunityId && (

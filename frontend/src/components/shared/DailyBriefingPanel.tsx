@@ -435,7 +435,9 @@ export function DailyBriefingPanel({
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start justify-between gap-2">
-                              <p className="truncate text-sm font-medium">{task.title}</p>
+                              <p className="min-w-0 flex-1 break-words text-sm font-medium leading-snug">
+                                {task.title}
+                              </p>
                               <span
                                 className={cn(
                                   'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium',
@@ -446,7 +448,7 @@ export function DailyBriefingPanel({
                               </span>
                             </div>
                             {metaLine ? (
-                              <p className="mt-1 min-w-0 break-words text-xs text-muted-foreground">
+                              <p className="mt-1 min-w-0 whitespace-normal break-words text-xs leading-relaxed text-muted-foreground">
                                 {metaLine}
                               </p>
                             ) : null}

@@ -10,9 +10,11 @@ export type NotificationApiRow = {
   createdAt: string;
   read: boolean;
   type: string;
+  kind?: string;
   priority: string;
   important: boolean;
   contactId?: string;
+  companyId?: string;
   opportunityId?: string;
   activityId?: string;
 };
@@ -31,9 +33,11 @@ export function mapApiNotificationToItem(row: NotificationApiRow): NotificationI
     }),
     read: row.read,
     type: row.type as NotificationItem['type'],
+    kind: row.kind,
     priority,
     important: row.important,
     contactId: row.contactId,
+    companyId: row.companyId,
     opportunityId: row.opportunityId,
     activityId: row.activityId,
     createdAt: row.createdAt,

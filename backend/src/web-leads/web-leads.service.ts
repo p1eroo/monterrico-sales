@@ -2,13 +2,17 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 import { slugifyForUrl } from '../common/url-slug.util';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateWebLeadDto } from './dto/create-web-lead.dto';
 
 @Injectable()
 export class WebLeadsService {
   private readonly logger = new Logger(WebLeadsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   async create(dto: CreateWebLeadDto) {
     const name = dto.name?.trim() || '';
@@ -101,6 +105,20 @@ export class WebLeadsService {
     this.logger.log(
       `Web lead creado: contact=${result.contactId ?? '—'} company=${result.companyId ?? '—'} opportunity=${result.opportunityId ?? '—'}`,
     );
+
+    try {
+      await this.notifications.notifyWebLead({
+        contactId: result.contactId,
+        companyId: result.companyId,
+        opportunityId: result.opportunityId,
+        contactName: name || null,
+        companyName: company || null,
+      });
+    } catch (err) {
+      this.logger.warn(
+        `Web lead creado pero no se pudo notificar: ${err instanceof Error ? err.message : err}`,
+      );
+    }
 
     return { status: 'ok', ...result };
   }

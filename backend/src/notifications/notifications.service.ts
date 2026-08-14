@@ -1,6 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
+import { CRM_PERM_VER_DATOS_EQUIPO } from '../auth/crm-data-scope.service';
+import { NotificationsGateway } from './notifications.gateway';
 
 export type NotificationApiItem = {
   id: string;
@@ -9,15 +11,18 @@ export type NotificationApiItem = {
   createdAt: string;
   read: boolean;
   type: string;
+  kind: string;
   priority: string;
   important: boolean;
   contactId?: string;
+  companyId?: string;
   opportunityId?: string;
   activityId?: string;
 };
 
 type NotificationMeta = {
   contactId?: string;
+  companyId?: string;
   opportunityId?: string;
   activityId?: string;
 };
@@ -26,10 +31,11 @@ function parseMeta(raw: Prisma.JsonValue | null | undefined): NotificationMeta {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
   const o = raw as Record<string, unknown>;
   const contactId = typeof o.contactId === 'string' ? o.contactId : undefined;
+  const companyId = typeof o.companyId === 'string' ? o.companyId : undefined;
   const opportunityId =
     typeof o.opportunityId === 'string' ? o.opportunityId : undefined;
   const activityId = typeof o.activityId === 'string' ? o.activityId : undefined;
-  return { contactId, opportunityId, activityId };
+  return { contactId, companyId, opportunityId, activityId };
 }
 
 const PEN_FMT = new Intl.NumberFormat('es-PE', {
@@ -40,13 +46,29 @@ const PEN_FMT = new Intl.NumberFormat('es-PE', {
 
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(NotificationsService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly gateway: NotificationsGateway,
+  ) {}
+
+  private pingUsers(userIds: string[], kind: string) {
+    try {
+      this.gateway.emitToUsers(userIds, kind);
+    } catch (err) {
+      this.logger.warn(
+        `No se pudo emitir socket ${kind}: ${err instanceof Error ? err.message : err}`,
+      );
+    }
+  }
 
   private toApiItem(row: {
     id: string;
     title: string;
     body: string;
     readAt: Date | null;
+    kind: string;
     notifType: string;
     priority: string;
     important: boolean;
@@ -61,6 +83,7 @@ export class NotificationsService {
       createdAt: row.createdAt.toISOString(),
       read: row.readAt != null,
       type: row.notifType,
+      kind: row.kind,
       priority: row.priority,
       important: row.important,
       ...meta,
@@ -179,6 +202,7 @@ export class NotificationsService {
         metadata: { contactId } as Prisma.InputJsonValue,
       },
     });
+    this.pingUsers([userId], 'contact_created');
   }
 
   async notifyWhatsappInbound(params: {
@@ -231,6 +255,7 @@ export class NotificationsService {
         data: baseData,
       });
     }
+    this.pingUsers([userId], 'whatsapp_inbound');
   }
 
   async notifyOpportunityWon(params: {
@@ -253,6 +278,61 @@ export class NotificationsService {
         metadata: { opportunityId } as Prisma.InputJsonValue,
       },
     });
+    this.pingUsers([userId], 'opportunity_won');
+  }
+
+  async notifyWebLead(params: {
+    contactId?: string | null;
+    companyId?: string | null;
+    opportunityId?: string | null;
+    contactName?: string | null;
+    companyName?: string | null;
+  }): Promise<void> {
+    const users = await this.prisma.user.findMany({
+      where: {
+        status: 'activo',
+        role: {
+          authorities: {
+            some: { permission: CRM_PERM_VER_DATOS_EQUIPO },
+          },
+        },
+      },
+      select: { id: true },
+    });
+    if (users.length === 0) {
+      this.logger.warn(
+        'Web lead sin destinatarios: nadie tiene equipo.datos_completos',
+      );
+      return;
+    }
+
+    const contactName = params.contactName?.trim() || '';
+    const companyName = params.companyName?.trim() || '';
+    const who = contactName || companyName || 'Alguien';
+    const companyBit = contactName && companyName ? ` de ${companyName}` : '';
+    const body = `${who}${companyBit} quiere pertenecer a Taxi Monterrico.`;
+    const metadata: NotificationMeta = {
+      ...(params.contactId ? { contactId: params.contactId } : {}),
+      ...(params.companyId ? { companyId: params.companyId } : {}),
+      ...(params.opportunityId ? { opportunityId: params.opportunityId } : {}),
+    };
+
+    await this.prisma.crmNotification.createMany({
+      data: users.map((u) => ({
+        userId: u.id,
+        kind: 'web_lead',
+        title: 'Nuevo interesado en Taxi Monterrico',
+        body,
+        notifType: 'lead',
+        priority: 'alta',
+        important: true,
+        metadata: metadata as Prisma.InputJsonValue,
+      })),
+    });
+    this.pingUsers(
+      users.map((u) => u.id),
+      'web_lead',
+    );
   }
 
   async listForUser(userId: string, limit = 100): Promise<NotificationApiItem[]> {

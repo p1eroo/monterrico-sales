@@ -7,6 +7,7 @@ import { ImportExportModule } from '../import-export/import-export.module';
 import { FilesModule } from '../files/files.module';
 import { FlotaProspectosController } from './flota-prospectos.controller';
 import { FlowRegistroController } from './flow-registro.controller';
+import { FlotaLandingWebhookController } from './flota-landing-webhook.controller';
 import { FlotaProspectosService } from './flota-prospectos.service';
 import { FlotaOperadorStatsScheduler } from './flota-operador-stats.scheduler';
 import { GoogleSheetsService } from './google-sheets.service';
@@ -24,7 +25,11 @@ import { WhatsappModule } from '../whatsapp/whatsapp.module';
     FlotaDocumentExtractionModule,
     WhatsappModule,
   ],
-  controllers: [FlotaProspectosController, FlowRegistroController],
+  controllers: [
+    FlotaProspectosController,
+    FlowRegistroController,
+    FlotaLandingWebhookController,
+  ],
   providers: [
     FlotaProspectosService,
     GoogleSheetsService,
