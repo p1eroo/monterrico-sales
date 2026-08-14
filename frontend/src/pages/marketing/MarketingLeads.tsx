@@ -42,6 +42,7 @@ import {
   sendLeadToComercial, sendLeadToFlota, previewLeadImport, deleteFacebookLead, bulkDeleteFacebookLeads,
   facebookPlatformLabel, leadImportedToComercial,
   type FacebookLead, type FacebookForm, type LeadTableColumn,
+  type BulkLeadSelectParams,
 } from '@/lib/marketingApi';
 import {
   LeadImportForm,
@@ -58,6 +59,7 @@ import {
   type LeadImportTarget,
   type OportunidadImportForm,
 } from '@/pages/marketing/LeadImportForm';
+import { BulkLeadImportDialog } from '@/pages/marketing/BulkLeadImportDialog';
 
 const SKIP_FORM_FIELD = /^(full_?name|first_?name|last_?name|nombre|phone(_number)?|tel[eé]fono|celular|cel|email|correo|mail|inbox_url|platform|is_organic)$/i;
 
@@ -498,6 +500,8 @@ export default function MarketingLeads() {
   const [deleting, setDeleting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [colWidths, setColWidths] = useState<Record<string, number>>({});
+  const [bulkTarget, setBulkTarget] = useState<LeadImportTarget | null>(null);
+  const [bulkSelection, setBulkSelection] = useState<BulkLeadSelectParams>({});
 
   const load = async (p: number) => {
     if (!formFilter) {
@@ -673,6 +677,25 @@ export default function MarketingLeads() {
   const formLabel = forms.find((f) => f.id === formFilter)?.name ?? 'Formulario';
   const hasActiveFilters = search.trim() !== '' || Boolean(dateRange?.from || dateRange?.to);
 
+  const currentBulkSelection = (): BulkLeadSelectParams => {
+    if (selectAllMode) {
+      const bounds = dateRangeToQueryBounds(dateRange);
+      return {
+        selectAll: true,
+        formId: formFilter || undefined,
+        search: search || undefined,
+        dateFrom: bounds.from,
+        dateTo: bounds.to,
+      };
+    }
+    return { ids: Array.from(selected) };
+  };
+
+  const openBulkImport = (target: LeadImportTarget) => {
+    setBulkSelection(currentBulkSelection());
+    setBulkTarget(target);
+  };
+
   const selectForm = (id: string) => {
     setFormFilter(id);
     setSearchParams((prev) => {
@@ -728,13 +751,29 @@ export default function MarketingLeads() {
               </Button>
             )}
           </div>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setDeleteTarget({ type: 'bulk', count: selectedCount })}
-          >
-            <Trash2 className="size-4" /> Eliminar ({selectedCount})
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => openBulkImport('flota')}
+            >
+              <Send className="size-4" /> Enviar a Flota ({selectedCount})
+            </Button>
+            <Button
+              size="sm"
+              className="bg-[#13944C] text-white hover:bg-[#0f7a3d]"
+              onClick={() => openBulkImport('comercial')}
+            >
+              <Send className="size-4" /> Enviar a Comercial ({selectedCount})
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setDeleteTarget({ type: 'bulk', count: selectedCount })}
+            >
+              <Trash2 className="size-4" /> Eliminar ({selectedCount})
+            </Button>
+          </div>
         </div>
       )}
 
@@ -1003,6 +1042,20 @@ export default function MarketingLeads() {
         open={!!detailLead}
         onOpenChange={(v) => { if (!v) setDetailLead(null); }}
         onSent={() => void load(page)}
+      />
+
+      <BulkLeadImportDialog
+        open={bulkTarget !== null}
+        target={bulkTarget}
+        selection={bulkSelection}
+        onOpenChange={(v) => {
+          if (!v) setBulkTarget(null);
+        }}
+        onImported={() => {
+          setSelected(new Set());
+          setSelectAllMode(false);
+          void load(page);
+        }}
       />
     </div>
   );

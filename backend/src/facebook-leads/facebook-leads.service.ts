@@ -955,14 +955,17 @@ ${this.leadAnswersText(lead)}`;
     return { deleted: true };
   }
 
-  async bulkDeleteLeads(params: {
-    ids?: string[];
-    selectAll?: boolean;
-    formId?: string;
-    search?: string;
-    dateFrom?: string;
-    dateTo?: string;
-  }, userId: string) {
+  private async resolveBulkLeadWhere(
+    userId: string,
+    params: {
+      ids?: string[];
+      selectAll?: boolean;
+      formId?: string;
+      search?: string;
+      dateFrom?: string;
+      dateTo?: string;
+    },
+  ) {
     const { ids, selectAll, formId, search, dateFrom, dateTo } = params;
 
     const forms = await this.prisma.facebookForm.findMany({
@@ -971,7 +974,7 @@ ${this.leadAnswersText(lead)}`;
     });
     const ownFormIds = forms.map((f) => f.id);
 
-    let where: Record<string, unknown> = { formId: { in: ownFormIds } };
+    const where: Record<string, unknown> = { formId: { in: ownFormIds } };
 
     if (selectAll) {
       if (formId) where.formId = formId;
@@ -983,13 +986,201 @@ ${this.leadAnswersText(lead)}`;
           { email: { contains: s, mode: 'insensitive' } },
         ];
       }
-      if (dateFrom) where.createdTime = { ...(where.createdTime as Record<string, unknown> || {}), gte: new Date(dateFrom) };
-      if (dateTo) where.createdTime = { ...(where.createdTime as Record<string, unknown> || {}), lte: new Date(dateTo + 'T23:59:59Z') };
+      if (dateFrom) {
+        where.createdTime = {
+          ...((where.createdTime as Record<string, unknown>) || {}),
+          gte: new Date(dateFrom),
+        };
+      }
+      if (dateTo) {
+        where.createdTime = {
+          ...((where.createdTime as Record<string, unknown>) || {}),
+          lte: new Date(dateTo + 'T23:59:59Z'),
+        };
+      }
     } else if (ids?.length) {
       where.id = { in: ids };
     } else {
       throw new BadRequestException('Debes proporcionar ids o selectAll=true');
     }
+
+    return where;
+  }
+
+  async bulkPreview(
+    params: {
+      ids?: string[];
+      selectAll?: boolean;
+      formId?: string;
+      search?: string;
+      dateFrom?: string;
+      dateTo?: string;
+      target: 'flota' | 'comercial';
+      entity?: 'contacto' | 'empresa';
+    },
+    userId: string,
+  ) {
+    const target = params.target === 'comercial' ? 'comercial' : 'flota';
+    const entity = params.entity === 'empresa' ? 'empresa' : 'contacto';
+    const where = await this.resolveBulkLeadWhere(userId, params);
+    const MAX = 500;
+    const leads = await this.prisma.facebookLead.findMany({
+      where,
+      include: { form: { select: { id: true, name: true, facebookFormId: true } } },
+      orderBy: { createdTime: 'desc' },
+      take: MAX + 1,
+    });
+    const truncated = leads.length > MAX;
+    const slice = truncated ? leads.slice(0, MAX) : leads;
+    const columns =
+      target === 'flota'
+        ? [
+            { key: 'nombreCompleto', label: 'Nombre' },
+            { key: 'celular', label: 'Celular' },
+            { key: 'redSocial', label: 'Red social' },
+            { key: 'ciudad', label: 'Ciudad' },
+            { key: 'distrito', label: 'Distrito' },
+          ]
+        : entity === 'empresa'
+          ? [
+              { key: 'name', label: 'Empresa' },
+              { key: 'telefono', label: 'Teléfono' },
+              { key: 'correo', label: 'Correo' },
+              { key: 'ruc', label: 'RUC' },
+              { key: 'dominio', label: 'Dominio' },
+            ]
+          : [
+              { key: 'name', label: 'Nombre' },
+              { key: 'telefono', label: 'Teléfono' },
+              { key: 'correo', label: 'Correo' },
+              { key: 'cargo', label: 'Cargo' },
+            ];
+
+    const rows = slice.map((lead, i) => {
+      const mapped =
+        target === 'flota'
+          ? this.heuristicFlota(lead)
+          : entity === 'empresa'
+            ? this.heuristicEmpresa(lead)
+            : this.heuristicComercial(lead);
+      const already =
+        target === 'flota'
+          ? !!lead.importedAsFlotaProspectoId
+          : alreadyImportedComercial(lead);
+      let error: string | undefined;
+      if (already) {
+        error =
+          target === 'flota'
+            ? 'Ya fue enviado a Flota'
+            : 'Ya fue enviado a Comercial';
+      } else if (target === 'flota') {
+        if (!mapped.nombreCompleto?.trim() || !mapped.celular?.trim()) {
+          error = 'Faltan nombre o celular';
+        }
+      } else if (!mapped.name?.trim()) {
+        error =
+          entity === 'empresa'
+            ? 'Falta el nombre de la empresa'
+            : 'Falta el nombre';
+      }
+      return {
+        leadId: lead.id,
+        row: i + 1,
+        ok: !error,
+        error,
+        columns: mapped,
+      };
+    });
+
+    const okCount = rows.filter((r) => r.ok).length;
+    return {
+      target,
+      entity: target === 'comercial' ? entity : undefined,
+      columns,
+      rows,
+      totalRows: rows.length,
+      okCount,
+      errorCount: rows.length - okCount,
+      truncated,
+    };
+  }
+
+  async bulkSend(
+    params: {
+      ids?: string[];
+      selectAll?: boolean;
+      formId?: string;
+      search?: string;
+      dateFrom?: string;
+      dateTo?: string;
+      target: 'flota' | 'comercial';
+      entity?: 'contacto' | 'empresa';
+    },
+    userId: string,
+  ) {
+    const preview = await this.bulkPreview(params, userId);
+    let sent = 0;
+    let skipped = 0;
+    const errors: { leadId: string; error: string }[] = [];
+
+    for (const row of preview.rows) {
+      if (!row.ok) {
+        skipped += 1;
+        continue;
+      }
+      try {
+        if (preview.target === 'flota') {
+          await this.sendToFlota(row.leadId, userId, {
+            nombreCompleto: row.columns.nombreCompleto || '',
+            celular: row.columns.celular || '',
+            redSocial: row.columns.redSocial,
+            ciudad: row.columns.ciudad,
+            distrito: row.columns.distrito,
+            operador: row.columns.operador,
+            modalidad: row.columns.modalidad,
+            edad: row.columns.edad,
+            anioVehiculo: row.columns.anioVehiculo,
+            placa: row.columns.placa,
+          });
+        } else {
+          await this.sendToComercial(row.leadId, userId, {
+            entityType: preview.entity === 'empresa' ? 'empresa' : 'contacto',
+            name: row.columns.name,
+            telefono: row.columns.telefono,
+            correo: row.columns.correo,
+            cargo: row.columns.cargo,
+            ruc: row.columns.ruc,
+            dominio: row.columns.dominio,
+            distrito: row.columns.distrito,
+          });
+        }
+        sent += 1;
+      } catch (err) {
+        errors.push({
+          leadId: row.leadId,
+          error: err instanceof Error ? err.message : 'Error al importar',
+        });
+      }
+    }
+
+    return {
+      sent,
+      skipped,
+      failed: errors.length,
+      errors,
+      truncated: preview.truncated,
+    };
+  }
+
+  async bulkDeleteLeads(params: {
+    ids?: string[];
+    selectAll?: boolean;
+    formId?: string;
+    search?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }, userId: string) {
+    const where = await this.resolveBulkLeadWhere(userId, params);
 
     const leadsToDelete = await this.prisma.facebookLead.findMany({
       where,

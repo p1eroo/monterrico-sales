@@ -76,6 +76,64 @@ export class FacebookLeadsController {
     return this.facebookLeads.getFormsList(req.user.userId);
   }
 
+  @Post('leads/bulk-preview')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermissions('marketing.ver')
+  async bulkPreview(
+    @Body()
+    body: {
+      ids?: string[];
+      selectAll?: boolean;
+      formId?: string;
+      search?: string;
+      dateFrom?: string;
+      dateTo?: string;
+      target: 'flota' | 'comercial';
+      entity?: 'contacto' | 'empresa';
+    },
+    @Req() req: AuthedRequest,
+  ) {
+    return this.facebookLeads.bulkPreview(body, req.user.userId);
+  }
+
+  @Post('leads/bulk-send')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermissions('marketing.ver')
+  async bulkSend(
+    @Body()
+    body: {
+      ids?: string[];
+      selectAll?: boolean;
+      formId?: string;
+      search?: string;
+      dateFrom?: string;
+      dateTo?: string;
+      target: 'flota' | 'comercial';
+      entity?: 'contacto' | 'empresa';
+    },
+    @Req() req: AuthedRequest,
+  ) {
+    return this.facebookLeads.bulkSend(body, req.user.userId);
+  }
+
+  @Post('leads/bulk-delete')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermissions('marketing.ver')
+  async bulkDeleteLeads(
+    @Body()
+    body: {
+      ids?: string[];
+      selectAll?: boolean;
+      formId?: string;
+      search?: string;
+      dateFrom?: string;
+      dateTo?: string;
+    },
+    @Req() req: AuthedRequest,
+  ) {
+    return this.facebookLeads.bulkDeleteLeads(body, req.user.userId);
+  }
+
   @Get('leads/:id/preview-import')
   @RequirePermissions('marketing.ver')
   async previewImport(
@@ -104,12 +162,5 @@ export class FacebookLeadsController {
   @RequirePermissions('marketing.ver')
   async deleteLead(@Param('id') id: string, @Req() req: AuthedRequest) {
     return this.facebookLeads.deleteLead(id, req.user.userId);
-  }
-
-  @Post('leads/bulk-delete')
-  @HttpCode(HttpStatus.OK)
-  @RequirePermissions('marketing.ver')
-  async bulkDeleteLeads(@Body() body: { ids?: string[]; selectAll?: boolean; formId?: string; search?: string; dateFrom?: string; dateTo?: string }, @Req() req: AuthedRequest) {
-    return this.facebookLeads.bulkDeleteLeads(body, req.user.userId);
   }
 }

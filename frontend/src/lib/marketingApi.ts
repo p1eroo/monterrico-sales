@@ -239,6 +239,68 @@ export async function bulkDeleteFacebookLeads(params: {
   });
 }
 
+export type BulkLeadSelectParams = {
+  ids?: string[];
+  selectAll?: boolean;
+  formId?: string;
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
+};
+
+export type BulkLeadImportColumn = { key: string; label: string };
+
+export type BulkLeadImportPreviewRow = {
+  leadId: string;
+  row: number;
+  ok: boolean;
+  error?: string;
+  columns: Record<string, string>;
+};
+
+export type BulkLeadImportPreview = {
+  target: 'flota' | 'comercial';
+  entity?: 'contacto' | 'empresa';
+  columns: BulkLeadImportColumn[];
+  rows: BulkLeadImportPreviewRow[];
+  totalRows: number;
+  okCount: number;
+  errorCount: number;
+  truncated?: boolean;
+};
+
+export type BulkLeadImportResult = {
+  sent: number;
+  skipped: number;
+  failed: number;
+  errors: { leadId: string; error: string }[];
+  truncated?: boolean;
+};
+
+export async function previewBulkLeadImport(
+  params: BulkLeadSelectParams & {
+    target: 'flota' | 'comercial';
+    entity?: 'contacto' | 'empresa';
+  },
+): Promise<BulkLeadImportPreview> {
+  return api<BulkLeadImportPreview>('/facebook/leads/bulk-preview', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
+export async function sendBulkLeadImport(
+  params: BulkLeadSelectParams & {
+    target: 'flota' | 'comercial';
+    entity?: 'contacto' | 'empresa';
+  },
+): Promise<BulkLeadImportResult> {
+  return api<BulkLeadImportResult>('/facebook/leads/bulk-send', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
 // ─── Personal externo (Taxi Monterrico API) ───
 
 export type ExternalClientRow = {
