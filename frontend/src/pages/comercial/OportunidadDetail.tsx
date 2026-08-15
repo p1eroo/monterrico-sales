@@ -527,7 +527,6 @@ async function handleCreateNewContact(data: NewContactData) {
         cargo: data.cargo?.trim() || undefined,
         etapa: data.etapaCiclo,
         assignedTo: data.assignedTo?.trim() || opp.assignedTo || undefined,
-        estimatedValue: data.estimatedValue ?? 0,
         departamento: data.departamento?.trim() || undefined,
         provincia: data.provincia?.trim() || undefined,
         distrito: data.distrito?.trim() || undefined,

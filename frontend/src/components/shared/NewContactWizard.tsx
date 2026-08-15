@@ -53,7 +53,7 @@ export interface NewContactData {
   email: string;
   source: ContactSource;
   assignedTo: string;
-  /** @deprecated El monto es solo de empresa/oportunidad; el asistente envía 0. */
+  /** El monto vive en empresa/oportunidad; el asistente no lo envía. */
   estimatedValue?: number;
   clienteRecuperado?: 'si' | 'no';
   departamento?: string;
@@ -399,7 +399,6 @@ return () => {
       email: email.trim(),
       source,
       assignedTo,
-      estimatedValue: 0,
       clienteRecuperado,
       departamento: departamento.trim() || undefined,
       provincia: provincia.trim() || undefined,

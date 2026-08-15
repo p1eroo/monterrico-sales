@@ -12,8 +12,8 @@ export class CreateContactDto {
   cargo?: string;
   etapa?: string;
   assignedTo?: string;
-  /** Obligatorio en alta; debe ser > 0 */
-  estimatedValue!: number;
+  /** Opcional en alta. 0 u omitido: hereda del grafo (empresa / oportunidad principal). */
+  estimatedValue?: number;
   departamento?: string;
   provincia?: string;
   distrito?: string;

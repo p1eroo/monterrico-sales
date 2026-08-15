@@ -795,8 +795,6 @@ export class OpportunitiesService {
           await this.prisma.companyOpportunity.create({
             data: { companyId: comp.id, opportunityId: id },
           });
-          await this.entitySync.propagateFromCompany(comp.id, actor);
-          await this.entitySync.propagateFromOpportunityAllCompanies(id, actor);
         }
       }
     }
@@ -1245,10 +1243,6 @@ export class OpportunitiesService {
       where: { id: { in: toUpdate.map((o) => o.id) } },
       data: { assignedTo: targetId },
     });
-
-    for (const opp of toUpdate) {
-      await this.entitySync.propagateFromOpportunityAllCompanies(opp.id, actor);
-    }
 
     const advisor = await this.prisma.user.findUnique({
       where: { id: targetId },

@@ -25,10 +25,15 @@ type EtapaSyncRecord = {
 
 /**
  * Sincronización empresa ↔ contactos ↔ oportunidad principal vinculada.
+ *
+ * Dos operaciones distintas:
+ * - Alta / vínculo: el registro nuevo hereda del grafo (`inheritCommercialOntoContact`).
+ *   No pisa monto ni etapa de empresa u oportunidad.
+ * - Edición comercial explícita (monto, etapa, fuente, asesor): alinea el grafo.
+ *
  * La oportunidad principal por empresa es la de mayor probabilidad de etapa (catálogo);
  * solo ella alinea Company y contactos; las demás oportunidades de la empresa no se pisan.
- * La fuente de contacto principal y oportunidad principal se alinea con la empresa al propagar
- * desde empresa; desde contacto u oportunidad principal rige la lógica existente.
+ * Nunca se reemplaza un monto > 0 por 0.
  * Usar prisma directo aquí (no pasar por ContactsService.update) para evitar recursión.
  */
 @Injectable()
@@ -128,7 +133,10 @@ export class EntitySyncService {
     }
   }
 
-  /** Tras crear/editar un contacto vinculado: empresa y demás contactos/opps alinean a ese contacto. */
+  /**
+   * Tras una edición comercial explícita del contacto: empresa, demás contactos
+   * y oportunidad principal alinean a ese contacto. No usar en alta ni en vínculo.
+   */
   async propagateFromContact(
     companyId: string,
     contactId: string,
@@ -150,6 +158,63 @@ export class EntitySyncService {
         await this.applyContactSnapshot(tx, companyId, contact, pending);
       });
       await this.recordPendingEtapaChanges(actor, pending);
+    } finally {
+      this.unlockCompany(companyId);
+    }
+  }
+
+  /**
+   * Alta o vínculo de contacto a empresa: el contacto hereda monto/etapa del grafo.
+   * No toca empresa, otros contactos ni la oportunidad.
+   */
+  async inheritCommercialOntoContact(
+    companyId: string,
+    contactId: string,
+  ): Promise<void> {
+    if (!this.lockCompany(companyId)) return;
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const contact = await tx.contact.findUnique({
+          where: { id: contactId },
+        });
+        if (!contact) return;
+        const link = await tx.companyContact.findUnique({
+          where: {
+            companyId_contactId: { companyId, contactId },
+          },
+        });
+        if (!link) return;
+
+        const source = await this.resolveCommercialSourceTx(tx, companyId);
+        if (!source) return;
+
+        const data: Prisma.ContactUpdateInput = {};
+        if (contact.estimatedValue <= 0 && source.amount > 0) {
+          data.estimatedValue = source.amount;
+        }
+        const contactEtapa = contact.etapa.trim();
+        if (
+          (!contactEtapa || contactEtapa === 'lead') &&
+          source.etapa &&
+          source.etapa !== 'lead'
+        ) {
+          data.etapa = source.etapa;
+          const today = new Date().toISOString().slice(0, 10);
+          const prev = Array.isArray(contact.etapaHistory)
+            ? [...(contact.etapaHistory as { etapa?: string; fecha?: string }[])]
+            : [];
+          data.etapaHistory = [
+            ...prev,
+            { etapa: source.etapa, fecha: today },
+          ] as Prisma.InputJsonValue;
+        }
+        if (!contact.assignedTo && source.assignedTo) {
+          data.assignedTo = source.assignedTo;
+        }
+
+        if (Object.keys(data).length === 0) return;
+        await tx.contact.update({ where: { id: contactId }, data });
+      });
     } finally {
       this.unlockCompany(companyId);
     }
@@ -250,6 +315,54 @@ export class EntitySyncService {
     return scored[0]?.id ?? null;
   }
 
+  /** Nunca reemplaza un monto > 0 por 0. */
+  private keepPositiveAmount(incoming: number, current: number): number {
+    const next = Number(incoming);
+    const prev = Number(current);
+    const nextN = Number.isFinite(next) ? next : 0;
+    const prevN = Number.isFinite(prev) ? prev : 0;
+    if (nextN <= 0 && prevN > 0) return prevN;
+    return nextN > 0 ? nextN : prevN;
+  }
+
+  /**
+   * Fuente comercial del grafo: oportunidad principal si existe; si no, la empresa.
+   */
+  private async resolveCommercialSourceTx(
+    tx: Tx,
+    companyId: string,
+  ): Promise<{
+    amount: number;
+    etapa: string;
+    assignedTo: string | null;
+  } | null> {
+    const primaryOppId =
+      await this.resolvePrimaryOpportunityIdForCompanyTx(tx, companyId);
+    if (primaryOppId) {
+      const opp = await tx.opportunity.findUnique({
+        where: { id: primaryOppId },
+        select: { amount: true, etapa: true, assignedTo: true },
+      });
+      if (opp) {
+        return {
+          amount: Number(opp.amount) || 0,
+          etapa: opp.etapa,
+          assignedTo: opp.assignedTo,
+        };
+      }
+    }
+    const company = await tx.company.findUnique({
+      where: { id: companyId },
+      select: { facturacionEstimada: true, etapa: true, assignedTo: true },
+    });
+    if (!company) return null;
+    return {
+      amount: Number(company.facturacionEstimada) || 0,
+      etapa: company.etapa,
+      assignedTo: company.assignedTo,
+    };
+  }
+
   /**
    * Contacto principal de la empresa: `isPrimary` en el vínculo; si hay uno solo, ese;
    * si hay varios sin principal, el vinculado a la oportunidad principal de la empresa.
@@ -341,7 +454,7 @@ export class EntitySyncService {
     for (const { contactId: cid } of ccRows) {
       const contactBefore = await tx.contact.findUnique({
         where: { id: cid },
-        select: { etapa: true, name: true },
+        select: { etapa: true, name: true, estimatedValue: true },
       });
       if (!contactBefore) continue;
       await tx.contact.update({
@@ -350,7 +463,10 @@ export class EntitySyncService {
           etapa,
           fuente: contact.fuente,
           assignedTo,
-          estimatedValue: fact,
+          estimatedValue: this.keepPositiveAmount(
+            fact,
+            contactBefore.estimatedValue,
+          ),
         },
       });
       this.queueEtapaChange(pending, {
@@ -398,7 +514,7 @@ export class EntitySyncService {
     if (primaryContactId) {
       const contactBefore = await tx.contact.findUnique({
         where: { id: primaryContactId },
-        select: { etapa: true, name: true },
+        select: { etapa: true, name: true, estimatedValue: true },
       });
       if (contactBefore) {
         await tx.contact.update({
@@ -407,7 +523,10 @@ export class EntitySyncService {
             etapa,
             fuente: syncFuente,
             assignedTo,
-            estimatedValue: fact,
+            estimatedValue: this.keepPositiveAmount(
+              fact,
+              contactBefore.estimatedValue,
+            ),
           },
         });
         this.queueEtapaChange(pending, {
@@ -467,13 +586,16 @@ export class EntitySyncService {
 
     const companyBefore = await tx.company.findUnique({
       where: { id: companyId },
-      select: { etapa: true, name: true },
+      select: { etapa: true, name: true, facturacionEstimada: true },
     });
     if (companyBefore) {
       await tx.company.update({
         where: { id: companyId },
         data: {
-          facturacionEstimada: fact,
+          facturacionEstimada: this.keepPositiveAmount(
+            fact,
+            companyBefore.facturacionEstimada,
+          ),
           fuente,
           etapa,
           assignedTo,
@@ -496,7 +618,7 @@ export class EntitySyncService {
     for (const { contactId: cid } of ccRows) {
       const contactBefore = await tx.contact.findUnique({
         where: { id: cid },
-        select: { etapa: true, name: true },
+        select: { etapa: true, name: true, estimatedValue: true },
       });
       if (!contactBefore) continue;
       await tx.contact.update({
@@ -505,7 +627,10 @@ export class EntitySyncService {
           etapa,
           fuente,
           assignedTo,
-          estimatedValue: fact,
+          estimatedValue: this.keepPositiveAmount(
+            fact,
+            contactBefore.estimatedValue,
+          ),
         },
       });
       this.queueEtapaChange(pending, {
@@ -532,7 +657,7 @@ export class EntitySyncService {
   ) {
     const oppBefore = await tx.opportunity.findUnique({
       where: { id: opportunityId },
-      select: { etapa: true, title: true },
+      select: { etapa: true, title: true, amount: true },
     });
     if (!oppBefore) return;
 
@@ -543,7 +668,7 @@ export class EntitySyncService {
     await tx.opportunity.update({
       where: { id: opportunityId },
       data: {
-        amount: patch.amount,
+        amount: this.keepPositiveAmount(patch.amount, oppBefore.amount),
         etapa: patch.etapa,
         assignedTo: patch.assignedTo,
         status,

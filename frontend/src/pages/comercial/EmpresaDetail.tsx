@@ -977,7 +977,7 @@ async function handleCreateNewContact(data: NewContactData) {
     });
     const optimisticContact: Contact = {
       ...baseOpt,
-      etapa: 'lead',
+      etapa: data.etapaCiclo || 'lead',
       companies: [{ name: companyData?.name ?? companyName, id: resolvedCompanyId, isPrimary: true }],
     };
 
@@ -986,8 +986,7 @@ async function handleCreateNewContact(data: NewContactData) {
       telefono: (data.phone || '').trim() || '000000000',
       correo: (data.email || '').trim() || `noreply-${Date.now()}@temp.local`,
       fuente: data.source,
-      etapa: 'lead',
-      estimatedValue: 0,
+      etapa: data.etapaCiclo || 'lead',
       companyId: resolvedCompanyId,
       cargo: data.cargo?.trim() || undefined,
       clienteRecuperado: data.clienteRecuperado,

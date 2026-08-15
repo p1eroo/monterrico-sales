@@ -17,7 +17,6 @@ export async function createContactFromWizardForCompany(
     correo: (data.email || '').trim() || `noreply-${Date.now()}@temp.local`,
     fuente: data.source,
     etapa: data.etapaCiclo || 'lead',
-    estimatedValue: 0,
     companyId,
     cargo: data.cargo?.trim() || undefined,
     clienteRecuperado: data.clienteRecuperado,

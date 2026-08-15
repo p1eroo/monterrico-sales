@@ -422,11 +422,14 @@ export class ContactsService {
         });
 
         if (effectiveCompanyId) {
+          const existingLinks = await tx.companyContact.count({
+            where: { companyId: effectiveCompanyId },
+          });
           await tx.companyContact.create({
             data: {
               contactId: created.id,
               companyId: effectiveCompanyId,
-              isPrimary: true,
+              isPrimary: existingLinks === 0,
             },
           });
         }
@@ -436,7 +439,10 @@ export class ContactsService {
     );
 
     if (effectiveCompanyId) {
-      await this.entitySync.propagateFromContact(effectiveCompanyId, row.id, actor);
+      await this.entitySync.inheritCommercialOntoContact(
+        effectiveCompanyId,
+        row.id,
+      );
     }
 
     await this.activityLogs.record(actor ?? null, {
@@ -967,12 +973,16 @@ export class ContactsService {
       data: data as Prisma.ContactUpdateInput,
     });
 
-    const links = await this.prisma.companyContact.findMany({
-      where: { contactId: id },
-      select: { companyId: true },
-    });
-    for (const { companyId } of links) {
-      await this.entitySync.propagateFromContact(companyId, id, actor);
+    const touchedCommercial =
+      dto.etapa !== undefined || dto.estimatedValue !== undefined;
+    if (touchedCommercial) {
+      const links = await this.prisma.companyContact.findMany({
+        where: { contactId: id },
+        select: { companyId: true },
+      });
+      for (const { companyId } of links) {
+        await this.entitySync.propagateFromContact(companyId, id, actor);
+      }
     }
 
     const etapaChanged =
@@ -1191,16 +1201,6 @@ export class ContactsService {
       data: { assignedTo: targetId },
     });
 
-    for (const contact of toUpdate) {
-      const links = await this.prisma.companyContact.findMany({
-        where: { contactId: contact.id },
-        select: { companyId: true },
-      });
-      for (const { companyId } of links) {
-        await this.entitySync.propagateFromContact(companyId, contact.id, actor);
-      }
-    }
-
     const advisor = await this.prisma.user.findUnique({
       where: { id: targetId },
       select: { name: true },
@@ -1319,10 +1319,17 @@ export class ContactsService {
     if (existing) {
       throw new BadRequestException('El contacto ya está vinculado a esta empresa');
     }
-    await this.prisma.companyContact.create({
-      data: { contactId, companyId, isPrimary },
+    const existingCount = await this.prisma.companyContact.count({
+      where: { companyId },
     });
-    await this.entitySync.propagateFromContact(companyId, contactId, actor);
+    await this.prisma.companyContact.create({
+      data: {
+        contactId,
+        companyId,
+        isPrimary: isPrimary || existingCount === 0,
+      },
+    });
+    await this.entitySync.inheritCommercialOntoContact(companyId, contactId);
     if (actor) {
       const contactRow = await this.prisma.contact.findUnique({
         where: { id: contactId },
