@@ -188,7 +188,7 @@ export class EntitySyncService {
         const source = await this.resolveCommercialSourceTx(tx, companyId);
         if (!source) return;
 
-        const data: Prisma.ContactUpdateInput = {};
+        const data: Prisma.ContactUncheckedUpdateInput = {};
         if (contact.estimatedValue <= 0 && source.amount > 0) {
           data.estimatedValue = source.amount;
         }
