@@ -129,9 +129,6 @@ export default function Dashboard() {
   const [activityGoalsByUserId, setActivityGoalsByUserId] = useState<
     Record<string, ActivityGoalTargets>
   >({});
-  const [activityGoalsLatestWeek, setActivityGoalsLatestWeek] = useState<
-    Record<string, ActivityGoalTargets>
-  >({});
   const [activitiesAdvisorDetailOpen, setActivitiesAdvisorDetailOpen] = useState(false);
   const [activitiesAdvisorDetailSelection, setActivitiesAdvisorDetailSelection] =
     useState<ActivitiesByAdvisorStackedRow | null>(null);
@@ -333,13 +330,8 @@ export default function Dashboard() {
   );
 
   useEffect(() => {
-    const dayStart = activitiesAdvisorSelectedWeek?.weekStart;
-    if (!dayStart) {
-      setActivityGoalsByUserId({});
-      return;
-    }
     let cancelled = false;
-    void fetchCrmDailyActivityGoals(dayStart.slice(0, 10))
+    void fetchCrmDailyActivityGoals()
       .then((data) => {
         if (!cancelled) setActivityGoalsByUserId(data.byUserId ?? {});
       })
@@ -349,26 +341,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [activitiesAdvisorSelectedWeek?.weekStart]);
-
-  useEffect(() => {
-    const dayStart = latestActivityPeriod?.weekStart;
-    if (!dayStart) {
-      setActivityGoalsLatestWeek({});
-      return;
-    }
-    let cancelled = false;
-    void fetchCrmDailyActivityGoals(dayStart.slice(0, 10))
-      .then((data) => {
-        if (!cancelled) setActivityGoalsLatestWeek(data.byUserId ?? {});
-      })
-      .catch(() => {
-        if (!cancelled) setActivityGoalsLatestWeek({});
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [latestActivityPeriod?.weekStart]);
+  }, []);
 
   const latestActivityPeriodIndex = Math.max(
     0,
@@ -388,7 +361,7 @@ export default function Dashboard() {
     if (canSeeAllAdvisors) return null;
     const row = activitiesByAdvisorLatestWeek.advisors[0];
     if (!row) return null;
-    const target = activityGoalsLatestWeek[row.advisorId];
+    const target = activityGoalsByUserId[row.advisorId];
     if (!target || activityGoalTotalForPeriod(target, 'day') <= 0) return null;
     return {
       row,
@@ -397,7 +370,7 @@ export default function Dashboard() {
     };
   }, [
     activitiesByAdvisorLatestWeek,
-    activityGoalsLatestWeek,
+    activityGoalsByUserId,
     canSeeAllAdvisors,
     latestActivityPeriod?.name,
   ]);
@@ -1006,12 +979,6 @@ export default function Dashboard() {
         open={activityGoalsDialogOpen}
         onOpenChange={setActivityGoalsDialogOpen}
         goalPeriod="day"
-        dayStart={activitiesAdvisorSelectedWeek?.weekStart ?? null}
-        dayLabel={
-          activitiesAdvisorSelectedWeek?.name ??
-          activitiesByAdvisorStackedView.weekLabel ??
-          null
-        }
         advisors={activityGoalsAdvisors}
         onSaved={setActivityGoalsByUserId}
       />

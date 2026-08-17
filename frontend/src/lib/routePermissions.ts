@@ -28,6 +28,7 @@ export const ACCESSIBLE_PATH_ORDER: PathRule[] = [
   { path: APP_PATHS.clientCompanies, permission: 'clientes.ver' },
   { path: APP_PATHS.clientContacts, permission: 'clientes.ver' },
   { path: APP_PATHS.clientTasks, permission: 'actividades.ver' },
+  { path: APP_PATHS.clientReports, permission: 'clientes.ver' },
   { path: '/reports', permission: 'reportes.ver' },
   { path: '/archivos', permission: 'archivos.ver' },
   { path: '/team', permission: 'equipo.ver' },

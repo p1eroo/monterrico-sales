@@ -78,6 +78,7 @@ const navItems: NavDef[] = [
       { to: APP_PATHS.clientCompanies, label: 'Empresas', icon: Buildings2SvgIcon },
       { to: APP_PATHS.clientContacts, label: 'Contactos', icon: UsersGroupTwoRoundedSvgIcon },
       { to: APP_PATHS.clientTasks, label: 'Tareas', icon: DocumentAddSvgIcon },
+      { to: APP_PATHS.clientReports, label: 'Reportes', icon: ChatSquare2SvgIcon },
     ],
   },
   { to: '/reports', label: 'Reportes', icon: ChatSquare2SvgIcon, permission: 'reportes.ver' },

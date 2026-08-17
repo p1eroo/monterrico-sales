@@ -11,7 +11,11 @@ export type ActivitiesByTypeHeatmapData = {
 };
 
 export function buildActivitiesByTypeHeatmapData(
-  snapshot: ActivitiesByTypeWeeklyApi | null | undefined,
+  snapshot:
+    | Pick<ActivitiesByTypeWeeklyApi, 'weeks' | 'types' | 'maxCount'>
+    | { weeks: { name: string }[]; types: { label: string; counts: number[]; total: number }[]; maxCount: number }
+    | null
+    | undefined,
 ): ActivitiesByTypeHeatmapData {
   const weeks = snapshot?.weeks?.map((week) => week.name) ?? [];
   const types = snapshot?.types ?? [];

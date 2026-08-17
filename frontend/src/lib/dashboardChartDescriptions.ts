@@ -56,6 +56,34 @@ export const reportsKpiDescriptions = {
     'Tareas con fecha de completado dentro del periodo filtrado, según asesores seleccionados.',
 } as const;
 
+export const clienteReportsKpiDescriptions = {
+  totalEmpresas:
+    'Empresas actuales de la cartera de Clientes, según asesores seleccionados. No usa el filtro de fechas: es el inventario al momento de la consulta.',
+  altasInRange:
+    'Empresas de cartera con fecha de alta dentro del periodo filtrado. La variación compara los últimos 7 días con los 7 días anteriores.',
+  ingresos:
+    'Suma de ingresos del mes actual reportados por Taxi Monterrico para las empresas de cartera visibles. Es un snapshot, no un acumulado del rango de fechas.',
+  tasksCompleted:
+    'Tareas de Clientes (vinculadas a empresa o contacto de cartera) completadas en el periodo filtrado.',
+} as const;
+
+export const clienteReportsChartDescriptions = {
+  byStatus:
+    'Distribución actual de empresas de cartera por estado: activo, inactivo y potencial.',
+  ingresosByAdvisor:
+    'Ingresos del mes actual por asesor comercial del CRM (mismo criterio que Reportes). Solo usuarios con rol de asesor activo en comercial.',
+  altas:
+    'Altas de empresas (fecha de alta) y contactos de cartera creados, agrupados por mes dentro del periodo filtrado.',
+  monthlyBilling:
+    'Facturación mensual reportada por Taxi Monterrico (últimos meses de cada empresa). No depende del filtro de fechas.',
+  byAdvisor:
+    'Empresas de cartera, contactos y tareas completadas en el periodo, agrupados por asesor comercial del CRM.',
+  activities:
+    'Llamadas, reuniones y correos de Clientes completados por semana dentro del periodo filtrado.',
+  tasks:
+    'Tareas de Clientes completadas por tipo (llamada, reunión y correo) y semana dentro del periodo filtrado.',
+} as const;
+
 export const reportsChartDescriptions = {
   activeProspects:
     'Empresas creadas en el año en curso en etapas de prospecto (10%–100%), con distribución semanal en las últimas 6 semanas.',

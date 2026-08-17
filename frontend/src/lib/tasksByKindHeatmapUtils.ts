@@ -10,7 +10,11 @@ export type TasksByKindHeatmapData = {
 };
 
 export function buildTasksByKindHeatmapData(
-  snapshot: TasksByKindWeeklyApi | null | undefined,
+  snapshot:
+    | Pick<TasksByKindWeeklyApi, 'weeks' | 'kinds' | 'maxCount'>
+    | { weeks: { name: string }[]; kinds: { label: string; counts: number[]; total: number }[]; maxCount: number }
+    | null
+    | undefined,
 ): TasksByKindHeatmapData {
   const weeks = snapshot?.weeks?.map((week) => week.name) ?? [];
   const kinds = snapshot?.kinds ?? [];

@@ -110,12 +110,12 @@ export function ActivityGoalsDialog({
   }, [advisors, draft]);
 
   const loadGoals = useCallback(async () => {
-    if (!periodKey) return;
+    if (goalPeriod === 'week' && !periodKey) return;
     setLoading(true);
     try {
       const data =
         goalPeriod === 'day'
-          ? await fetchCrmDailyActivityGoals(periodKey)
+          ? await fetchCrmDailyActivityGoals()
           : await fetchCrmActivityGoals(periodKey);
       setCanEdit(data.canEdit);
       setDraft(data.byUserId ?? {});
@@ -131,9 +131,10 @@ export function ActivityGoalsDialog({
   }, [goalPeriod, periodKey]);
 
   useEffect(() => {
-    if (!open || !periodKey) return;
+    if (!open) return;
+    if (goalPeriod === 'week' && !periodKey) return;
     void loadGoals();
-  }, [open, periodKey, loadGoals]);
+  }, [open, periodKey, loadGoals, goalPeriod]);
 
   useEffect(() => {
     if (!open) {
@@ -162,7 +163,8 @@ export function ActivityGoalsDialog({
   };
 
   const save = async () => {
-    if (!periodKey || !canEdit) return;
+    if (goalPeriod === 'week' && !periodKey) return;
+    if (!canEdit) return;
     setSaving(true);
     try {
       const byUserId: Record<string, ActivityGoalTargets> = {};
@@ -171,7 +173,7 @@ export function ActivityGoalsDialog({
       }
       const data =
         goalPeriod === 'day'
-          ? await putCrmDailyActivityGoals({ dayStart: periodKey, byUserId })
+          ? await putCrmDailyActivityGoals({ byUserId })
           : await putCrmActivityGoals({ weekStart: periodKey, byUserId });
       setDraft(data.byUserId ?? {});
       onSaved?.(data.byUserId ?? {});
@@ -190,13 +192,12 @@ export function ActivityGoalsDialog({
     }
   };
 
-  const description = periodLabel
-    ? goalPeriod === 'day'
-      ? `${periodLabel} · objetivos diarios por asesor. El total de avance usa contacto (meta) + reuniones.`
-      : `Semana ${periodLabel} · objetivos semanales por asesor y tipo de actividad.`
-    : goalPeriod === 'day'
-      ? 'Objetivos diarios por asesor. El total de avance usa contacto (meta) + reuniones.'
-      : 'Objetivos semanales por asesor y tipo de actividad.';
+  const description =
+    goalPeriod === 'day'
+      ? 'Objetivos diarios por asesor (vigentes hasta nuevo cambio). El avance diario usa contacto + reuniones.'
+      : periodLabel
+        ? `Semana ${periodLabel} · objetivos semanales por asesor y tipo de actividad.`
+        : 'Objetivos semanales por asesor y tipo de actividad.';
 
   return (
     <FormDialogShell

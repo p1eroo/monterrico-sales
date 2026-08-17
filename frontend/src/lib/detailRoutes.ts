@@ -7,6 +7,7 @@ export const APP_PATHS = {
   clientCompanies: '/clients/companies',
   clientContacts: '/clients/contacts',
   clientTasks: '/clients/tareas',
+  clientReports: '/clients/reports',
 } as const;
 
 /**

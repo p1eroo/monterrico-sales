@@ -397,11 +397,10 @@ model CrmUserWeeklyActivityTarget {
   @@index([weekStart])
 }
 
-/** Meta diaria de actividades completadas por asesor (solo dashboard operativo). */
+/** Meta diaria persistente por asesor (dashboard operativo; avance medido por día). */
 model CrmUserDailyActivityTarget {
   id               String   @id @default(cuid())
-  userId           String
-  dayStart         DateTime @db.Date
+  userId           String   @unique
   contactoTarget   Int      @default(0)
   noContactoTarget Int      @default(0)
   reunionesTarget  Int      @default(0)
@@ -409,9 +408,6 @@ model CrmUserDailyActivityTarget {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, dayStart])
-  @@index([dayStart])
 }
 
 model Contact {

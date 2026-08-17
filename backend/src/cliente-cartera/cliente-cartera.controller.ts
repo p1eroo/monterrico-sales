@@ -15,6 +15,7 @@ import { RequirePermissions } from '../auth/decorators/require-permissions.decor
 import { CrmDataScopeService } from '../auth/crm-data-scope.service';
 import { ClienteCarteraService } from './cliente-cartera.service';
 import { ClienteCarteraSyncService } from './cliente-cartera-sync.service';
+import { ClienteCarteraAnalyticsService } from './cliente-cartera-analytics.service';
 import { CreateContactoClienteDto } from './dto/create-contacto-cliente.dto';
 import { UpdateContactoClienteDto } from './dto/update-contacto-cliente.dto';
 import { LinkContactoClienteDto } from './dto/link-contacto-cliente.dto';
@@ -29,8 +30,34 @@ export class ClienteCarteraController {
   constructor(
     private readonly carteraService: ClienteCarteraService,
     private readonly syncService: ClienteCarteraSyncService,
+    private readonly analyticsService: ClienteCarteraAnalyticsService,
     private readonly crmDataScope: CrmDataScopeService,
   ) {}
+
+  @Get('analytics/summary')
+  @RequirePermissions('clientes.ver')
+  async analyticsSummary(
+    @Req() req: AuthedReq,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('assignedTo') assignedTo?: string,
+    @Query('excludeAssignedTo') excludeAssignedTo?: string,
+    @Query('advisorPool') advisorPool?: string,
+  ) {
+    const scope = await this.crmDataScope.buildScope(
+      req.user.userId,
+      req.user.roleId,
+    );
+    return this.analyticsService.getSummary({
+      from,
+      to,
+      assignedTo,
+      excludeAssignedTo,
+      advisorPool,
+      crmScope: scope,
+      username: req.user.username,
+    });
+  }
 
   @Get('empresas')
   @RequirePermissions('clientes.ver')

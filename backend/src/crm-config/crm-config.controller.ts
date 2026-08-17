@@ -173,14 +173,8 @@ export class CrmConfigController {
   }
 
   @Get('daily-activity-goals')
-  getDailyActivityGoals(
-    @Req() req: AuthedReq,
-    @Query('dayStart') dayStart: string,
-  ) {
-    if (!dayStart?.trim()) {
-      throw new BadRequestException('dayStart requerido');
-    }
-    return this.crmConfig.getDailyActivityGoals(req.user.userId, dayStart);
+  getDailyActivityGoals(@Req() req: AuthedReq) {
+    return this.crmConfig.getDailyActivityGoals(req.user.userId);
   }
 
   @Put('daily-activity-goals')
@@ -188,7 +182,6 @@ export class CrmConfigController {
     @Req() req: AuthedReq,
     @Body()
     body: {
-      dayStart: string;
       byUserId: Record<
         string,
         {
@@ -200,9 +193,6 @@ export class CrmConfigController {
       >;
     },
   ) {
-    if (!body?.dayStart?.trim()) {
-      throw new BadRequestException('dayStart requerido');
-    }
     return this.crmConfig.putDailyActivityGoals(req.user.userId, body);
   }
 }

@@ -1046,13 +1046,8 @@ export class CrmConfigService implements OnModuleInit {
     return this.getActivityGoals(userId, body.weekStart);
   }
 
-  private parseActivityGoalDayStart(dayStartRaw: string): Date {
-    return this.parseActivityGoalWeekStart(dayStartRaw);
-  }
-
-  async getDailyActivityGoals(userId: string, dayStartRaw: string) {
+  async getDailyActivityGoals(userId: string) {
     await this.ensureReady();
-    const dayStart = this.parseActivityGoalDayStart(dayStartRaw);
 
     const hasConfigVer = await this.userHasPermission(userId, 'configuracion.ver');
     const hasOppEdit = await this.userHasPermission(userId, 'oportunidades.editar');
@@ -1072,10 +1067,7 @@ export class CrmConfigService implements OnModuleInit {
       hasConfigVer || hasTeamData || (supervisorLike && hasOppEdit);
 
     const rows = await this.prisma.crmUserDailyActivityTarget.findMany({
-      where: {
-        dayStart,
-        ...(canSeeTeam ? {} : { userId }),
-      },
+      where: canSeeTeam ? {} : { userId },
       select: {
         userId: true,
         contactoTarget: true,
@@ -1096,7 +1088,6 @@ export class CrmConfigService implements OnModuleInit {
     }
 
     return {
-      dayStart: dayStart.toISOString(),
       byUserId,
       canEdit: await this.canEditActivityGoals(userId),
     };
@@ -1105,13 +1096,11 @@ export class CrmConfigService implements OnModuleInit {
   async putDailyActivityGoals(
     userId: string,
     body: {
-      dayStart: string;
       byUserId: Record<string, Partial<ActivityGoalTargetsDto>>;
     },
   ) {
     await this.ensureReady();
     await this.assertCanEditActivityGoals(userId);
-    const dayStart = this.parseActivityGoalDayStart(body.dayStart);
 
     await this.prisma.$transaction(async (tx) => {
       for (const [uid, targets] of Object.entries(body.byUserId ?? {})) {
@@ -1131,18 +1120,15 @@ export class CrmConfigService implements OnModuleInit {
 
         if (total <= 0) {
           await tx.crmUserDailyActivityTarget.deleteMany({
-            where: { userId: uid, dayStart },
+            where: { userId: uid },
           });
           continue;
         }
 
         await tx.crmUserDailyActivityTarget.upsert({
-          where: {
-            userId_dayStart: { userId: uid, dayStart },
-          },
+          where: { userId: uid },
           create: {
             userId: uid,
-            dayStart,
             contactoTarget: normalized.contacto,
             noContactoTarget: normalized.noContacto,
             reunionesTarget: normalized.reuniones,
@@ -1158,7 +1144,7 @@ export class CrmConfigService implements OnModuleInit {
       }
     });
 
-    return this.getDailyActivityGoals(userId, body.dayStart);
+    return this.getDailyActivityGoals(userId);
   }
 
   /** Filas de etapa para importación CSV (solo habilitadas). */
