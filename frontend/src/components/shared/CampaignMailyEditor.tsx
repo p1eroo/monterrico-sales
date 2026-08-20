@@ -67,8 +67,8 @@ const MAIL_RENDER_CONFIG = {
       paddingLeft: 0,
     },
     font: {
-      fontFamily: 'Arial',
-      fallbackFontFamily: 'Helvetica',
+      fontFamily: 'Arial' as const,
+      fallbackFontFamily: 'Helvetica' as const,
     },
   },
   variableFormatter: ({ variable }: { variable: string }) => `{{${variable}}}`,
