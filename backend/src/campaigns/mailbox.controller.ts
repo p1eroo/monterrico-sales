@@ -1,7 +1,19 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  Res,
+  StreamableFile,
+  UseGuards,
+} from '@nestjs/common';
+import type { Response } from 'express';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { MailboxService, type MailboxFolder } from './mailbox.service';
+import { ReplyMailboxThreadDto } from './dto/reply-mailbox-thread.dto';
 
 @Controller('campaigns/mailbox')
 @UseGuards(PermissionsGuard)
@@ -27,9 +39,35 @@ export class MailboxController {
     });
   }
 
+  @Get('messages/:messageId/attachments/:attachmentId')
+  @RequirePermissions('campanas.ver')
+  async downloadAttachment(
+    @Param('messageId') messageId: string,
+    @Param('attachmentId') attachmentId: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { data, filename, mimeType } = await this.mailbox.downloadAttachment(
+      messageId,
+      attachmentId,
+    );
+    const safeName = filename.replace(/[\r\n"]/g, '_').slice(0, 180) || 'adjunto';
+    res.set({
+      'Content-Type': mimeType,
+      'Content-Disposition': `attachment; filename="${encodeURIComponent(safeName)}"`,
+      'Content-Length': data.length.toString(),
+    });
+    return new StreamableFile(data);
+  }
+
   @Get('threads/:id')
   @RequirePermissions('campanas.ver')
   getThread(@Param('id') id: string) {
     return this.mailbox.getThread(id);
+  }
+
+  @Post('threads/:id/reply')
+  @RequirePermissions('campanas.ver')
+  reply(@Param('id') id: string, @Body() body: ReplyMailboxThreadDto) {
+    return this.mailbox.replyToThread(id, body.htmlBody ?? '');
   }
 }

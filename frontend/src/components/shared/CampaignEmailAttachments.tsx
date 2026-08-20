@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
-import { Paperclip, Trash2, Upload } from 'lucide-react';
+import { Trash2, Upload } from 'lucide-react';
 import type { CampaignAttachment } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -95,9 +95,9 @@ export function CampaignEmailAttachments({ attachments, onChange }: Props) {
   );
 
   const onInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const list = e.target.files;
+    const files = e.target.files ? Array.from(e.target.files) : [];
     e.target.value = '';
-    if (list?.length) void ingestFiles(list);
+    if (files.length) void ingestFiles(files);
   };
 
   const onDragOver = (e: DragEvent) => {
@@ -124,8 +124,8 @@ export function CampaignEmailAttachments({ attachments, onChange }: Props) {
   };
 
   return (
-    <div className="space-y-2">
-      <Label className="text-sm font-medium">Archivos adjuntos</Label>
+    <div className="space-y-2 text-[#111827]">
+      <Label className="text-sm font-medium text-[#111827]">Archivos adjuntos</Label>
       <div
         role="button"
         tabIndex={0}
@@ -140,9 +140,9 @@ export function CampaignEmailAttachments({ attachments, onChange }: Props) {
         onDragLeave={onDragLeave}
         onDrop={onDrop}
         className={cn(
-          'flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-4 py-6 text-center transition-colors',
-          dragOver && 'border-primary bg-primary/5',
-          !dragOver && 'border-muted-foreground/25 hover:border-primary/40 hover:bg-muted/40',
+          'flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 px-4 py-6 text-center transition-colors',
+          dragOver && 'border-[#13944C] bg-[#13944C]/5',
+          !dragOver && 'hover:border-[#13944C]/40 hover:bg-slate-50',
           busy && 'pointer-events-none opacity-60',
         )}
       >
@@ -151,49 +151,40 @@ export function CampaignEmailAttachments({ attachments, onChange }: Props) {
           type="file"
           multiple
           className="sr-only"
+          onClick={(e) => e.stopPropagation()}
           onChange={onInputChange}
           disabled={busy}
         />
-        <Upload className="size-8 text-muted-foreground" aria-hidden />
-        <p className="mt-2 text-sm font-medium text-foreground">
+        <Upload className="size-8 text-slate-500" aria-hidden />
+        <p className="mt-2 text-sm font-medium text-[#111827]">
           Arrastra archivos aquí o haz clic para elegir
         </p>
-        <p className="mt-1 max-w-md text-xs text-muted-foreground">
+        <p className="mt-1 max-w-md text-xs text-slate-500">
           Hasta {MAX_FILES} archivos · máx. {formatBytes(MAX_BYTES_PER_FILE)} cada uno
         </p>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="mt-3 pointer-events-none"
-          tabIndex={-1}
-        >
-          <Paperclip className="size-4" />
-          Añadir archivos
-        </Button>
       </div>
 
       {attachments.length > 0 && (
         <ul
-          className="space-y-1.5 rounded-md border bg-muted/20 p-2"
+          className="space-y-1.5 rounded-md border border-slate-200 bg-slate-50 p-2"
           onClick={(e) => e.stopPropagation()}
         >
           {attachments.map((a) => (
             <li
               key={a.id}
-              className="flex items-center justify-between gap-2 rounded-md bg-background px-2 py-1.5 text-sm"
+              className="flex items-center justify-between gap-2 rounded-md bg-white px-2 py-1.5 text-sm text-[#111827]"
             >
               <span className="min-w-0 truncate" title={a.fileName}>
                 {a.fileName}
               </span>
-              <span className="shrink-0 text-xs text-muted-foreground">
+              <span className="shrink-0 text-xs text-slate-500">
                 {formatBytes(a.sizeBytes)}
               </span>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon-sm"
-                className="shrink-0 text-muted-foreground hover:text-destructive"
+                className="shrink-0 text-slate-500 hover:text-destructive"
                 aria-label={`Quitar ${a.fileName}`}
                 onClick={(e) => {
                   e.stopPropagation();

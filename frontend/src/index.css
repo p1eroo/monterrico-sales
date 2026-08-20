@@ -587,6 +587,11 @@
     }
 }
 
+/* Editor visual Maily (estudio de campañas) */
+.campaign-maily-editor {
+    min-height: 360px;
+}
+
 /* Tiptap: placeholder en editor de campaña (email) */
 .campaign-email-editor .tiptap p.is-editor-empty:first-child::before {
     content: attr(data-placeholder);
@@ -594,6 +599,9 @@
     color: var(--muted-foreground);
     pointer-events: none;
     height: 0;
+}
+.campaign-email-editor.campaign-email-editor-studio .tiptap p.is-editor-empty:first-child::before {
+    color: #94a3b8;
 }
 
 /* Tiptap: asas de redimensionado de imagen (ResizableNodeView no define tamaño por defecto) */

@@ -15,6 +15,11 @@ export type GmailMessageBodyProps = {
    * `theme`: se integra con el tema de la app (buzón de campañas).
    */
   tone?: 'canvas' | 'theme';
+  /**
+   * `start`: el bloque de 600px de Maily se alinea a la izquierda
+   * (como el editor), en lugar de centrarse en un iframe ancho.
+   */
+  contentAlign?: 'center' | 'start';
 };
 
 function resolveBodyParts({
@@ -55,6 +60,13 @@ const CANVAS_CSS = `
   table { max-width: 100%; }
 `;
 
+const START_ALIGN_CSS = `
+  table[align="center"] {
+    margin-left: 0 !important;
+    margin-right: auto !important;
+  }
+`;
+
 function stripLightOnDarkInlineStyles(html: string) {
   return html
     .replace(
@@ -67,8 +79,9 @@ function stripLightOnDarkInlineStyles(html: string) {
     );
 }
 
-function wrapCanvasSrcDoc(inner: string) {
-  const styleTag = `<style data-crm-mail>${CANVAS_CSS}</style>`;
+function wrapCanvasSrcDoc(inner: string, contentAlign: 'center' | 'start' = 'center') {
+  const extra = contentAlign === 'start' ? START_ALIGN_CSS : '';
+  const styleTag = `<style data-crm-mail>${CANVAS_CSS}${extra}</style>`;
   if (/<head[\s>]/i.test(inner)) {
     return inner.replace(/<head([^>]*)>/i, `<head$1>${styleTag}`);
   }
@@ -84,6 +97,7 @@ export function GmailMessageBody({
   body,
   subject,
   tone = 'canvas',
+  contentAlign = 'center',
 }: GmailMessageBodyProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { html, text } = useMemo(
@@ -97,8 +111,8 @@ export function GmailMessageBody({
   }, [html, text, tone]);
 
   const srcDoc = useMemo(
-    () => (tone === 'canvas' ? wrapCanvasSrcDoc(sanitizedHtml) : ''),
-    [sanitizedHtml, tone],
+    () => (tone === 'canvas' ? wrapCanvasSrcDoc(sanitizedHtml, contentAlign) : ''),
+    [sanitizedHtml, tone, contentAlign],
   );
 
   const resizeIframe = useCallback(() => {

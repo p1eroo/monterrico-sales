@@ -148,6 +148,22 @@ function applyTemplate(
     .replace(/\{\{email\}\}/g, r.email ?? '');
 }
 
+/**
+ * Maily/react-email centra el lienzo (align="center" + max-width 600px).
+ * Eso hace que un mensaje alineado a la izquierda en el editor se vea
+ * centrado en Gmail. Los CTA (botón) conservan su alineación.
+ */
+function leftAlignMailyLayout(html: string): string {
+  if (!html) return html;
+  return html.replace(/<table\b[^>]*>/gi, (tag) => {
+    if (!/align=["']center["']/i.test(tag)) return tag;
+    if (/max-width:\s*37\.5em/i.test(tag) || /text-align:\s*center/i.test(tag)) {
+      return tag;
+    }
+    return tag.replace(/align=["']center["']/i, 'align="left"');
+  });
+}
+
 function buildAttachments(
   dto?: { fileName: string; mimeType?: string; contentBase64: string }[],
 ): MailAttachmentInput[] | undefined {
@@ -205,6 +221,17 @@ function bodyFromMessageJson(msg: unknown, status: string): string {
   return b;
 }
 
+function editorJsonFromMessageJson(msg: unknown): unknown {
+  if (msg == null || typeof msg !== 'object') {
+    return undefined;
+  }
+  const j = (msg as Record<string, unknown>).editorJson;
+  if (j && typeof j === 'object') {
+    return j;
+  }
+  return undefined;
+}
+
 function recipientsFromResultsJson(results: unknown): unknown[] {
   if (!Array.isArray(results)) {
     return [];
@@ -258,6 +285,7 @@ export class CampaignsService {
       (row.subjectSnapshot ?? '').trim() ||
       subjectFromMessageJson(row.messageJson);
     const body = bodyFromMessageJson(row.messageJson, row.status);
+    const editorJson = editorJsonFromMessageJson(row.messageJson);
 
     return {
       id: row.id,
@@ -270,6 +298,7 @@ export class CampaignsService {
         body,
         variables: [] as string[],
         attachments: [] as unknown[],
+        ...(editorJson != null ? { editorJson } : {}),
       },
       subjectSnapshot: row.subjectSnapshot ?? undefined,
       recipients,
@@ -293,6 +322,8 @@ export class CampaignsService {
     page = 1,
     limit = 50,
     search?: string,
+    statuses?: string[],
+    channels?: string[],
   ): Promise<{
     items: CampaignSummaryItem[];
     total: number;
@@ -302,9 +333,16 @@ export class CampaignsService {
     const take = Math.min(Math.max(1, limit), 200);
     const safePage = Math.max(1, page);
     const skip = (safePage - 1) * take;
-    const where = search?.trim()
-      ? { name: { contains: search.trim(), mode: 'insensitive' as const } }
-      : {};
+    const where: Prisma.CampaignWhereInput = {};
+    if (search?.trim()) {
+      where.name = { contains: search.trim(), mode: 'insensitive' };
+    }
+    if (statuses?.length) {
+      where.status = { in: statuses };
+    }
+    if (channels?.length) {
+      where.channel = { in: channels };
+    }
 
     const [total, rows] = await Promise.all([
       this.prisma.campaign.count({ where }),
@@ -643,11 +681,13 @@ export class CampaignsService {
         email,
         company: r.company,
       });
-      const html = applyTemplate(htmlTpl, {
-        name: r.name,
-        email,
-        company: r.company,
-      });
+      const html = leftAlignMailyLayout(
+        applyTemplate(htmlTpl, {
+          name: r.name,
+          email,
+          company: r.company,
+        }),
+      );
 
       const sentAt = new Date().toISOString();
       try {

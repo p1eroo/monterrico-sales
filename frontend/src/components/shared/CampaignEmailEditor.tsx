@@ -442,9 +442,16 @@ export type CampaignEmailEditorProps = {
   compact?: boolean;
   /** Muestra el borde/anillo del contenedor. Desactívalo cuando ya va dentro de otro contenedor */
   bordered?: boolean;
+  /** Lienzo de correo (fondo blanco, tipografía de mensaje) */
+  variant?: 'default' | 'studio';
   /** Expone la instancia del editor (p. ej. insertar firma desde el panel de redacción) */
   onEditorReady?: (editor: Editor | null) => void;
 };
+
+export function insertCampaignVariable(editor: Editor | null, token: string) {
+  if (!editor) return;
+  editor.chain().focus().insertContent(token).run();
+}
 
 export function CampaignEmailEditor({
   initialHtml,
@@ -453,6 +460,7 @@ export function CampaignEmailEditor({
   placeholder = 'Escribe tu mensaje. Usa {{nombre}} para personalizar.',
   compact = false,
   bordered = true,
+  variant = 'default',
   onEditorReady,
 }: CampaignEmailEditorProps) {
   const editor = useEditor(
@@ -497,9 +505,12 @@ export function CampaignEmailEditor({
       editorProps: {
         attributes: {
           class: cn(
-            'tiptap max-w-none px-3 py-2 text-sm leading-relaxed',
-            compact ? 'min-h-[120px]' : 'min-h-[260px]',
-            'focus:outline-none',
+            'tiptap max-w-none leading-relaxed focus:outline-none',
+            compact
+              ? 'min-h-[120px] px-3 py-2 text-sm'
+              : variant === 'studio'
+                ? 'min-h-[360px] px-1 py-2 text-[15px] text-[#111827]'
+                : 'min-h-[260px] px-3 py-2 text-sm',
             '[&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5',
             '[&_blockquote]:border-l-2 [&_blockquote]:border-muted-foreground/30 [&_blockquote]:pl-3 [&_blockquote]:italic',
           ),
@@ -518,7 +529,9 @@ export function CampaignEmailEditor({
   return (
     <div
       className={cn(
-        'campaign-email-editor bg-background',
+        'campaign-email-editor',
+        variant === 'studio' ? 'bg-transparent' : 'bg-background',
+        variant === 'studio' && 'campaign-email-editor-studio',
         bordered &&
           'rounded-md border border-border shadow-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ring-offset-background dark:shadow-sm',
       )}

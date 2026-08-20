@@ -21,10 +21,19 @@ export type InboundEmailListItem = {
   receivedAt: string;
 };
 
+export type InboundEmailAttachment = {
+  id?: string;
+  filename?: string;
+  contentType?: string;
+  contentDisposition?: string;
+  contentId?: string;
+  size?: number;
+};
+
 export type InboundEmailDetail = InboundEmailListItem & {
   html?: string;
   text?: string;
-  attachments: { filename?: string; contentType?: string; size?: number }[];
+  attachments: InboundEmailAttachment[];
 };
 
 function asStringArray(value: unknown): string[] {
@@ -45,14 +54,19 @@ function asIsoDate(value: unknown, fallback = new Date()): Date {
   return fallback;
 }
 
-function attachmentsFromUnknown(value: unknown): Prisma.InputJsonValue {
+export function parseInboundAttachments(value: unknown): InboundEmailAttachment[] {
   if (!Array.isArray(value)) return [];
   return value.map((item) => {
     if (!item || typeof item !== 'object') return {};
     const a = item as Record<string, unknown>;
     return {
       id: a.id != null ? String(a.id) : undefined,
-      filename: a.filename != null ? String(a.filename) : undefined,
+      filename:
+        a.filename != null
+          ? String(a.filename)
+          : a.file_name != null
+            ? String(a.file_name)
+            : undefined,
       contentType:
         a.content_type != null
           ? String(a.content_type)
@@ -62,11 +76,22 @@ function attachmentsFromUnknown(value: unknown): Prisma.InputJsonValue {
       contentDisposition:
         a.content_disposition != null
           ? String(a.content_disposition)
-          : undefined,
-      contentId: a.content_id != null ? String(a.content_id) : undefined,
+          : a.contentDisposition != null
+            ? String(a.contentDisposition)
+            : undefined,
+      contentId:
+        a.content_id != null
+          ? String(a.content_id)
+          : a.contentId != null
+            ? String(a.contentId)
+            : undefined,
       size: typeof a.size === 'number' ? a.size : undefined,
     };
-  }) as Prisma.InputJsonValue;
+  });
+}
+
+function attachmentsFromUnknown(value: unknown): Prisma.InputJsonValue {
+  return parseInboundAttachments(value) as Prisma.InputJsonValue;
 }
 
 function headerValue(
@@ -290,6 +315,14 @@ export class InboundEmailService {
       return row;
     }
 
+    const incomingAttachments = attachmentsFromUnknown(
+      (data as { attachments?: unknown }).attachments,
+    );
+    const keepAttachments =
+      Array.isArray(incomingAttachments) && incomingAttachments.length > 0
+        ? incomingAttachments
+        : undefined;
+
     return this.prisma.resendInboundEmail.update({
       where: { resendEmailId },
       data: {
@@ -298,8 +331,49 @@ export class InboundEmailService {
         subject: data.subject?.trim() ? data.subject : row.subject,
         fromEmail: data.from?.trim() ? data.from : row.fromEmail,
         toEmails: asStringArray(data.to).length ? asStringArray(data.to) : row.toEmails,
+        ...(keepAttachments ? { attachmentsJson: keepAttachments } : {}),
       },
     });
+  }
+
+  async downloadAttachment(
+    inboundId: string,
+    attachmentId: string,
+  ): Promise<{ data: Buffer; filename: string; mimeType: string }> {
+    const row = await this.prisma.resendInboundEmail.findUnique({
+      where: { id: inboundId },
+    });
+    if (!row) {
+      throw new NotFoundException('Correo no encontrado');
+    }
+    if (!this.mail.isConfigured()) {
+      throw new BadRequestException('Resend no configurado');
+    }
+
+    let meta = await this.mail
+      .getReceivingAttachment(row.resendEmailId, attachmentId)
+      .catch(() => null);
+    if (!meta?.downloadUrl) {
+      const listed = await this.mail.listReceivingAttachments(row.resendEmailId);
+      meta = listed.find((a) => a.id === attachmentId) ?? null;
+    }
+    if (!meta?.downloadUrl) {
+      throw new NotFoundException('Adjunto no encontrado');
+    }
+
+    const data = await this.mail.downloadFromUrl(meta.downloadUrl);
+    const stored = parseInboundAttachments(row.attachmentsJson).find(
+      (a) => a.id === attachmentId,
+    );
+    const filename =
+      meta.filename?.trim() ||
+      stored?.filename?.trim() ||
+      'adjunto';
+    const mimeType =
+      meta.contentType?.trim() ||
+      stored?.contentType?.trim() ||
+      'application/octet-stream';
+    return { data, filename, mimeType };
   }
 
   private attachmentCount(json: unknown): number {
@@ -343,17 +417,7 @@ export class InboundEmailService {
     attachmentsJson: unknown;
     receivedAt: Date;
   }): InboundEmailDetail {
-    const attachments = Array.isArray(row.attachmentsJson)
-      ? row.attachmentsJson.map((a) => {
-          const rec = a && typeof a === 'object' ? (a as Record<string, unknown>) : {};
-          return {
-            filename: rec.filename != null ? String(rec.filename) : undefined,
-            contentType:
-              rec.contentType != null ? String(rec.contentType) : undefined,
-            size: typeof rec.size === 'number' ? rec.size : undefined,
-          };
-        })
-      : [];
+    const attachments = parseInboundAttachments(row.attachmentsJson);
     return {
       ...this.toListItem(row),
       html: row.html ?? undefined,

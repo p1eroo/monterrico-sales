@@ -15,6 +15,16 @@ export type MailAttachmentInput = {
   contentType?: string;
 };
 
+export type ResendStoredAttachment = {
+  id: string;
+  filename?: string;
+  contentType?: string;
+  contentDisposition?: string;
+  contentId?: string;
+  size?: number;
+  downloadUrl?: string;
+};
+
 const DEFAULT_FROM = 'Taxi Monterrico <monterrico@taximonterrico.info>';
 
 @Injectable()
@@ -77,9 +87,17 @@ export class MailService {
     });
   }
 
+  fromAddress(): string {
+    return this.getFromAddress();
+  }
+
   private getFromAddress(): string {
     const from = this.config.get<string>('RESEND_FROM')?.trim();
     return from && from.length > 0 ? from : DEFAULT_FROM;
+  }
+
+  private apiKey(): string {
+    return this.config.get<string>('RESEND_API_KEY')?.trim() ?? '';
   }
 
   /**
@@ -92,6 +110,7 @@ export class MailService {
     html: string;
     attachments?: MailAttachmentInput[];
     tags?: { name: string; value: string }[];
+    headers?: Record<string, string>;
   }): Promise<{ id: string }> {
     try {
       const { data, error } = await this.getResend().emails.send({
@@ -105,6 +124,9 @@ export class MailService {
           ...(a.contentType ? { contentType: a.contentType } : {}),
         })),
         ...(params.tags?.length ? { tags: params.tags } : {}),
+        ...(params.headers && Object.keys(params.headers).length
+          ? { headers: params.headers }
+          : {}),
       });
       if (error) {
         throw new Error(error.message || JSON.stringify(error));
@@ -120,6 +142,136 @@ export class MailService {
       this.logger.warn(`Fallo Resend para ${params.to}: ${msg}`);
       throw err;
     }
+  }
+
+  async listReceivingAttachments(
+    emailId: string,
+  ): Promise<ResendStoredAttachment[]> {
+    return this.listAttachmentsJson(
+      `/emails/receiving/${encodeURIComponent(emailId)}/attachments`,
+    );
+  }
+
+  async getReceivingAttachment(
+    emailId: string,
+    attachmentId: string,
+  ): Promise<ResendStoredAttachment | null> {
+    const rec = await this.getJson(
+      `/emails/receiving/${encodeURIComponent(emailId)}/attachments/${encodeURIComponent(attachmentId)}`,
+    );
+    return rec ? this.parseStoredAttachment(rec) : null;
+  }
+
+  async listSentAttachments(emailId: string): Promise<ResendStoredAttachment[]> {
+    return this.listAttachmentsJson(
+      `/emails/${encodeURIComponent(emailId)}/attachments`,
+    );
+  }
+
+  async downloadFromUrl(url: string): Promise<Buffer> {
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`No se pudo descargar el adjunto (${res.status})`);
+    }
+    return Buffer.from(await res.arrayBuffer());
+  }
+
+  private async resendFetch(path: string): Promise<Response> {
+    const key = this.apiKey();
+    if (!key) {
+      throw new ServiceUnavailableException(
+        'Resend no configurado. Define RESEND_API_KEY en el entorno.',
+      );
+    }
+    return fetch(`https://api.resend.com${path}`, {
+      headers: { Authorization: `Bearer ${key}` },
+    });
+  }
+
+  private async getJson(path: string): Promise<Record<string, unknown> | null> {
+    const res = await this.resendFetch(path);
+    if (res.status === 404) return null;
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || `Resend ${res.status}`);
+    }
+    const body = (await res.json()) as unknown;
+    if (body && typeof body === 'object' && !Array.isArray(body)) {
+      const rec = body as Record<string, unknown>;
+      if (rec.data && typeof rec.data === 'object' && !Array.isArray(rec.data)) {
+        return rec.data as Record<string, unknown>;
+      }
+      return rec;
+    }
+    return null;
+  }
+
+  private async listAttachmentsJson(
+    path: string,
+  ): Promise<ResendStoredAttachment[]> {
+    const res = await this.resendFetch(path);
+    if (res.status === 404) return [];
+    if (!res.ok) {
+      const text = await res.text();
+      this.logger.warn(`Adjuntos Resend ${path}: ${text || res.status}`);
+      return [];
+    }
+    const body = (await res.json()) as unknown;
+    const list = Array.isArray(body)
+      ? body
+      : body && typeof body === 'object' && Array.isArray((body as { data?: unknown }).data)
+        ? (body as { data: unknown[] }).data
+        : [];
+    return list
+      .map((item) => this.parseStoredAttachment(item))
+      .filter((a): a is ResendStoredAttachment => Boolean(a));
+  }
+
+  private parseStoredAttachment(item: unknown): ResendStoredAttachment | null {
+    if (!item || typeof item !== 'object') return null;
+    const a = item as Record<string, unknown>;
+    const id = a.id != null ? String(a.id).trim() : '';
+    if (!id) return null;
+    const filename =
+      a.filename != null
+        ? String(a.filename)
+        : a.file_name != null
+          ? String(a.file_name)
+          : undefined;
+    const contentType =
+      a.content_type != null
+        ? String(a.content_type)
+        : a.contentType != null
+          ? String(a.contentType)
+          : undefined;
+    const contentDisposition =
+      a.content_disposition != null
+        ? String(a.content_disposition)
+        : a.contentDisposition != null
+          ? String(a.contentDisposition)
+          : undefined;
+    const contentId =
+      a.content_id != null
+        ? String(a.content_id)
+        : a.contentId != null
+          ? String(a.contentId)
+          : undefined;
+    const downloadUrl =
+      a.download_url != null
+        ? String(a.download_url)
+        : a.downloadUrl != null
+          ? String(a.downloadUrl)
+          : undefined;
+    const size = typeof a.size === 'number' ? a.size : undefined;
+    return {
+      id,
+      filename,
+      contentType,
+      contentDisposition,
+      contentId,
+      size,
+      downloadUrl,
+    };
   }
 
   /*

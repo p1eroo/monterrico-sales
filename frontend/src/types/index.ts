@@ -548,6 +548,8 @@ export interface CampaignMessageTemplate {
   body: string;
   channel: CampaignChannel;
   createdAt: string;
+  /** Documento Maily/TipTap; si falta, el cuerpo se carga como HTML. */
+  editorJson?: Record<string, unknown>;
 }
 
 /** Adjunto del correo en el constructor de campaña (mock: data URL; en producción, URL tras subida) */
@@ -567,6 +569,8 @@ export interface CampaignMessage {
   variables?: string[];
   /** Solo canal email: archivos adjuntos al envío */
   attachments?: CampaignAttachment[];
+  /** Documento del editor visual (Maily). El HTML de envío sigue en body. */
+  editorJson?: Record<string, unknown>;
 }
 
 export interface CampaignRecipientResult {

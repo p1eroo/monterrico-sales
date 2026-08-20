@@ -21,6 +21,24 @@ import { RequirePermissions } from '../auth/decorators/require-permissions.decor
 
 type AuthedRequest = { user: { userId: string; name: string } };
 
+const CAMPAIGN_STATUSES = new Set([
+  'draft',
+  'sending',
+  'sent',
+  'failed',
+  'cancelled',
+]);
+const CAMPAIGN_CHANNELS = new Set(['email', 'sms', 'whatsapp']);
+
+function parseCsv(raw: string | undefined, allowed: Set<string>): string[] | undefined {
+  if (!raw?.trim()) return undefined;
+  const values = raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => allowed.has(s));
+  return values.length ? values : undefined;
+}
+
 @Controller('campaigns')
 @UseGuards(PermissionsGuard)
 export class CampaignsController {
@@ -32,13 +50,19 @@ export class CampaignsController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('channel') channel?: string,
   ) {
     const p = page ? Number.parseInt(page, 10) : 1;
     const l = limit ? Number.parseInt(limit, 10) : 50;
+    const statuses = parseCsv(status, CAMPAIGN_STATUSES);
+    const channels = parseCsv(channel, CAMPAIGN_CHANNELS);
     return this.campaignsService.findSummariesPage(
       Number.isFinite(p) && p > 0 ? p : 1,
       Number.isFinite(l) && l > 0 ? l : 50,
       search,
+      statuses,
+      channels,
     );
   }
 

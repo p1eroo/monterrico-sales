@@ -65,10 +65,24 @@ export default defineConfig(({ command }) => {
         '@': path.resolve(__dirname, './src'),
         recharts: path.resolve(__dirname, 'node_modules/recharts/lib/index.js'),
       },
-      dedupe: ['react', 'react-dom', 'react-is'],
+      dedupe: [
+        'react',
+        'react-dom',
+        'react-is',
+        '@tiptap/core',
+        '@tiptap/react',
+        '@tiptap/pm',
+      ],
     },
     optimizeDeps: {
-      include: ['recharts', 'react-is', 'es-toolkit'],
+      include: [
+        'recharts',
+        'react-is',
+        'es-toolkit',
+        '@maily-to/core',
+        '@maily-to/core/extensions',
+        '@maily-to/render',
+      ],
     },
     build: {
       commonjsOptions: {

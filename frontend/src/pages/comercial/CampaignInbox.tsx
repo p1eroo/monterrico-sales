@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react';
-import { ChevronLeft, Inbox, Search, Send } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronLeft, Inbox, Loader2, Search, Send, Trash2 } from 'lucide-react';
 import {
+  downloadMailboxAttachment,
   getMailboxThreadApi,
   listMailboxThreadsApi,
+  replyMailboxThreadApi,
+  type MailboxAttachment,
   type MailboxFolder,
   type MailboxMessage,
   type MailboxThreadSummary,
@@ -12,19 +15,107 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { GmailMessageBody } from '@/components/shared/GmailMessageBody';
 import { SenderAvatar } from '@/components/shared/SenderAvatar';
+import { CampaignEmailEditor } from '@/components/shared/CampaignEmailEditor';
 import { formatDateTime } from '@/lib/formatters';
+import { notify } from '@/lib/notify';
 import { cn } from '@/lib/utils';
+import { Attach2SvgIcon } from '@/components/icons/Attach2SvgIcon';
+import { FileDownloadSvgIcon } from '@/components/icons/FileDownloadSvgIcon';
+import { JpgSvgIcon } from '@/components/icons/JpgSvgIcon';
+import { PdfSvgIcon } from '@/components/icons/PdfSvgIcon';
+import { ReplySvgIcon } from '@/components/icons/ReplySvgIcon';
+import { XlsSvgIcon } from '@/components/icons/XlsSvgIcon';
 
 function formatListTime(iso: string) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
   const now = new Date();
-  const sameDay =
-    d.toDateString() === now.toDateString();
+  const sameDay = d.toDateString() === now.toDateString();
   if (sameDay) {
     return d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
   }
   return d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' });
+}
+
+function extractEmail(raw: string): string {
+  const match = raw.match(/<([^>]+)>/);
+  return (match?.[1] ?? raw).trim();
+}
+
+function getAttachmentIcon(filename?: string, mimeType?: string) {
+  const name = (filename ?? '').toLowerCase();
+  const mime = (mimeType ?? '').toLowerCase();
+  const ext = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1) : '';
+
+  if (mime.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'heic'].includes(ext)) {
+    return JpgSvgIcon;
+  }
+  if (
+    mime.includes('spreadsheet') ||
+    mime.includes('excel') ||
+    ['xls', 'xlsx', 'xlsm', 'csv'].includes(ext)
+  ) {
+    return XlsSvgIcon;
+  }
+  return PdfSvgIcon;
+}
+
+function MessageAttachments({
+  messageId,
+  attachments,
+}: {
+  messageId: string;
+  attachments: MailboxAttachment[];
+}) {
+  if (!attachments.length) return null;
+  return (
+    <div className="mt-4 rounded-xl bg-muted/50 p-4">
+      <div className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+        <Attach2SvgIcon className="size-5" />
+        {attachments.length} {attachments.length === 1 ? 'Adjunto' : 'Adjuntos'}
+      </div>
+      <div className="flex flex-wrap gap-3">
+        {attachments.map((att, i) => {
+          const AttachmentIcon = getAttachmentIcon(att.filename, att.contentType);
+          const canDownload = Boolean(att.id);
+          return (
+            <button
+              key={att.id ?? `${att.filename ?? 'file'}-${i}`}
+              type="button"
+              disabled={!canDownload}
+              onClick={() => {
+                if (!att.id) return;
+                downloadMailboxAttachment(
+                  messageId,
+                  att.id,
+                  att.filename || 'adjunto',
+                ).catch(() => notify.error('Error al descargar el archivo'));
+              }}
+              className={cn(
+                'flex items-center gap-3 rounded-lg border bg-background px-3 py-2 text-left transition-colors',
+                canDownload
+                  ? 'cursor-pointer hover:bg-muted/40'
+                  : 'cursor-default opacity-70',
+              )}
+            >
+              <AttachmentIcon className="size-9 shrink-0" />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">
+                  {att.filename || 'Archivo'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {typeof att.size === 'number' && att.size > 0
+                    ? `${(att.size / 1024).toFixed(1)} KB`
+                    : 'Archivo'}
+                  {canDownload ? ' · Descargar' : ''}
+                </p>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export default function CampaignInboxPage() {
@@ -39,7 +130,13 @@ export default function CampaignInboxPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<MailboxMessage[]>([]);
   const [threadSubject, setThreadSubject] = useState('');
+  const [threadCounterpart, setThreadCounterpart] = useState('');
   const [detailLoading, setDetailLoading] = useState(false);
+  const [replyOpen, setReplyOpen] = useState(false);
+  const [replyHtml, setReplyHtml] = useState('');
+  const [replyResetKey, setReplyResetKey] = useState(0);
+  const [sendingReply, setSendingReply] = useState(false);
+  const replyBoxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setServerSearch(searchInput.trim()), 400);
@@ -49,6 +146,9 @@ export default function CampaignInboxPage() {
   useEffect(() => {
     setSelectedId(null);
     setMessages([]);
+    setThreadCounterpart('');
+    setReplyOpen(false);
+    setReplyHtml('');
   }, [folder, serverSearch]);
 
   useEffect(() => {
@@ -80,22 +180,79 @@ export default function CampaignInboxPage() {
     };
   }, [folder, serverSearch]);
 
+  const discardReply = useCallback(() => {
+    setReplyOpen(false);
+    setReplyHtml('');
+    setReplyResetKey((k) => k + 1);
+  }, []);
+
   const openThread = async (id: string) => {
     setSelectedId(id);
     setDetailLoading(true);
     setMessages([]);
+    discardReply();
     try {
       const t = await getMailboxThreadApi(id);
       setThreadSubject(t.subject);
+      setThreadCounterpart(t.counterpart);
       setMessages(t.messages);
     } catch {
       setMessages([]);
+      setThreadCounterpart('');
     } finally {
       setDetailLoading(false);
     }
   };
 
   const selected = items.find((i) => i.id === selectedId);
+
+  const replyToEmail = useMemo(() => {
+    const inbound = [...messages].reverse().find((m) => m.direction === 'inbound');
+    if (inbound) return extractEmail(inbound.fromEmail);
+    return extractEmail(threadCounterpart || selected?.counterpart || '');
+  }, [messages, threadCounterpart, selected?.counterpart]);
+
+  useEffect(() => {
+    if (!replyOpen) return;
+    const t = setTimeout(() => {
+      replyBoxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 100);
+    return () => clearTimeout(t);
+  }, [replyOpen]);
+
+  const handleSendReply = async () => {
+    if (!selectedId || !replyToEmail) return;
+    const bodyText = replyHtml.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+    if (!bodyText) {
+      notify.error('Escribe un mensaje antes de enviar');
+      return;
+    }
+    setSendingReply(true);
+    try {
+      const updated = await replyMailboxThreadApi(selectedId, replyHtml);
+      setThreadSubject(updated.subject);
+      setThreadCounterpart(updated.counterpart);
+      setMessages(updated.messages);
+      discardReply();
+      notify.success('Respuesta enviada', 'Tu mensaje fue enviado');
+      try {
+        const res = await listMailboxThreadsApi({
+          folder,
+          limit: 80,
+          search: serverSearch || undefined,
+        });
+        setItems(res.items);
+        setInboxCount(res.inboxCount);
+        setSentCount(res.sentCount);
+      } catch {
+        /* la conversación ya se actualizó */
+      }
+    } catch (e) {
+      notify.error(e instanceof Error ? e.message : 'Error al enviar la respuesta');
+    } finally {
+      setSendingReply(false);
+    }
+  };
 
   return (
     <div className="flex h-[calc(100vh-7rem)] min-h-0 flex-col overflow-hidden rounded-xl border bg-card">
@@ -204,11 +361,16 @@ export default function CampaignInboxPage() {
                         {row.lastDirection === 'outbound' ? 'Tú: ' : ''}
                         {row.preview || '—'}
                       </p>
-                      {row.inboundCount > 0 && row.outboundCount > 0 && (
-                        <Badge variant="secondary" className="mt-1 h-5 text-[10px]">
-                          Conversación
-                        </Badge>
-                      )}
+                      <div className="mt-1 flex items-center gap-2">
+                        {row.inboundCount > 0 && row.outboundCount > 0 && (
+                          <Badge variant="secondary" className="h-5 text-[10px]">
+                            Conversación
+                          </Badge>
+                        )}
+                        {row.hasAttachments && (
+                          <FileDownloadSvgIcon className="size-4 text-muted-foreground" />
+                        )}
+                      </div>
                     </div>
                   </button>
                 );
@@ -241,6 +403,17 @@ export default function CampaignInboxPage() {
                 <h2 className="min-w-0 flex-1 truncate font-medium">
                   {threadSubject || selected?.subject || '(Sin asunto)'}
                 </h2>
+                {replyToEmail && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 shrink-0 text-foreground/70 hover:text-foreground"
+                    onClick={() => setReplyOpen(true)}
+                    title="Responder"
+                  >
+                    <ReplySvgIcon className="size-5" />
+                  </Button>
+                )}
                 {selected && selected.inboundCount > 0 && selected.outboundCount > 0 && (
                   <Badge variant="secondary" className="shrink-0 text-[10px]">
                     Conversación
@@ -257,6 +430,7 @@ export default function CampaignInboxPage() {
                   {!detailLoading &&
                     messages.map((msg, idx) => {
                       const outbound = msg.direction === 'outbound';
+                      const isLast = idx === messages.length - 1;
                       return (
                         <div
                           key={msg.id}
@@ -275,6 +449,17 @@ export default function CampaignInboxPage() {
                               </div>
                             </div>
                             <div className="flex shrink-0 flex-col items-end gap-1">
+                              {isLast && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-8 text-foreground/70 hover:text-foreground"
+                                  onClick={() => setReplyOpen(true)}
+                                  title="Responder"
+                                >
+                                  <ReplySvgIcon className="size-5" />
+                                </Button>
+                              )}
                               <Badge variant="outline" className="text-[10px] font-normal">
                                 {outbound ? 'Enviado' : 'Recibido'}
                               </Badge>
@@ -297,9 +482,63 @@ export default function CampaignInboxPage() {
                                 : '(Sin contenido)'}
                             </p>
                           )}
+                          <MessageAttachments
+                            messageId={msg.id}
+                            attachments={msg.attachments ?? []}
+                          />
                         </div>
                       );
                     })}
+
+                  {replyOpen && replyToEmail && (
+                    <div
+                      ref={replyBoxRef}
+                      className="mt-6 rounded-xl border border-border bg-background shadow-sm"
+                    >
+                      <div className="flex items-center gap-2 border-b border-dashed border-border px-4 py-3">
+                        <ReplySvgIcon className="size-4 shrink-0 text-muted-foreground" />
+                        <span className="truncate text-sm text-muted-foreground">
+                          Para:{' '}
+                          <span className="text-foreground">{replyToEmail}</span>
+                        </span>
+                      </div>
+                      <div className="p-3">
+                        <CampaignEmailEditor
+                          initialHtml=""
+                          onChange={setReplyHtml}
+                          resetKey={replyResetKey}
+                          placeholder="Escribe tu respuesta..."
+                          compact
+                          bordered={false}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between gap-2 border-t border-dashed border-border px-4 py-3">
+                        <Button
+                          className="bg-[#13944C] hover:bg-[#0f7a3d]"
+                          disabled={sendingReply}
+                          onClick={() => void handleSendReply()}
+                        >
+                          {sendingReply ? (
+                            <>
+                              <Loader2 className="mr-2 size-4 animate-spin" />
+                              Enviando...
+                            </>
+                          ) : (
+                            'Enviar'
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:text-foreground"
+                          onClick={discardReply}
+                          title="Descartar"
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </>

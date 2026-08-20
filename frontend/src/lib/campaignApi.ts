@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api, apiBlob } from './api';
 import type {
   Campaign,
   CampaignAttachment,
@@ -186,11 +186,15 @@ export async function listCampaignSummariesApi(params?: {
   page?: number;
   limit?: number;
   search?: string;
+  status?: string[];
+  channel?: string[];
 }): Promise<CampaignListPage> {
   const q = new URLSearchParams();
   if (params?.page != null) q.set('page', String(params.page));
   if (params?.limit != null) q.set('limit', String(params.limit));
   if (params?.search?.trim()) q.set('search', params.search.trim());
+  if (params?.status?.length) q.set('status', params.status.join(','));
+  if (params?.channel?.length) q.set('channel', params.channel.join(','));
   const qs = q.toString();
   return api<CampaignListPage>(`/campaigns${qs ? `?${qs}` : ''}`);
 }
@@ -289,6 +293,14 @@ export type MailboxThreadSummary = {
   lastDirection: 'inbound' | 'outbound';
   inboundCount: number;
   outboundCount: number;
+  hasAttachments?: boolean;
+};
+
+export type MailboxAttachment = {
+  id?: string;
+  filename?: string;
+  contentType?: string;
+  size?: number;
 };
 
 export type MailboxMessage = {
@@ -301,6 +313,7 @@ export type MailboxMessage = {
   text?: string;
   at: string;
   status?: string;
+  attachments?: MailboxAttachment[];
 };
 
 export type MailboxThreadPage = {
@@ -327,11 +340,41 @@ export async function listMailboxThreadsApi(params?: {
   return api<MailboxThreadPage>(`/campaigns/mailbox${qs ? `?${qs}` : ''}`);
 }
 
-export async function getMailboxThreadApi(id: string): Promise<{
+export type MailboxThreadDetail = {
   id: string;
   subject: string;
   counterpart: string;
   messages: MailboxMessage[];
-}> {
+};
+
+export async function getMailboxThreadApi(id: string): Promise<MailboxThreadDetail> {
   return api(`/campaigns/mailbox/threads/${encodeURIComponent(id)}`);
+}
+
+export async function replyMailboxThreadApi(
+  id: string,
+  htmlBody: string,
+): Promise<MailboxThreadDetail> {
+  return api(`/campaigns/mailbox/threads/${encodeURIComponent(id)}/reply`, {
+    method: 'POST',
+    body: JSON.stringify({ htmlBody }),
+  });
+}
+
+export async function downloadMailboxAttachment(
+  messageId: string,
+  attachmentId: string,
+  filename: string,
+): Promise<void> {
+  const blob = await apiBlob(
+    `/campaigns/mailbox/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachmentId)}`,
+  );
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = filename || 'adjunto';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(blobUrl);
 }
