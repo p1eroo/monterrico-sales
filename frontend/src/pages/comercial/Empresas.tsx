@@ -6,11 +6,14 @@ import * as XLSX from 'xlsx';
 import {
   Search, Users, Briefcase,
   Plus, Loader2,
-  Eye, Pencil, Trash2, MoreVertical,
+  Trash2, MoreVertical,
   X, ChevronDown,
   ChevronsUpDown, ChevronUp,
 } from 'lucide-react';
 import { Buildings2SvgIcon } from '@/components/icons/Buildings2SvgIcon';
+import { EyeSvgIcon } from '@/components/icons/EyeSvgIcon';
+import { PencilFileSvgIcon } from '@/components/icons/PencilFileSvgIcon';
+import { TrashSvgIcon } from '@/components/icons/TrashSvgIcon';
 import {
   flexRender,
   getCoreRowModel,
@@ -136,6 +139,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuTriggerButton,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { GhostTableSkeleton } from '@/components/shared/GhostTableSkeleton';
@@ -735,17 +739,15 @@ export default function EmpresasPage() {
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="Acciones">
-                  <MoreVertical className="size-4" />
-                </Button>
+                <DropdownMenuTriggerButton />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
                 <DropdownMenuItem onClick={() => openCompanyPreview(emp)}>
-                  <Eye /> Vista previa
+                  <EyeSvgIcon /> Vista previa
                 </DropdownMenuItem>
                 {hasPermission('empresas.editar') && (
                   <DropdownMenuItem onClick={() => openCompanyEdit(emp)}>
-                    <Pencil /> Editar
+                    <PencilFileSvgIcon /> Editar
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
@@ -754,7 +756,7 @@ export default function EmpresasPage() {
                     variant="destructive"
                     onClick={() => requestDeleteCompany(emp)}
                   >
-                    <Trash2 /> Eliminar
+                    <TrashSvgIcon /> Eliminar
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
@@ -2295,9 +2297,7 @@ export default function EmpresasPage() {
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon-xs" aria-label="Acciones">
-                          <MoreVertical className="size-3.5" />
-                        </Button>
+                        <DropdownMenuTriggerButton className="size-6" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent
                         align="end"
@@ -2309,7 +2309,7 @@ export default function EmpresasPage() {
                             openCompanyPreview(emp);
                           }}
                         >
-                          <Eye /> Vista previa
+                          <EyeSvgIcon /> Vista previa
                         </DropdownMenuItem>
                         {hasPermission('empresas.editar') && (
                           <DropdownMenuItem
@@ -2318,7 +2318,7 @@ export default function EmpresasPage() {
                               openCompanyEdit(emp);
                             }}
                           >
-                            <Pencil /> Editar
+                            <PencilFileSvgIcon /> Editar
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />
@@ -2330,7 +2330,7 @@ export default function EmpresasPage() {
                               requestDeleteCompany(emp);
                             }}
                           >
-                            <Trash2 /> Eliminar
+                            <TrashSvgIcon /> Eliminar
                           </DropdownMenuItem>
                         )}
                       </DropdownMenuContent>

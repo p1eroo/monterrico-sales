@@ -8,11 +8,8 @@ import {
   type ReactNode,
 } from 'react';
 import {
-  FileText,
-  ImageIcon,
   Loader2,
   Mic,
-  Music2,
   Paperclip,
   Plus,
   Send,
@@ -20,6 +17,9 @@ import {
   X,
   Zap,
 } from 'lucide-react';
+import { FileNewSvgIcon } from '@/components/icons/FileNewSvgIcon';
+import { GallerySvgIcon } from '@/components/icons/GallerySvgIcon';
+import { MusicNoteSvgIcon } from '@/components/icons/MusicNoteSvgIcon';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -302,7 +302,7 @@ export function ChatComposer() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="center" side="top">
                 <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
-                  <ImageIcon className="mr-2 h-4 w-4" /> Foto
+                  <GallerySvgIcon /> Foto
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
@@ -313,10 +313,10 @@ export function ChatComposer() {
                     }
                   }}
                 >
-                  <Music2 className="mr-2 h-4 w-4" /> Audio
+                  <MusicNoteSvgIcon /> Audio
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                  <FileText className="mr-2 h-4 w-4" /> Documento
+                  <FileNewSvgIcon /> Documento
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -365,7 +365,7 @@ export function ChatComposer() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" side="top">
                 <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
-                  <ImageIcon className="mr-2 h-4 w-4" /> Foto
+                  <GallerySvgIcon /> Foto
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
@@ -376,10 +376,10 @@ export function ChatComposer() {
                     }
                   }}
                 >
-                  <Music2 className="mr-2 h-4 w-4" /> Audio
+                  <MusicNoteSvgIcon /> Audio
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                  <FileText className="mr-2 h-4 w-4" /> Documento
+                  <FileNewSvgIcon /> Documento
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

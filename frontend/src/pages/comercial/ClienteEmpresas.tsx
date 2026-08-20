@@ -38,11 +38,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuTriggerButton,
 } from '@/components/ui/dropdown-menu';
 import {
   Building2, Search,
-  ChevronDown, MoreVertical, X, Eye,
+  ChevronDown, MoreVertical, X,
 } from 'lucide-react';
+import { EyeSvgIcon } from '@/components/icons/EyeSvgIcon';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { toast } from '@/lib/notify';
 import { cn } from '@/lib/utils';
@@ -305,14 +307,7 @@ export default function ClienteEmpresas() {
         cell: ({ row }) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Acciones"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <MoreVertical className="size-4" />
-              </Button>
+              <DropdownMenuTriggerButton onClick={(e) => e.stopPropagation()} />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" onClick={(e) => e.stopPropagation()}>
               <DropdownMenuItem
@@ -321,7 +316,7 @@ export default function ClienteEmpresas() {
                   openClientDetail(row.original);
                 }}
               >
-                <Eye /> Ver detalle
+                <EyeSvgIcon /> Ver detalle
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

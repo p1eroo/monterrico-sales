@@ -10,12 +10,8 @@ import {
   type VisibilityState,
 } from '@tanstack/react-table';
 import {
-  Copy,
-  Pencil,
-  BarChart3,
   Plus,
   Search,
-  MoreVertical,
   Mail,
   Trash2,
   ChevronUp,
@@ -25,6 +21,10 @@ import {
 } from 'lucide-react';
 import type { CampaignListItem, CampaignStatus } from '@/types';
 import { deleteCampaignApi, listCampaignSummariesApi } from '@/lib/campaignApi';
+import { ChartSquareIcon } from '@/components/icons/ChartSquareIcon';
+import { CopySvgIcon } from '@/components/icons/CopySvgIcon';
+import { PencilFileSvgIcon } from '@/components/icons/PencilFileSvgIcon';
+import { TrashSvgIcon } from '@/components/icons/TrashSvgIcon';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +36,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuTriggerButton,
 } from '@/components/ui/dropdown-menu';
 import {
   Popover,
@@ -55,7 +56,6 @@ import { GlassCard } from '@/components/shared/GlassCard';
 import { GhostTableSkeleton } from '@/components/shared/GhostTableSkeleton';
 import { ComercialTableColgroup } from '@/components/shared/ComercialTableColgroup';
 import { ComercialInclusiveMultiFilter } from '@/components/shared/ComercialInclusiveMultiFilter';
-import { ChartSquareIcon } from '@/components/icons/ChartSquareIcon';
 import { ColumnsSvgIcon } from '@/components/icons/ColumnsSvgIcon';
 import { formatDate } from '@/lib/formatters';
 import { toast } from '@/lib/notify';
@@ -107,10 +107,6 @@ const TOGGLEABLE_COLUMNS = [
 ] as const;
 
 const CRM_CELL_MUTED = 'text-[13px] text-[#475569] dark:text-gray-400';
-
-function canDeleteCampaign(status: string) {
-  return status === 'draft' || status === 'cancelled';
-}
 
 export default function CampaignHistoryPage() {
   const navigate = useNavigate();
@@ -194,9 +190,7 @@ export default function CampaignHistoryPage() {
   const hasActiveFilters =
     Boolean(serverSearch) || statusFilter.length > 0;
 
-  const selectedDeletable = items.filter(
-    (c) => selectedIds.includes(c.id) && canDeleteCampaign(c.status),
-  );
+  const selectedDeletable = items.filter((c) => selectedIds.includes(c.id));
   const allPageSelected = items.length > 0 && selectedIds.length === items.length;
 
   const toggleSelectAll = () => {
@@ -287,16 +281,14 @@ export default function CampaignHistoryPage() {
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="Acciones">
-                  <MoreVertical className="size-4" />
-                </Button>
+                <DropdownMenuTriggerButton />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
                 {campaign.status === 'sent' && (
                   <DropdownMenuItem
                     onClick={() => navigate(`/campaigns/${campaign.id}/results`)}
                   >
-                    <BarChart3 className="size-4" />
+                    <ChartSquareIcon />
                     Ver resultados
                   </DropdownMenuItem>
                 )}
@@ -306,7 +298,7 @@ export default function CampaignHistoryPage() {
                       navigate('/campaigns/new', { state: { draftId: campaign.id } })
                     }
                   >
-                    <Pencil className="size-4" />
+                    <PencilFileSvgIcon />
                     Editar borrador
                   </DropdownMenuItem>
                 )}
@@ -318,18 +310,18 @@ export default function CampaignHistoryPage() {
                       )
                     }
                   >
-                    <Copy className="size-4" />
+                    <CopySvgIcon />
                     Duplicar campaña
                   </DropdownMenuItem>
                 )}
-                {canCreate && canDeleteCampaign(campaign.status) && (
+                {canCreate && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       variant="destructive"
                       onClick={() => setCampaignToDelete(campaign)}
                     >
-                      <Trash2 className="size-4" />
+                      <TrashSvgIcon />
                       Eliminar
                     </DropdownMenuItem>
                   </>
@@ -720,7 +712,7 @@ export default function CampaignHistoryPage() {
         open={batchDeleteOpen}
         onOpenChange={setBatchDeleteOpen}
         title="Eliminar campañas seleccionadas"
-        description={`¿Eliminar ${selectedDeletable.length} campaña(s)? Solo se borran borradores o canceladas. Esta acción no se puede deshacer.`}
+        description={`¿Eliminar ${selectedDeletable.length} campaña(s)? Esta acción no se puede deshacer.`}
         onConfirm={() => void handleBatchDelete()}
         variant="destructive"
         confirmLabel={

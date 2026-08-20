@@ -1,7 +1,11 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { toast } from '@/lib/notify';
 import { api, API_BASE } from '@/lib/api';
-import { Loader2, Send, Paperclip, Music2, Smile, X, Mic, StopCircle, FileText, Phone, CheckCheck, Download, ArrowDown, Info, Edit2, Lock, PanelRight, ImageIcon, MoreVertical, Trash2 } from 'lucide-react';
+import { Loader2, Send, Paperclip, Music2, Smile, X, Mic, StopCircle, FileText, Phone, CheckCheck, Download, ArrowDown, Info, Edit2, Lock, PanelRight, ImageIcon, MoreVertical } from 'lucide-react';
+import { FileNewSvgIcon } from '@/components/icons/FileNewSvgIcon';
+import { GallerySvgIcon } from '@/components/icons/GallerySvgIcon';
+import { MusicNoteSvgIcon } from '@/components/icons/MusicNoteSvgIcon';
+import { TrashSvgIcon } from '@/components/icons/TrashSvgIcon';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -581,10 +585,10 @@ export default function ChatPanelStandalone({ prospectoId, onClose }: ChatPanelS
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="min-w-40">
                               <DropdownMenuItem onClick={() => void handleDeleteMessage(item.msg.id, false)} className="text-xs gap-2 cursor-pointer">
-                                <Trash2 className="size-3.5" /> Eliminar para mí
+                                <TrashSvgIcon /> Eliminar para mí
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => void handleDeleteMessage(item.msg.id, true)} className="text-xs text-red-600 gap-2 cursor-pointer">
-                                <Trash2 className="size-3.5" /> Eliminar para todos
+                                <TrashSvgIcon /> Eliminar para todos
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -616,10 +620,10 @@ export default function ChatPanelStandalone({ prospectoId, onClose }: ChatPanelS
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start" className="min-w-40">
                               <DropdownMenuItem onClick={() => void handleDeleteMessage(item.msg.id, false)} className="text-xs gap-2 cursor-pointer">
-                                <Trash2 className="size-3.5" /> Eliminar para mí
+                                <TrashSvgIcon /> Eliminar para mí
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => void handleDeleteMessage(item.msg.id, true)} className="text-xs text-red-600 gap-2 cursor-pointer">
-                                <Trash2 className="size-3.5" /> Eliminar para todos
+                                <TrashSvgIcon /> Eliminar para todos
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -695,13 +699,13 @@ export default function ChatPanelStandalone({ prospectoId, onClose }: ChatPanelS
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" side="top">
                 <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
-                  <ImageIcon className="mr-2 h-4 w-4" /> Foto
+                  <GallerySvgIcon /> Foto
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => audioInputRef.current?.click()}>
-                  <Music2 className="mr-2 h-4 w-4" /> Audio
+                  <MusicNoteSvgIcon /> Audio
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => documentInputRef.current?.click()}>
-                  <FileText className="mr-2 h-4 w-4" /> Documento
+                  <FileNewSvgIcon /> Documento
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

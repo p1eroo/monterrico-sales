@@ -36,6 +36,9 @@ import {
   Mic,
   StopCircle,
 } from 'lucide-react';
+import { FileNewSvgIcon } from '@/components/icons/FileNewSvgIcon';
+import { GallerySvgIcon } from '@/components/icons/GallerySvgIcon';
+import { MusicNoteSvgIcon } from '@/components/icons/MusicNoteSvgIcon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -2487,13 +2490,13 @@ export function ChatwootChatPanel({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" side="top">
                   <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
-                    <ImageIcon className="mr-2 h-4 w-4" /> Foto
+                    <GallerySvgIcon /> Foto
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => audioInputRef.current?.click()}>
-                    <Music2 className="mr-2 h-4 w-4" /> Audio
+                    <MusicNoteSvgIcon /> Audio
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                    <FileText className="mr-2 h-4 w-4" /> Documento
+                    <FileNewSvgIcon /> Documento
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

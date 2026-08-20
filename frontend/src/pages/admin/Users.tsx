@@ -1,14 +1,14 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/lib/notify';
+import { CheckCircleSvgIcon } from '@/components/icons/CheckCircleSvgIcon';
+import { EyeSvgIcon } from '@/components/icons/EyeSvgIcon';
+import { PencilFileSvgIcon } from '@/components/icons/PencilFileSvgIcon';
+import { UnlinkSvgIcon } from '@/components/icons/UnlinkSvgIcon';
 import {
+  MoreHorizontal,
   Search,
   UserPlus,
-  MoreHorizontal,
-  Eye,
-  Pencil,
-  UserX,
-  UserCheck,
   Shield,
   ChevronLeft,
   ChevronRight,
@@ -526,7 +526,7 @@ export default function UsersPage() {
                             <DropdownMenuItem
                               onClick={() => navigate(`/admin/users/${u.id}`)}
                             >
-                              <Eye className="size-4" />
+                              <EyeSvgIcon />
                               Ver perfil
                             </DropdownMenuItem>
                             {canEditUser && (
@@ -536,7 +536,7 @@ export default function UsersPage() {
                                   window.setTimeout(() => setUserFormOpen(true), 0);
                                 }}
                               >
-                                <Pencil className="size-4" />
+                                <PencilFileSvgIcon />
                                 Editar
                               </DropdownMenuItem>
                             )}
@@ -551,12 +551,12 @@ export default function UsersPage() {
                               >
                                 {u.status === 'activo' ? (
                                   <>
-                                    <UserX className="size-4" />
+                                    <UnlinkSvgIcon />
                                     Desactivar
                                   </>
                                 ) : (
                                   <>
-                                    <UserCheck className="size-4" />
+                                    <CheckCircleSvgIcon />
                                     Activar
                                   </>
                                 )}
@@ -631,7 +631,7 @@ export default function UsersPage() {
                           <DropdownMenuItem
                             onClick={() => navigate(`/admin/users/${u.id}`)}
                           >
-                            <Eye className="size-4" />
+                            <EyeSvgIcon />
                             Ver perfil
                           </DropdownMenuItem>
                           {canEditUser && (
@@ -641,7 +641,7 @@ export default function UsersPage() {
                                 window.setTimeout(() => setUserFormOpen(true), 0);
                               }}
                             >
-                              <Pencil className="size-4" />
+                              <PencilFileSvgIcon />
                               Editar
                             </DropdownMenuItem>
                           )}

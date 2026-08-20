@@ -2,7 +2,7 @@ import { useEffect, useState, type MouseEvent, type ReactNode, type TouchEvent }
 import { useSearchParams } from 'react-router-dom';
 import type { DateRange } from 'react-day-picker';
 import {
-  AlertTriangle, CheckCircle2, ChevronDown, Eye, Loader2, MoreVertical, RefreshCw, Search, Send, Sparkles, Trash2, X,
+  AlertTriangle, CheckCircle2, ChevronDown, Loader2, RefreshCw, Search, Send, Sparkles, Trash2, X,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { GlassCard } from '@/components/shared/GlassCard';
@@ -15,13 +15,15 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandList, CommandGroup, CommandItem } from '@/components/ui/command';
 import { DateRangeFilterButton } from '@/components/ui/date-range-filter-button';
 import { ChartSquareIcon } from '@/components/icons/ChartSquareIcon';
+import { EyeSvgIcon } from '@/components/icons/EyeSvgIcon';
+import { TrashSvgIcon } from '@/components/icons/TrashSvgIcon';
 import {
   FormDialogShell,
   formDialogBtnOutlineClass,
   formDialogBtnPrimaryClass,
 } from '@/components/ui/form-dialog';
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuTriggerButton,
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/lib/notify';
 import { cn } from '@/lib/utils';
@@ -918,20 +920,18 @@ export default function MarketingLeads() {
                       <td onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon-sm" aria-label="Acciones">
-                              <MoreVertical className="size-4" />
-                            </Button>
+                            <DropdownMenuTriggerButton />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="start">
                             <DropdownMenuItem onClick={() => setDetailLead(lead)}>
-                              <Eye /> Ver detalle
+                              <EyeSvgIcon /> Ver detalle
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               variant="destructive"
                               onClick={() => setDeleteTarget({ type: 'single', id: lead.id, name: lead.fullName || 'este lead' })}
                             >
-                              <Trash2 /> Eliminar
+                              <TrashSvgIcon /> Eliminar
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

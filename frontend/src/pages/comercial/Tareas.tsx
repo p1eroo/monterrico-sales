@@ -8,16 +8,19 @@ import {
 } from '@tanstack/react-table';
 import { toast } from '@/lib/notify';
 import {
-  Plus, Search, X, MoreVertical,
+  Plus, Search, X,
   CalendarDays, AlertTriangle,
-  Check, Pencil, Trash2, Building2,
+  Building2,
   Grid3X3, Target,
 } from 'lucide-react';
+import { CheckCircleSvgIcon } from '@/components/icons/CheckCircleSvgIcon';
 import type {
   Activity, ActivityStatus, TaskKind, ContactPriority, TaskAssociation,
   Contact, Opportunity,
 } from '@/types';
 import { TasksKanbanBoard } from '@/components/tasks/TasksKanbanBoard';
+import { PencilFileSvgIcon } from '@/components/icons/PencilFileSvgIcon';
+import { TrashSvgIcon } from '@/components/icons/TrashSvgIcon';
 import { TasksCalendarPopover } from '@/components/tasks/TasksCalendarPopover';
 import { TaskDueColorGuide } from '@/components/tasks/TaskDueColorGuide';
 import { TASK_KINDS } from '@/types';
@@ -48,7 +51,7 @@ import {
 } from '@/components/ui/dialog';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuTriggerButton,
 } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -722,22 +725,20 @@ export default function TareasPage({ scope = 'all' }: { scope?: TareasPageScope 
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="Acciones">
-                  <MoreVertical className="size-4" />
-                </Button>
+                <DropdownMenuTriggerButton />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
                 {task.status !== 'completada' && (
-                  <DropdownMenuItem onClick={() => handleTaskToggle(task.id)}>
-                    <Check /> Completar
+                  <DropdownMenuItem variant="success" onClick={() => handleTaskToggle(task.id)}>
+                    <CheckCircleSvgIcon /> Completar
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={() => { setSelectedTaskDetail(task); setTaskDetailOpen(true); }}>
-                  <Pencil /> Editar
+                  <PencilFileSvgIcon /> Editar
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive" onClick={() => requestDeleteTask(task.id)}>
-                  <Trash2 /> Eliminar
+                  <TrashSvgIcon /> Eliminar
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

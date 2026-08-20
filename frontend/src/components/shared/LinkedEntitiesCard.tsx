@@ -10,7 +10,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import { Plus, Link2Off, ChevronDown, MoreHorizontal } from 'lucide-react';
+import { Plus, ChevronDown, MoreHorizontal } from 'lucide-react';
+import { UnlinkSvgIcon } from '@/components/icons/UnlinkSvgIcon';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 
@@ -153,7 +154,7 @@ export function LinkedEntitiesCard<T>({
                       className="gap-2 text-stage-lost focus:text-stage-lost"
                       onClick={() => handleUnlinkClick(item)}
                     >
-                      <Link2Off className="size-4 shrink-0" />
+                      <UnlinkSvgIcon />
                       Desvincular
                     </DropdownMenuItem>
                   </DropdownMenuContent>

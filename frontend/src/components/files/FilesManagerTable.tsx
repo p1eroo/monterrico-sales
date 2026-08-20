@@ -2,12 +2,12 @@ import {
   ChevronDown,
   ChevronsUpDown,
   ChevronUp,
-  Download,
-  Eye,
-  ExternalLink,
   MoreVertical,
-  Trash2,
 } from 'lucide-react';
+import { EyeSvgIcon } from '@/components/icons/EyeSvgIcon';
+import { FileDownloadSvgIcon } from '@/components/icons/FileDownloadSvgIcon';
+import { SquareTopUpSvgIcon } from '@/components/icons/SquareTopUpSvgIcon';
+import { TrashSvgIcon } from '@/components/icons/TrashSvgIcon';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
@@ -194,16 +194,16 @@ export function FilesManagerTable({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start">
                       <DropdownMenuItem onClick={() => onView(file)}>
-                        <Eye className="size-4" />
+                        <EyeSvgIcon />
                         Ver
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => onDownload(file)}>
-                        <Download className="size-4" />
+                        <FileDownloadSvgIcon />
                         Descargar
                       </DropdownMenuItem>
                       {navigable && onNavigateToEntity && (
                         <DropdownMenuItem onClick={() => onNavigateToEntity(file)}>
-                          <ExternalLink className="size-4" />
+                          <SquareTopUpSvgIcon />
                           Ir a {FILE_ENTITY_TYPE_LABELS[file.entityType].toLowerCase()}
                         </DropdownMenuItem>
                       )}
@@ -211,10 +211,10 @@ export function FilesManagerTable({
                         <>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
+                            variant="destructive"
                             onClick={() => onDelete(file)}
                           >
-                            <Trash2 className="size-4" />
+                            <TrashSvgIcon />
                             Eliminar
                           </DropdownMenuItem>
                         </>
@@ -259,7 +259,7 @@ export function FilesManagerTable({
                           }}
                         >
                           <span className="truncate">{file.entityName}</span>
-                          <ExternalLink className="size-3 shrink-0" />
+                          <SquareTopUpSvgIcon className="size-3 shrink-0" />
                         </button>
                       ) : (
                         <span className="truncate text-sm text-muted-foreground">

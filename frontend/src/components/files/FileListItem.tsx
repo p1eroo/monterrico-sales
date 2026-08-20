@@ -1,4 +1,7 @@
-import { Eye, Download, Trash2, MoreVertical } from 'lucide-react';
+import { MoreVertical } from 'lucide-react';
+import { EyeSvgIcon } from '@/components/icons/EyeSvgIcon';
+import { FileDownloadSvgIcon } from '@/components/icons/FileDownloadSvgIcon';
+import { TrashSvgIcon } from '@/components/icons/TrashSvgIcon';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -46,19 +49,19 @@ export function FileListItem({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onView(file); }}>
-                <Eye className="size-4" />
+                <EyeSvgIcon />
                 Ver
               </DropdownMenuItem>
               <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDownload(file); }}>
-                <Download className="size-4" />
+                <FileDownloadSvgIcon />
                 Descargar
               </DropdownMenuItem>
               {canDelete && onDelete && (
                 <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
+                  variant="destructive"
                   onClick={(e) => { e.stopPropagation(); onDelete(file); }}
                 >
-                  <Trash2 className="size-4" />
+                  <TrashSvgIcon />
                   Eliminar
                 </DropdownMenuItem>
               )}
@@ -107,10 +110,10 @@ export function FileListItem({
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <Button variant="ghost" size="icon" className="size-8" onClick={() => onView(file)}>
-          <Eye className="size-4" />
+          <EyeSvgIcon className="size-4" />
         </Button>
         <Button variant="ghost" size="icon" className="size-8" onClick={() => onDownload(file)}>
-          <Download className="size-4" />
+          <FileDownloadSvgIcon className="size-4" />
         </Button>
         {canDelete && onDelete && (
           <Button
@@ -119,7 +122,7 @@ export function FileListItem({
             className="size-8 text-destructive hover:text-destructive"
             onClick={() => onDelete(file)}
           >
-            <Trash2 className="size-4" />
+            <TrashSvgIcon className="size-4" />
           </Button>
         )}
       </div>

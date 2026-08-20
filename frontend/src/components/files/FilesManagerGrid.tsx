@@ -1,10 +1,8 @@
-import {
-  Download,
-  Eye,
-  ExternalLink,
-  MoreHorizontal,
-  Trash2,
-} from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
+import { EyeSvgIcon } from '@/components/icons/EyeSvgIcon';
+import { FileDownloadSvgIcon } from '@/components/icons/FileDownloadSvgIcon';
+import { SquareTopUpSvgIcon } from '@/components/icons/SquareTopUpSvgIcon';
+import { TrashSvgIcon } from '@/components/icons/TrashSvgIcon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -93,16 +91,16 @@ export function FilesManagerGrid({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => onView(file)}>
-                    <Eye className="size-4" />
+                    <EyeSvgIcon />
                     Ver
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => onDownload(file)}>
-                    <Download className="size-4" />
+                    <FileDownloadSvgIcon />
                     Descargar
                   </DropdownMenuItem>
                   {navigable && onNavigateToEntity && (
                     <DropdownMenuItem onClick={() => onNavigateToEntity(file)}>
-                      <ExternalLink className="size-4" />
+                      <SquareTopUpSvgIcon />
                       Ir a entidad
                     </DropdownMenuItem>
                   )}
@@ -110,10 +108,10 @@ export function FilesManagerGrid({
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
+                        variant="destructive"
                         onClick={() => onDelete(file)}
                       >
-                        <Trash2 className="size-4" />
+                        <TrashSvgIcon />
                         Eliminar
                       </DropdownMenuItem>
                     </>

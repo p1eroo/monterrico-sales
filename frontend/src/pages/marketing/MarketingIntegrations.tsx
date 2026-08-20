@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, FileText, Facebook, Key, Loader2, MoreHorizontal, Pencil, Plus, Settings2, Trash2 } from 'lucide-react';
+import { Copy, Facebook, Key, Loader2, MoreHorizontal, Plus } from 'lucide-react';
+import { FileNewSvgIcon } from '@/components/icons/FileNewSvgIcon';
+import { PencilFileSvgIcon } from '@/components/icons/PencilFileSvgIcon';
+import { SettingsSvgIcon } from '@/components/icons/SettingsSvgIcon';
+import { TrashSvgIcon } from '@/components/icons/TrashSvgIcon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -307,23 +311,23 @@ export default function MarketingIntegrations() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => setConfigAccount(account)}>
-                              <Settings2 className="mr-2 h-4 w-4" />
+                              <SettingsSvgIcon />
                               Configuración
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => navigate('/marketing/facebook')}>
-                              <FileText className="mr-2 h-4 w-4" />
+                              <FileNewSvgIcon />
                               Ver formularios
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => { setEditAccount({ pageId: account.pageId, pageName: account.pageName }); setConnectOpen(true); }}>
-                              <Pencil className="mr-2 h-4 w-4" />
+                              <PencilFileSvgIcon />
                               Actualizar token
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
+                              variant="destructive"
                               onClick={() => void handleDisconnect(account)}
                             >
-                              <Trash2 className="mr-2 h-4 w-4" />
+                              <TrashSvgIcon />
                               Desconectar
                             </DropdownMenuItem>
                           </DropdownMenuContent>

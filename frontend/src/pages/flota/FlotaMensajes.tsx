@@ -67,6 +67,10 @@ import {
   Calendar,
   Trash2,
 } from 'lucide-react';
+import { FileNewSvgIcon } from '@/components/icons/FileNewSvgIcon';
+import { GallerySvgIcon } from '@/components/icons/GallerySvgIcon';
+import { MusicNoteSvgIcon } from '@/components/icons/MusicNoteSvgIcon';
+import { TrashSvgIcon } from '@/components/icons/TrashSvgIcon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -2025,10 +2029,10 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="min-w-40">
                               <DropdownMenuItem onClick={() => void handleDeleteMessage(item.msg.id, false)} className="text-xs gap-2 cursor-pointer">
-                                <Trash2 className="size-3.5" /> Eliminar para mí
+                                <TrashSvgIcon /> Eliminar para mí
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => void handleDeleteMessage(item.msg.id, true)} className="text-xs text-red-600 gap-2 cursor-pointer">
-                                <Trash2 className="size-3.5" /> Eliminar para todos
+                                <TrashSvgIcon /> Eliminar para todos
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -2072,10 +2076,10 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start" className="min-w-40">
                               <DropdownMenuItem onClick={() => void handleDeleteMessage(item.msg.id, false)} className="text-xs gap-2 cursor-pointer">
-                                <Trash2 className="size-3.5" /> Eliminar para mí
+                                <TrashSvgIcon /> Eliminar para mí
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => void handleDeleteMessage(item.msg.id, true)} className="text-xs text-red-600 gap-2 cursor-pointer">
-                                <Trash2 className="size-3.5" /> Eliminar para todos
+                                <TrashSvgIcon /> Eliminar para todos
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -2196,13 +2200,13 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" side="top">
               <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
-                <ImageIcon className="mr-2 h-4 w-4" /> Foto
+                <GallerySvgIcon /> Foto
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => { if (fileInputRef.current) { fileInputRef.current.accept = 'audio/*'; fileInputRef.current.click(); fileInputRef.current.accept = ''; } }}>
-                <Music2 className="mr-2 h-4 w-4" /> Audio
+                <MusicNoteSvgIcon /> Audio
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                <FileText className="mr-2 h-4 w-4" /> Documento
+                <FileNewSvgIcon /> Documento
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

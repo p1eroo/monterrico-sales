@@ -1,5 +1,7 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { User, Settings, LogOut } from "lucide-react";
+import { LogoutSvgIcon } from "@/components/icons/LogoutSvgIcon";
+import { SettingsSvgIcon } from "@/components/icons/SettingsSvgIcon";
+import { UserCircleSvgIcon } from "@/components/icons/UserCircleSvgIcon";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -111,17 +113,17 @@ export function Topbar() {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem onClick={() => navigate("/profile")}>
-                <User />
+                <UserCircleSvgIcon />
                 <span>Perfil</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/settings")}>
-                <Settings />
+                <SettingsSvgIcon />
                 <span>Configuración</span>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" onClick={handleLogout}>
-              <LogOut />
+              <LogoutSvgIcon />
               <span>Cerrar sesión</span>
             </DropdownMenuItem>
           </DropdownMenuContent>

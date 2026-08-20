@@ -13,7 +13,7 @@ import { toast } from '@/lib/notify';
 import {
   Plus, Search,
   MoreVertical,
-  Eye, Pencil, Trash2,
+  Trash2,
   Target, TrendingUp,
   X, ChevronDown, ChevronsUpDown, ChevronUp,
   User, Loader2,
@@ -22,6 +22,9 @@ import {
 } from 'lucide-react';
 import { UsersGroupRoundedSvgIcon } from '@/components/icons/UsersGroupRoundedSvgIcon';
 import { ChartSquareIcon } from '@/components/icons/ChartSquareIcon';
+import { EyeSvgIcon } from '@/components/icons/EyeSvgIcon';
+import { PencilFileSvgIcon } from '@/components/icons/PencilFileSvgIcon';
+import { TrashSvgIcon } from '@/components/icons/TrashSvgIcon';
 import { PaletteIcon } from '@/components/icons/PaletteIcon';
 import { BlackSuitcaseSvgIcon } from '@/components/icons/BlackSuitcaseSvgIcon';
 import { MoneySackSvgIcon } from '@/components/icons/MoneySackSvgIcon';
@@ -96,7 +99,7 @@ import {
 } from '@/components/ui/command';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuTriggerButton,
 } from '@/components/ui/dropdown-menu';
 import { getStageBadgeTone } from '@/lib/etapaConfig';
 import { useCrmConfigStore, getStageLabelFromCatalog, getSourceLabelFromCatalog, useLeadSourceOptions } from '@/store/crmConfigStore';
@@ -655,23 +658,21 @@ export default function OpportunitiesPage() {
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="Acciones">
-                  <MoreVertical className="size-4" />
-                </Button>
+                <DropdownMenuTriggerButton />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
                 <DropdownMenuItem onClick={() => openOpportunityPreview(opp)}>
-                  <Eye /> Vista previa
+                  <EyeSvgIcon /> Vista previa
                 </DropdownMenuItem>
                 {hasPermission('oportunidades.editar') && (
                   <DropdownMenuItem onClick={() => openOpportunityEdit(opp)} disabled={pending}>
-                    <Pencil /> Editar
+                    <PencilFileSvgIcon /> Editar
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
                 {hasPermission('oportunidades.eliminar') && (
                   <DropdownMenuItem variant="destructive" onClick={() => requestDeleteOpportunity(opp)} disabled={pending}>
-                    <Trash2 /> Eliminar
+                    <TrashSvgIcon /> Eliminar
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>

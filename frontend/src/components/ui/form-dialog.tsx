@@ -345,6 +345,7 @@ export function FormDialogShell({
           maxWidthClassName,
           contentClassName,
         )}
+        {...{ [DISMISS_BLOCKER_ATTR]: '' }}
       >
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-8 pt-8 scrollbar-thin">
           <div className="flex items-start justify-between gap-4">

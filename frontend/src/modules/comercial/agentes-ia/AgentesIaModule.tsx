@@ -49,15 +49,15 @@ import {
 import {
   Bot,
   MoreHorizontal,
-  Copy,
-  Pencil,
-  Trash2,
   GitBranch,
-  LayoutGrid,
   Sparkles,
   Eye,
   Plus,
 } from 'lucide-react';
+import { CopySvgIcon } from '@/components/icons/CopySvgIcon';
+import { Layout3SvgIcon } from '@/components/icons/Layout3SvgIcon';
+import { PencilFileSvgIcon } from '@/components/icons/PencilFileSvgIcon';
+import { TrashSvgIcon } from '@/components/icons/TrashSvgIcon';
 import { useEffect, useState } from 'react';
 import { useAgentesIaStore } from './store';
 import { apiRowToMockKnowledge, fetchKnowledgeBases } from './knowledgeApi';
@@ -270,7 +270,7 @@ export function AgentesIaModule() {
                             navigate(`/agentes-ia/workflow/${a.id}`)
                           }
                         >
-                          <LayoutGrid className="mr-2 size-4" />
+                          <Layout3SvgIcon />
                           Canvas
                         </DropdownMenuItem>
                         <DropdownMenuItem
@@ -281,11 +281,11 @@ export function AgentesIaModule() {
                             })
                           }
                         >
-                          <Pencil className="mr-2 size-4" />
+                          <PencilFileSvgIcon />
                           Editar
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => duplicateAgent(a.id)}>
-                          <Copy className="mr-2 size-4" />
+                          <CopySvgIcon />
                           Duplicar
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => toggleAgentStatus(a.id)}>
@@ -299,7 +299,7 @@ export function AgentesIaModule() {
                             toast.success('Agente eliminado (demo)');
                           }}
                         >
-                          <Trash2 className="mr-2 size-4" />
+                          <TrashSvgIcon />
                           Eliminar
                         </DropdownMenuItem>
                       </DropdownMenuContent>

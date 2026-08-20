@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Check,
-  Eye,
-  Calendar,
-  ExternalLink,
-  Trash2,
-  MoreHorizontal,
-} from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
+import { CalendarSvgIcon } from '@/components/icons/CalendarSvgIcon';
+import { CheckCircleSvgIcon } from '@/components/icons/CheckCircleSvgIcon';
+import { EyeSvgIcon } from '@/components/icons/EyeSvgIcon';
+import { SquareTopUpSvgIcon } from '@/components/icons/SquareTopUpSvgIcon';
+import { TrashSvgIcon } from '@/components/icons/TrashSvgIcon';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -275,40 +273,39 @@ export function NotificationCard({
               <DropdownMenuContent align="end" className="w-48">
                 {!notification.read && (
                   <DropdownMenuItem onClick={handleMarkRead}>
-                    <Check className="size-3.5" />
+                    <CheckCircleSvgIcon />
                     Marcar como leída
                   </DropdownMenuItem>
                 )}
                 {notification.contactId && (
                   <DropdownMenuItem onClick={handleViewContact}>
-                    <Eye className="size-3.5" />
+                    <EyeSvgIcon />
                     Ver contacto
                   </DropdownMenuItem>
                 )}
                 {notification.companyId && (
                   <DropdownMenuItem onClick={handleViewCompany}>
-                    <Eye className="size-3.5" />
+                    <EyeSvgIcon />
                     Ver empresa
                   </DropdownMenuItem>
                 )}
                 {notification.opportunityId && (
                   <DropdownMenuItem onClick={handleViewOpportunity}>
-                    <ExternalLink className="size-3.5" />
+                    <SquareTopUpSvgIcon />
                     Ver oportunidad
                   </DropdownMenuItem>
                 )}
                 {notification.activityId && (
                   <DropdownMenuItem onClick={handleReschedule}>
-                    <Calendar className="size-3.5" />
+                    <CalendarSvgIcon />
                     Reprogramar
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem
                   variant="destructive"
                   onClick={handleDelete}
-                  className="text-destructive"
                 >
-                  <Trash2 className="size-3.5" />
+                  <TrashSvgIcon />
                   Eliminar
                 </DropdownMenuItem>
               </DropdownMenuContent>

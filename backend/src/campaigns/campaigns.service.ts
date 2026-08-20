@@ -579,9 +579,6 @@ export class CampaignsService {
     if (row.createdById !== userId) {
       throw new ForbiddenException('No puedes eliminar esta campaña');
     }
-    if (!['draft', 'cancelled'].includes(row.status)) {
-      throw new BadRequestException('Solo se pueden eliminar borradores o canceladas');
-    }
     await this.prisma.campaign.delete({ where: { id } });
   }
 

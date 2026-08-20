@@ -12,8 +12,11 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import {
-  Search, Users, X, Plus, Pencil, Trash2, Loader2, MoreVertical, ChevronDown, ChevronUp, ChevronsUpDown, Eye,
+  Search, Users, X, Plus, Loader2, MoreVertical, ChevronDown, ChevronUp, ChevronsUpDown,
 } from 'lucide-react';
+import { EyeSvgIcon } from '@/components/icons/EyeSvgIcon';
+import { PencilFileSvgIcon } from '@/components/icons/PencilFileSvgIcon';
+import { TrashSvgIcon } from '@/components/icons/TrashSvgIcon';
 import { PageHeader } from '@/components/shared/PageHeader';
 import {
   ContactEditDialog,
@@ -77,6 +80,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuTriggerButton,
 } from '@/components/ui/dropdown-menu';
 import { ColumnsSvgIcon } from '@/components/icons/ColumnsSvgIcon';
 import { ExportSvgIcon } from '@/components/icons/ExportSvgIcon';
@@ -408,14 +412,7 @@ export default function ClienteContactos() {
         cell: ({ row }) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Acciones"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <MoreVertical className="size-4" />
-              </Button>
+              <DropdownMenuTriggerButton onClick={(e) => e.stopPropagation()} />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" onClick={(e) => e.stopPropagation()}>
               <DropdownMenuItem
@@ -424,7 +421,7 @@ export default function ClienteContactos() {
                   navigate(clienteContactoDetailHref({ id: row.original.id }));
                 }}
               >
-                <Eye /> Ver detalle
+                <EyeSvgIcon /> Ver detalle
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={(e) => {
@@ -432,7 +429,7 @@ export default function ClienteContactos() {
                   openEdit(row.original);
                 }}
               >
-                <Pencil /> Editar
+                <PencilFileSvgIcon /> Editar
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -446,7 +443,7 @@ export default function ClienteContactos() {
                 {deletingId === row.original.id ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
-                  <Trash2 />
+                  <TrashSvgIcon />
                 )}
                 Eliminar
               </DropdownMenuItem>

@@ -386,7 +386,9 @@ export default function CampaignBuilderPage() {
   const loadTemplate = (t: CampaignMessageTemplate) => {
     const matches = t.body.match(/\{\{\w+\}\}/g) ?? [];
     const vars = [...new Set(matches.map((v) => v.slice(2, -2)))];
-    const body = plainTextToHtmlForEmail(t.body);
+    const body = t.editorJson
+      ? t.body
+      : plainTextToHtmlForEmail(t.body);
     setMessage({
       channel: 'email',
       subject: t.subject,

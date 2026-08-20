@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, FileText, Loader2, MoreVertical, RefreshCw, Search, UserPlus } from 'lucide-react';
+import { ChevronDown, FileText, Loader2, MoreVertical, RefreshCw, Search } from 'lucide-react';
+import { RefreshSvgIcon } from '@/components/icons/RefreshSvgIcon';
+import { UsersGroupRoundedSvgIcon } from '@/components/icons/UsersGroupRoundedSvgIcon';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { GlassCard } from '@/components/shared/GlassCard';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -10,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuTriggerButton,
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from '@/lib/notify';
@@ -304,16 +306,16 @@ export default function MarketingFacebook() {
                         <td className="w-10" onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon-sm" aria-label="Acciones" disabled={busy}>
+                              <DropdownMenuTriggerButton disabled={busy}>
                                 {busy ? <Loader2 className="size-4 animate-spin" /> : <MoreVertical className="size-4" />}
-                              </Button>
+                              </DropdownMenuTriggerButton>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start">
                               <DropdownMenuItem onClick={() => void handleSyncFormLeads(f)}>
-                                <RefreshCw /> Sincronizar leads
+                                <RefreshSvgIcon /> Sincronizar leads
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => navigate(`/marketing/leads?formId=${f.id}`)}>
-                                <UserPlus /> Ver leads
+                                <UsersGroupRoundedSvgIcon /> Ver leads
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>

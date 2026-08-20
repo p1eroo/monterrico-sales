@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link2, Loader2, MoreHorizontal, Plus, Radio, RotateCcw, Settings2, Trash2, Unplug } from 'lucide-react';
+import { Loader2, MoreHorizontal, Plus, Radio } from 'lucide-react';
+import { LinkCircleSvgIcon } from '@/components/icons/LinkCircleSvgIcon';
+import { RefreshSvgIcon } from '@/components/icons/RefreshSvgIcon';
+import { SettingsSvgIcon } from '@/components/icons/SettingsSvgIcon';
+import { TrashSvgIcon } from '@/components/icons/TrashSvgIcon';
+import { UnlinkSvgIcon } from '@/components/icons/UnlinkSvgIcon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -293,31 +298,31 @@ export function FlotaEvolutionIntegrationsPanel() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => setConfigInstance(inst)}>
-                                <Settings2 className="mr-2 h-4 w-4" />
+                                <SettingsSvgIcon />
                                 Configuración
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               {inst.isConnected ? (
                                 <DropdownMenuItem onClick={() => void handleDisconnect(inst.id)}>
-                                  <Unplug className="mr-2 h-4 w-4" />
+                                  <UnlinkSvgIcon />
                                   Desconectar
                                 </DropdownMenuItem>
                               ) : (
                                 <DropdownMenuItem onClick={() => handleConnect(inst)}>
-                                  <Link2 className="mr-2 h-4 w-4" />
+                                  <LinkCircleSvgIcon />
                                   Conectar (QR)
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuItem onClick={() => void handleReconnect(inst)}>
-                                <RotateCcw className="mr-2 h-4 w-4" />
+                                <RefreshSvgIcon />
                                 Reconectar
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
+                                variant="destructive"
                                 onClick={() => void handleDelete(inst)}
                               >
-                                <Trash2 className="mr-2 h-4 w-4" />
+                                <TrashSvgIcon />
                                 Eliminar
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -343,7 +348,7 @@ export function FlotaEvolutionIntegrationsPanel() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader className="pr-8">
             <DialogTitle className="flex items-center gap-2">
-              <Link2 className="h-5 w-5 text-primary" />
+              <LinkCircleSvgIcon className="h-5 w-5 text-primary" />
               Agregar conexión
             </DialogTitle>
             <DialogDescription>Crea una instancia en Evolution GO y la registra en el CRM</DialogDescription>
@@ -379,7 +384,7 @@ export function FlotaEvolutionIntegrationsPanel() {
               Cancelar
             </Button>
             <Button disabled={!newInstancia.nombre.trim() || creating} onClick={() => void handleCreate()}>
-              {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Link2 className="mr-2 h-4 w-4" />}
+              {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LinkCircleSvgIcon className="mr-2 h-4 w-4" />}
               {creating ? 'Creando...' : 'Crear'}
             </Button>
           </DialogFooter>

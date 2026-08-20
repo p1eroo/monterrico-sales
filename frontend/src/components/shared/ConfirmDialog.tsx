@@ -1,11 +1,11 @@
+import { Button } from '@/components/ui/button';
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
-import {
+  FormDialogShell,
+  formDialogBtnOutlineClass,
+  formDialogBtnPrimaryClass,
   formDialogNestedContentClass,
   formDialogNestedOverlayClass,
 } from '@/components/ui/form-dialog';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface ConfirmDialogProps {
@@ -40,30 +40,46 @@ export function ConfirmDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        overlayClassName={
-          overlayClassName ?? (nested ? formDialogNestedOverlayClass : undefined)
-        }
-        className={cn(nested && `!fixed ${formDialogNestedContentClass}`, contentClassName)}
-        {...(nested ? { 'data-dismiss-blocker': '' } : {})}
-      >
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          {description && <DialogDescription>{description}</DialogDescription>}
-        </DialogHeader>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+    <FormDialogShell
+      open={open}
+      onOpenChange={onOpenChange}
+      title={title}
+      description={description}
+      maxWidthClassName="sm:max-w-md"
+      overlayClassName={
+        overlayClassName ?? (nested ? formDialogNestedOverlayClass : undefined)
+      }
+      contentClassName={cn(
+        nested && `!fixed ${formDialogNestedContentClass}`,
+        contentClassName,
+      )}
+      bodyClassName="mt-0 pb-0"
+      footer={
+        <div className="flex flex-row justify-end gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            className={cn('min-w-[7.5rem]', formDialogBtnOutlineClass)}
+            onClick={() => onOpenChange(false)}
+          >
             Cancelar
           </Button>
           <Button
+            type="button"
             onClick={handleConfirm}
-            className={cn(variant === 'destructive' && 'bg-destructive text-destructive-foreground hover:bg-destructive/90')}
+            className={cn(
+              'min-w-[7.5rem] px-6',
+              variant === 'destructive'
+                ? 'h-10 rounded-lg bg-destructive px-6 text-destructive-foreground shadow-none hover:bg-destructive/90'
+                : formDialogBtnPrimaryClass,
+            )}
           >
-            {confirmLabel ?? "Confirmar"}
+            {confirmLabel ?? 'Confirmar'}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      }
+    >
+      {null}
+    </FormDialogShell>
   );
 }

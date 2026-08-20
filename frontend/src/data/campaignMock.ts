@@ -4,6 +4,7 @@ import type {
   CampaignMessageTemplate,
   CampaignRecipientResult,
 } from '@/types';
+import { designEmailTemplates } from '@/emails';
 import { contacts } from './mock';
 
 /** Recipients derived from CRM contacts */
@@ -22,22 +23,7 @@ export function getRecipientsFromContacts(): CampaignRecipient[] {
 
 /** Message templates */
 export const campaignTemplates: CampaignMessageTemplate[] = [
-  {
-    id: 't1',
-    name: 'Presentación corporativa',
-    subject: 'Taxi Monterrico - Servicio ejecutivo para {{empresa}}',
-    body: 'Hola {{nombre}},\n\nSomos Taxi Monterrico, líderes en transporte ejecutivo en Lima.\n\nNos gustaría presentarle nuestros servicios corporativos diseñados para empresas como {{empresa}}.\n\n¿Podemos agendar una breve llamada esta semana?\n\nSaludos cordiales,\nEquipo Taxi Monterrico',
-    channel: 'email',
-    createdAt: '2026-02-15',
-  },
-  {
-    id: 't2',
-    name: 'Seguimiento post-reunión',
-    subject: 'Resumen de nuestra reunión - {{empresa}}',
-    body: 'Estimado {{nombre}},\n\nGracias por su tiempo en la reunión de hoy.\n\nAdjunto encontrará la propuesta comercial para {{empresa}}.\n\nQuedo atento a sus comentarios.\n\nSaludos,\nEquipo Taxi Monterrico',
-    channel: 'email',
-    createdAt: '2026-02-20',
-  },
+  ...designEmailTemplates,
   {
     id: 't3',
     name: 'Recordatorio WhatsApp',
