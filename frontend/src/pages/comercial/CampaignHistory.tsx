@@ -214,8 +214,11 @@ export default function CampaignHistoryPage() {
                       {campaign.status === 'sent' && campaign.sentCount != null ? (
                         <span className="text-sm text-muted-foreground">
                           {campaign.deliveredCount ?? 0}/{campaign.sentCount} entregados
-                          {campaign.openedCount != null && (
+                          {(campaign.openedCount ?? 0) > 0 && (
                             <> · {campaign.openedCount} abiertos</>
+                          )}
+                          {(campaign.clickedCount ?? 0) > 0 && (
+                            <> · {campaign.clickedCount} clics</>
                           )}
                         </span>
                       ) : (

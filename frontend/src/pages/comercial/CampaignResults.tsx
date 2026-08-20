@@ -197,6 +197,7 @@ export default function CampaignResultsPage() {
                 <TableHead>Enviado</TableHead>
                 <TableHead>Entregado</TableHead>
                 <TableHead>Abierto</TableHead>
+                <TableHead>Clic</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -230,6 +231,9 @@ export default function CampaignResultsPage() {
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
                     {r.openedAt ? formatDateTime(r.openedAt) : '-'}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {r.clickedAt ? formatDateTime(r.clickedAt) : '-'}
                   </TableCell>
                 </TableRow>
               ))}

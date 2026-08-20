@@ -543,6 +543,7 @@ export default function CampaignBuilderPage() {
           sentAt: r.sentAt,
           deliveredAt: r.status === 'entregado' ? r.sentAt : undefined,
           errorMessage: r.errorMessage,
+          resendEmailId: r.resendEmailId,
         })),
         sentCount: recipients.length,
         deliveredCount: delivered,
@@ -1327,7 +1328,7 @@ export default function CampaignBuilderPage() {
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             {message.channel === 'email'
-              ? `Se enviarán correos reales a ${recipients.length} destinatario(s) usando el servidor SMTP configurado.`
+              ? `Se enviarán correos reales a ${recipients.length} destinatario(s) usando Resend.`
               : `Se registrará el envío (simulado) a ${recipients.length} destinatarios.`}{' '}
             Esta acción no se puede deshacer.
           </p>

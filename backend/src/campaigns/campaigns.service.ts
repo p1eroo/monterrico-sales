@@ -22,7 +22,107 @@ export type CampaignSendResultRow = {
   status: 'entregado' | 'fallido';
   sentAt?: string;
   errorMessage?: string;
+  resendEmailId?: string;
 };
+
+type CampaignResultRow = {
+  recipientId: string;
+  contactId?: string;
+  name: string;
+  email: string;
+  status: string;
+  sentAt?: string;
+  deliveredAt?: string;
+  openedAt?: string;
+  clickedAt?: string;
+  errorMessage?: string;
+  resendEmailId?: string;
+};
+
+const STATUS_RANK: Record<string, number> = {
+  pendiente: 0,
+  enviado: 1,
+  entregado: 2,
+  abierto: 3,
+  clic: 4,
+  fallido: 5,
+  rebote: 5,
+};
+
+function resendTagValue(raw: string): string {
+  const v = raw.replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 256);
+  return v.length > 0 ? v : 'na';
+}
+
+function asStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map((v) => String(v).trim()).filter(Boolean);
+  }
+  if (typeof value === 'string' && value.trim()) {
+    return [value.trim()];
+  }
+  return [];
+}
+
+function asIsoDate(value: unknown, fallback = new Date()): Date {
+  if (typeof value === 'string' && value.trim()) {
+    const d = new Date(value);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  return fallback;
+}
+
+function tagsRecipientId(tags: unknown): string | null {
+  if (!tags || typeof tags !== 'object' || Array.isArray(tags)) return null;
+  const rec = tags as Record<string, unknown>;
+  const v = rec.recipient_id ?? rec.recipientId;
+  return v != null ? String(v) : null;
+}
+
+function asResultRows(results: unknown): CampaignResultRow[] {
+  if (!Array.isArray(results)) return [];
+  return results.map((x) => {
+    const r = x && typeof x === 'object' ? (x as Record<string, unknown>) : {};
+    return {
+      recipientId: String(r.recipientId ?? ''),
+      contactId: r.contactId != null ? String(r.contactId) : undefined,
+      name: String(r.name ?? ''),
+      email: String(r.email ?? ''),
+      status: String(r.status ?? 'enviado'),
+      sentAt: r.sentAt != null ? String(r.sentAt) : undefined,
+      deliveredAt: r.deliveredAt != null ? String(r.deliveredAt) : undefined,
+      openedAt: r.openedAt != null ? String(r.openedAt) : undefined,
+      clickedAt: r.clickedAt != null ? String(r.clickedAt) : undefined,
+      errorMessage: r.errorMessage != null ? String(r.errorMessage) : undefined,
+      resendEmailId: r.resendEmailId != null ? String(r.resendEmailId) : undefined,
+    };
+  });
+}
+
+function recountResults(rows: CampaignResultRow[]) {
+  let deliveredCount = 0;
+  let openedCount = 0;
+  let clickedCount = 0;
+  let failedCount = 0;
+  let bounceCount = 0;
+  for (const r of rows) {
+    if (r.status === 'clic') {
+      clickedCount += 1;
+      openedCount += 1;
+      deliveredCount += 1;
+    } else if (r.status === 'abierto') {
+      openedCount += 1;
+      deliveredCount += 1;
+    } else if (r.status === 'entregado' || r.status === 'enviado') {
+      deliveredCount += 1;
+    } else if (r.status === 'rebote') {
+      bounceCount += 1;
+    } else if (r.status === 'fallido') {
+      failedCount += 1;
+    }
+  }
+  return { deliveredCount, openedCount, clickedCount, failedCount, bounceCount };
+}
 
 const DEFAULT_DELAY_MIN_MS = 2000;
 const DEFAULT_DELAY_MAX_MS = 5000;
@@ -348,6 +448,10 @@ export class CampaignsService {
         createdByName: userName,
       },
     });
+    if (isSent) {
+      await this.linkResendMessages(row.id, dto.results);
+      return this.findOne(row.id);
+    }
     return this.toFullPayload(row);
   }
 
@@ -446,9 +550,9 @@ export class CampaignsService {
   async sendCampaignEmail(
     dto: SendCampaignEmailDto,
   ): Promise<{ results: CampaignSendResultRow[] }> {
-    if (!this.mail.isSmtpConfigured()) {
+    if (!this.mail.isConfigured()) {
       throw new ServiceUnavailableException(
-        'SMTP no configurado. Revisa SMTP_HOST, SMTP_USER y SMTP_PASS.',
+        'Resend no configurado. Revisa RESEND_API_KEY y RESEND_FROM.',
       );
     }
     if (!dto.recipients?.length) {
@@ -547,14 +651,30 @@ export class CampaignsService {
 
       const sentAt = new Date().toISOString();
       try {
-        await this.mail.sendHtmlEmail({
+        const sent = await this.mail.sendHtmlEmail({
           to: email,
           subject,
           html,
           attachments: sharedAttachments,
+          tags: [
+            { name: 'kind', value: 'campaign' },
+            { name: 'recipient_id', value: resendTagValue(r.id) },
+          ],
         });
         await this.prisma.campaignEmailSendLog.create({
           data: { toEmail: toKey },
+        });
+        await this.prisma.campaignResendMessage.create({
+          data: {
+            resendEmailId: sent.id,
+            toEmail: toKey,
+            recipientId: r.id,
+            status: 'enviado',
+            sentAt: new Date(sentAt),
+            subject,
+            html,
+            fromEmail: this.config.get<string>('RESEND_FROM')?.trim() ?? '',
+          },
         });
         results.push({
           recipientId: r.id,
@@ -563,6 +683,7 @@ export class CampaignsService {
           email,
           status: 'entregado',
           sentAt,
+          resendEmailId: sent.id,
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -583,5 +704,169 @@ export class CampaignsService {
     }
 
     return { results };
+  }
+
+  async applyResendTrackingEvent(
+    type: string,
+    data: Record<string, unknown>,
+  ): Promise<void> {
+    const resendEmailId = String(data.email_id ?? data.id ?? '').trim();
+    if (!resendEmailId) return;
+
+    const eventAt = asIsoDate(data.created_at);
+    const click =
+      data.click && typeof data.click === 'object'
+        ? (data.click as Record<string, unknown>)
+        : null;
+    const clickUrl =
+      click?.link != null
+        ? String(click.link)
+        : click?.url != null
+          ? String(click.url)
+          : undefined;
+
+    let nextStatus = 'enviado';
+    const patch: {
+      lastEventType: string;
+      lastEventAt: Date;
+      status?: string;
+      deliveredAt?: Date;
+      openedAt?: Date;
+      clickedAt?: Date;
+      bouncedAt?: Date;
+      failedAt?: Date;
+      clickUrl?: string;
+    } = { lastEventType: type, lastEventAt: eventAt };
+
+    if (type === 'email.delivered') {
+      nextStatus = 'entregado';
+      patch.deliveredAt = eventAt;
+    } else if (type === 'email.opened') {
+      nextStatus = 'abierto';
+      patch.openedAt = eventAt;
+    } else if (type === 'email.clicked') {
+      nextStatus = 'clic';
+      patch.clickedAt = eventAt;
+      if (clickUrl) patch.clickUrl = clickUrl;
+    } else if (type === 'email.bounced') {
+      nextStatus = 'rebote';
+      patch.bouncedAt = eventAt;
+    } else if (type === 'email.failed' || type === 'email.complained') {
+      nextStatus = 'fallido';
+      patch.failedAt = eventAt;
+    } else {
+      return;
+    }
+
+    const existing = await this.prisma.campaignResendMessage.findUnique({
+      where: { resendEmailId },
+    });
+    const currentRank = STATUS_RANK[existing?.status ?? 'enviado'] ?? 0;
+    const nextRank = STATUS_RANK[nextStatus] ?? 0;
+    const isFailure = nextStatus === 'rebote' || nextStatus === 'fallido';
+    if (isFailure || nextRank >= currentRank) {
+      patch.status = nextStatus;
+    }
+
+    const row = existing
+      ? await this.prisma.campaignResendMessage.update({
+          where: { resendEmailId },
+          data: patch,
+        })
+      : await this.prisma.campaignResendMessage.create({
+          data: {
+            resendEmailId,
+            toEmail: asStringArray(data.to)[0]?.toLowerCase() ?? '',
+            recipientId:
+              tagsRecipientId(data.tags) ?? undefined,
+            status: patch.status ?? nextStatus,
+            clickUrl: patch.clickUrl,
+            deliveredAt: patch.deliveredAt,
+            openedAt: patch.openedAt,
+            clickedAt: patch.clickedAt,
+            bouncedAt: patch.bouncedAt,
+            failedAt: patch.failedAt,
+            lastEventType: type,
+            lastEventAt: eventAt,
+          },
+        });
+
+    if (row.campaignId) {
+      await this.applyMessageToCampaign(row.campaignId, row);
+    }
+  }
+
+  private async linkResendMessages(campaignId: string, results: unknown) {
+    const rows = asResultRows(results);
+    const ids = rows
+      .map((r) => r.resendEmailId?.trim())
+      .filter((id): id is string => Boolean(id));
+    if (ids.length === 0) return;
+
+    await this.prisma.campaignResendMessage.updateMany({
+      where: { resendEmailId: { in: ids } },
+      data: { campaignId },
+    });
+
+    const pending = await this.prisma.campaignResendMessage.findMany({
+      where: { campaignId, lastEventType: { not: null } },
+    });
+    for (const msg of pending) {
+      await this.applyMessageToCampaign(campaignId, msg);
+    }
+  }
+
+  private async applyMessageToCampaign(
+    campaignId: string,
+    msg: {
+      resendEmailId: string;
+      recipientId: string | null;
+      toEmail: string;
+      status: string;
+      deliveredAt: Date | null;
+      openedAt: Date | null;
+      clickedAt: Date | null;
+      clickUrl: string | null;
+    },
+  ) {
+    const campaign = await this.prisma.campaign.findUnique({
+      where: { id: campaignId },
+    });
+    if (!campaign) return;
+
+    const rows = asResultRows(campaign.resultsJson);
+    const idx = rows.findIndex(
+      (r) =>
+        (msg.recipientId && r.recipientId === msg.recipientId) ||
+        r.resendEmailId === msg.resendEmailId ||
+        r.email.trim().toLowerCase() === msg.toEmail,
+    );
+    if (idx < 0) return;
+
+    const current = rows[idx]!;
+    const currentRank = STATUS_RANK[current.status] ?? 0;
+    const nextRank = STATUS_RANK[msg.status] ?? 0;
+    const isFailure = msg.status === 'rebote' || msg.status === 'fallido';
+    if (isFailure || nextRank >= currentRank) {
+      current.status = msg.status;
+    }
+    current.resendEmailId = msg.resendEmailId;
+    if (msg.deliveredAt) current.deliveredAt = msg.deliveredAt.toISOString();
+    if (msg.openedAt) current.openedAt = msg.openedAt.toISOString();
+    if (msg.clickedAt) current.clickedAt = msg.clickedAt.toISOString();
+    rows[idx] = current;
+
+    const counts = recountResults(rows);
+    await this.prisma.campaign.update({
+      where: { id: campaignId },
+      data: {
+        resultsJson: rows as unknown as Prisma.InputJsonValue,
+        deliveredCount: counts.deliveredCount,
+        openedCount: counts.openedCount,
+        clickedCount: counts.clickedCount,
+        failedCount: counts.failedCount,
+        bounceCount: counts.bounceCount,
+      },
+    });
   }
 }

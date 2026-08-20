@@ -620,6 +620,59 @@
     cursor: nwse-resize;
 }
 
+/* Cuerpo de correo en el buzón de campañas: sigue el tema, no un iframe blanco */
+.campaign-mail-body a {
+    color: var(--primary);
+}
+.campaign-mail-body img {
+    max-width: 100%;
+    height: auto;
+}
+.campaign-mail-body p {
+    margin: 0 0 0.8em;
+}
+.campaign-mail-body p:last-child {
+    margin-bottom: 0;
+}
+.campaign-mail-body ul {
+    list-style: disc;
+    padding-left: 1.25rem;
+    margin: 0.5em 0;
+}
+.campaign-mail-body ol {
+    list-style: decimal;
+    padding-left: 1.25rem;
+    margin: 0.5em 0;
+}
+.campaign-mail-body blockquote {
+    border-left: 2px solid var(--border);
+    padding-left: 0.75rem;
+    color: var(--muted-foreground);
+}
+.campaign-mail-body table {
+    max-width: 100%;
+}
+.dark .campaign-mail-body [style*='color:#fff'],
+.dark .campaign-mail-body [style*='color: #fff'],
+.dark .campaign-mail-body [style*='color:#ffffff'],
+.dark .campaign-mail-body [style*='color: #ffffff'],
+.dark .campaign-mail-body [style*='color:white'],
+.dark .campaign-mail-body [style*='color: white'] {
+    color: inherit !important;
+}
+.dark .campaign-mail-body [style*='background:#fff'],
+.dark .campaign-mail-body [style*='background: #fff'],
+.dark .campaign-mail-body [style*='background:#ffffff'],
+.dark .campaign-mail-body [style*='background: #ffffff'],
+.dark .campaign-mail-body [style*='background-color:#fff'],
+.dark .campaign-mail-body [style*='background-color: #fff'],
+.dark .campaign-mail-body [style*='background-color:#ffffff'],
+.dark .campaign-mail-body [style*='background-color: #ffffff'],
+.dark .campaign-mail-body [bgcolor] {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
 @utility font-emoji {
     font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Android Emoji", EmojiSymbols, sans-serif;
 }

@@ -6,10 +6,17 @@ import { SocketIoAdapter } from './socket-io.adapter';
 import { ChatwootEventService } from './chatwoot/chatwoot-event.service';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
   const bodyLimit = process.env.HTTP_BODY_LIMIT?.trim() || '20mb';
 
-  app.use(json({ limit: bodyLimit }));
+  app.use(
+    json({
+      limit: bodyLimit,
+      verify: (req, _res, buf) => {
+        (req as { rawBody?: Buffer }).rawBody = buf;
+      },
+    }),
+  );
   app.use(urlencoded({ extended: true, limit: bodyLimit }));
 
   app.useWebSocketAdapter(new SocketIoAdapter(app));

@@ -37,6 +37,7 @@ const Inbox = lazy(() => import('@/pages/comercial/Inbox'));
 const CampaignHistory = lazy(() => import('@/pages/comercial/CampaignHistory'));
 const CampaignBuilder = lazy(() => import('@/pages/comercial/CampaignBuilder'));
 const CampaignResults = lazy(() => import('@/pages/comercial/CampaignResults'));
+const CampaignInbox = lazy(() => import('@/pages/comercial/CampaignInbox'));
 const Profile = lazy(() => import('@/pages/comercial/Profile'));
 const Settings = lazy(() => import('@/pages/comercial/Settings'));
 const UiMocks = lazy(() => import('@/pages/comercial/UiMocks'));
@@ -188,6 +189,7 @@ function MainRoutes() {
         <Route path="/inbox" element={<Inbox />} />
         <Route path="/campaigns" element={<CampaignHistory />} />
         <Route path="/campaigns/new" element={<CampaignBuilder />} />
+        <Route path="/campaigns/recibidos" element={<CampaignInbox />} />
         <Route path="/campaigns/:id/results" element={<CampaignResults />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/settings" element={<Settings />} />

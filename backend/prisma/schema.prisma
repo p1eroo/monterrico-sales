@@ -788,6 +788,25 @@ model CampaignEmailSendLog {
   @@index([toEmail, sentAt])
 }
 
+/** Correos inbound recibidos vía Resend (webhook o sync de API). */
+model ResendInboundEmail {
+  id              String   @id @default(cuid())
+  resendEmailId   String   @unique
+  fromEmail       String
+  toEmails        String[] @default([])
+  ccEmails        String[] @default([])
+  subject         String   @default("")
+  html            String?  @db.Text
+  text            String?  @db.Text
+  messageId       String?
+  attachmentsJson Json     @default("[]")
+  receivedAt      DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([receivedAt])
+}
+
 // Campaña de mensajería masiva persistida (CRM)
 model Campaign {
   id               String    @id @default(cuid())
@@ -813,9 +832,36 @@ model Campaign {
   createdById      String
   createdByName    String
   createdBy        User      @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  resendMessages   CampaignResendMessage[]
 
   @@index([createdById])
   @@index([createdAt])
+}
+
+/** Envío outbound Resend: une webhooks (opened/clicked/delivered) con la campaña. */
+model CampaignResendMessage {
+  id            String    @id @default(cuid())
+  resendEmailId String    @unique
+  toEmail       String
+  recipientId   String?
+  campaignId    String?
+  status        String    @default("enviado")
+  clickUrl      String?
+  subject       String    @default("")
+  html          String?   @db.Text
+  fromEmail     String    @default("")
+  sentAt        DateTime  @default(now())
+  deliveredAt   DateTime?
+  openedAt      DateTime?
+  clickedAt     DateTime?
+  bouncedAt     DateTime?
+  failedAt      DateTime?
+  lastEventType String?
+  lastEventAt   DateTime?
+  campaign      Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@index([campaignId])
+  @@index([toEmail, sentAt])
 }
 
 /** Campaña de envío masivo de WhatsApp por Flota (persistida) */

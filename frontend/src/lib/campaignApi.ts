@@ -24,6 +24,7 @@ export type SendCampaignEmailResponse = {
     status: 'entregado' | 'fallido';
     sentAt?: string;
     errorMessage?: string;
+    resendEmailId?: string;
   }[];
 };
 
@@ -233,4 +234,104 @@ export async function deleteCampaignApi(id: string): Promise<void> {
   await api<unknown>(`/campaigns/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
+}
+
+export type InboundEmailListItem = {
+  id: string;
+  resendEmailId: string;
+  fromEmail: string;
+  toEmails: string[];
+  ccEmails: string[];
+  subject: string;
+  messageId?: string;
+  attachmentCount: number;
+  receivedAt: string;
+};
+
+export type InboundEmailDetail = InboundEmailListItem & {
+  html?: string;
+  text?: string;
+  attachments: { filename?: string; contentType?: string; size?: number }[];
+};
+
+export type InboundEmailListPage = {
+  items: InboundEmailListItem[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+export async function listInboundEmailsApi(params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}): Promise<InboundEmailListPage> {
+  const q = new URLSearchParams();
+  if (params?.page != null) q.set('page', String(params.page));
+  if (params?.limit != null) q.set('limit', String(params.limit));
+  if (params?.search?.trim()) q.set('search', params.search.trim());
+  const qs = q.toString();
+  return api<InboundEmailListPage>(`/campaigns/inbound${qs ? `?${qs}` : ''}`);
+}
+
+export async function getInboundEmailApi(id: string): Promise<InboundEmailDetail> {
+  return api<InboundEmailDetail>(`/campaigns/inbound/${encodeURIComponent(id)}`);
+}
+
+export type MailboxFolder = 'inbox' | 'sent';
+
+export type MailboxThreadSummary = {
+  id: string;
+  subject: string;
+  counterpart: string;
+  preview: string;
+  lastAt: string;
+  lastDirection: 'inbound' | 'outbound';
+  inboundCount: number;
+  outboundCount: number;
+};
+
+export type MailboxMessage = {
+  id: string;
+  direction: 'inbound' | 'outbound';
+  fromEmail: string;
+  toEmails: string[];
+  subject: string;
+  html?: string;
+  text?: string;
+  at: string;
+  status?: string;
+};
+
+export type MailboxThreadPage = {
+  items: MailboxThreadSummary[];
+  total: number;
+  page: number;
+  limit: number;
+  inboxCount: number;
+  sentCount: number;
+};
+
+export async function listMailboxThreadsApi(params?: {
+  folder?: MailboxFolder;
+  page?: number;
+  limit?: number;
+  search?: string;
+}): Promise<MailboxThreadPage> {
+  const q = new URLSearchParams();
+  if (params?.folder) q.set('folder', params.folder);
+  if (params?.page != null) q.set('page', String(params.page));
+  if (params?.limit != null) q.set('limit', String(params.limit));
+  if (params?.search?.trim()) q.set('search', params.search.trim());
+  const qs = q.toString();
+  return api<MailboxThreadPage>(`/campaigns/mailbox${qs ? `?${qs}` : ''}`);
+}
+
+export async function getMailboxThreadApi(id: string): Promise<{
+  id: string;
+  subject: string;
+  counterpart: string;
+  messages: MailboxMessage[];
+}> {
+  return api(`/campaigns/mailbox/threads/${encodeURIComponent(id)}`);
 }

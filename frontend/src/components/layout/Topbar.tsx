@@ -13,6 +13,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useAppStore } from "@/store";
 import { AvatarImage } from "@/lib/avatar";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
@@ -20,11 +25,15 @@ import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { AssistantLauncherButton } from "@/components/assistant/AiAssistantDrawer";
 import FlotaNotificationBell from "@/components/flota/FlotaNotificationBell";
 import { AreaSwitcher } from "@/components/layout/AreaSwitcher";
+import { CorreoSvgIcon } from "@/components/icons/CorreoSvgIcon";
+import { topbarActionButtonClassName } from "@/lib/topbarIconStyles";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export function Topbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentUser, logout, area } = useAppStore();
+  const { hasPermission } = usePermissions();
   const hideChatwootBell =
     area === "flota" &&
     (location.pathname === "/flota/whatsapp" ||
@@ -46,6 +55,25 @@ export function Topbar() {
       <div className="ml-auto flex shrink-0 items-center gap-2 md:gap-3">
         {area === "comercial" && (
           <>
+            {hasPermission("campanas.ver") && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className={topbarActionButtonClassName(
+                      location.pathname.startsWith("/campaigns/recibidos"),
+                    )}
+                    onClick={() => navigate("/campaigns/recibidos")}
+                    aria-label="Buzón de campañas"
+                  >
+                    <CorreoSvgIcon className="size-7" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Buzón</TooltipContent>
+              </Tooltip>
+            )}
             <AssistantLauncherButton />
             <NotificationCenter />
           </>

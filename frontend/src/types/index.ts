@@ -580,6 +580,7 @@ export interface CampaignRecipientResult {
   openedAt?: string;
   clickedAt?: string;
   errorMessage?: string;
+  resendEmailId?: string;
 }
 
 export interface Campaign {
