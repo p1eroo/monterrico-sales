@@ -49,6 +49,52 @@ export class AuditDetailService {
     }
   }
 
+  async recordMany(
+    actor: ActivityActor | null,
+    items: Array<{
+      action: string;
+      module: string;
+      entityType: string;
+      entityId: string;
+      entityName?: string | null;
+      entries: AuditDiffEntry[];
+    }>,
+  ): Promise<void> {
+    const valid = items.filter((item) => item.entries.length > 0);
+    if (valid.length === 0) return;
+    const chunkSize = 80;
+    try {
+      for (let i = 0; i < valid.length; i += chunkSize) {
+        const chunk = valid.slice(i, i + chunkSize);
+        await this.prisma.$transaction(
+          chunk.map((opts) =>
+            this.prisma.auditChangeSet.create({
+              data: {
+                userId: actor?.userId ?? null,
+                userName: actor?.userName ?? 'Sistema',
+                action: opts.action,
+                module: opts.module,
+                entityType: opts.entityType,
+                entityId: opts.entityId,
+                entityName: opts.entityName ?? null,
+                entries: {
+                  create: opts.entries.map((e) => ({
+                    fieldKey: e.fieldKey,
+                    fieldLabel: e.fieldLabel,
+                    oldValue: e.oldValue,
+                    newValue: e.newValue,
+                  })),
+                },
+              },
+            }),
+          ),
+        );
+      }
+    } catch (e) {
+      this.logger.warn(`No se pudo registrar AuditChangeSet (lote): ${e}`);
+    }
+  }
+
   async findPage(opts: {
     page: number;
     limit: number;

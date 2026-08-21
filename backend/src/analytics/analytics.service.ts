@@ -23,6 +23,11 @@ import { loadContactGoalCompanyContext as loadContactGoalCompanyContextFromDb } 
 import { STAGE_PROBABILITY_FALLBACK } from '../crm-config/crm-config.constants';
 import { CrmConfigService } from '../crm-config/crm-config.service';
 import { buildEtapaStepFunction, buildNumericStepFunction } from '../import-export/company-export-weeks.util';
+import {
+  buildAdvisorIdentityIndex,
+  buildAdvisorStepFunction,
+  type AdvisorIdentityIndex,
+} from '../common/advisor-audit.util';
 import { resolveLeadSourceKeyLoose } from '../crm-config/lead-source-normalize.util';
 import {
   endOfMonthLima,
@@ -801,6 +806,13 @@ export class AnalyticsService {
     return { from, to };
   }
 
+  private async loadAdvisorIdentityIndex(): Promise<AdvisorIdentityIndex> {
+    const users = await this.prisma.user.findMany({
+      select: { id: true, name: true },
+    });
+    return buildAdvisorIdentityIndex(users);
+  }
+
   private async resolveScopeFilters(opts: {
     advisorId?: string;
     assignedTo?: string;
@@ -1414,7 +1426,7 @@ export class AnalyticsService {
       crmScope,
     );
 
-    const [stages, portfolioCompanies, auditRows, advisorUsers] =
+    const [stages, portfolioCompanies, auditRows, advisorUsers, advisorIndex] =
       await Promise.all([
         this.prisma.crmStage.findMany({
           where: { enabled: true },
@@ -1458,6 +1470,7 @@ export class AnalyticsService {
           },
         }),
         findCommercialAdvisorUsers(this.prisma),
+        this.loadAdvisorIdentityIndex(),
       ]);
 
     const stageMeta = new Map(
@@ -1489,7 +1502,11 @@ export class AnalyticsService {
       }
     }
 
-    const advisorNameById = new Map(advisorUsers.map((u) => [u.id, u.name]));
+    const advisorNameById = new Map(advisorIndex.nameById);
+    for (const u of advisorUsers) {
+      const name = u.name?.trim();
+      if (name) advisorNameById.set(u.id, name);
+    }
     for (const company of portfolioCompanies) {
       if (company.user?.id && company.user.name) {
         advisorNameById.set(company.user.id, company.user.name);
@@ -1521,10 +1538,11 @@ export class AnalyticsService {
         Number(company.facturacionEstimada) || 0,
         auditsByCompanyField.get(`${company.id}:facturacionEstimada`) ?? [],
       ),
-      advisorFn: buildEtapaStepFunction(
+      advisorFn: buildAdvisorStepFunction(
         company.createdAt,
         company.assignedTo?.trim() ?? '',
         auditsByCompanyField.get(`${company.id}:assignedTo`) ?? [],
+        advisorIndex,
       ),
     }));
 
@@ -1889,7 +1907,7 @@ export class AnalyticsService {
       crmScope,
     );
 
-    const [stages, portfolioCompanies, auditRows] = await Promise.all([
+    const [stages, portfolioCompanies, auditRows, advisorIndex] = await Promise.all([
       this.prisma.crmStage.findMany({
         where: { enabled: true },
         select: { slug: true, probability: true },
@@ -1914,6 +1932,7 @@ export class AnalyticsService {
           },
         },
       }),
+      this.loadAdvisorIdentityIndex(),
     ]);
 
     const stageInfo = new Map<string, number>();
@@ -1925,7 +1944,11 @@ export class AnalyticsService {
     };
 
     const portfolioIds = new Set(portfolioCompanies.map((c) => c.id));
-    const advisorNameById = new Map(advisorUsers.map((u) => [u.id, u.name]));
+    const advisorNameById = new Map(advisorIndex.nameById);
+    for (const u of advisorUsers) {
+      const name = u.name?.trim();
+      if (name) advisorNameById.set(u.id, name);
+    }
 
     type EtapaAuditEv = { at: Date; oldSlug: string; newSlug: string };
     const etapaAuditsByCompany = new Map<string, EtapaAuditEv[]>();
@@ -1977,7 +2000,12 @@ export class AnalyticsService {
       );
       advisorAtByCompany.set(
         company.id,
-        buildEtapaStepFunction(company.createdAt, currentAdvisor, advisorAudits),
+        buildAdvisorStepFunction(
+          company.createdAt,
+          currentAdvisor,
+          advisorAudits,
+          advisorIndex,
+        ),
       );
     }
 
@@ -1994,31 +2022,6 @@ export class AnalyticsService {
       const raw = fn ? fn(instant).trim() : '';
       return raw || UNASSIGNED_ADVISOR_ID;
     };
-
-    const portfolioAdvisorIds = new Set<string>();
-    for (const company of portfolioCompanies) {
-      const currentAdvisor = company.assignedTo?.trim();
-      if (currentAdvisor) portfolioAdvisorIds.add(currentAdvisor);
-      for (const audit of assignedAuditsByCompany.get(company.id) ?? []) {
-        const oldId = audit.oldValue.trim();
-        const newId = audit.newValue.trim();
-        if (oldId) portfolioAdvisorIds.add(oldId);
-        if (newId) portfolioAdvisorIds.add(newId);
-      }
-    }
-    const missingAdvisorIds = [...portfolioAdvisorIds].filter(
-      (id) => !advisorNameById.has(id),
-    );
-    if (missingAdvisorIds.length > 0) {
-      const extraUsers = await this.prisma.user.findMany({
-        where: { id: { in: missingAdvisorIds } },
-        select: { id: true, name: true },
-      });
-      for (const u of extraUsers) {
-        const name = u.name?.trim();
-        if (name) advisorNameById.set(u.id, name);
-      }
-    }
 
     const advisorLabel = (id: string): string => {
       if (id === UNASSIGNED_ADVISOR_ID) return 'Sin asignar';
@@ -2187,7 +2190,7 @@ export class AnalyticsService {
       opts.crmScope,
     );
 
-    const [stages, portfolioCompanies, auditRows] = await Promise.all([
+    const [stages, portfolioCompanies, auditRows, advisorIndex] = await Promise.all([
       this.prisma.crmStage.findMany({
         where: { enabled: true },
         select: { slug: true, name: true, probability: true },
@@ -2219,6 +2222,7 @@ export class AnalyticsService {
           },
         },
       }),
+      this.loadAdvisorIdentityIndex(),
     ]);
 
     const stageInfo = new Map<string, { name: string; probability: number }>();
@@ -2288,7 +2292,12 @@ export class AnalyticsService {
       );
       advisorAtByCompany.set(
         company.id,
-        buildEtapaStepFunction(company.createdAt, currentAdvisor, advisorAudits),
+        buildAdvisorStepFunction(
+          company.createdAt,
+          currentAdvisor,
+          advisorAudits,
+          advisorIndex,
+        ),
       );
     }
 
@@ -3221,7 +3230,7 @@ export class AnalyticsService {
       crmScope,
     );
 
-    const [stages, portfolioCompanies, auditRows] = await Promise.all([
+    const [stages, portfolioCompanies, auditRows, advisorIndex] = await Promise.all([
       this.prisma.crmStage.findMany({
         where: { enabled: true },
         select: { slug: true, name: true, probability: true, sortOrder: true },
@@ -3257,6 +3266,7 @@ export class AnalyticsService {
           },
         },
       }),
+      this.loadAdvisorIdentityIndex(),
     ]);
 
     const stageMeta = new Map(
@@ -3288,7 +3298,11 @@ export class AnalyticsService {
     };
 
     const portfolioIds = new Set(portfolioCompanies.map((c) => c.id));
-    const advisorNameById = new Map(advisorUsers.map((u) => [u.id, u.name]));
+    const advisorNameById = new Map(advisorIndex.nameById);
+    for (const u of advisorUsers) {
+      const name = u.name?.trim();
+      if (name) advisorNameById.set(u.id, name);
+    }
 
     type AuditEv = { at: Date; oldValue: string; newValue: string };
     const auditsByCompanyField = new Map<string, AuditEv[]>();
@@ -3324,7 +3338,12 @@ export class AnalyticsService {
       );
       advisorAtByCompany.set(
         company.id,
-        buildEtapaStepFunction(company.createdAt, currentAdvisor, advisorAudits),
+        buildAdvisorStepFunction(
+          company.createdAt,
+          currentAdvisor,
+          advisorAudits,
+          advisorIndex,
+        ),
       );
       billingAtByCompany.set(
         company.id,

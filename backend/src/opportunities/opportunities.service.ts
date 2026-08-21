@@ -13,7 +13,7 @@ import { CrmConfigService } from '../crm-config/crm-config.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { ActivityActor } from '../activity-logs/activity-logs.types';
 import { AuditDetailService } from '../audit-detail/audit-detail.service';
-import { buildChangeEntries } from '../common/audit-diff.util';
+import { buildChangeEntries, assignedToIdAuditEntry } from '../common/audit-diff.util';
 import {
   formatReassignmentDescription,
   resolveAdvisorDisplayName,
@@ -1232,7 +1232,7 @@ export class OpportunitiesService {
 
     const toUpdate = await this.prisma.opportunity.findMany({
       where,
-      select: { id: true, title: true },
+      select: { id: true, title: true, assignedTo: true },
     });
 
     if (toUpdate.length === 0) {
@@ -1249,28 +1249,28 @@ export class OpportunitiesService {
       select: { name: true },
     });
     const advisorLabel = advisor?.name ?? targetId;
-    const sampleTitles = toUpdate
-      .slice(0, 5)
-      .map((o) => o.title)
-      .join(', ');
-    const titlesSuffix =
-      toUpdate.length > 5 ? `, … (+${toUpdate.length - 5} más)` : '';
 
-    await this.auditDetail.record(actor, {
-      action: 'actualizar',
-      module: 'oportunidades',
-      entityType: 'Oportunidad',
-      entityId: toUpdate[0]!.id,
-      entityName: `${toUpdate.length} oportunidades`,
-      entries: [
-        {
-          fieldKey: 'assignedTo',
-          fieldLabel: 'Asesor asignado',
-          oldValue: `${sampleTitles}${titlesSuffix}`,
-          newValue: advisorLabel,
-        },
-      ],
-    });
+    await this.auditDetail.recordMany(
+      actor,
+      toUpdate.flatMap((opportunity) => {
+        const entry = assignedToIdAuditEntry(
+          opportunity.assignedTo,
+          targetId,
+          OPPORTUNITY_FIELD_LABELS.assignedTo,
+        );
+        if (!entry) return [];
+        return [
+          {
+            action: 'asignar',
+            module: 'oportunidades',
+            entityType: 'Oportunidad',
+            entityId: opportunity.id,
+            entityName: opportunity.title,
+            entries: [entry],
+          },
+        ];
+      }),
+    );
 
     const reassignmentDescription = formatReassignmentDescription(advisorLabel);
     await Promise.all(

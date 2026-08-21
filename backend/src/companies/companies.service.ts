@@ -14,7 +14,7 @@ import { CrmConfigService } from '../crm-config/crm-config.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { ActivityActor } from '../activity-logs/activity-logs.types';
 import { AuditDetailService } from '../audit-detail/audit-detail.service';
-import { buildChangeEntries } from '../common/audit-diff.util';
+import { buildChangeEntries, assignedToIdAuditEntry } from '../common/audit-diff.util';
 import {
   formatReassignmentDescription,
   resolveAdvisorDisplayName,
@@ -1523,7 +1523,7 @@ export class CompaniesService {
 
     const toUpdate = await this.prisma.company.findMany({
       where,
-      select: { id: true, name: true },
+      select: { id: true, name: true, assignedTo: true },
     });
 
     if (toUpdate.length === 0) {
@@ -1545,28 +1545,28 @@ export class CompaniesService {
       select: { name: true },
     });
     const advisorLabel = advisor?.name ?? targetId;
-    const sampleNames = toUpdate
-      .slice(0, 5)
-      .map((c) => c.name)
-      .join(', ');
-    const namesSuffix =
-      toUpdate.length > 5 ? `, … (+${toUpdate.length - 5} más)` : '';
 
-    await this.auditDetail.record(actor, {
-      action: 'actualizar',
-      module: 'empresas',
-      entityType: 'Empresa',
-      entityId: toUpdate[0]!.id,
-      entityName: `${toUpdate.length} empresas`,
-      entries: [
-        {
-          fieldKey: 'assignedTo',
-          fieldLabel: 'Asesor asignado',
-          oldValue: `${sampleNames}${namesSuffix}`,
-          newValue: advisorLabel,
-        },
-      ],
-    });
+    await this.auditDetail.recordMany(
+      actor,
+      toUpdate.flatMap((company) => {
+        const entry = assignedToIdAuditEntry(
+          company.assignedTo,
+          targetId,
+          COMPANY_FIELD_LABELS.assignedTo,
+        );
+        if (!entry) return [];
+        return [
+          {
+            action: 'asignar',
+            module: 'empresas',
+            entityType: 'Empresa',
+            entityId: company.id,
+            entityName: company.name,
+            entries: [entry],
+          },
+        ];
+      }),
+    );
 
     const reassignmentDescription = formatReassignmentDescription(advisorLabel);
     await Promise.all([

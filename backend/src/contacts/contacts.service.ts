@@ -15,7 +15,7 @@ import { CrmConfigService } from '../crm-config/crm-config.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { ActivityActor } from '../activity-logs/activity-logs.types';
 import { AuditDetailService } from '../audit-detail/audit-detail.service';
-import { buildChangeEntries } from '../common/audit-diff.util';
+import { buildChangeEntries, assignedToIdAuditEntry } from '../common/audit-diff.util';
 import {
   formatReassignmentDescription,
   resolveAdvisorDisplayName,
@@ -1189,7 +1189,7 @@ export class ContactsService {
 
     const toUpdate = await this.prisma.contact.findMany({
       where,
-      select: { id: true, name: true },
+      select: { id: true, name: true, assignedTo: true },
     });
 
     if (toUpdate.length === 0) {
@@ -1206,28 +1206,28 @@ export class ContactsService {
       select: { name: true },
     });
     const advisorLabel = advisor?.name ?? targetId;
-    const sampleNames = toUpdate
-      .slice(0, 5)
-      .map((c) => c.name)
-      .join(', ');
-    const namesSuffix =
-      toUpdate.length > 5 ? `, … (+${toUpdate.length - 5} más)` : '';
 
-    await this.auditDetail.record(actor, {
-      action: 'actualizar',
-      module: 'contactos',
-      entityType: 'Contacto',
-      entityId: toUpdate[0]!.id,
-      entityName: `${toUpdate.length} contactos`,
-      entries: [
-        {
-          fieldKey: 'assignedTo',
-          fieldLabel: 'Asesor asignado',
-          oldValue: `${sampleNames}${namesSuffix}`,
-          newValue: advisorLabel,
-        },
-      ],
-    });
+    await this.auditDetail.recordMany(
+      actor,
+      toUpdate.flatMap((contact) => {
+        const entry = assignedToIdAuditEntry(
+          contact.assignedTo,
+          targetId,
+          CONTACT_FIELD_LABELS.assignedTo,
+        );
+        if (!entry) return [];
+        return [
+          {
+            action: 'asignar',
+            module: 'contactos',
+            entityType: 'Contacto',
+            entityId: contact.id,
+            entityName: contact.name,
+            entries: [entry],
+          },
+        ];
+      }),
+    );
 
     const reassignmentDescription = formatReassignmentDescription(advisorLabel);
     await Promise.all(

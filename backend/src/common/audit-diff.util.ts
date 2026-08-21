@@ -7,6 +7,23 @@ export type AuditDiffEntry = {
   newValue: string;
 };
 
+/** Diff de reasignación: guarda user ids, nunca nombres ni listados de entidades. */
+export function assignedToIdAuditEntry(
+  oldUserId: string | null | undefined,
+  newUserId: string,
+  fieldLabel: string,
+): AuditDiffEntry | null {
+  const oldValue = oldUserId?.trim() ?? '';
+  const newValue = newUserId.trim();
+  if (!newValue || oldValue === newValue) return null;
+  return {
+    fieldKey: 'assignedTo',
+    fieldLabel,
+    oldValue,
+    newValue,
+  };
+}
+
 export function stringifyAuditValue(v: unknown): string {
   if (v === Prisma.JsonNull || v === Prisma.DbNull) {
     return '';
