@@ -508,10 +508,10 @@ const DAILY_CHART_MAX_DAYS = 31;
 const WEEKLY_CHART_MAX_WEEKS = 20;
 const SOURCES_WEEKLY_CHART_WEEKS = 6;
 const SOURCES_DETAIL_WEEKLY_COUNT = 5;
-/** Semanas consecutivas hacia atrás desde la semana de referencia (W30→W31, W29→W30, …). */
+/** Semanas consecutivas hacia atrás, incluyendo la actual (W33→W34, W32→W33, …). */
 const ADVISOR_FUNNEL_MOVEMENT_WEEK_OFFSETS = Array.from(
   { length: COMPANY_WEEKLY_CHART_WEEKS },
-  (_, index) => index + 1,
+  (_, index) => index,
 );
 const UNASSIGNED_ADVISOR_ID = '__unassigned__';
 const UNASSIGNED_SOURCE_SLUG = '__sin_fuente__';
@@ -1146,8 +1146,9 @@ export class AnalyticsService {
 
   /**
    * Detalle por fuente para cards: últimas {@link SOURCES_DETAIL_WEEKLY_COUNT} semanas
-   * ISO completas (Lima). Acumulado 1 ene → cierre de cada semana; etapa y facturación
-   * al cierre (auditoría). Desglose por asesor usa `assignedTo` actual (filtro local en UI).
+   * ISO (Lima), incluyendo la actual recortada a `referenceTo`. Acumulado 1 ene →
+   * cierre de cada semana; etapa y facturación al cierre (auditoría). Desglose por
+   * asesor usa `assignedTo` actual (filtro local en UI).
    */
   private async buildSourcesDetailWeekly(
     referenceTo: Date,
@@ -1159,7 +1160,7 @@ export class AnalyticsService {
   ): Promise<SourcesDetailWeeklySnapshot> {
     const anchorMonday = startOfWeekMondayLima(referenceTo);
     const weekTargets: { monday: Date; weekEnd: Date }[] = [];
-    for (let i = 1; i <= SOURCES_DETAIL_WEEKLY_COUNT; i += 1) {
+    for (let i = 0; i < SOURCES_DETAIL_WEEKLY_COUNT; i += 1) {
       const monday = addLimaWeeks(anchorMonday, -i);
       weekTargets.push({
         monday,
@@ -1398,7 +1399,8 @@ export class AnalyticsService {
   }
 
   /**
-   * Cartera de prospectos calientes al cierre de la semana ISO anterior a `referenceTo`.
+   * Cartera de prospectos calientes al cierre de la semana ISO de `referenceTo`
+   * (si es la semana en curso, recorta a hoy).
    * - Total calientes / pipeline: empresas con etapa ≥ 70 %.
    * - En cierre: etapa ≥ 85 % y menor que 100 %.
    * - Ya activos: etapa 100 %.
@@ -1411,8 +1413,7 @@ export class AnalyticsService {
     unrestricted: boolean,
     crmScope: CrmDataScope,
   ): Promise<HotProspectsSnapshot> {
-    const anchorMonday = startOfWeekMondayLima(referenceTo);
-    const targetMonday = addLimaWeeks(anchorMonday, -1);
+    const targetMonday = startOfWeekMondayLima(referenceTo);
     const snapshotInstant = minInstant(
       endOfWeekSundayLima(targetMonday),
       referenceTo,
@@ -1886,7 +1887,7 @@ export class AnalyticsService {
 
   /**
    * Movimiento del embudo por asesor: parejas consecutivas de semanas ISO
-   * (ej. W30→W31, W29→W30, … hasta 6 semanas atrás respecto a la referencia).
+   * (ej. W33→W34 actual, W32→W33, …; 6 periodos, la más vieja se omite).
    */
   private async buildCompaniesAdvisorFunnelMovement(
     referenceTo: Date,
