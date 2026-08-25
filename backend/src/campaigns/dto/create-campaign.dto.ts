@@ -3,6 +3,8 @@ export class CreateCampaignDto {
   name!: string;
   status!: string;
   channel!: string;
+  /** Área propietaria: 'comercial' (defecto) o 'marketing'. Aísla el apartado. */
+  area?: 'comercial' | 'marketing';
   /** Obligatorio salvo status `sent` (ahí puede ir mínimo). */
   message?: Record<string, unknown>;
   /** Obligatorio salvo `sent` (destinatarios inferidos por resultados). */

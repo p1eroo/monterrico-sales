@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
-import type { Campaign, RecipientStatus } from '@/types';
+import type { Campaign, RecipientStatus, CampaignArea } from '@/types';
 import { getCampaignApi } from '@/lib/campaignApi';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -36,7 +36,14 @@ const STATUS_LABELS: Record<RecipientStatus, string> = {
   rebote: 'Rebote',
 };
 
-export default function CampaignResultsPage() {
+export default function CampaignResultsPage({
+  basePath = '/campaigns',
+  area = 'comercial',
+}: {
+  basePath?: string;
+  /** Área propietaria para aislar el apartado. */
+  area?: CampaignArea;
+}) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
@@ -52,7 +59,7 @@ export default function CampaignResultsPage() {
     (async () => {
       setLoading(true);
       try {
-        const c = await getCampaignApi(id);
+        const c = await getCampaignApi(id, area);
         if (!cancelled) setCampaign(c);
       } catch {
         if (!cancelled) setCampaign(null);
@@ -63,7 +70,7 @@ export default function CampaignResultsPage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, area]);
 
   if (loading) {
     return (
@@ -77,7 +84,7 @@ export default function CampaignResultsPage() {
     return (
       <div className="flex flex-col items-center justify-center gap-4 p-12">
         <p className="text-muted-foreground">Campaña no encontrada</p>
-        <Button variant="outline" onClick={() => navigate('/campaigns')}>
+        <Button variant="outline" onClick={() => navigate(basePath)}>
           Volver
         </Button>
       </div>
@@ -109,7 +116,7 @@ export default function CampaignResultsPage() {
   return (
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/campaigns')}>
+        <Button variant="ghost" size="icon" onClick={() => navigate(basePath)}>
           <ChevronLeft className="size-4" />
         </Button>
         <PageHeader

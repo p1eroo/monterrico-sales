@@ -1,6 +1,5 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
-import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { InboundEmailService } from './inbound-email.service';
 
 @Controller('campaigns/inbound')
@@ -9,7 +8,6 @@ export class InboundEmailController {
   constructor(private readonly inbound: InboundEmailService) {}
 
   @Get()
-  @RequirePermissions('campanas.ver')
   findAll(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -25,7 +23,6 @@ export class InboundEmailController {
   }
 
   @Get(':id')
-  @RequirePermissions('campanas.ver')
   findOne(@Param('id') id: string) {
     return this.inbound.findOne(id);
   }

@@ -17,7 +17,6 @@ import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { SendCampaignEmailDto } from './dto/send-campaign-email.dto';
 import { UpdateCampaignDto } from './dto/update-campaign.dto';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
-import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 
 type AuthedRequest = { user: { userId: string; name: string } };
 
@@ -39,19 +38,23 @@ function parseCsv(raw: string | undefined, allowed: Set<string>): string[] | und
   return values.length ? values : undefined;
 }
 
+/**
+ * Campañas: disponible para todos los usuarios autenticados (sin permisos).
+ * El área (comercial/marketing) se pasa por query para aislar cada apartado.
+ */
 @Controller('campaigns')
 @UseGuards(PermissionsGuard)
 export class CampaignsController {
   constructor(private readonly campaignsService: CampaignsService) {}
 
   @Get()
-  @RequirePermissions('campanas.ver')
   findAll(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('search') search?: string,
     @Query('status') status?: string,
     @Query('channel') channel?: string,
+    @Query('area') area?: string,
   ) {
     const p = page ? Number.parseInt(page, 10) : 1;
     const l = limit ? Number.parseInt(limit, 10) : 50;
@@ -63,41 +66,42 @@ export class CampaignsController {
       search,
       statuses,
       channels,
+      area,
     );
   }
 
   @Get(':id')
-  @RequirePermissions('campanas.ver')
-  findOne(@Param('id') id: string) {
-    return this.campaignsService.findOne(id);
+  findOne(@Param('id') id: string, @Query('area') area?: string) {
+    return this.campaignsService.findOne(id, area);
   }
 
   @Post('send-email')
-  @RequirePermissions('campanas.crear')
   sendEmail(@Body() body: SendCampaignEmailDto) {
     return this.campaignsService.sendCampaignEmail(body);
   }
 
   @Post()
-  @RequirePermissions('campanas.crear')
   create(@Body() dto: CreateCampaignDto, @Req() req: AuthedRequest) {
     return this.campaignsService.create(dto, req.user.userId, req.user.name);
   }
 
   @Patch(':id')
-  @RequirePermissions('campanas.crear')
   update(
     @Param('id') id: string,
     @Body() dto: UpdateCampaignDto,
     @Req() req: AuthedRequest,
+    @Query('area') area?: string,
   ) {
-    return this.campaignsService.update(id, dto, req.user.userId);
+    return this.campaignsService.update(id, dto, req.user.userId, area);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @RequirePermissions('campanas.crear')
-  remove(@Param('id') id: string, @Req() req: AuthedRequest) {
-    return this.campaignsService.remove(id, req.user.userId);
+  remove(
+    @Param('id') id: string,
+    @Req() req: AuthedRequest,
+    @Query('area') area?: string,
+  ) {
+    return this.campaignsService.remove(id, req.user.userId, area);
   }
 }

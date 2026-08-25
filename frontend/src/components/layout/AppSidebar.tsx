@@ -1,7 +1,7 @@
 import { type ComponentType } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { UserPlus, Users, Shield, Settings,
-  FileSearch, Bot, ArrowRightLeft, ChevronDown, MessageCircle, Facebook,
+import { Shield, Settings,
+  FileSearch, Bot, ArrowRightLeft, ChevronDown, MessageCircle,
 } from 'lucide-react';
 import type { PermissionKey } from '@/types';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -47,6 +47,11 @@ import { ChatUnreadSvgIcon } from '@/components/icons/ChatUnreadSvgIcon';
 import { SettingsSvgIcon } from '@/components/icons/SettingsSvgIcon';
 import { PaletteRoundSvgIcon } from '@/components/icons/PaletteRoundSvgIcon';
 import { SquareDoubleAltArrowLeftSvgIcon } from '@/components/icons/SquareDoubleAltArrowLeftSvgIcon';
+import { LinkCircleSvgIcon } from '@/components/icons/LinkCircleSvgIcon';
+import { UsersGroupRoundedSvgIcon } from '@/components/icons/UsersGroupRoundedSvgIcon';
+import { UserPlusSvgIcon } from '@/components/icons/UserPlusSvgIcon';
+import { FacebookSvgIcon } from '@/components/icons/FacebookSvgIcon';
+import { WhatsAppSvgIcon } from '@/components/icons/WhatsAppSvgIcon';
 
 type NavIcon = ComponentType<{ className?: string }>;
 
@@ -142,10 +147,12 @@ const navItemsAdmin: NavDef[] = [
 
 const navItemsMarketing: NavDef[] = [
   { to: '/marketing/dashboard', label: 'Dashboard', icon: DashboardSvgIcon },
-  { to: '/marketing/leads', label: 'Leads', icon: UserPlus },
-  { to: '/marketing/facebook', label: 'Facebook', icon: Facebook },
-  { to: '/marketing/integrations', label: 'Integraciones', icon: ArrowRightLeft },
-  { to: '/marketing/personal', label: 'Personal', icon: Users },
+  { to: '/marketing/leads', label: 'Leads', icon: UserPlusSvgIcon },
+  { to: '/marketing/facebook', label: 'Facebook', icon: FacebookSvgIcon },
+  { to: '/marketing/integrations', label: 'Integraciones', icon: LinkCircleSvgIcon },
+  { to: '/marketing/personal', label: 'Personal', icon: UsersGroupRoundedSvgIcon },
+  { to: '/marketing/campaigns', label: 'Masivo', icon: MapArrowSquareSvgIcon },
+  { to: '/marketing/whatsapp', label: 'WhatsApp', icon: WhatsAppSvgIcon },
 ];
 
 export function AppSidebar() {

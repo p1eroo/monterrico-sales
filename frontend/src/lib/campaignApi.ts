@@ -1,6 +1,7 @@
 import { api, apiBlob } from './api';
 import type {
   Campaign,
+  CampaignArea,
   CampaignAttachment,
   CampaignListItem,
   CampaignRecipient,
@@ -66,6 +67,7 @@ function parseCampaignDetail(raw: Record<string, unknown>): Campaign {
     name: String(raw.name),
     status: raw.status as Campaign['status'],
     channel: raw.channel as Campaign['channel'],
+    area: (raw.area === 'marketing' ? 'marketing' : 'comercial') as CampaignArea,
     message: (raw.message ?? {}) as Campaign['message'],
     recipients: (Array.isArray(raw.recipients)
       ? raw.recipients
@@ -119,6 +121,7 @@ export function buildSentCampaignPersistPayload(c: Campaign) {
     name: c.name,
     status: c.status,
     channel: c.channel,
+    area: c.area,
     subjectSnapshot: subject,
     message: {
       channel: c.channel,
@@ -151,6 +154,7 @@ export function buildCreateCampaignPayload(c: Campaign) {
     name: c.name,
     status: c.status,
     channel: c.channel,
+    area: c.area,
     message: {
       ...c.message,
       attachments: c.message.attachments?.map(
@@ -188,6 +192,7 @@ export async function listCampaignSummariesApi(params?: {
   search?: string;
   status?: string[];
   channel?: string[];
+  area?: CampaignArea;
 }): Promise<CampaignListPage> {
   const q = new URLSearchParams();
   if (params?.page != null) q.set('page', String(params.page));
@@ -195,13 +200,15 @@ export async function listCampaignSummariesApi(params?: {
   if (params?.search?.trim()) q.set('search', params.search.trim());
   if (params?.status?.length) q.set('status', params.status.join(','));
   if (params?.channel?.length) q.set('channel', params.channel.join(','));
+  if (params?.area) q.set('area', params.area);
   const qs = q.toString();
   return api<CampaignListPage>(`/campaigns${qs ? `?${qs}` : ''}`);
 }
 
-export async function getCampaignApi(id: string): Promise<Campaign> {
+export async function getCampaignApi(id: string, area?: CampaignArea): Promise<Campaign> {
+  const qs = area ? `?area=${encodeURIComponent(area)}` : '';
   const raw = await api<Record<string, unknown>>(
-    `/campaigns/${encodeURIComponent(id)}`,
+    `/campaigns/${encodeURIComponent(id)}${qs}`,
   );
   return parseCampaignDetail(raw);
 }
@@ -223,9 +230,11 @@ export async function createCampaignApi(
 export async function updateCampaignApi(
   id: string,
   payload: ReturnType<typeof buildCreateCampaignPayload>,
+  area?: CampaignArea,
 ): Promise<Campaign> {
+  const qs = area ? `?area=${encodeURIComponent(area)}` : '';
   const raw = await api<Record<string, unknown>>(
-    `/campaigns/${encodeURIComponent(id)}`,
+    `/campaigns/${encodeURIComponent(id)}${qs}`,
     {
       method: 'PATCH',
       body: JSON.stringify(payload),
@@ -234,8 +243,12 @@ export async function updateCampaignApi(
   return parseCampaignDetail(raw);
 }
 
-export async function deleteCampaignApi(id: string): Promise<void> {
-  await api<unknown>(`/campaigns/${encodeURIComponent(id)}`, {
+export async function deleteCampaignApi(
+  id: string,
+  area?: CampaignArea,
+): Promise<void> {
+  const qs = area ? `?area=${encodeURIComponent(area)}` : '';
+  await api<unknown>(`/campaigns/${encodeURIComponent(id)}${qs}`, {
     method: 'DELETE',
   });
 }

@@ -19,7 +19,12 @@ import {
   ChevronsUpDown,
   X,
 } from 'lucide-react';
-import type { CampaignListItem, CampaignStatus } from '@/types';
+import type {
+  CampaignArea,
+  CampaignListItem,
+  CampaignStatus,
+  PermissionKey,
+} from '@/types';
 import { deleteCampaignApi, listCampaignSummariesApi } from '@/lib/campaignApi';
 import { ChartSquareIcon } from '@/components/icons/ChartSquareIcon';
 import { CopySvgIcon } from '@/components/icons/CopySvgIcon';
@@ -108,10 +113,20 @@ const TOGGLEABLE_COLUMNS = [
 
 const CRM_CELL_MUTED = 'text-[13px] text-[#475569] dark:text-gray-400';
 
-export default function CampaignHistoryPage() {
+export default function CampaignHistoryPage({
+  basePath = '/campaigns',
+  createPermission,
+  area = 'comercial',
+}: {
+  basePath?: string;
+  /** Permiso opcional para crear/editar/eliminar. Si no se pasa, está disponible para todos. */
+  createPermission?: PermissionKey;
+  /** Área propietaria para aislar el apartado. */
+  area?: CampaignArea;
+}) {
   const navigate = useNavigate();
   const { hasPermission } = usePermissions();
-  const canCreate = hasPermission('campanas.crear');
+  const canCreate = createPermission ? hasPermission(createPermission) : true;
 
   const [searchInput, setSearchInput] = useState('');
   const [serverSearch, setServerSearch] = useState('');
@@ -167,6 +182,7 @@ export default function CampaignHistoryPage() {
           limit: pageSize,
           search: serverSearch || undefined,
           status: statusParam.length ? statusParam : undefined,
+          area,
         });
         if (cancelled) return;
         setLoadError(null);
@@ -184,7 +200,7 @@ export default function CampaignHistoryPage() {
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, serverSearch, refreshKey, emptyByFilter, statusParam]);
+  }, [page, pageSize, serverSearch, refreshKey, emptyByFilter, statusParam, area]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const hasActiveFilters =
@@ -205,11 +221,11 @@ export default function CampaignHistoryPage() {
 
   const openCampaign = (c: CampaignListItem) => {
     if (c.status === 'sent') {
-      navigate(`/campaigns/${c.id}/results`);
+      navigate(`${basePath}/${c.id}/results`);
       return;
     }
     if (canCreate && c.status === 'draft') {
-      navigate('/campaigns/new', { state: { draftId: c.id } });
+      navigate(`${basePath}/new`, { state: { draftId: c.id } });
     }
   };
 
@@ -217,7 +233,7 @@ export default function CampaignHistoryPage() {
     if (!campaignToDelete || !canCreate) return;
     setDeleting(true);
     try {
-      await deleteCampaignApi(campaignToDelete.id);
+      await deleteCampaignApi(campaignToDelete.id, area);
       toast.success('Campaña eliminada');
       setCampaignToDelete(null);
       refresh();
@@ -233,7 +249,7 @@ export default function CampaignHistoryPage() {
     setDeleting(true);
     try {
       for (const c of selectedDeletable) {
-        await deleteCampaignApi(c.id);
+        await deleteCampaignApi(c.id, area);
       }
       toast.success(
         selectedDeletable.length === 1
@@ -286,7 +302,7 @@ export default function CampaignHistoryPage() {
               <DropdownMenuContent align="start">
                 {campaign.status === 'sent' && (
                   <DropdownMenuItem
-                    onClick={() => navigate(`/campaigns/${campaign.id}/results`)}
+                    onClick={() => navigate(`${basePath}/${campaign.id}/results`)}
                   >
                     <ChartSquareIcon />
                     Ver resultados
@@ -295,7 +311,7 @@ export default function CampaignHistoryPage() {
                 {canCreate && campaign.status === 'draft' && (
                   <DropdownMenuItem
                     onClick={() =>
-                      navigate('/campaigns/new', { state: { draftId: campaign.id } })
+                      navigate(`${basePath}/new`, { state: { draftId: campaign.id } })
                     }
                   >
                     <PencilFileSvgIcon />
@@ -306,7 +322,7 @@ export default function CampaignHistoryPage() {
                   <DropdownMenuItem
                     onClick={() =>
                       navigate(
-                        `/campaigns/new?duplicate=${encodeURIComponent(campaign.id)}`,
+                        `${basePath}/new?duplicate=${encodeURIComponent(campaign.id)}`,
                       )
                     }
                   >
@@ -420,7 +436,7 @@ export default function CampaignHistoryPage() {
         ),
       },
     ],
-    [allPageSelected, selectedIds, canCreate, navigate],
+    [allPageSelected, selectedIds, canCreate, navigate, basePath],
   );
 
   const table = useReactTable({
@@ -449,7 +465,7 @@ export default function CampaignHistoryPage() {
       >
         {canCreate && (
           <Button
-            onClick={() => navigate('/campaigns/new')}
+            onClick={() => navigate(`${basePath}/new`)}
             className="h-9 text-sm font-normal shadow-md"
           >
             <Plus className="size-4" />
@@ -580,7 +596,7 @@ export default function CampaignHistoryPage() {
                 : 'Crea una nueva campaña para comenzar.'
             }
             actionLabel={canCreate ? 'Nueva campaña' : undefined}
-            onAction={canCreate ? () => navigate('/campaigns/new') : undefined}
+            onAction={canCreate ? () => navigate(`${basePath}/new`) : undefined}
           />
         ) : (
           <>

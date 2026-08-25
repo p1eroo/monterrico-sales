@@ -61,6 +61,10 @@ const MarketingLeads = lazy(() => import('@/pages/marketing/MarketingLeads'));
 const MarketingIntegrations = lazy(() => import('@/pages/marketing/MarketingIntegrations'));
 const MarketingFacebook = lazy(() => import('@/pages/marketing/MarketingFacebook'));
 const MarketingPersonal = lazy(() => import('@/pages/marketing/MarketingPersonal'));
+const MarketingCampaignHistory = lazy(() => import('@/pages/marketing/MarketingCampaignHistory'));
+const MarketingCampaignBuilder = lazy(() => import('@/pages/marketing/MarketingCampaignBuilder'));
+const MarketingCampaignResults = lazy(() => import('@/pages/marketing/MarketingCampaignResults'));
+const MarketingWhatsapp = lazy(() => import('@/pages/marketing/MarketingWhatsapp'));
 const AreaSelect = lazy(() => import('@/pages/AreaSelect'));
 const GoogleAuthCallback = lazy(() => import('@/pages/GoogleAuthCallback'));
 
@@ -187,7 +191,7 @@ function MainRoutes() {
         <Route path="/admin/audit" element={<Audit />} />
 
         <Route path="/inbox" element={<Inbox />} />
-        <Route path="/campaigns" element={<CampaignHistory />} />
+        <Route path="/campaigns" element={<CampaignHistory createPermission="campanas.crear" area="comercial" />} />
         <Route path="/campaigns/new" element={<CampaignBuilder />} />
         <Route path="/campaigns/recibidos" element={<CampaignInbox />} />
         <Route path="/campaigns/:id/results" element={<CampaignResults />} />
@@ -217,6 +221,11 @@ function MainRoutes() {
         <Route path="/marketing/facebook" element={<MarketingFacebook />} />
         <Route path="/marketing/integrations" element={<MarketingIntegrations />} />
         <Route path="/marketing/personal" element={<MarketingPersonal />} />
+        <Route path="/marketing/campaigns" element={<MarketingCampaignHistory />} />
+        <Route path="/marketing/campaigns/new" element={<MarketingCampaignBuilder />} />
+        <Route path="/marketing/campaigns/recibidos" element={<CampaignInbox />} />
+        <Route path="/marketing/campaigns/:id/results" element={<MarketingCampaignResults />} />
+        <Route path="/marketing/whatsapp" element={<MarketingWhatsapp />} />
       </Route>
     </Route>
     <Route element={<ProtectedRoute><ModuleGate /></ProtectedRoute>}>

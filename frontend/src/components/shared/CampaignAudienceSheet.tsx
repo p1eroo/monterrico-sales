@@ -2,7 +2,6 @@ import { useRef, useState, type ChangeEvent, type RefObject } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   AlertTriangle,
-  Building2,
   Check,
   FileSpreadsheet,
   Loader2,
@@ -13,8 +12,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import type { CampaignRecipient, Etapa } from '@/types';
-import { etapaLabels } from '@/data/mock';
+import type { CampaignRecipient } from '@/types';
 import { AvatarImage } from '@/lib/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,13 +43,10 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { IMPORT_SPREADSHEET_ACCEPT } from '@/lib/importSpreadsheet';
-
-export type AudienceFilters = {
-  etapa: Etapa | '';
-  empresa: string;
-  asesor: string;
-  search: string;
-};
+import type {
+  CampaignAudienceFilters,
+  CampaignAudienceSource,
+} from '@/lib/campaignAudience';
 
 type CampaignAudienceSheetProps = {
   open: boolean;
@@ -59,17 +54,18 @@ type CampaignAudienceSheetProps = {
   canImport: boolean;
   fileInputRef: RefObject<HTMLInputElement | null>;
   onFileChange: (e: ChangeEvent<HTMLInputElement>) => void;
-  filters: AudienceFilters;
-  onFiltersChange: (next: AudienceFilters) => void;
-  crmContacts: CampaignRecipient[];
-  crmLoading?: boolean;
-  crmError?: string | null;
-  onRetryCrm?: () => void;
+  source: CampaignAudienceSource;
+  filters: CampaignAudienceFilters;
+  onFiltersChange: (next: CampaignAudienceFilters) => void;
+  candidates: CampaignRecipient[];
+  loading?: boolean;
+  error?: string | null;
+  retry?: () => void;
   recipients: CampaignRecipient[];
   selectedIds: Set<string>;
   onToggleSelectAll: () => void;
   onToggleSelect: (id: string, checked: boolean) => void;
-  onAddFromCrm: (ids: string[]) => void;
+  onAdd: (ids: string[]) => void;
   onRemoveIds: (ids: string[]) => void;
   duplicateCount: number;
   invalidIds: Set<string>;
@@ -83,18 +79,18 @@ function sameContact(a: CampaignRecipient, b: CampaignRecipient) {
   );
 }
 
-function CrmPickerList({
-  contacts,
+function CandidatePickerList({
+  candidates,
   recipients,
   onAdd,
 }: {
-  contacts: CampaignRecipient[];
+  candidates: CampaignRecipient[];
   recipients: CampaignRecipient[];
   onAdd: (id: string) => void;
 }) {
   const parentRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
-    count: contacts.length,
+    count: candidates.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 72,
     overscan: 10,
@@ -107,7 +103,7 @@ function CrmPickerList({
         style={{ height: `${virtualizer.getTotalSize()}px` }}
       >
         {virtualizer.getVirtualItems().map((item) => {
-          const c = contacts[item.index];
+          const c = candidates[item.index];
           const isAdded = recipients.some((r) => sameContact(r, c));
           const noEmail = !c.email;
           return (
@@ -177,35 +173,37 @@ export function CampaignAudienceSheet({
   canImport,
   fileInputRef,
   onFileChange,
+  source,
   filters,
   onFiltersChange,
-  crmContacts,
-  crmLoading = false,
-  crmError = null,
-  onRetryCrm,
+  candidates,
+  loading = false,
+  error = null,
+  retry,
   recipients,
   selectedIds,
   onToggleSelectAll,
   onToggleSelect,
-  onAddFromCrm,
+  onAdd,
   onRemoveIds,
   duplicateCount,
   invalidIds,
 }: CampaignAudienceSheetProps) {
-  const [source, setSource] = useState<'crm' | 'excel'>('crm');
-  const notYetAdded = crmContacts.filter(
+  const [sourceTab, setSourceTab] = useState<'pick' | 'excel'>('pick');
+  const notYetAdded = candidates.filter(
     (c) => Boolean(c.email) && !recipients.some((r) => sameContact(r, c)),
   );
-  const hasFilters = Boolean(
-    filters.search.trim() || filters.etapa || filters.empresa.trim(),
-  );
-  const countLabel = crmContacts.length.toLocaleString('es-PE');
+  const hasFilters = Object.values(filters).some((v) => String(v ?? '').trim());
+  const countLabel = candidates.length.toLocaleString('es-PE');
+
+  const setFilter = (key: string, value: string) =>
+    onFiltersChange({ ...filters, [key]: value });
 
   return (
     <Sheet
       open={open}
       onOpenChange={(next) => {
-        if (!next) setSource('crm');
+        if (!next) setSourceTab('pick');
         onOpenChange(next);
       }}
     >
@@ -215,12 +213,7 @@ export function CampaignAudienceSheet({
       >
         <SheetHeader className="shrink-0 space-y-1 border-b px-6 py-4">
           <SheetTitle>Destinatarios</SheetTitle>
-          <SheetDescription>
-            Arma la audiencia desde el CRM o un Excel. El correo se personaliza con{' '}
-            <span className="font-mono text-[11px]">{'{{nombre}}'}</span>,{' '}
-            <span className="font-mono text-[11px]">{'{{empresa}}'}</span> y{' '}
-            <span className="font-mono text-[11px]">{'{{email}}'}</span>.
-          </SheetDescription>
+          <SheetDescription>{source.sheetDescription}</SheetDescription>
         </SheetHeader>
 
         <div className="grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[380px_1fr]">
@@ -228,13 +221,13 @@ export function CampaignAudienceSheet({
             {canImport && (
               <div className="shrink-0 border-b px-4 py-3">
                 <Tabs
-                  value={source}
-                  onValueChange={(v) => setSource(v as 'crm' | 'excel')}
+                  value={sourceTab}
+                  onValueChange={(v) => setSourceTab(v as 'pick' | 'excel')}
                 >
                   <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="crm">
+                    <TabsTrigger value="pick">
                       <Users className="size-3.5" />
-                      CRM
+                      {source.sourceLabel}
                     </TabsTrigger>
                     <TabsTrigger value="excel">
                       <FileSpreadsheet className="size-3.5" />
@@ -245,7 +238,7 @@ export function CampaignAudienceSheet({
               </div>
             )}
 
-            {source === 'excel' && canImport ? (
+            {sourceTab === 'excel' && canImport ? (
               <div className="flex flex-1 flex-col items-center justify-center p-6">
                 <input
                   ref={fileInputRef}
@@ -272,99 +265,109 @@ export function CampaignAudienceSheet({
             ) : (
               <>
                 <div className="shrink-0 space-y-2 border-b px-4 py-3">
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      placeholder="Buscar nombre, email o empresa"
-                      value={filters.search}
-                      onChange={(e) =>
-                        onFiltersChange({ ...filters, search: e.target.value })
-                      }
-                      className="h-9 bg-background pl-8"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Select
-                      value={filters.etapa || 'all'}
-                      onValueChange={(v) =>
-                        onFiltersChange({
-                          ...filters,
-                          etapa: v === 'all' ? '' : (v as Etapa),
-                        })
-                      }
-                    >
-                      <SelectTrigger className="h-9 bg-background">
-                        <SelectValue placeholder="Etapa" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todas las etapas</SelectItem>
-                        {Object.entries(etapaLabels).map(([k, v]) => (
-                          <SelectItem key={k} value={k}>
-                            {v}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <div className="relative">
-                      <Building2 className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        placeholder="Empresa"
-                        value={filters.empresa}
-                        onChange={(e) =>
-                          onFiltersChange({ ...filters, empresa: e.target.value })
-                        }
-                        className="h-9 bg-background pl-8"
-                      />
-                    </div>
-                  </div>
+                  {source.filterControls.map((control) => {
+                    if (control.type === 'search') {
+                      return (
+                        <div key={control.key} className="relative">
+                          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            placeholder={control.placeholder}
+                            value={filters[control.key] ?? ''}
+                            onChange={(e) => setFilter(control.key, e.target.value)}
+                            className="h-9 bg-background pl-8"
+                          />
+                        </div>
+                      );
+                    }
+                    if (control.type === 'select') {
+                      return (
+                        <Select
+                          key={control.key}
+                          value={filters[control.key] || 'all'}
+                          onValueChange={(v) =>
+                            setFilter(control.key, v === 'all' ? '' : v)
+                          }
+                        >
+                          <SelectTrigger className="h-9 bg-background">
+                            <SelectValue placeholder={control.placeholder} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">{control.placeholder}</SelectItem>
+                            {control.options.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      );
+                    }
+                    const Icon = control.icon;
+                    return (
+                      <div key={control.key} className="relative">
+                        <Icon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          placeholder={control.placeholder}
+                          value={filters[control.key] ?? ''}
+                          onChange={(e) => setFilter(control.key, e.target.value)}
+                          className="h-9 bg-background pl-8"
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
 
                 <div className="flex shrink-0 items-center justify-between gap-2 border-b px-4 py-2.5">
                   <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Contactos
+                      {source.pickerHeaderLabel}
                     </p>
                     <p className="text-sm font-medium">
-                      {crmLoading ? 'Cargando…' : `${countLabel} coincidencias`}
+                      {loading ? 'Cargando…' : `${countLabel} coincidencias`}
                     </p>
                   </div>
                   <Button
                     size="sm"
                     className="h-8 shrink-0 bg-[#13944C] hover:bg-[#0f7a3d]"
-                    disabled={crmLoading || Boolean(crmError) || notYetAdded.length === 0}
-                    onClick={() => onAddFromCrm(notYetAdded.map((c) => c.id))}
+                    disabled={loading || Boolean(error) || notYetAdded.length === 0}
+                    onClick={() => onAdd(notYetAdded.map((c) => c.id))}
                   >
                     <Plus className="size-3.5" />
                     {hasFilters ? `Agregar ${notYetAdded.length}` : 'Agregar todos'}
                   </Button>
                 </div>
 
-                {crmLoading ? (
+                {loading ? (
                   <div className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="size-4 animate-spin" />
-                    Cargando contactos…
+                    Cargando…
                   </div>
-                ) : crmError ? (
+                ) : error ? (
                   <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center">
-                    <p className="text-sm text-destructive">{crmError}</p>
-                    {onRetryCrm && (
-                      <Button type="button" variant="outline" size="sm" onClick={onRetryCrm}>
+                    <p className="text-sm text-destructive">{error}</p>
+                    {retry && (
+                      <Button type="button" variant="outline" size="sm" onClick={retry}>
                         Reintentar
                       </Button>
                     )}
                   </div>
-                ) : crmContacts.length === 0 ? (
+                ) : candidates.length === 0 ? (
                   <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
                     <Users className="size-8 text-muted-foreground/40" />
                     <p className="mt-2 text-sm text-muted-foreground">
-                      No hay contactos con estos filtros.
+                      {source.emptyStateTitle}
                     </p>
+                    {source.emptyStateDescription && (
+                      <p className="mt-1 text-xs text-muted-foreground/80">
+                        {source.emptyStateDescription}
+                      </p>
+                    )}
                   </div>
                 ) : (
-                  <CrmPickerList
-                    contacts={crmContacts}
+                  <CandidatePickerList
+                    candidates={candidates}
                     recipients={recipients}
-                    onAdd={(id) => onAddFromCrm([id])}
+                    onAdd={(id) => onAdd([id])}
                   />
                 )}
               </>
@@ -425,7 +428,8 @@ export function CampaignAudienceSheet({
                 </div>
                 <p className="mt-3 text-sm font-medium">Sin destinatarios</p>
                 <p className="mt-1 max-w-xs text-xs text-muted-foreground">
-                  Agrega contactos del CRM a la izquierda o importa un Excel.
+                  Agrega {source.pickerHeaderLabel.toLowerCase()} a la izquierda o
+                  importa un Excel.
                 </p>
               </div>
             ) : (

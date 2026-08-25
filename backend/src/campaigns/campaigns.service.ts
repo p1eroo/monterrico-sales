@@ -315,6 +315,7 @@ export class CampaignsService {
       createdBy: row.createdById,
       createdByName: row.createdByName,
       relatedContactIds: row.relatedContactIds,
+      area: row.area,
     };
   }
 
@@ -324,6 +325,7 @@ export class CampaignsService {
     search?: string,
     statuses?: string[],
     channels?: string[],
+    area?: string,
   ): Promise<{
     items: CampaignSummaryItem[];
     total: number;
@@ -334,6 +336,9 @@ export class CampaignsService {
     const safePage = Math.max(1, page);
     const skip = (safePage - 1) * take;
     const where: Prisma.CampaignWhereInput = {};
+    if (area) {
+      where.area = area;
+    }
     if (search?.trim()) {
       where.name = { contains: search.trim(), mode: 'insensitive' };
     }
@@ -393,9 +398,12 @@ export class CampaignsService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, area?: string) {
     const row = await this.prisma.campaign.findUnique({ where: { id } });
     if (!row) {
+      throw new NotFoundException('Campaña no encontrada');
+    }
+    if (area && row.area !== area) {
       throw new NotFoundException('Campaña no encontrada');
     }
     return this.toFullPayload(row);
@@ -469,6 +477,7 @@ export class CampaignsService {
         name,
         status: dto.status,
         channel: dto.channel,
+        area: dto.area ?? 'comercial',
         messageJson: messageJsonForDb,
         recipientsJson: recipientsJsonForDb,
         subjectSnapshot: subjectSnapshotForDb,
@@ -493,9 +502,17 @@ export class CampaignsService {
     return this.toFullPayload(row);
   }
 
-  async update(id: string, dto: UpdateCampaignDto, userId: string) {
+  async update(
+    id: string,
+    dto: UpdateCampaignDto,
+    userId: string,
+    area?: string,
+  ) {
     const row = await this.prisma.campaign.findUnique({ where: { id } });
     if (!row) {
+      throw new NotFoundException('Campaña no encontrada');
+    }
+    if (area && row.area !== area) {
       throw new NotFoundException('Campaña no encontrada');
     }
     if (row.createdById !== userId) {
@@ -571,9 +588,12 @@ export class CampaignsService {
     return this.toFullPayload(updated);
   }
 
-  async remove(id: string, userId: string) {
+  async remove(id: string, userId: string, area?: string) {
     const row = await this.prisma.campaign.findUnique({ where: { id } });
     if (!row) {
+      throw new NotFoundException('Campaña no encontrada');
+    }
+    if (area && row.area !== area) {
       throw new NotFoundException('Campaña no encontrada');
     }
     if (row.createdById !== userId) {

@@ -525,6 +525,8 @@ export interface EmailThread {
 /** Campaign: bulk messaging module */
 export type CampaignChannel = 'email' | 'sms' | 'whatsapp';
 export type CampaignStatus = 'draft' | 'sending' | 'sent' | 'failed' | 'cancelled';
+/** Área propietaria de la campaña: aísla el apartado comercial del de marketing. */
+export type CampaignArea = 'comercial' | 'marketing';
 export type RecipientStatus = 'pendiente' | 'enviado' | 'entregado' | 'abierto' | 'clic' | 'fallido' | 'rebote';
 
 export interface CampaignRecipient {
@@ -592,6 +594,8 @@ export interface Campaign {
   name: string;
   status: CampaignStatus;
   channel: CampaignChannel;
+  /** Área propietaria: comercial o marketing. */
+  area?: CampaignArea;
   message: CampaignMessage;
   recipients: CampaignRecipient[];
   /** Asunto persistido en BD para campañas enviadas sin cuerpo completo */

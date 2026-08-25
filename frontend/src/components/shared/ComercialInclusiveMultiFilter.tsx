@@ -46,7 +46,7 @@ export function ComercialInclusiveMultiFilterPanel({
   allKeys,
 }: ComercialInclusiveMultiFilterPanelProps) {
   return (
-    <Command className={comercialProCommandClass}>
+    <Command shouldFilter={false} className={comercialProCommandClass}>
       <CommandList className="max-h-[260px] overflow-y-auto">
         <CommandGroup>
           {options.map((option) => {
@@ -115,7 +115,7 @@ export function ComercialInclusiveMultiFilter({
   };
 
   return (
-    <Popover>
+    <Popover modal={false}>
       <PopoverTrigger asChild>
         <button
           type="button"

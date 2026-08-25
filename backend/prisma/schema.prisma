@@ -813,6 +813,8 @@ model Campaign {
   name             String
   status           String
   channel          String
+  /** Área propietaria: comercial o marketing. Aísla los listados por apartado. */
+  area             String    @default("comercial")
   /** Contenido completo solo en borrador; en `sent` suele ser mínimo o null */
   messageJson      Json?
   recipientsJson   Json?
@@ -836,6 +838,7 @@ model Campaign {
 
   @@index([createdById])
   @@index([createdAt])
+  @@index([area])
 }
 
 /** Envío outbound Resend: une webhooks (opened/clicked/delivered) con la campaña. */
