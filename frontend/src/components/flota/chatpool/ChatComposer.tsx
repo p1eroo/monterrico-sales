@@ -1,5 +1,7 @@
 import {
+  useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ChangeEvent,
@@ -28,12 +30,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { EmojiGrid } from '@/components/EmojiGrid';
 import { toast } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 import { useChatpoolStore } from './store';
-import { FLOTA_QUICK_REPLIES } from './quickReplies';
+import { type QuickReply } from './quickReplies';
+import {
+  filterQuickRepliesBySlashQuery,
+  getSlashQuery,
+} from './quickReplySlash';
+import { QuickRepliesModal } from './QuickRepliesModal';
+import { QuickRepliesSlashMenu } from './QuickRepliesSlashMenu';
+import { useFlotaQuickReplies } from './useFlotaQuickReplies';
 import {
   attachmentTypeOf,
   getClipboardAttachmentFile,
@@ -64,14 +73,20 @@ export function ChatComposer() {
   const [content, setContent] = useState('');
   const [sending, setSending] = useState(false);
   const [toolbarOpen, setToolbarOpen] = useState(false);
-  const [quickRepliesOpen, setQuickRepliesOpen] = useState(false);
+  const [quickRepliesModalOpen, setQuickRepliesModalOpen] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<ComposerPendingAttachment[]>([]);
   const [caption, setCaption] = useState('');
   const [sendingAttachment, setSendingAttachment] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [slashCursor, setSlashCursor] = useState(0);
+  const [slashMenuDismissed, setSlashMenuDismissed] = useState(false);
+  const [slashActiveIndex, setSlashActiveIndex] = useState(0);
+
+  const { replies, createReply, updateReply, deleteReply } = useFlotaQuickReplies();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const pendingRef = useRef(pendingAttachments);
   pendingRef.current = pendingAttachments;
 
@@ -88,6 +103,9 @@ export function ChatComposer() {
     });
     setCaption('');
     setIsRecording(false);
+    setContent('');
+    setSlashMenuDismissed(false);
+    setQuickRepliesModalOpen(false);
   }, [activeConversationId]);
 
   function stageFiles(incoming: File[]) {
@@ -124,6 +142,56 @@ export function ChatComposer() {
     clearAttachFileRequest();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attachFileRequest, clearAttachFileRequest]);
+
+  const slashQuery = useMemo(
+    () => (slashMenuDismissed ? null : getSlashQuery(content, slashCursor)),
+    [content, slashCursor, slashMenuDismissed],
+  );
+
+  const slashMatches = useMemo(
+    () =>
+      slashQuery ? filterQuickRepliesBySlashQuery(replies, slashQuery.query) : [],
+    [slashQuery, replies],
+  );
+
+  const slashMenuOpen = Boolean(slashQuery);
+
+  useEffect(() => {
+    setSlashActiveIndex(0);
+  }, [slashQuery?.query, slashQuery?.start]);
+
+  const applyQuickReply = useCallback(
+    (reply: QuickReply, fromSlash: boolean) => {
+      if (fromSlash) {
+        const query = getSlashQuery(
+          content,
+          textareaRef.current?.selectionStart ?? slashCursor,
+        );
+        if (!query) {
+          setContent(reply.text);
+        } else {
+          const next = content.slice(0, query.start) + reply.text + content.slice(query.end);
+          setContent(next);
+          requestAnimationFrame(() => {
+            const el = textareaRef.current;
+            if (!el) return;
+            el.focus();
+            const pos = query.start + reply.text.length;
+            el.setSelectionRange(pos, pos);
+            setSlashCursor(pos);
+          });
+        }
+        setSlashMenuDismissed(true);
+        setSlashActiveIndex(0);
+      } else {
+        setContent(reply.text);
+        setQuickRepliesModalOpen(false);
+        setToolbarOpen(false);
+        requestAnimationFrame(() => textareaRef.current?.focus());
+      }
+    },
+    [content, slashCursor],
+  );
 
   if (!activeConversationId || connectionState !== 'ready') return null;
 
@@ -163,6 +231,7 @@ export function ChatComposer() {
     if (!content.trim() || sending) return;
     const text = content;
     setContent('');
+    setSlashMenuDismissed(false);
     setSending(true);
     try {
       await sendMessage(conversationId, text);
@@ -206,21 +275,57 @@ export function ChatComposer() {
     }
   }
 
-  function applyQuickReply(text: string) {
-    setContent(text);
-    setQuickRepliesOpen(false);
-    setToolbarOpen(false);
+  function handleContentChange(value: string, cursor: number) {
+    setContent(value);
+    setSlashCursor(cursor);
+    setSlashMenuDismissed(false);
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (slashMenuOpen) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSlashActiveIndex((prev) =>
+          slashMatches.length ? (prev + 1) % slashMatches.length : 0,
+        );
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSlashActiveIndex((prev) =>
+          slashMatches.length
+            ? (prev - 1 + slashMatches.length) % slashMatches.length
+            : 0,
+        );
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setSlashMenuDismissed(true);
+        return;
+      }
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        const selected = slashMatches[slashActiveIndex];
+        if (selected) applyQuickReply(selected, true);
+        return;
+      }
+      if (e.key === 'Tab' && slashMatches[slashActiveIndex]) {
+        e.preventDefault();
+        applyQuickReply(slashMatches[slashActiveIndex], true);
+        return;
+      }
+    }
+
     if (e.key === 'Escape') {
       e.preventDefault();
       if (pendingAttachments.length > 0) {
         clearPendingAttachments();
         return;
       }
-      if (quickRepliesOpen) {
-        setQuickRepliesOpen(false);
+      if (quickRepliesModalOpen) {
+        setQuickRepliesModalOpen(false);
         return;
       }
       useChatpoolStore.getState().closeActiveChat();
@@ -234,21 +339,8 @@ export function ChatComposer() {
         return;
       }
       void handleSendText();
-      return;
-    }
-    if (e.key === '/' && content === '') {
-      setQuickRepliesOpen(true);
     }
   }
-
-  const showSlashHint = content.startsWith('/');
-  const filteredReplies = showSlashHint
-    ? FLOTA_QUICK_REPLIES.filter(
-        (r) =>
-          r.label.toLowerCase().includes(content.slice(1).toLowerCase()) ||
-          r.text.toLowerCase().includes(content.slice(1).toLowerCase()),
-      )
-    : FLOTA_QUICK_REPLIES;
 
   if (isRecording) {
     return (
@@ -263,6 +355,7 @@ export function ChatComposer() {
   }
 
   const hasPending = pendingAttachments.length > 0;
+  const safeSlashIndex = Math.min(slashActiveIndex, Math.max(slashMatches.length - 1, 0));
 
   return (
     <div className="shrink-0 border-t border-border bg-card">
@@ -276,139 +369,160 @@ export function ChatComposer() {
       />
       <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect} />
 
-      <Popover open={quickRepliesOpen} onOpenChange={setQuickRepliesOpen}>
-        {toolbarOpen ? (
-          <div className="grid grid-cols-3 gap-2 border-b border-border px-4 py-3">
-            <ToolbarAction
-              label="Audio"
-              color="text-rose-500"
-              onClick={() => {
-                setIsRecording(true);
-                setToolbarOpen(false);
-              }}
-              icon={<Mic className="h-5 w-5" />}
-            />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="flex flex-col items-center gap-1.5 rounded-lg py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/50"
-                >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-500/15 text-sky-500">
-                    <Paperclip className="h-5 w-5" />
-                  </span>
-                  Archivos
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" side="top">
-                <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
-                  <GallerySvgIcon /> Foto
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    if (fileInputRef.current) {
-                      fileInputRef.current.accept = 'audio/*';
-                      fileInputRef.current.click();
-                      fileInputRef.current.accept = '';
-                    }
-                  }}
-                >
-                  <MusicNoteSvgIcon /> Audio
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                  <FileNewSvgIcon /> Documento
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <ToolbarAction
-              label="Respuestas"
-              color="text-violet-500"
-              onClick={() => setQuickRepliesOpen(true)}
-              icon={<Zap className="h-5 w-5" />}
-            />
-          </div>
+      {toolbarOpen ? (
+        <div className="grid grid-cols-3 gap-2 border-b border-border px-4 py-3">
+          <ToolbarAction
+            label="Audio"
+            color="text-rose-500"
+            onClick={() => {
+              setIsRecording(true);
+              setToolbarOpen(false);
+            }}
+            icon={<Mic className="h-5 w-5" />}
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex flex-col items-center gap-1.5 rounded-lg py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/50"
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-500/15 text-sky-500">
+                  <Paperclip className="h-5 w-5" />
+                </span>
+                Archivos
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" side="top">
+              <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
+                <GallerySvgIcon /> Foto
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  if (fileInputRef.current) {
+                    fileInputRef.current.accept = 'audio/*';
+                    fileInputRef.current.click();
+                    fileInputRef.current.accept = '';
+                  }
+                }}
+              >
+                <MusicNoteSvgIcon /> Audio
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                <FileNewSvgIcon /> Documento
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <ToolbarAction
+            label="Respuestas"
+            color="text-violet-500"
+            onClick={() => {
+              setQuickRepliesModalOpen(true);
+              setToolbarOpen(false);
+            }}
+            icon={<Zap className="h-5 w-5" />}
+          />
+        </div>
+      ) : null}
+
+      <div className="px-4 py-3">
+        {hasPending ? (
+          <ComposerPendingAttachments
+            attachments={pendingAttachments}
+            onRemove={removePending}
+            onAddImages={() => imageInputRef.current?.click()}
+          />
         ) : null}
 
-        <div className="px-4 py-3">
-          {hasPending ? (
-            <ComposerPendingAttachments
-              attachments={pendingAttachments}
-              onRemove={removePending}
-              onAddImages={() => imageInputRef.current?.click()}
-            />
-          ) : null}
+        <div className="flex items-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className={cn('mb-0.5 h-8 w-8 shrink-0', toolbarOpen && 'border-primary text-primary')}
+            onClick={() => setToolbarOpen((v) => !v)}
+            title={toolbarOpen ? 'Ocultar acciones' : 'Más acciones'}
+          >
+            {toolbarOpen ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+          </Button>
 
-          <div className="flex items-end gap-2">
-            <PopoverAnchor asChild>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button
-                type="button"
-                variant="outline"
+                variant="ghost"
                 size="icon"
-                className={cn('mb-0.5 h-8 w-8 shrink-0', toolbarOpen && 'border-primary text-primary')}
-                onClick={() => setToolbarOpen((v) => !v)}
-                title={toolbarOpen ? 'Ocultar acciones' : 'Más acciones'}
+                className="mb-0.5 h-8 w-8 shrink-0 text-muted-foreground"
+                title="Adjuntar"
               >
-                {toolbarOpen ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                <Paperclip className="h-4 w-4" />
               </Button>
-            </PopoverAnchor>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="mb-0.5 h-8 w-8 shrink-0 text-muted-foreground"
-                  title="Adjuntar"
-                >
-                  <Paperclip className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" side="top">
-                <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
-                  <GallerySvgIcon /> Foto
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    if (fileInputRef.current) {
-                      fileInputRef.current.accept = 'audio/*';
-                      fileInputRef.current.click();
-                      fileInputRef.current.accept = '';
-                    }
-                  }}
-                >
-                  <MusicNoteSvgIcon /> Audio
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                  <FileNewSvgIcon /> Documento
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="mb-0.5 h-8 w-8 shrink-0 text-muted-foreground"
-                  title="Emoji"
-                >
-                  <Smile className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent side="top" align="start" className="w-auto border-0 p-0">
-                <EmojiGrid
-                  onSelect={(emoji) =>
-                    setContent((prev) => prev + emoji.replace(/\uFE0F/g, ''))
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="top">
+              <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
+                <GallerySvgIcon /> Foto
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  if (fileInputRef.current) {
+                    fileInputRef.current.accept = 'audio/*';
+                    fileInputRef.current.click();
+                    fileInputRef.current.accept = '';
                   }
-                />
-              </PopoverContent>
-            </Popover>
+                }}
+              >
+                <MusicNoteSvgIcon /> Audio
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                <FileNewSvgIcon /> Documento
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="mb-0.5 h-8 w-8 shrink-0 text-muted-foreground"
+                title="Emoji"
+              >
+                <Smile className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="start" className="w-auto border-0 p-0">
+              <EmojiGrid
+                onSelect={(emoji) =>
+                  setContent((prev) => prev + emoji.replace(/\uFE0F/g, ''))
+                }
+              />
+            </PopoverContent>
+          </Popover>
+
+          <div className="relative min-w-0 flex-1">
+            {!hasPending && slashMenuOpen ? (
+              <QuickRepliesSlashMenu
+                items={slashMatches}
+                activeIndex={safeSlashIndex}
+                onHover={setSlashActiveIndex}
+                onSelect={(item) => applyQuickReply(item, true)}
+              />
+            ) : null}
 
             <Textarea
+              ref={textareaRef}
               value={hasPending ? caption : content}
-              onChange={(e) =>
-                hasPending ? setCaption(e.target.value) : setContent(e.target.value)
-              }
+              onChange={(e) => {
+                if (hasPending) {
+                  setCaption(e.target.value);
+                  return;
+                }
+                handleContentChange(
+                  e.target.value,
+                  e.target.selectionStart ?? e.target.value.length,
+                );
+              }}
+              onClick={(e) => setSlashCursor(e.currentTarget.selectionStart ?? 0)}
+              onKeyUp={(e) => setSlashCursor(e.currentTarget.selectionStart ?? 0)}
+              onSelect={(e) => setSlashCursor(e.currentTarget.selectionStart ?? 0)}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
               placeholder={
@@ -419,47 +533,40 @@ export function ChatComposer() {
               rows={1}
               className="min-h-[42px] max-h-32 resize-none border-transparent bg-muted/50 text-message focus-visible:border-primary"
             />
-
-            <Button
-              type="button"
-              size="icon"
-              className="mb-0.5 h-10 w-10 shrink-0 rounded-full"
-              onClick={() =>
-                hasPending ? void handleSendAttachments() : void handleSendText()
-              }
-              disabled={
-                sending ||
-                sendingAttachment ||
-                (hasPending ? false : !content.trim())
-              }
-              title="Enviar"
-            >
-              {sending || sendingAttachment ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
           </div>
+
+          <Button
+            type="button"
+            size="icon"
+            className="mb-0.5 h-10 w-10 shrink-0 rounded-full"
+            onClick={() =>
+              hasPending ? void handleSendAttachments() : void handleSendText()
+            }
+            disabled={
+              sending ||
+              sendingAttachment ||
+              (hasPending ? false : !content.trim())
+            }
+            title="Enviar"
+          >
+            {sending || sendingAttachment ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </Button>
         </div>
+      </div>
 
-        <PopoverContent side="top" align="start" className="w-80 p-2">
-          <p className="mb-2 px-2 text-xs font-medium text-muted-foreground">Respuestas rápidas</p>
-          <div className="max-h-64 space-y-1 overflow-y-auto">
-            {(showSlashHint ? filteredReplies : FLOTA_QUICK_REPLIES).map((reply) => (
-              <button
-                key={reply.id}
-                type="button"
-                className="w-full rounded-lg px-2 py-2 text-left transition-colors hover:bg-muted"
-                onClick={() => applyQuickReply(reply.text)}
-              >
-                <p className="text-sm font-medium">{reply.label}</p>
-                <p className="line-clamp-2 text-xs text-muted-foreground">{reply.text}</p>
-              </button>
-            ))}
-          </div>
-        </PopoverContent>
-      </Popover>
+      <QuickRepliesModal
+        open={quickRepliesModalOpen}
+        onClose={() => setQuickRepliesModalOpen(false)}
+        onSelect={(reply) => applyQuickReply(reply, false)}
+        replies={replies}
+        createReply={createReply}
+        updateReply={updateReply}
+        deleteReply={deleteReply}
+      />
     </div>
   );
 }

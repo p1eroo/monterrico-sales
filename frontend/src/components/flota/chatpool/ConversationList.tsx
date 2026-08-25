@@ -24,10 +24,9 @@ import {
 } from '@/components/shared/InboxThreadContextMenu';
 import { useChatpoolStore } from './store';
 import { ConversationCard } from './ConversationCard';
-import { ProspectList } from './ProspectList';
+import { ProspectosTableModal } from './ProspectosTableModal';
 import { FlotaWhatsappConnectionBanner, FlotaWhatsappLoadingState } from './FlotaWhatsappConnectionBanner';
 import { FLOTA_PROSPECTO_ESTADOS, formatProspectoEstado } from './prospectoEstado';
-import { isWaConversationId } from './utils';
 import type { Conversation } from './types';
 import type { AssigneeFilter, ReadFilter } from './store';
 
@@ -98,6 +97,7 @@ export function ConversationList() {
   const [search, setSearch] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Conversation | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [prospectosModalOpen, setProspectosModalOpen] = useState(false);
   const chatContextMenu = useInboxThreadContextMenu();
   const searchQuery = search.trim().toLowerCase();
   const isSearching = searchQuery.length > 0;
@@ -165,7 +165,7 @@ export function ConversationList() {
 
   return (
     <div className="w-[320px] bg-card border-r border-border flex flex-col shrink-0 h-full">
-      <div className={cn('px-4 pt-4 pb-0', sidebarView === 'contacts' && 'flex flex-col flex-1 min-h-0')}>
+      <div className="px-4 pt-4 pb-0">
         <div className="mb-3 flex items-center justify-between gap-2">
           <h2 className="truncate text-foreground font-semibold text-[15px] min-w-0">{inboxName}</h2>
           <div
@@ -192,28 +192,20 @@ export function ConversationList() {
             <button
               type="button"
               role="tab"
-              aria-selected={sidebarView === 'contacts'}
-              title="Prospectos del CRM"
-              onClick={() => setSidebarView('contacts')}
+              aria-selected={false}
+              title="Tabla de prospectos del CRM"
+              onClick={() => setProspectosModalOpen(true)}
               className={cn(
                 'flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors',
-                sidebarView === 'contacts'
-                  ? 'bg-card text-primary shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground',
+                'text-muted-foreground hover:text-foreground',
               )}
             >
               <Users className="w-3.5 h-3.5" />
-              Contactos
+              Prospectos
             </button>
           </div>
         </div>
 
-        {sidebarView === 'contacts' ? (
-          <div className="flex flex-col flex-1 min-h-0">
-            <ProspectList />
-          </div>
-        ) : (
-          <>
         <div className="relative mb-3">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <Input
@@ -320,12 +312,8 @@ export function ConversationList() {
         </div>
 
         <div className="mt-3 border-b border-border" />
-          </>
-        )}
       </div>
 
-      {sidebarView === 'chats' ? (
-        <>
       <FlotaWhatsappConnectionBanner state={connectionState} />
 
       <div className="flex-1 overflow-y-auto min-h-0 scrollbar-thin">
@@ -413,8 +401,8 @@ export function ConversationList() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-        </>
-      ) : null}
+
+      <ProspectosTableModal open={prospectosModalOpen} onOpenChange={setProspectosModalOpen} />
     </div>
   );
 }

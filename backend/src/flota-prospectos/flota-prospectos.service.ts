@@ -241,12 +241,15 @@ export class FlotaProspectosService {
       select: {
         id: true,
         nombreCompleto: true,
+        redSocial: true,
+        fechaRegistro: true,
         celular: true,
         movil: true,
         estado: true,
         operador: true,
+        createdAt: true,
       },
-      orderBy: { nombreCompleto: 'asc' },
+      orderBy: { createdAt: 'desc' },
       take: 20000,
     });
   }

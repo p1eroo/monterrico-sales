@@ -43,6 +43,8 @@ import {
 } from './utils';
 import { ConductorCodigoBadge } from './ui/ConductorCodigoBadge';
 import { FileAttachmentCard } from './FileAttachmentCard';
+import { PdfAttachmentCard } from './PdfAttachmentCard';
+import { isPdfFile } from './pdfUtils';
 import type { Conversation } from './types';
 
 const channelLabels: Record<string, string> = {
@@ -537,17 +539,32 @@ function FilesSection({ files }: { files: ConversationAttachment[] }) {
         <p className="text-xs text-muted-foreground italic">No hay archivos en esta conversación</p>
       ) : (
         <div className="space-y-2">
-          {files.map((file) => (
-            <FileAttachmentCard
-              key={file.id}
-              fileName={file.name}
-              fileSize={file.size}
-              fileUrl={file.url}
-              attachmentUrl={file.url}
-              attachmentId={file.id}
-              variant="incoming"
-            />
-          ))}
+          {files.map((file) => {
+            if (isPdfFile(file.name, file.mimeType)) {
+              return (
+                <PdfAttachmentCard
+                  key={file.id}
+                  messageId={file.messageId}
+                  fileName={file.name}
+                  fileSize={file.size}
+                  fileUrl={file.url}
+                  attachmentId={file.id}
+                  variant="incoming"
+                />
+              );
+            }
+            return (
+              <FileAttachmentCard
+                key={file.id}
+                fileName={file.name}
+                fileSize={file.size}
+                fileUrl={file.url}
+                attachmentUrl={file.url}
+                attachmentId={file.id}
+                variant="incoming"
+              />
+            );
+          })}
         </div>
       )}
     </div>

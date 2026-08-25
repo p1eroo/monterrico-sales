@@ -194,7 +194,7 @@ function InfoSection({
           {title}
         </h3>
       </div>
-      <dl className="grid grid-cols-1 gap-y-3">{children}</dl>
+      <dl className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">{children}</dl>
     </section>
   );
 }
@@ -359,12 +359,12 @@ export function ProspectoInfoModal({
               iconWrapClass="bg-chart-3/18 ring-chart-3/40"
               iconClass="text-chart-3"
             >
-              <InfoField label="Modalidad" value={prospecto.modalidad || "—"} />
               <InfoField label="Placa" value={prospecto.placa || "—"} />
               <InfoField
                 label="Año vehículo"
                 value={prospecto.anioVehiculo != null ? String(prospecto.anioVehiculo) : "—"}
               />
+              <InfoField label="Modalidad" value={prospecto.modalidad || "—"} />
               <InfoField label="Aire acondicionado" value={prospecto.aireAcondicionado || "—"} />
               <InfoField label="Categoría" value={prospecto.categoriaVehiculo || "—"} />
               <InfoField label="Marca" value={prospecto.marca || "—"} />
@@ -384,9 +384,9 @@ export function ProspectoInfoModal({
                 value={prospecto.estado}
                 className={`font-medium ${estadoClass}`}
               />
+              <InfoField label="Operador" value={operador} />
               <InfoField label="Distrito" value={prospecto.distrito || "—"} />
               <InfoField label="Ciudad" value={prospecto.ciudad || "—"} />
-              <InfoField label="Operador" value={operador} />
               <InfoField label="Red social / fuente" value={prospecto.redSocial || "—"} />
               <InfoField
                 label="F. registro"

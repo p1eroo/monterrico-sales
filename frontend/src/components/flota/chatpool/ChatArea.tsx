@@ -1,9 +1,9 @@
 import { useCallback, useRef, useState, type ClipboardEvent, type DragEvent } from 'react';
-import { PanelRightOpen, Paperclip } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Paperclip } from 'lucide-react';
 import { MessageList } from './MessageList';
 import { ChatComposer } from './ChatComposer';
 import { ImageLightbox } from './ImageLightbox';
+import { PdfViewer } from './PdfViewer';
 import { useChatpoolStore } from './store';
 import { getClipboardAttachmentFile, isAcceptedAttachmentFile } from './attachmentUtils';
 import { toast } from '@/lib/notify';
@@ -11,7 +11,6 @@ import { cn } from '@/lib/utils';
 
 export function ChatArea() {
   const activeConversationId = useChatpoolStore((s) => s.activeConversationId);
-  const contactSidebarOpen = useChatpoolStore((s) => s.contactSidebarOpen);
   const connectionState = useChatpoolStore((s) => s.connectionState);
   const requestAttachFile = useChatpoolStore((s) => s.requestAttachFile);
 
@@ -94,18 +93,7 @@ export function ChatArea() {
       <MessageList />
       {activeConversationId ? <ChatComposer /> : null}
       <ImageLightbox />
-      {!contactSidebarOpen && activeConversationId ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="absolute right-3 top-16 z-10 h-8 w-8 shadow-sm"
-          onClick={() => useChatpoolStore.getState().setContactSidebarOpen(true)}
-          title="Abrir panel de contacto"
-        >
-          <PanelRightOpen className="h-4 w-4" />
-        </Button>
-      ) : null}
+      <PdfViewer />
 
       {isDragging ? (
         <div

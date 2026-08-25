@@ -3,7 +3,9 @@ import { ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { resolveAttachmentUrl } from './utils';
 import { FileAttachmentCard } from './FileAttachmentCard';
+import { PdfAttachmentCard } from './PdfAttachmentCard';
 import { AudioMessageContent } from './AudioMessageContent';
+import { isPdfFile } from './pdfUtils';
 import type { Message } from './types';
 
 interface MessageAttachmentViewProps {
@@ -75,14 +77,30 @@ export function MessageAttachmentView({
     );
   }
 
+  const fileName = message.fileName ?? message.content ?? 'archivo';
+  const variant = isAgent ? 'outgoing' : 'incoming';
+
+  if (isPdfFile(fileName, message.mimeType)) {
+    return (
+      <PdfAttachmentCard
+        messageId={message.id}
+        fileName={fileName}
+        fileSize={message.fileSize}
+        fileUrl={src || undefined}
+        attachmentId={message.attachmentId ?? message.id}
+        variant={variant}
+      />
+    );
+  }
+
   return (
     <FileAttachmentCard
-      fileName={message.fileName ?? message.content ?? 'archivo'}
+      fileName={fileName}
       fileSize={message.fileSize}
-      fileUrl={src ?? undefined}
-      attachmentUrl={src ?? undefined}
+      fileUrl={src || undefined}
+      attachmentUrl={src || undefined}
       attachmentId={message.attachmentId ?? message.id}
-      variant={isAgent ? 'outgoing' : 'incoming'}
+      variant={variant}
     />
   );
 }

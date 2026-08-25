@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import {
   fetchConversations,
   fetchFlotaInstances,
+  fetchMasivoProspectos,
   fetchFlotaProspectoMessages,
   linkWhatsappProspecto,
   markConversationAsRead,
@@ -137,9 +138,14 @@ interface ChatpoolState {
   contactSidebarOpen: boolean;
   currentAgentName: string | null;
   lightboxMessageId: string | null;
+  pdfViewerMessageId: string | null;
   conductorCodigoByPhone: Record<string, string>;
   /** Bridge DnD desde ChatArea → ChatComposer */
   attachFileRequest: File | null;
+  /** Cache de prospectos del CRM para la vista de contactos (load-once) */
+  contactProspects: FlotaMasivoProspecto[] | null;
+  contactsLoading: boolean;
+  contactsError: string | null;
 
   bootstrap: (currentAgentName?: string | null) => Promise<void>;
   refreshConversations: (opts?: { silent?: boolean }) => Promise<void>;
@@ -154,8 +160,11 @@ interface ChatpoolState {
   setContactSidebarOpen: (open: boolean) => void;
   openLightbox: (messageId: string) => void;
   closeLightbox: () => void;
+  openPdfViewer: (messageId: string) => void;
+  closePdfViewer: () => void;
   requestAttachFile: (file: File) => void;
   clearAttachFileRequest: () => void;
+  loadContactProspects: () => Promise<void>;
   updateOperador: (prospectoId: string, operador: string | null, operadores: OperadorUser[]) => Promise<void>;
   updateEstado: (prospectoId: string, estado: string, extra?: { fechaCita?: string }) => Promise<void>;
   applyProspectoPatch: (
@@ -249,8 +258,12 @@ export const useChatpoolStore = create<ChatpoolState>((set, get) => ({
   contactSidebarOpen: true,
   currentAgentName: null,
   lightboxMessageId: null,
+  pdfViewerMessageId: null,
   conductorCodigoByPhone: {},
   attachFileRequest: null,
+  contactProspects: null,
+  contactsLoading: false,
+  contactsError: null,
 
   bootstrap: async (currentAgentName) => {
     const prev = get();
@@ -497,8 +510,25 @@ export const useChatpoolStore = create<ChatpoolState>((set, get) => ({
   setContactSidebarOpen: (open) => set({ contactSidebarOpen: open }),
   openLightbox: (messageId) => set({ lightboxMessageId: messageId }),
   closeLightbox: () => set({ lightboxMessageId: null }),
+  openPdfViewer: (messageId) => set({ pdfViewerMessageId: messageId }),
+  closePdfViewer: () => set({ pdfViewerMessageId: null }),
   requestAttachFile: (file) => set({ attachFileRequest: file }),
   clearAttachFileRequest: () => set({ attachFileRequest: null }),
+
+  loadContactProspects: async () => {
+    const s = get();
+    if (s.contactProspects !== null || s.contactsLoading) return;
+    set({ contactsLoading: true, contactsError: null });
+    try {
+      const data = await fetchMasivoProspectos();
+      set({ contactProspects: data, contactsLoading: false });
+    } catch (e) {
+      set({
+        contactsLoading: false,
+        contactsError: e instanceof Error ? e.message : 'No se pudieron cargar los prospectos',
+      });
+    }
+  },
 
   updateOperador: async (prospectoId, operador, operadores) => {
     if (isWaConversationId(prospectoId)) {

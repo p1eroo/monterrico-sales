@@ -4,7 +4,8 @@ export type QuickReply = {
   text: string;
 };
 
-export const FLOTA_QUICK_REPLIES: QuickReply[] = [
+/** Semilla inicial (primera carga / reset). */
+export const DEFAULT_FLOTA_QUICK_REPLIES: QuickReply[] = [
   {
     id: 'saludo',
     label: 'Saludo inicial',
@@ -26,3 +27,6 @@ export const FLOTA_QUICK_REPLIES: QuickReply[] = [
     text: 'Perfecto, podemos agendar una cita para continuar el proceso. ¿Qué día y horario le resulta conveniente?',
   },
 ];
+
+/** @deprecated Usar DEFAULT_FLOTA_QUICK_REPLIES + useFlotaQuickReplies */
+export const FLOTA_QUICK_REPLIES = DEFAULT_FLOTA_QUICK_REPLIES;
