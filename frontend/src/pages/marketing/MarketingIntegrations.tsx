@@ -26,6 +26,7 @@ import {
   fetchFacebookAccounts, connectFacebookAccount, disconnectFacebookAccount,
   type FacebookAccount, type ConnectAccountDto,
 } from '@/lib/marketingApi';
+import { WhatsappCloudIntegrationsSection } from './WhatsappCloudIntegrationsSection';
 
 const STORAGE_KEY_ID = 'fb_page_id';
 const STORAGE_KEY_NAME = 'fb_page_name';
@@ -241,24 +242,32 @@ export default function MarketingIntegrations() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-center gap-2">
-          <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10">
-            <Facebook className="size-4 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold tracking-tight">Integraciones</h2>
-            <p className="text-sm text-muted-foreground">
-              Páginas de Facebook conectadas para importar leads de formularios.
-            </p>
-          </div>
-        </div>
-        <Button size="sm" className="gap-1.5 shrink-0" onClick={() => { setEditAccount(undefined); setConnectOpen(true); }}>
-          <Plus className="size-4" />
-          Conectar Facebook
-        </Button>
+    <div className="mx-auto max-w-6xl space-y-10">
+      <div>
+        <h2 className="text-lg font-semibold tracking-tight">Integraciones</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Conecta canales de Meta: leads de Facebook y WhatsApp Cloud API para envíos masivos.
+        </p>
       </div>
+
+      <section className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-center gap-2">
+            <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10">
+              <Facebook className="size-4 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold tracking-tight">Facebook Lead Ads</h3>
+              <p className="text-sm text-muted-foreground">
+                Páginas conectadas para importar leads de formularios.
+              </p>
+            </div>
+          </div>
+          <Button size="sm" className="gap-1.5 shrink-0" onClick={() => { setEditAccount(undefined); setConnectOpen(true); }}>
+            <Plus className="size-4" />
+            Conectar Facebook
+          </Button>
+        </div>
 
       {loading ? (
         <div className="flex min-h-[240px] items-center justify-center rounded-xl border bg-card">
@@ -341,6 +350,9 @@ export default function MarketingIntegrations() {
           </table>
         </div>
       )}
+      </section>
+
+      <WhatsappCloudIntegrationsSection />
 
       <ConfigDialog
         account={configAccount}

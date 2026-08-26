@@ -86,6 +86,7 @@ model User {
   whatsappMessagesSent CrmWhatsappMessage[] @relation("CrmWhatsappMessageAuthor")
   allowedAreas         String[] @default([])
   facebookAccounts     FacebookAccount[]
+  whatsappCloudAccounts WhatsAppCloudAccount[]
 }
 
 /** Instancia/línea de WhatsApp conectada (personal por asesor, o compartida de flota). */
@@ -982,6 +983,99 @@ model FacebookLead {
   @@index([importedAsOpportunityId])
   @@index([importedAsFlotaProspectoId])
   @@index([importedAt])
+}
+
+// ─── WhatsApp Cloud API (Marketing Masivo) ───
+
+model WhatsAppCloudAccount {
+  id                 String   @id @default(cuid())
+  wabaId             String   @unique
+  displayName        String
+  phoneNumberId      String
+  displayPhoneNumber String?
+  verifiedName       String?
+  accessToken        String
+  graphApiVersion    String   @default("v22.0")
+  connectedById      String
+  connectedBy        User     @relation(fields: [connectedById], references: [id], onDelete: Restrict)
+  isDefault          Boolean  @default(false)
+  active             Boolean  @default(true)
+  lastSyncedAt       DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  templates          WhatsAppCloudTemplate[]
+  campaigns          WhatsAppBulkCampaign[]
+
+  @@index([connectedById])
+  @@index([active])
+}
+
+model WhatsAppCloudTemplate {
+  id              String   @id @default(cuid())
+  metaTemplateId  String?  @unique
+  name            String
+  language        String
+  category        String
+  status          String
+  header          String?
+  body            String
+  footer          String?
+  headerMedia     String?
+  parameterFormat String?
+  sampleVariables Json?
+  qualityRating   String?
+  rejectionReason String?
+  buttons         Json?
+  components      Json?
+  accountId       String
+  account         WhatsAppCloudAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  lastSyncedAt    DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  campaigns       WhatsAppBulkCampaign[]
+
+  @@unique([accountId, name, language])
+  @@index([accountId, status])
+}
+
+model WhatsAppBulkCampaign {
+  id              String   @id @default(cuid())
+  name            String?
+  accountId       String
+  account         WhatsAppCloudAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  templateId      String
+  template        WhatsAppCloudTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  variableMapping Json
+  status          String   @default("draft")
+  total           Int      @default(0)
+  sent            Int      @default(0)
+  failed          Int      @default(0)
+  createdById     String
+  createdByName   String
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  recipients      WhatsAppBulkRecipient[]
+
+  @@index([accountId, createdAt])
+  @@index([status])
+}
+
+model WhatsAppBulkRecipient {
+  id            String   @id @default(cuid())
+  campaignId    String
+  campaign      WhatsAppBulkCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  phone         String
+  name          String?
+  company       String?
+  source        String?
+  status        String   @default("pending")
+  metaMessageId String?
+  error         String?
+  sentAt        DateTime?
+
+  @@index([campaignId, status])
 }
 
 // ─── Flota: Prospectos importados desde Google Sheets ───

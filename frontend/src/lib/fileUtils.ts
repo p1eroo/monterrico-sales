@@ -28,6 +28,19 @@ export function isExtractableDocumentMime(mimeType: string): boolean {
   return m.startsWith('image/') || m === 'application/pdf';
 }
 
+/** Expediente del prospecto: docs/imágenes; no audio ni video. */
+export function isFlotaExpedienteFile(file: { mimeType?: string; name?: string }): boolean {
+  const mime = (file.mimeType || '').toLowerCase().split(';')[0].trim();
+  if (mime.startsWith('audio/') || mime.startsWith('video/')) return false;
+  const name = (file.name || '').toLowerCase();
+  if (/\.(mp3|wav|ogg|m4a|webm|aac|opus|mp4|mov|avi|mkv)$/i.test(name)) return false;
+  return true;
+}
+
+export function isFlotaExpedienteUploadFile(file: File): boolean {
+  return isFlotaExpedienteFile({ mimeType: file.type, name: file.name });
+}
+
 export const DOCUMENT_TIPO_LABELS: Record<string, string> = {
   dni: 'DNI',
   licencia: 'Licencia de conducir',

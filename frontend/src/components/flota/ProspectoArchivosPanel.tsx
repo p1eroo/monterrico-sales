@@ -163,6 +163,8 @@ export function ProspectoArchivosPanel({
         disabled={loading || !activeId}
         busy={!!uploadStatus}
         busyMessage={uploadStatus?.message}
+        accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx,.csv,.txt,image/*,application/pdf"
+        hint="PDF, imágenes, documentos, hojas de cálculo (sin audio)"
         className="min-h-[88px] rounded-xl border-dashed border-border/80 p-4"
       />
 
@@ -223,6 +225,7 @@ export function ProspectoArchivosPanel({
         onOpenChange={setPreviewOpen}
         onDownload={handleDownload}
         fetchBlobUrl={fetchBlobUrl}
+        nested
       />
     </>
   );

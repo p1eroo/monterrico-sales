@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException, BadRequestException, ConflictExc
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
+import { FlotaConductorMatchService } from '../flota-prospectos/flota-conductor-match.service';
 import { FacebookGraphApiService, type FacebookLeadResponse, type FacebookFormResponse } from './facebook-graph-api.service';
 import { storeCompanyRucValue } from '../common/company-ruc.util';
 import type { ImportComercialDto, ImportFlotaDto } from './dto/import-lead.dto';
@@ -214,6 +215,7 @@ export class FacebookLeadsService {
     private readonly prisma: PrismaService,
     private readonly graphApi: FacebookGraphApiService,
     private readonly config: ConfigService,
+    private readonly conductorMatch: FlotaConductorMatchService,
   ) {}
 
   async connectAccount(userId: string, dto: { pageId: string; pageName: string; pageAccessToken: string; pageTokenExpiresAt?: string; instagramId?: string }) {
@@ -287,9 +289,26 @@ export class FacebookLeadsService {
     if (!account) throw new NotFoundException('Cuenta no encontrada');
 
     const fbForms = await this.graphApi.getPageForms(account.pageId, account.pageAccessToken);
+    const syncedIds = fbForms.map((f) => f.id);
 
     for (const fbForm of fbForms) {
       await this.upsertFacebookForm(account.id, account.pageId, fbForm);
+    }
+
+    let removedForms = 0;
+    if (syncedIds.length > 0) {
+      const removed = await this.prisma.facebookForm.deleteMany({
+        where: {
+          accountId,
+          facebookFormId: { notIn: syncedIds },
+        },
+      });
+      removedForms = removed.count;
+      if (removedForms > 0) {
+        this.logger.log(
+          `Removed ${removedForms} obsolete form(s) and their leads for account ${accountId}`,
+        );
+      }
     }
 
     await this.prisma.facebookAccount.update({
@@ -297,10 +316,12 @@ export class FacebookLeadsService {
       data: { lastSyncedAt: new Date() },
     });
 
-    return this.prisma.facebookForm.findMany({
+    const forms = await this.prisma.facebookForm.findMany({
       where: { accountId },
       orderBy: { name: 'asc' },
     });
+
+    return { forms, removedForms };
   }
 
   async syncLeads(accountId: string, formId?: string) {
@@ -703,6 +724,8 @@ export class FacebookLeadsService {
       data: { importedAsFlotaProspectoId: prospecto.id, importedAt: new Date() },
     });
 
+    await this.conductorMatch.afiliarSiConductor(prospecto);
+
     this.logger.log(`Lead ${leadId} sent to Flota as prospecto ${prospecto.id} by ${userId}`);
     return { flotaProspectoId: prospecto.id };
   }
@@ -969,7 +992,7 @@ ${this.leadAnswersText(lead)}`;
     const { ids, selectAll, formId, search, dateFrom, dateTo } = params;
 
     const forms = await this.prisma.facebookForm.findMany({
-      where: { account: { connectedById: userId } },
+      where: { account: { connectedById: userId, active: true }, status: 'active' },
       select: { id: true },
     });
     const ownFormIds = forms.map((f) => f.id);
@@ -1215,7 +1238,7 @@ ${this.leadAnswersText(lead)}`;
 
     const where: Record<string, unknown> = {};
     const forms = await this.prisma.facebookForm.findMany({
-      where: { account: { connectedById: userId } },
+      where: { account: { connectedById: userId, active: true }, status: 'active' },
       select: { id: true },
     });
     const formIds = forms.map((f) => f.id);
@@ -1262,14 +1285,21 @@ ${this.leadAnswersText(lead)}`;
   }
 
   async getStats(userId: string) {
-    const forms = await this.prisma.facebookForm.findMany({
-      where: { account: { connectedById: userId } },
-      select: { id: true },
+    const userForms = await this.prisma.facebookForm.findMany({
+      where: { account: { connectedById: userId, active: true }, status: 'active' },
+      select: { id: true, name: true, leadsCount: true },
     });
-    const formIds = forms.map((f) => f.id);
+    const formIds = userForms.map((f) => f.id);
 
     if (formIds.length === 0) {
-      return { total: 0, today: 0, lastSync: null, formsCount: 0, byForm: [], byPlatform: [] };
+      return {
+        total: 0,
+        today: 0,
+        lastSync: null,
+        formsCount: 0,
+        byForm: [],
+        byPlatform: [],
+      };
     }
 
     const todayStart = new Date();
@@ -1277,9 +1307,11 @@ ${this.leadAnswersText(lead)}`;
 
     const [total, today, lastAccount, byPlatformGroups] = await Promise.all([
       this.prisma.facebookLead.count({ where: { formId: { in: formIds } } }),
-      this.prisma.facebookLead.count({ where: { formId: { in: formIds }, createdTime: { gte: todayStart } } }),
+      this.prisma.facebookLead.count({
+        where: { formId: { in: formIds }, createdTime: { gte: todayStart } },
+      }),
       this.prisma.facebookAccount.findFirst({
-        where: { connectedById: userId },
+        where: { connectedById: userId, active: true },
         orderBy: { lastSyncedAt: 'desc' },
         select: { lastSyncedAt: true },
       }),
@@ -1290,11 +1322,7 @@ ${this.leadAnswersText(lead)}`;
       }),
     ]);
 
-    const byForm = await this.prisma.facebookForm.findMany({
-      where: { id: { in: formIds } },
-      select: { id: true, name: true, leadsCount: true },
-      orderBy: { leadsCount: 'desc' },
-    });
+    const byForm = [...userForms].sort((a, b) => b.leadsCount - a.leadsCount);
 
     const byPlatform = byPlatformGroups
       .map((g) => ({

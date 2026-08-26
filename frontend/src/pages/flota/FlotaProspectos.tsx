@@ -290,6 +290,7 @@ export default function FlotaProspectos() {
   const [duplicadosFilter, setDuplicadosFilter] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
   const [conLlamadasFilter, setConLlamadasFilter] = useState("all");
+  const [contactadoFilter, setContactadoFilter] = useState("all");
   const [fechasOpen, setFechasOpen] = useState(false);
   const [sheetsPopoverOpen, setSheetsPopoverOpen] = useState(false);
   const [prospectsWithFiles, setProspectsWithFiles] = useState<Set<string>>(new Set());
@@ -732,6 +733,29 @@ export default function FlotaProspectos() {
           </span>
         ),
       },
+      {
+        id: "contacto",
+        header: "Contacto",
+        size: 100,
+        enableSorting: false,
+        enableColumnFilter: false,
+        cell: ({ row }) =>
+          row.original.contactado ? (
+            <Badge
+              variant="ghost"
+              className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
+            >
+              Contactado
+            </Badge>
+          ) : (
+            <Badge
+              variant="ghost"
+              className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+            >
+              Sin contactar
+            </Badge>
+          ),
+      },
     ],
     [selectedIds],
   );
@@ -892,6 +916,7 @@ export default function FlotaProspectos() {
         ciudad: ciudadFilter,
         aireAcondicionado: aireAcondicionadoFilter,
         conLlamadas: conLlamadasFilter,
+        contactado: contactadoFilter,
         columnFilters,
       }),
     [
@@ -906,6 +931,7 @@ export default function FlotaProspectos() {
       ciudadFilter,
       aireAcondicionadoFilter,
       conLlamadasFilter,
+      contactadoFilter,
       columnFilters,
     ],
   );
@@ -987,6 +1013,8 @@ export default function FlotaProspectos() {
               : undefined,
           conLlamadas:
             conLlamadasFilter === "all" ? undefined : conLlamadasFilter,
+          contactado:
+            contactadoFilter === "all" ? undefined : contactadoFilter,
         });
 
         setProspectos(res.data);
@@ -1353,7 +1381,9 @@ export default function FlotaProspectos() {
                   ? { aireAcondicionado: aireAcondicionadoFilter }
                   : {}),
               }
-            : undefined,
+                : undefined,
+          contactado:
+            contactadoFilter === "all" ? undefined : contactadoFilter,
       });
 
       const rows = res.data.map((p) => ({
@@ -1383,6 +1413,7 @@ export default function FlotaProspectos() {
           : "",
         Móvil: p.movil ?? "",
         Observaciones: p.observaciones ?? "",
+        Contacto: p.contactado ? "Contactado" : "Sin contactar",
       }));
 
       const ws = XLSX.utils.json_to_sheet(rows);
@@ -1469,6 +1500,7 @@ export default function FlotaProspectos() {
             { label: "F. Afiliacion", width: 110 },
             { label: "Movil", width: 100 },
             { label: "Observaciones", width: 170 },
+            { label: "Contacto", width: 100 },
           ]}
           rows={8}
         />
@@ -1810,6 +1842,17 @@ export default function FlotaProspectos() {
                     <option value="all">Llamadas</option>
                     <option value="true">Con llamadas</option>
                     <option value="false">Sin llamadas</option>
+                  </select>
+                ),
+                contacto: (
+                  <select
+                    value={contactadoFilter}
+                    onChange={(e) => setContactadoFilter(e.target.value)}
+                    className="w-full h-6 rounded border border-input bg-background px-1.5 text-[10px] outline-none text-muted-foreground"
+                  >
+                    <option value="all">Contacto</option>
+                    <option value="true">Contactado</option>
+                    <option value="false">Sin contactar</option>
                   </select>
                 ),
               }}

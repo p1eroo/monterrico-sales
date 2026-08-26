@@ -3,9 +3,6 @@ import { createPortal } from 'react-dom';
 import {
   Activity,
   LayoutGrid,
-  Loader2,
-  Plus,
-  RefreshCw,
   Search,
   Send,
   X,
@@ -13,23 +10,15 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { GlassCard } from '@/components/shared/GlassCard';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Pagination } from '@/components/shared/Pagination';
 import { ComercialInclusiveMultiFilter } from '@/components/shared/ComercialInclusiveMultiFilter';
-import { ColumnsSvgIcon } from '@/components/icons/ColumnsSvgIcon';
 import { EyeSvgIcon } from '@/components/icons/EyeSvgIcon';
 import { TrashSvgIcon } from '@/components/icons/TrashSvgIcon';
 import { cn } from '@/lib/utils';
 import {
   comercialFilterIconClass,
-  comercialProPopoverClass,
   matchesInclusiveMultiFilterValue,
 } from '@/lib/comercialFilterSurface';
 import {
@@ -50,6 +39,7 @@ import {
   type WhatsAppTemplateCategory,
   type WhatsAppTemplateStatus,
 } from './mockData';
+import type { WhatsAppCloudAccount } from '@/lib/marketingApi';
 
 function renderVariables(body: string, sampleVariables: string[]): string {
   return body.replace(/\{\{([a-z][a-z0-9_]*|\d+)\}\}/gi, (_, key: string) => {
@@ -74,17 +64,6 @@ const CATEGORY_OPTIONS = (Object.keys(WHATSAPP_CATEGORY_META) as WhatsAppTemplat
 const STATUS_OPTIONS = (Object.keys(WHATSAPP_STATUS_LABEL) as WhatsAppTemplateStatus[]).map(
   (value) => ({ value, label: WHATSAPP_STATUS_LABEL[value] }),
 );
-
-const TOGGLEABLE_COLUMNS = [
-  { id: 'categoria', label: 'Categoría' },
-  { id: 'body', label: 'Cuerpo' },
-  { id: 'calidad', label: 'Calidad' },
-  { id: 'variables', label: 'Variables' },
-  { id: 'botones', label: 'Botones' },
-  { id: 'fecha', label: 'Creada' },
-] as const;
-
-type ColumnId = (typeof TOGGLEABLE_COLUMNS)[number]['id'];
 
 const CRM_CELL_MUTED = 'text-[13px] text-[#475569] dark:text-gray-400';
 
@@ -229,30 +208,29 @@ function TemplatePreviewModal({
 
 export function TemplatesTab({
   templates,
+  activeAccount,
+  createOpen,
+  onCreateOpenChange,
   onCreate,
   onDelete,
-  onSync,
-  syncing,
   onUseTemplate,
 }: {
   templates: WhatsAppTemplate[];
+  activeAccount: WhatsAppCloudAccount | null;
+  createOpen: boolean;
+  onCreateOpenChange: (open: boolean) => void;
   onCreate: (t: WhatsAppTemplate) => void;
   onDelete: (id: string) => void;
-  onSync: () => void;
-  syncing: boolean;
   onUseTemplate: (id: string) => void;
 }) {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
-  const [hiddenColumns, setHiddenColumns] = useState<Partial<Record<ColumnId, boolean>>>({});
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [createOpen, setCreateOpen] = useState(false);
   const [preview, setPreview] = useState<WhatsAppTemplate | null>(null);
 
   const closePreview = useCallback(() => setPreview(null), []);
-  const isColumnVisible = (id: ColumnId) => hiddenColumns[id] !== true;
 
   const hasActiveFilters =
     Boolean(search.trim()) || categoryFilter.length > 0 || statusFilter.length > 0;
@@ -270,6 +248,20 @@ export function TemplatesTab({
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const pagedData = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+  if (!activeAccount) {
+    return (
+      <EmptyState
+        icon={Send}
+        title="Sin canal WhatsApp conectado"
+        description="Conecta un número en Integraciones para sincronizar plantillas desde Meta."
+        actionLabel="Ir a Integraciones"
+        onAction={() => {
+          window.location.href = '/marketing/integrations';
+        }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -323,63 +315,11 @@ export function TemplatesTab({
               <X className="size-4" /> Limpiar
             </Button>
           )}
-          <div className="ml-auto flex flex-wrap items-center gap-5">
-            <Popover modal={false}>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  className="inline-flex cursor-pointer items-center gap-1.5 text-[13px] font-semibold text-[#1f2933] transition-opacity hover:opacity-70 dark:text-gray-100"
-                >
-                  <ColumnsSvgIcon className="size-[18px]" />
-                  Columnas
-                </button>
-              </PopoverTrigger>
-              <PopoverContent
-                className={cn(comercialProPopoverClass, 'w-[200px] p-1.5')}
-                align="end"
-                sideOffset={8}
-                onOpenAutoFocus={(event) => event.preventDefault()}
-              >
-                <div className="flex flex-col">
-                  {TOGGLEABLE_COLUMNS.map((col) => {
-                    const visible = isColumnVisible(col.id);
-                    return (
-                      <div
-                        key={col.id}
-                        onClick={() =>
-                          setHiddenColumns((prev) => ({ ...prev, [col.id]: visible }))
-                        }
-                        className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
-                      >
-                        <Checkbox
-                          checked={visible}
-                          className="h-4 w-4 rounded border border-gray-400 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
-                        />
-                        <span className="text-[#1f2933] dark:text-gray-100">{col.label}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </PopoverContent>
-            </Popover>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                variant="outline"
-                className="h-9 text-sm font-normal"
-                onClick={onSync}
-                disabled={syncing}
-              >
-                {syncing ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-                Sincronizar
-              </Button>
-              <Button
-                className="h-9 text-sm font-normal shadow-md"
-                onClick={() => setCreateOpen(true)}
-              >
-                <Plus className="size-4" />
-                Nueva
-              </Button>
-            </div>
+          <div className="ml-auto">
+            <p className="text-[13px] text-muted-foreground">
+              Canal activo:{' '}
+              <span className="font-medium text-foreground">{activeAccount.displayName}</span>
+            </p>
           </div>
         </div>
 
@@ -393,7 +333,7 @@ export function TemplatesTab({
                 : 'Crea una plantilla o sincroniza las aprobadas desde Meta.'
             }
             actionLabel="Nueva plantilla"
-            onAction={() => setCreateOpen(true)}
+            onAction={() => onCreateOpenChange(true)}
           />
         ) : (
           <>
@@ -402,13 +342,13 @@ export function TemplatesTab({
               <thead>
                 <tr className={cn('h-[36px] text-left', crmTableHeaderRowClass)}>
                   <th className="px-3 text-[11px] font-bold">Plantilla</th>
-                  {isColumnVisible('categoria') && <th className="w-[130px] px-3 text-[11px] font-bold">Categoría</th>}
-                  {isColumnVisible('body') && <th className="px-3 text-[11px] font-bold">Cuerpo</th>}
+                  <th className="w-[130px] px-3 text-[11px] font-bold">Categoría</th>
+                  <th className="px-3 text-[11px] font-bold">Cuerpo</th>
                   <th className="w-[120px] px-3 text-[11px] font-bold">Estado</th>
-                  {isColumnVisible('calidad') && <th className="w-[110px] px-3 text-[11px] font-bold">Calidad</th>}
-                  {isColumnVisible('variables') && <th className="w-[100px] px-3 text-[11px] font-bold">Variables</th>}
-                  {isColumnVisible('botones') && <th className="w-[90px] px-3 text-[11px] font-bold">Botones</th>}
-                  {isColumnVisible('fecha') && <th className="w-[120px] px-3 text-[11px] font-bold">Creada</th>}
+                  <th className="w-[110px] px-3 text-[11px] font-bold">Calidad</th>
+                  <th className="w-[100px] px-3 text-[11px] font-bold">Variables</th>
+                  <th className="w-[90px] px-3 text-[11px] font-bold">Botones</th>
+                  <th className="w-[120px] px-3 text-[11px] font-bold">Creada</th>
                   <th className="w-[116px]" />
                 </tr>
               </thead>
@@ -436,21 +376,17 @@ export function TemplatesTab({
                           </div>
                         </div>
                       </td>
-                      {isColumnVisible('categoria') && (
-                        <td className="overflow-hidden px-3">
-                          <span className={CRM_CELL_MUTED}>{WHATSAPP_CATEGORY_META[t.category]}</span>
-                        </td>
-                      )}
-                      {isColumnVisible('body') && (
-                        <td className="overflow-hidden px-3">
-                          <span
-                            className="line-clamp-2 block max-h-10 text-[13px] leading-snug text-[#475569] dark:text-gray-400"
-                            title={renderVariables(t.body, t.sampleVariables)}
-                          >
-                            {renderVariables(t.body, t.sampleVariables)}
-                          </span>
-                        </td>
-                      )}
+                      <td className="overflow-hidden px-3">
+                        <span className={CRM_CELL_MUTED}>{WHATSAPP_CATEGORY_META[t.category]}</span>
+                      </td>
+                      <td className="overflow-hidden px-3">
+                        <span
+                          className="line-clamp-2 block max-h-10 text-[13px] leading-snug text-[#475569] dark:text-gray-400"
+                          title={renderVariables(t.body, t.sampleVariables)}
+                        >
+                          {renderVariables(t.body, t.sampleVariables)}
+                        </span>
+                      </td>
                       <td className="overflow-hidden px-3">
                         <Badge
                           variant="outline"
@@ -462,33 +398,25 @@ export function TemplatesTab({
                           {WHATSAPP_STATUS_LABEL[t.status]}
                         </Badge>
                       </td>
-                      {isColumnVisible('calidad') && (
-                        <td className="overflow-hidden px-3">
-                          <Badge
-                            variant="outline"
-                            className={cn('h-6 rounded-full px-2.5 text-[11px] font-medium', QUALITY_CLASS[t.qualityRating])}
-                          >
-                            {t.qualityRating}
-                          </Badge>
-                        </td>
-                      )}
-                      {isColumnVisible('variables') && (
-                        <td className="overflow-hidden px-3">
-                          <span className={CRM_CELL_MUTED}>
-                            {extractWhatsAppPlaceholders(t.header, t.body).length}
-                          </span>
-                        </td>
-                      )}
-                      {isColumnVisible('botones') && (
-                        <td className="overflow-hidden px-3">
-                          <span className={CRM_CELL_MUTED}>{t.buttons.length}</span>
-                        </td>
-                      )}
-                      {isColumnVisible('fecha') && (
-                        <td className="overflow-hidden px-3">
-                          <span className={CRM_CELL_MUTED}>{t.createdAt}</span>
-                        </td>
-                      )}
+                      <td className="overflow-hidden px-3">
+                        <Badge
+                          variant="outline"
+                          className={cn('h-6 rounded-full px-2.5 text-[11px] font-medium', QUALITY_CLASS[t.qualityRating])}
+                        >
+                          {t.qualityRating}
+                        </Badge>
+                      </td>
+                      <td className="overflow-hidden px-3">
+                        <span className={CRM_CELL_MUTED}>
+                          {extractWhatsAppPlaceholders(t.header, t.body).length}
+                        </span>
+                      </td>
+                      <td className="overflow-hidden px-3">
+                        <span className={CRM_CELL_MUTED}>{t.buttons.length}</span>
+                      </td>
+                      <td className="overflow-hidden px-3">
+                        <span className={CRM_CELL_MUTED}>{t.createdAt}</span>
+                      </td>
                       <td className="px-2" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-0.5">
                           <Button
@@ -550,7 +478,7 @@ export function TemplatesTab({
       </GlassCard>
 
       {createOpen ? (
-        <CreateTemplateDialog open={createOpen} onOpenChange={setCreateOpen} onCreate={onCreate} />
+        <CreateTemplateDialog open={createOpen} onOpenChange={onCreateOpenChange} onCreate={onCreate} />
       ) : null}
 
       {preview ? (

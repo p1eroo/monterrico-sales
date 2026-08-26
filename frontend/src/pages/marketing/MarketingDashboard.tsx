@@ -1,10 +1,16 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Users, UserPlus, TrendingUp, BarChart3, MessageCircle } from 'lucide-react';
+import { useState, useEffect, useMemo, type ComponentType } from 'react';
+import { Users, TrendingUp, MessageCircle } from 'lucide-react';
 import Chart from 'react-apexcharts';
 import type { ApexOptions } from 'apexcharts';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { fetchFacebookStats, type FacebookStats } from '@/lib/marketingApi';
+import {
+  MarketingConversionRateSvgIcon,
+  MarketingFormsSvgIcon,
+  MarketingLeadsTodaySvgIcon,
+  MarketingTotalLeadsSvgIcon,
+} from '@/pages/marketing/MarketingDashboardKpiSvgIcons';
 import { useChartTheme } from '@/hooks/useChartTheme';
 import { cn } from '@/lib/utils';
 
@@ -336,30 +342,60 @@ export default function MarketingDashboard() {
     ? ((stats.today / stats.total) * 100).toFixed(0) + '%'
     : '0%';
 
+  const kpis: Array<{
+    label: string;
+    value: string | number;
+    icon: ComponentType<{ className?: string }>;
+    color: string;
+  }> = [
+    {
+      label: 'Total Leads',
+      value: stats?.total ?? 0,
+      icon: MarketingTotalLeadsSvgIcon,
+      color: 'text-blue-600 bg-blue-100 dark:text-blue-400 dark:bg-blue-500/15',
+    },
+    {
+      label: 'Leads Hoy',
+      value: stats?.today ?? 0,
+      icon: MarketingLeadsTodaySvgIcon,
+      color: 'text-emerald-600 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-500/15',
+    },
+    {
+      label: 'Tasa Conversión',
+      value: conversionRate,
+      icon: MarketingConversionRateSvgIcon,
+      color: 'text-violet-600 bg-violet-100 dark:text-violet-400 dark:bg-violet-500/15',
+    },
+    {
+      label: 'Formularios',
+      value: stats?.formsCount ?? 0,
+      icon: MarketingFormsSvgIcon,
+      color: 'text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-500/15',
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <PageHeader title="Marketing" description="Panel de leads y rendimiento de campañas" />
 
       {/* KPIs */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: 'Total Leads', value: stats?.total ?? 0, icon: Users, color: 'text-blue-600 bg-blue-100' },
-          { label: 'Leads Hoy', value: stats?.today ?? 0, icon: UserPlus, color: 'text-emerald-600 bg-emerald-100' },
-          { label: 'Tasa Conversión', value: conversionRate, icon: TrendingUp, color: 'text-violet-600 bg-violet-100' },
-          { label: 'Formularios', value: stats?.formsCount ?? 0, icon: BarChart3, color: 'text-amber-600 bg-amber-100' },
-        ].map((c) => (
-          <Card key={c.label}>
-            <CardContent className="flex items-center gap-4 p-5">
-              <div className={`flex size-11 items-center justify-center rounded-xl ${c.color}`}>
-                <c.icon className="size-5" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">{c.label}</p>
-                <p className="text-2xl font-bold">{c.value}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        {kpis.map((c) => {
+          const Icon = c.icon;
+          return (
+            <Card key={c.label}>
+              <CardContent className="flex items-center gap-4 p-5">
+                <div className={cn('flex size-11 items-center justify-center rounded-xl', c.color)}>
+                  <Icon className="size-6" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">{c.label}</p>
+                  <p className="text-2xl font-bold">{c.value}</p>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Charts Row 1: Daily leads + Campaigns bar */}

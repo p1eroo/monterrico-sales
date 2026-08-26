@@ -19,17 +19,26 @@ import {
 } from '@/components/ui/select';
 import { GlassCard } from '@/components/shared/GlassCard';
 import { toast } from '@/lib/notify';
+import {
+  createWhatsAppBulkCampaign,
+  fetchWhatsAppBulkCampaign,
+  sendWhatsAppBulkCampaign,
+  type WhatsAppCloudAccount,
+} from '@/lib/marketingApi';
 import { PhonePreview } from './PhonePreview';
+import { formatWhatsAppPhoneDisplay } from './whatsappAudienceExcel';
 import {
   WHATSAPP_CATEGORY_META,
   extractWhatsAppPlaceholders,
   type WhatsAppContact,
-  type WhatsAppSendResult,
-  type WhatsAppSendStatus,
   type WhatsAppTemplate,
 } from './mockData';
 
 type VariableSource = 'name' | 'company' | 'phone' | 'form';
+
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
 
 const VARIABLE_FIELD_LABEL: Record<VariableSource, string> = {
   name: 'Nombre',
@@ -52,7 +61,7 @@ const NAMED_DEFAULT: Record<string, VariableSource> = {
 
 function valueForField(c: WhatsAppContact, field: VariableSource): string {
   if (field === 'name') return c.name;
-  if (field === 'phone') return `+51 ${c.phone}`;
+  if (field === 'phone') return formatWhatsAppPhoneDisplay(c.phone);
   return c.company ?? '';
 }
 
@@ -77,6 +86,7 @@ export function SendTab({
   templates,
   selectedContacts,
   initialTemplateId,
+  activeAccount,
   onSent,
   onGoToTemplates,
   onGoToAudience,
@@ -84,7 +94,8 @@ export function SendTab({
   templates: WhatsAppTemplate[];
   selectedContacts: WhatsAppContact[];
   initialTemplateId: string | null;
-  onSent: (results: WhatsAppSendResult[]) => void;
+  activeAccount?: WhatsAppCloudAccount | null;
+  onSent: (campaignId: string) => void;
   onGoToTemplates: () => void;
   onGoToAudience: () => void;
 }) {
@@ -116,48 +127,51 @@ export function SendTab({
   const withoutWhatsApp = selectedContacts.filter((c) => !c.hasWhatsApp).length;
 
   const simulateSend = () => {
-    if (!template || selectedContacts.length === 0) return;
+    if (!template || !activeAccount || selectedContacts.length === 0) return;
+    if (!scheduleNow) {
+      toast.error('La programación de envíos estará disponible próximamente');
+      return;
+    }
+
     setSending(true);
-    setProgress(0);
-    const started = new Date();
-    const interval = window.setInterval(() => {
-      setProgress((p) => {
-        const next = p + Math.random() * 9 + 3;
-        if (next >= 100) {
-          window.clearInterval(interval);
-          const results: WhatsAppSendResult[] = selectedContacts.map((c, i) => {
-            if (!c.hasWhatsApp) {
-              return {
-                contactId: c.id,
-                name: c.name,
-                phone: c.phone,
-                status: 'fallido' as const,
-                error: 'El número no tiene WhatsApp activo',
-                sentAt: started.toISOString(),
-              };
-            }
-            const roll = i % 5;
-            let status: WhatsAppSendStatus = 'entregado';
-            if (roll === 0) status = 'enviado';
-            if (roll === 1) status = 'leido';
-            return {
-              contactId: c.id,
-              name: c.name,
-              phone: c.phone,
-              status,
-              sentAt: started.toISOString(),
-            };
-          });
-          window.setTimeout(() => {
-            setSending(false);
-            setProgress(0);
-            onSent(results);
-          }, 400);
-          return 100;
+    setProgress(5);
+
+    const skipped = selectedContacts.filter((c) => !c.hasWhatsApp);
+    const eligible = selectedContacts.filter((c) => c.hasWhatsApp);
+
+    void (async () => {
+      try {
+        const campaign = await createWhatsAppBulkCampaign({
+          accountId: activeAccount.id,
+          templateId: template.id,
+          variableMapping: effectiveVariableMap,
+          recipients: eligible.map((c) => ({
+            phone: c.phone,
+            name: c.name,
+            company: c.company,
+            source: c.source,
+          })),
+        });
+
+        await sendWhatsAppBulkCampaign(campaign.id);
+
+        let current = campaign;
+        while (current.status === 'sending' || current.status === 'draft') {
+          await sleep(1200);
+          current = await fetchWhatsAppBulkCampaign(campaign.id);
+          const done = current.sent + current.failed;
+          setProgress(Math.min(99, Math.round((done / Math.max(1, current.total)) * 100)));
         }
-        return next;
-      });
-    }, 120);
+
+        setProgress(100);
+        onSent(campaign.id);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Error al enviar');
+      } finally {
+        setSending(false);
+        setProgress(0);
+      }
+    })();
   };
 
   const handleSend = () => {
@@ -165,13 +179,22 @@ export function SendTab({
       toast.error('Selecciona una plantilla aprobada para enviar.');
       return;
     }
+    if (!activeAccount) {
+      toast.error('No hay canal WhatsApp activo.');
+      return;
+    }
     if (selectedContacts.length === 0) {
       toast.error('Agrega contactos a la audiencia antes de enviar.');
       return;
     }
+    const eligible = selectedContacts.filter((c) => c.hasWhatsApp);
+    if (eligible.length === 0) {
+      toast.error('Ningún contacto seleccionado tiene WhatsApp activo.');
+      return;
+    }
     if (withoutWhatsApp > 0) {
       toast.message('Algunos contactos no tienen WhatsApp', {
-        description: `${withoutWhatsApp} contacto(s) se omitirán o marcarán como fallidos.`,
+        description: `${withoutWhatsApp} contacto(s) se marcarán como fallidos.`,
       });
     }
     simulateSend();
@@ -201,7 +224,7 @@ export function SendTab({
           <MessageCircle className="size-10 text-muted-foreground/40" />
           <p className="font-medium">Aún no hay contactos</p>
           <p className="max-w-sm text-sm text-muted-foreground">
-            Adjunta contactos (leads, CRM o Excel) para armar la audiencia del envío.
+            Importa un Excel en la pestaña Audiencia con nombre y teléfono de cada destinatario.
           </p>
           <Button
             className="bg-[#13944C] hover:bg-[#0f7a3d]"
@@ -333,6 +356,12 @@ export function SendTab({
               </p>
             </div>
             <div className="space-y-1.5 text-sm">
+              {activeAccount ? (
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground">Canal</span>
+                  <span className="max-w-[180px] truncate text-right font-medium">{activeAccount.displayName}</span>
+                </div>
+              ) : null}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Con WhatsApp</span>
                 <span className="font-medium">{selectedContacts.length - withoutWhatsApp}</span>

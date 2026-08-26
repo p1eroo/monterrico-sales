@@ -19,6 +19,7 @@ import { Public } from '../auth/decorators/public.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { FilesService } from '../files/files.service';
 import { FlotaDocumentExtractionService } from './flota-document-extraction.service';
+import { FlotaConductorMatchService } from './flota-conductor-match.service';
 
 @Controller('api/flow')
 export class FlowRegistroController {
@@ -29,6 +30,7 @@ export class FlowRegistroController {
     private readonly prisma: PrismaService,
     private readonly filesService: FilesService,
     private readonly documentExtraction: FlotaDocumentExtractionService,
+    private readonly conductorMatch: FlotaConductorMatchService,
   ) {}
 
   private async resolveBotUserId(): Promise<string> {
@@ -186,6 +188,7 @@ export class FlowRegistroController {
           fechaRegistro: new Date(),
         },
       });
+      await this.conductorMatch.afiliarSiConductor(prospecto);
     }
 
     const archivos: Array<{

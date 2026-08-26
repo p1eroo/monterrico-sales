@@ -232,7 +232,7 @@ export const MOCK_WHATSAPP_TEMPLATES: WhatsAppTemplate[] = [
 ];
 
 export const MOCK_WHATSAPP_CONTACTS: WhatsAppContact[] = [
-  { id: 'c1', name: 'Carlos Mendoza', phone: '999888777', company: 'Formulario: Oferta Taxi', platform: 'fb', source: 'leads', hasWhatsApp: true },
+  { id: 'c1', name: 'Carlos Mendoza', phone: '958921766', company: 'Formulario: Oferta Taxi', platform: 'fb', source: 'leads', hasWhatsApp: true },
   { id: 'c2', name: 'María Fernández', phone: '988777666', company: 'Formulario: Oferta Taxi', platform: 'ig', source: 'leads', hasWhatsApp: true },
   { id: 'c3', name: 'José Ramírez', phone: '977666555', company: 'Formulario: Bono de bienvenida', platform: 'fb', source: 'leads', hasWhatsApp: true },
   { id: 'c4', name: 'Lucía Torres', phone: '966555444', company: 'Formulario: Bono de bienvenida', platform: 'ig', source: 'leads', hasWhatsApp: true },
@@ -250,7 +250,7 @@ export const MOCK_WHATSAPP_CONTACTS: WhatsAppContact[] = [
 ];
 
 export const MOCK_WHATSAPP_RESULTS: WhatsAppSendResult[] = [
-  { contactId: 'c1', name: 'Carlos Mendoza', phone: '999888777', status: 'entregado', sentAt: '2026-08-24T10:02:11' },
+  { contactId: 'c1', name: 'Carlos Mendoza', phone: '958921766', status: 'entregado', sentAt: '2026-08-24T10:02:11' },
   { contactId: 'c2', name: 'María Fernández', phone: '988777666', status: 'leido', sentAt: '2026-08-24T10:02:14' },
   { contactId: 'c3', name: 'José Ramírez', phone: '977666555', status: 'entregado', sentAt: '2026-08-24T10:02:17' },
   { contactId: 'c4', name: 'Lucía Torres', phone: '966555444', status: 'fallido', sentAt: '2026-08-24T10:02:20', error: 'El número no tiene WhatsApp activo' },

@@ -34,6 +34,7 @@ import {
 import { WhatsappGateway } from './whatsapp.gateway';
 import { WhatsappProspectoNameSyncService } from './whatsapp-prospecto-name-sync.service';
 import { FlotaDocumentExtractionService } from '../flota-prospectos/flota-document-extraction.service';
+import { FlotaConductorMatchService } from '../flota-prospectos/flota-conductor-match.service';
 import XLSX from 'xlsx';
 
 type JsonRecord = Record<string, unknown>;
@@ -151,6 +152,7 @@ export class WhatsappService {
     private readonly audioConversion: AudioConversionService,
     private readonly prospectoNameSync: WhatsappProspectoNameSyncService,
     private readonly documentExtraction: FlotaDocumentExtractionService,
+    private readonly conductorMatch: FlotaConductorMatchService,
   ) {}
 
   private defaultInstanceKey(): string {
@@ -1065,6 +1067,22 @@ export class WhatsappService {
       const originalName =
         media.fileName?.trim() ||
         `whatsapp-${media.mediaType}-${messageId.slice(0, 8)}.${realExtension}`;
+
+      // Expediente del prospecto: solo documentos/imágenes (no audios ni video).
+      const isFlotaProspecto = entityType === 'flota-prospecto';
+      const skipFlotaExpediente =
+        isFlotaProspecto &&
+        (media.mediaType === 'audio' ||
+          media.mediaType === 'video' ||
+          realMimeType.startsWith('audio/') ||
+          realMimeType.startsWith('video/'));
+      if (skipFlotaExpediente) {
+        this.logger.log(
+          `Adjunto WhatsApp ${messageId}: omitido del expediente (${media.mediaType}/${realMimeType})`,
+        );
+        return;
+      }
+
       await this.files.create(uploadedById, {
         buffer: bytes,
         originalName,
@@ -1191,9 +1209,10 @@ export class WhatsappService {
             celular: dto.phone,
             estado: 'Nuevo',
           },
-          select: { id: true },
+          select: { id: true, celular: true, estado: true },
         });
         flotaProspectoId = prospecto.id;
+        await this.conductorMatch.afiliarSiConductor(prospecto);
       } else {
         throw new ConflictException(
           `El prospecto con celular ${dto.phone} ya existe (${prospecto.id}). No se envió el mensaje.`,
@@ -3120,7 +3139,7 @@ export class WhatsappService {
           relName = 'documento-enviado';
           attachmentPayload.push({ id: `sent:${created.id}:doc`, name: documentName || 'documento', mimeType: documentMimeType || 'application/octet-stream', size: 0, mediaType: 'document', url: documentUrl, downloadUrl: documentUrl });
         }
-        if (resolvedProspectoId && flotaProspecto) {
+        if (resolvedProspectoId && flotaProspecto && !audioUrl) {
           await this.prisma.crmFile.create({
             data: {
               storageKey,

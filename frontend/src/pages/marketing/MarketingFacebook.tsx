@@ -83,8 +83,13 @@ export default function MarketingFacebook() {
     if (accounts.length === 0) return;
     setSyncingForms(true);
     try {
-      await Promise.all(accounts.map((a) => syncFacebookForms(a.id)));
-      toast.success('Formularios sincronizados');
+      const results = await Promise.all(accounts.map((a) => syncFacebookForms(a.id)));
+      const removed = results.reduce((sum, r) => sum + r.removedForms, 0);
+      toast.success(
+        removed > 0
+          ? `Formularios sincronizados. ${removed} formulario(s) antiguo(s) eliminados de la BD.`
+          : 'Formularios sincronizados',
+      );
       await load();
     } catch {
       toast.error('Error al sincronizar formularios');

@@ -223,5 +223,11 @@ export function collectConversationAttachments(messages: Message[]): {
     else files.push(item);
   }
 
+  const byNewestFirst = (a: ConversationAttachment, b: ConversationAttachment) =>
+    b.createdAt.getTime() - a.createdAt.getTime();
+
+  images.sort(byNewestFirst);
+  files.sort(byNewestFirst);
+
   return { images, files };
 }

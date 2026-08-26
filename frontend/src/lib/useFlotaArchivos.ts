@@ -5,6 +5,8 @@ import { api, API_BASE } from '@/lib/api';
 import {
   DOCUMENT_TIPO_LABELS,
   isExtractableDocumentFile,
+  isFlotaExpedienteFile,
+  isFlotaExpedienteUploadFile,
 } from '@/lib/fileUtils';
 import {
   flotaProspectoUploadArchivo,
@@ -90,7 +92,7 @@ export function useFlotaArchivos(prospectoId: string | null): UseFlotaArchivosRe
       const rows = await api<FileAttachment[]>(
         `/flota-prospectos/${prospectoId}/archivos`,
       );
-      setFiles(rows);
+      setFiles(rows.filter(isFlotaExpedienteFile));
     } catch {
       toast.error('No se pudieron cargar los archivos');
       setFiles([]);
@@ -122,14 +124,23 @@ export function useFlotaArchivos(prospectoId: string | null): UseFlotaArchivosRe
         return;
       }
       const total = uploadedFiles.length;
+      const accepted = uploadedFiles.filter(isFlotaExpedienteUploadFile);
+      const rejected = total - accepted.length;
+      if (accepted.length === 0) {
+        toast.error('Solo se permiten documentos e imágenes (no audio ni video)');
+        return;
+      }
+      if (rejected > 0) {
+        toast.error(`${rejected} archivo(s) omitido(s): no se admiten audio/video`);
+      }
       let extracted = 0;
       try {
-        for (let i = 0; i < uploadedFiles.length; i++) {
-          const f = uploadedFiles[i];
+        for (let i = 0; i < accepted.length; i++) {
+          const f = accepted[i];
           setUploadStatus({
-            message: uploadMessage(f, i + 1, total),
+            message: uploadMessage(f, i + 1, accepted.length),
             current: i + 1,
-            total,
+            total: accepted.length,
           });
           const res = await flotaProspectoUploadArchivo(prospectoId, f);
           if (res.extraction?.tipoDocumento && res.extraction.tipoDocumento !== 'otro') {
@@ -137,11 +148,11 @@ export function useFlotaArchivos(prospectoId: string | null): UseFlotaArchivosRe
             toastExtraction(res.extraction);
           }
         }
-        const noun = total === 1 ? 'archivo' : 'archivos';
+        const noun = accepted.length === 1 ? 'archivo' : 'archivos';
         toast.success(
           extracted > 0
-            ? `${total} ${noun} subido(s); ${extracted} documento(s) analizado(s)`
-            : `${total} ${noun} subido(s)`,
+            ? `${accepted.length} ${noun} subido(s); ${extracted} documento(s) analizado(s)`
+            : `${accepted.length} ${noun} subido(s)`,
         );
         notifyFlotaProspectosRefresh(prospectoId);
         await load();

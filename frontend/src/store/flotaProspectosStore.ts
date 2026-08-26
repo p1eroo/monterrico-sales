@@ -24,6 +24,7 @@ export type FlotaProspectosListCacheKeyInput = {
   ciudad: string;
   aireAcondicionado: string;
   conLlamadas: string;
+  contactado: string;
   columnFilters: Record<string, string>;
 };
 

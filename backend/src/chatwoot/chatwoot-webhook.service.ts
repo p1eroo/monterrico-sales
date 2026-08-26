@@ -4,6 +4,7 @@ import { ChatwootClient } from './chatwoot.client';
 import { ChatwootEventService } from './chatwoot-event.service';
 import { ChatwootOperadorSyncService } from './chatwoot-operador-sync.service';
 import { FlotaProspectosGateway } from '../flota-prospectos/flota-prospectos.gateway';
+import { FlotaConductorMatchService } from '../flota-prospectos/flota-conductor-match.service';
 import { ChatwootService } from './chatwoot.service';
 import { ChatwootAttachmentStorageService } from './chatwoot-attachment-storage.service';
 import { ChatwootContactNameSyncService } from './chatwoot-contact-name-sync.service';
@@ -22,6 +23,7 @@ export class ChatwootWebhookService {
     private readonly prospectosGateway: FlotaProspectosGateway,
     private readonly attachmentStorage: ChatwootAttachmentStorageService,
     private readonly contactNameSync: ChatwootContactNameSyncService,
+    private readonly conductorMatch: FlotaConductorMatchService,
   ) {}
 
   private emit(event: string, data: unknown) {
@@ -360,6 +362,7 @@ export class ChatwootWebhookService {
             fechaRegistro: new Date(),
           },
         });
+        await this.conductorMatch.afiliarSiConductor(prospecto);
         this.prospectosGateway.emitChange('created', prospecto.id);
       } catch {
         return null;

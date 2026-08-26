@@ -13,6 +13,8 @@ import { ChatwootOperadorSyncService } from '../chatwoot/chatwoot-operador-sync.
 import { ChatwootContactNameSyncService } from '../chatwoot/chatwoot-contact-name-sync.service';
 import { WhatsappProspectoNameSyncService } from '../whatsapp/whatsapp-prospecto-name-sync.service';
 import { FlotaProspectosGateway } from './flota-prospectos.gateway';
+import { FlotaConductorMatchService } from './flota-conductor-match.service';
+import { limaDate, normalizeEstado } from './flota-prospectos.utils';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import type { ImportJobProgressInput } from '../import-export/import-export-jobs.service';
 import type {
@@ -57,15 +59,6 @@ const COL = {
 
 function cell(row: string[], idx: number): string {
   return (row[idx] ?? '').toString().trim();
-}
-
-/** Retorna la fecha actual a medianoche UTC usando la fecha local de Lima.
- *  Evita que Prisma/PostgreSQL desfase el día por la timezone del servidor. */
-function limaDate(): Date {
-  const dateStr = new Date().toLocaleDateString('en-CA', {
-    timeZone: 'America/Lima',
-  });
-  return new Date(dateStr + 'T00:00:00.000Z');
 }
 
 function parseDate(raw: string): Date | null {
@@ -113,25 +106,6 @@ function latestObservacionText(obs: string | null | undefined): string {
   return first.replace(/^(?:\[.+?\]\s*)+/, '').trim();
 }
 
-const ESTADOS_VALIDOS = [
-  'Nuevo',
-  'Afiliado',
-  'Citado',
-  'Seguimiento',
-  'Informacion',
-  'Sin Requisitos',
-  'No Responde',
-];
-
-function normalizeEstado(raw: string): string {
-  const cleaned = raw.trim();
-  if (!cleaned) return 'Nuevo';
-  const match = ESTADOS_VALIDOS.find(
-    (e) => e.toLowerCase() === cleaned.toLowerCase(),
-  );
-  return match || 'Nuevo';
-}
-
 export interface ImportSheetsResult {
   total: number;
   imported: number;
@@ -154,6 +128,7 @@ export class FlotaProspectosService {
     private prospectosGateway: FlotaProspectosGateway,
     private contactNameSync: ChatwootContactNameSyncService,
     private whatsappNameSync: WhatsappProspectoNameSyncService,
+    private conductorMatch: FlotaConductorMatchService,
   ) {}
 
   private normalizeCelular(celular?: string | null): string | null {
@@ -363,6 +338,7 @@ export class FlotaProspectosService {
       operador?: string;
       filters?: string;
       conLlamadas?: string;
+      contactado?: string;
     },
     scope?: CrmDataScope,
   ) {
@@ -424,6 +400,12 @@ export class FlotaProspectosService {
       where.llamadas = { some: {} };
     } else if (params.conLlamadas === 'false') {
       where.llamadas = { none: {} };
+    }
+
+    if (params.contactado === 'true') {
+      where.whatsappMessages = { some: { direction: 'outbound' } };
+    } else if (params.contactado === 'false') {
+      where.whatsappMessages = { none: { direction: 'outbound' } };
     }
 
     if (params.mes) {
@@ -506,7 +488,12 @@ export class FlotaProspectosService {
         skip,
         take: limit,
         include: {
-          _count: { select: { llamadas: true } },
+          _count: {
+            select: {
+              llamadas: true,
+              whatsappMessages: { where: { direction: 'outbound' } },
+            },
+          },
         },
       }),
       this.prisma.flotaProspecto.count({ where: where as any }),
@@ -521,6 +508,12 @@ export class FlotaProspectosService {
             where: {
               entityType: 'flota-prospecto',
               entityId: { in: ids },
+              NOT: {
+                OR: [
+                  { mimeType: { startsWith: 'audio/' } },
+                  { mimeType: { startsWith: 'video/' } },
+                ],
+              },
             },
             _count: { id: true },
           })
@@ -537,6 +530,7 @@ export class FlotaProspectosService {
         ...(p as any)._count,
         archivos: fileCountMap.get(p.id) ?? 0,
       },
+      contactado: ((p as any)._count?.whatsappMessages ?? 0) > 0,
     }));
 
     return { data: dataWithFiles, total, page, limit };
@@ -550,7 +544,16 @@ export class FlotaProspectosService {
     });
     if (!prospecto) return null;
     const archivos = await this.prisma.crmFile.count({
-      where: { entityType: 'flota-prospecto', entityId: id },
+      where: {
+        entityType: 'flota-prospecto',
+        entityId: id,
+        NOT: {
+          OR: [
+            { mimeType: { startsWith: 'audio/' } },
+            { mimeType: { startsWith: 'video/' } },
+          ],
+        },
+      },
     });
     return {
       ...prospecto,
@@ -789,6 +792,7 @@ export class FlotaProspectosService {
       entityName: created.nombreCompleto,
       description: `Prospecto creado: ${created.nombreCompleto} (${created.celular || ''})`,
     });
+    await this.conductorMatch.afiliarSiConductor(created);
     this.prospectosGateway.emitChange('created', created.id);
     return created;
   }
@@ -1281,6 +1285,15 @@ export class FlotaProspectosService {
       `Importación completada: ${result.imported} importados, ${result.updated} actualizados, ${result.duplicates} duplicados sin cambios, ${result.skipped} omitidos`,
     );
 
+    const loteStats = await this.conductorMatch.afiliarLote(
+      records.map((r: any) => r.celular),
+    );
+    if (loteStats.updated > 0) {
+      this.logger.log(
+        `Match con conductores: ${loteStats.updated} prospecto(s) pasados a Afiliado`,
+      );
+    }
+
     return result;
   }
 
@@ -1571,6 +1584,15 @@ export class FlotaProspectosService {
     this.logger.log(
       `Importación desde archivo completada: ${created} creados, ${updated} actualizados, ${skipped} omitidos, ${errors.length} errores`,
     );
+
+    const loteStats = await this.conductorMatch.afiliarLote(
+      records.map((r: any) => r.celular),
+    );
+    if (loteStats.updated > 0) {
+      this.logger.log(
+        `Match con conductores: ${loteStats.updated} prospecto(s) pasados a Afiliado`,
+      );
+    }
 
     const sampleText =
       sampleNames.length > 0 ? ` Ej: ${sampleNames.join(', ')}` : '';
@@ -1884,6 +1906,15 @@ export class FlotaProspectosService {
     this.logger.log(
       `Importación completada: ${created} creados, ${updated} actualizados, ${skipped} omitidos, ${errors.length} errores`,
     );
+
+    const loteStats = await this.conductorMatch.afiliarLote(
+      records.map((r: any) => r.celular),
+    );
+    if (loteStats.updated > 0) {
+      this.logger.log(
+        `Match con conductores: ${loteStats.updated} prospecto(s) pasados a Afiliado`,
+      );
+    }
 
     const sampleText =
       sampleNames.length > 0 ? ` Ej: ${sampleNames.join(', ')}` : '';
@@ -2832,7 +2863,16 @@ export class FlotaProspectosService {
     if (!prospecto) return null;
 
     const archivos = await this.prisma.crmFile.findMany({
-      where: { entityType: 'flota-prospecto', entityId: id },
+      where: {
+        entityType: 'flota-prospecto',
+        entityId: id,
+        NOT: {
+          OR: [
+            { mimeType: { startsWith: 'audio/' } },
+            { mimeType: { startsWith: 'video/' } },
+          ],
+        },
+      },
       include: { user: { select: { id: true, name: true } } },
       orderBy: { createdAt: 'desc' },
     });

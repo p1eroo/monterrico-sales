@@ -116,8 +116,8 @@ export async function disconnectFacebookAccount(id: string): Promise<{ disconnec
   });
 }
 
-export async function syncFacebookForms(accountId: string): Promise<FacebookForm[]> {
-  return api<FacebookForm[]>(`/facebook/accounts/${encodeURIComponent(accountId)}/sync-forms`, {
+export async function syncFacebookForms(accountId: string): Promise<{ forms: FacebookForm[]; removedForms: number }> {
+  return api<{ forms: FacebookForm[]; removedForms: number }>(`/facebook/accounts/${encodeURIComponent(accountId)}/sync-forms`, {
     method: 'POST',
   });
 }
@@ -408,4 +408,193 @@ export async function fetchIntegrations(): Promise<MarketingIntegration[]> {
       leads: f.leadsCount,
     })),
   }));
+}
+
+// ─── WhatsApp Cloud API (Marketing Masivo) ───
+
+export interface WhatsAppCloudAccount {
+  id: string;
+  displayName: string;
+  wabaId: string;
+  phoneNumberId: string;
+  displayPhoneNumber: string | null;
+  verifiedName: string | null;
+  isDefault: boolean;
+  active: boolean;
+  templateCount: number;
+  approvedCount: number;
+  marketingCount: number;
+  utilityCount: number;
+  lastSyncedAt: string | null;
+  graphApiVersion: string;
+  hasToken: boolean;
+}
+
+export interface ConnectWhatsAppCloudDto {
+  displayName: string;
+  wabaId: string;
+  phoneNumberId: string;
+  accessToken: string;
+  graphApiVersion?: string;
+  setAsDefault?: boolean;
+}
+
+export interface WhatsAppBulkRecipientResult {
+  id: string;
+  phone: string;
+  name: string | null;
+  company: string | null;
+  source: string | null;
+  status: string;
+  metaMessageId: string | null;
+  error: string | null;
+  sentAt: string | null;
+}
+
+export interface WhatsAppEstimatedCost {
+  billableCount: number;
+  amountPen: number;
+  ratePen: number;
+  templateCategory: 'marketing' | 'utility' | 'authentication';
+  currency: 'PEN';
+}
+
+export interface WhatsAppBulkCampaignSummary {
+  id: string;
+  name: string | null;
+  status: string;
+  total: number;
+  sent: number;
+  failed: number;
+  createdAt: string;
+  completedAt: string | null;
+  startedAt: string | null;
+  templateName: string;
+  templateCategory: string;
+  accountId: string;
+  estimatedCost: WhatsAppEstimatedCost;
+}
+
+export interface WhatsAppBulkCampaign {
+  id: string;
+  name: string | null;
+  status: string;
+  total: number;
+  sent: number;
+  failed: number;
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  accountId: string;
+  templateId: string;
+  templateName: string;
+  templateCategory: string;
+  estimatedCost: WhatsAppEstimatedCost;
+  variableMapping: Record<string, string>;
+  recipients: WhatsAppBulkRecipientResult[];
+}
+
+export interface CreateWhatsAppCampaignDto {
+  accountId: string;
+  templateId: string;
+  variableMapping: Record<string, string>;
+  recipients: Array<{ phone: string; name?: string; company?: string; source?: string }>;
+  name?: string;
+}
+
+export async function connectWhatsAppCloud(dto: ConnectWhatsAppCloudDto): Promise<WhatsAppCloudAccount> {
+  return api<WhatsAppCloudAccount>('/whatsapp-cloud/connect', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  });
+}
+
+export async function testWhatsAppCloudConnection(
+  dto: Pick<ConnectWhatsAppCloudDto, 'wabaId' | 'accessToken' | 'graphApiVersion'>,
+): Promise<{ ok: true; templateCount: number; approvedCount: number }> {
+  return api<{ ok: true; templateCount: number; approvedCount: number }>('/whatsapp-cloud/test-connection', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  });
+}
+
+export async function testWhatsAppCloudAccount(id: string): Promise<{ ok: true; templateCount: number; approvedCount: number }> {
+  return api<{ ok: true; templateCount: number; approvedCount: number }>(
+    `/whatsapp-cloud/accounts/${encodeURIComponent(id)}/test-connection`,
+    { method: 'POST' },
+  );
+}
+
+export async function fetchWhatsAppCloudAccounts(): Promise<WhatsAppCloudAccount[]> {
+  return api<WhatsAppCloudAccount[]>('/whatsapp-cloud/accounts');
+}
+
+export async function disconnectWhatsAppCloud(id: string): Promise<{ disconnected: boolean }> {
+  return api<{ disconnected: boolean }>(`/whatsapp-cloud/accounts/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function updateWhatsAppCloudToken(id: string, accessToken: string): Promise<{ updated: boolean }> {
+  return api<{ updated: boolean }>(`/whatsapp-cloud/accounts/${encodeURIComponent(id)}/token`, {
+    method: 'PATCH',
+    body: JSON.stringify({ accessToken }),
+  });
+}
+
+export async function setDefaultWhatsAppCloudAccount(id: string): Promise<WhatsAppCloudAccount[]> {
+  return api<WhatsAppCloudAccount[]>(`/whatsapp-cloud/accounts/${encodeURIComponent(id)}/default`, {
+    method: 'POST',
+  });
+}
+
+export async function syncWhatsAppCloudTemplates(accountId: string): Promise<import('@/pages/marketing/whatsapp/mockData').WhatsAppTemplate[]> {
+  return api<import('@/pages/marketing/whatsapp/mockData').WhatsAppTemplate[]>(
+    `/whatsapp-cloud/accounts/${encodeURIComponent(accountId)}/sync-templates`,
+    { method: 'POST' },
+  );
+}
+
+export async function fetchWhatsAppCloudTemplates(
+  accountId: string,
+): Promise<import('@/pages/marketing/whatsapp/mockData').WhatsAppTemplate[]> {
+  return api<import('@/pages/marketing/whatsapp/mockData').WhatsAppTemplate[]>(
+    `/whatsapp-cloud/templates?accountId=${encodeURIComponent(accountId)}`,
+  );
+}
+
+export async function fetchWhatsAppBulkCampaigns(
+  accountId?: string,
+): Promise<WhatsAppBulkCampaignSummary[]> {
+  const qs = accountId ? `?accountId=${encodeURIComponent(accountId)}` : '';
+  return api<WhatsAppBulkCampaignSummary[]>(`/whatsapp-cloud/campaigns${qs}`);
+}
+
+export async function createWhatsAppBulkCampaign(dto: CreateWhatsAppCampaignDto): Promise<WhatsAppBulkCampaign> {
+  return api<WhatsAppBulkCampaign>('/whatsapp-cloud/campaigns', {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  });
+}
+
+export async function sendWhatsAppBulkCampaign(campaignId: string): Promise<WhatsAppBulkCampaign> {
+  return api<WhatsAppBulkCampaign>(`/whatsapp-cloud/campaigns/${encodeURIComponent(campaignId)}/send`, {
+    method: 'POST',
+  });
+}
+
+export async function fetchWhatsAppBulkCampaign(campaignId: string): Promise<WhatsAppBulkCampaign> {
+  return api<WhatsAppBulkCampaign>(`/whatsapp-cloud/campaigns/${encodeURIComponent(campaignId)}`);
+}
+
+export function formatRelativeSync(iso: string | null): string {
+  if (!iso) return 'Nunca';
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return 'Hace un momento';
+  if (mins < 60) return `Hace ${mins} min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 48) return `Hace ${hours} h`;
+  const days = Math.floor(hours / 24);
+  return `Hace ${days} d`;
 }

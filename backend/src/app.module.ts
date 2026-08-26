@@ -27,9 +27,11 @@ import { AuditDetailModule } from './audit-detail/audit-detail.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { FlotaProspectosModule } from './flota-prospectos/flota-prospectos.module';
+import { FlotaConductorMatchModule } from './flota-prospectos/flota-conductor-match.module';
 import { FlotaProspectosRealtimeModule } from './flota-prospectos/flota-prospectos-realtime.module';
 import { ApolloModule } from './apollo/apollo.module';
 import { FacebookLeadsModule } from './facebook-leads/facebook-leads.module';
+import { WhatsappCloudModule } from './whatsapp-cloud/whatsapp-cloud.module';
 import { ChatwootModule } from './chatwoot/chatwoot.module';
 import { GmailModule } from './gmail/gmail.module';
 import { GoogleCalendarModule } from './google-calendar/google-calendar.module';
@@ -76,8 +78,10 @@ import { WebLeadsModule } from './web-leads/web-leads.module';
     WhatsappModule,
     FlotaProspectosRealtimeModule,
     FlotaProspectosModule,
+    FlotaConductorMatchModule,
     ApolloModule,
     FacebookLeadsModule,
+    WhatsappCloudModule,
     ChatwootModule,
     GmailModule,
     GoogleCalendarModule,

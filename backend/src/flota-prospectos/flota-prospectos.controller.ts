@@ -78,6 +78,7 @@ export class FlotaProspectosController {
     @Query('operador') operador?: string,
     @Query('filters') filters?: string,
     @Query('conLlamadas') conLlamadas?: string,
+    @Query('contactado') contactado?: string,
   ) {
     const scope = await this.buildFlotaScope(req.user.userId, req.user.roleId);
     return this.service.findAll(
@@ -97,6 +98,7 @@ export class FlotaProspectosController {
         operador: operador || undefined,
         filters: filters || undefined,
         conLlamadas: conLlamadas || undefined,
+        contactado: contactado || undefined,
       },
       scope,
     );
@@ -481,7 +483,12 @@ export class FlotaProspectosController {
   @Get('flota-prospectos/:id/archivos')
   @RequirePermissions('flota_prospectos.ver')
   async listArchivos(@Param('id') id: string) {
-    return this.filesService.findAll('flota-prospecto', id);
+    const rows = await this.filesService.findAll('flota-prospecto', id);
+    // Expediente: documentos/imágenes; los audios del chat no aplican aquí.
+    return rows.filter((f) => {
+      const mime = (f.mimeType || '').toLowerCase();
+      return !mime.startsWith('audio/') && !mime.startsWith('video/');
+    });
   }
 
   /** POST /flota-prospectos/:id/archivos — Subir archivo a un prospecto */
@@ -501,6 +508,12 @@ export class FlotaProspectosController {
     if (!file?.buffer) {
       throw new BadRequestException('Falta el archivo (campo file)');
     }
+    const mime = (file.mimetype || 'application/octet-stream').toLowerCase();
+    if (mime.startsWith('audio/') || mime.startsWith('video/')) {
+      throw new BadRequestException(
+        'Solo se permiten documentos e imágenes en el expediente (no audio ni video)',
+      );
+    }
     const created = await this.filesService.create(req.user.userId, {
       buffer: file.buffer,
       originalName: file.originalname || 'archivo',
@@ -510,7 +523,6 @@ export class FlotaProspectosController {
       authorizationHeader: req.headers.authorization as string,
     });
 
-    const mime = file.mimetype || 'application/octet-stream';
     const extractable = this.isExtractableMime(mime);
     let extraction: {
       tipoDocumento: string;

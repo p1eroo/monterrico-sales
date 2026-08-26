@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { FlotaProspectosGateway } from '../flota-prospectos/flota-prospectos.gateway';
+import { FlotaConductorMatchService } from '../flota-prospectos/flota-conductor-match.service';
 import {
   shouldAcceptChatwootName,
   type ProspectoNameRef,
@@ -71,6 +72,7 @@ export class WhatsappProspectoNameSyncService {
     private readonly evogo: EvogoClient,
     private readonly prospectosGateway: FlotaProspectosGateway,
     private readonly whatsappGateway: WhatsappGateway,
+    private readonly conductorMatch: FlotaConductorMatchService,
   ) {}
 
   private waNumberCandidates(rawPhone: string): string[] {
@@ -309,10 +311,12 @@ export class WhatsappProspectoNameSyncService {
         whatsappPushName: trimmedPush || null,
         fechaRegistro: new Date(),
       },
-      select: { id: true, nombreCompleto: true, celular: true },
+      select: { id: true, nombreCompleto: true, celular: true, estado: true },
     });
 
     await this.linkOrphanMessages(created.id, peerDigits, evoInstanceName);
+
+    await this.conductorMatch.afiliarSiConductor(created);
 
     this.prospectosGateway.emitChange('created', created.id);
     this.logger.log(

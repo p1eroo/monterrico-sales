@@ -8,6 +8,9 @@ interface FileUploadAreaProps {
   busy?: boolean;
   busyMessage?: string;
   className?: string;
+  /** Atributo accept del input; por defecto sin restricción de picker. */
+  accept?: string;
+  hint?: string;
 }
 
 export function FileUploadArea({
@@ -16,6 +19,8 @@ export function FileUploadArea({
   busy,
   busyMessage,
   className,
+  accept,
+  hint = 'PDF, imágenes, documentos, hojas de cálculo',
 }: FileUploadAreaProps) {
   const [isDragging, setIsDragging] = useState(false);
   const isDisabled = disabled || busy;
@@ -77,6 +82,7 @@ export function FileUploadArea({
       <input
         type="file"
         multiple
+        accept={accept}
         className="hidden"
         onChange={handleFileSelect}
         disabled={isDisabled}
@@ -97,9 +103,7 @@ export function FileUploadArea({
           <p className="mt-2 text-sm font-medium text-muted-foreground">
             Arrastra archivos aquí o haz clic para seleccionar
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            PDF, imágenes, documentos, hojas de cálculo
-          </p>
+          <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
         </>
       )}
     </label>

@@ -50,6 +50,8 @@ export interface FlotaProspectoRow {
   chatwootContactId?: number | null;
   chatwootConversationId?: number | null;
   _count?: { llamadas: number; archivos?: number };
+  /** true cuando existe al menos un mensaje WhatsApp saliente hacia el prospecto. */
+  contactado?: boolean;
 }
 
 export interface FlotaProspectosListResponse {
@@ -95,6 +97,7 @@ export async function flotaProspectosList(params: {
   operador?: string;
   filters?: Record<string, string>;
   conLlamadas?: string;
+  contactado?: string;
   signal?: AbortSignal;
 }): Promise<FlotaProspectosListResponse> {
   const qs = new URLSearchParams();
@@ -113,6 +116,7 @@ export async function flotaProspectosList(params: {
   if (params.operador) qs.set('operador', params.operador);
   if (params.filters) qs.set('filters', JSON.stringify(params.filters));
   if (params.conLlamadas) qs.set('conLlamadas', params.conLlamadas);
+  if (params.contactado) qs.set('contactado', params.contactado);
   return api<FlotaProspectosListResponse>(
     `/flota-prospectos?${qs.toString()}`,
     params.signal ? { signal: params.signal } : undefined,
