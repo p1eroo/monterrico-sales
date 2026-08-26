@@ -43,7 +43,7 @@ import {
   formatRelativeSync,
   setDefaultWhatsAppCloudAccount,
   syncWhatsAppCloudTemplates,
-  testWhatsAppCloudConnection,
+  testWhatsAppCloudAccount,
   updateWhatsAppCloudToken,
   type WhatsAppCloudAccount,
 } from '@/lib/marketingApi';
