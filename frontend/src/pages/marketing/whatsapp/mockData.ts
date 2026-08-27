@@ -75,6 +75,7 @@ export type WhatsAppContact = {
   name: string;
   phone: string;
   company?: string;
+  city?: string;
   platform?: 'fb' | 'ig' | 'msg' | 'an';
   source: WhatsAppContactSource;
   hasWhatsApp: boolean;

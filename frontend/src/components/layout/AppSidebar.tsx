@@ -148,11 +148,11 @@ const navItemsAdmin: NavDef[] = [
 const navItemsMarketing: NavDef[] = [
   { to: '/marketing/dashboard', label: 'Dashboard', icon: DashboardSvgIcon },
   { to: '/marketing/leads', label: 'Leads', icon: UserPlusSvgIcon },
+  { to: '/marketing/campaigns', label: 'Correos', icon: MapArrowSquareSvgIcon },
+  { to: '/marketing/whatsapp', label: 'WhatsApp', icon: WhatsAppSvgIcon },
   { to: '/marketing/facebook', label: 'Facebook', icon: FacebookSvgIcon },
   { to: '/marketing/integrations', label: 'Integraciones', icon: LinkCircleSvgIcon },
   { to: '/marketing/personal', label: 'Personal', icon: UsersGroupRoundedSvgIcon },
-  { to: '/marketing/campaigns', label: 'Masivo', icon: MapArrowSquareSvgIcon },
-  { to: '/marketing/whatsapp', label: 'WhatsApp', icon: WhatsAppSvgIcon },
 ];
 
 export function AppSidebar() {

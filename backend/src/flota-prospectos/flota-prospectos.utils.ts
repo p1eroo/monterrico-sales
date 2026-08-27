@@ -25,3 +25,11 @@ export function normalizeEstado(raw: string): string {
   );
   return match || 'Nuevo';
 }
+
+/** Valores CSV en query (p. ej. estado=Nuevo,Afiliado). */
+export function splitCsvQueryParam(value: string): string[] {
+  return value
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}

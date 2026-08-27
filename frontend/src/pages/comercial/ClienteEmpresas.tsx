@@ -42,7 +42,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   Building2, Search,
-  ChevronDown, MoreVertical, X,
+  ChevronDown, MoreVertical, X, Loader2,
 } from 'lucide-react';
 import { EyeSvgIcon } from '@/components/icons/EyeSvgIcon';
 import { formatCurrency, formatDate } from '@/lib/formatters';
@@ -68,6 +68,14 @@ import {
   fetchClienteEmpresas,
   mapClienteEmpresaToClient,
 } from '@/lib/clienteCarteraApi';
+import {
+  canClienteEmpresasFullExport,
+  fetchExternalClientsFull,
+  isExportableClienteRuc,
+  mapExternalClientToFullExportRow,
+} from '@/lib/clientApi';
+import { useAppStore } from '@/store';
+import * as XLSX from 'xlsx';
 import { ChartSquareIcon } from '@/components/icons/ChartSquareIcon';
 import { ColumnsSvgIcon } from '@/components/icons/ColumnsSvgIcon';
 import { ExportSvgIcon } from '@/components/icons/ExportSvgIcon';
@@ -139,9 +147,20 @@ function exportClientsToCSV(clients: Client[]) {
   URL.revokeObjectURL(url);
 }
 
+function exportClientsFullToXlsx(
+  rows: ReturnType<typeof mapExternalClientToFullExportRow>[],
+) {
+  const headers = ['Empresa', 'RUC', 'Contacto', 'Telefono', 'Email', 'Estado'];
+  const ws = XLSX.utils.json_to_sheet(rows, { header: headers });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Clientes');
+  XLSX.writeFile(wb, `clientes-full-${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
 export default function ClienteEmpresas() {
   const navigate = useNavigate();
   const { hasPermission } = usePermissions();
+  const currentUser = useAppStore((s) => s.currentUser);
   const {
     selectedIds: assigneeFilter,
     setSelectedIds: setAssigneeFilter,
@@ -168,6 +187,7 @@ export default function ClienteEmpresas() {
     createdAt: true,
   });
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
+  const [fullExportBusy, setFullExportBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -197,6 +217,38 @@ export default function ClienteEmpresas() {
     void bootstrap();
     return () => { cancelled = true; };
   }, []);
+
+  const canFullExport = canClienteEmpresasFullExport(currentUser.username);
+
+  async function handleFullExport() {
+    const agente = currentUser.username?.trim().toLowerCase();
+    if (!agente || !canClienteEmpresasFullExport(agente)) {
+      toast.error('No tienes permiso para exportar full.');
+      return;
+    }
+
+    setFullExportBusy(true);
+    try {
+      const rows = await fetchExternalClientsFull(agente);
+      const exportRows = rows
+        .filter((row) => isExportableClienteRuc(row.rucempresa))
+        .map(mapExternalClientToFullExportRow);
+
+      if (exportRows.length === 0) {
+        toast.error('No hay empresas para exportar.');
+        return;
+      }
+
+      exportClientsFullToXlsx(exportRows);
+      toast.success('Exportación full completada', {
+        description: `Se exportaron ${exportRows.length} empresas (activas e inactivas).`,
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error en exportación full');
+    } finally {
+      setFullExportBusy(false);
+    }
+  }
 
   useEffect(() => {
     setPage(1);
@@ -671,6 +723,19 @@ export default function ClienteEmpresas() {
                   >
                     <ExportSvgIcon className="size-[18px]" />
                     Exportar
+                  </DropdownMenuItem>
+                )}
+                {canFullExport && (
+                  <DropdownMenuItem
+                    disabled={fullExportBusy}
+                    onClick={() => void handleFullExport()}
+                  >
+                    {fullExportBusy ? (
+                      <Loader2 className="size-[18px] animate-spin" />
+                    ) : (
+                      <ExportSvgIcon className="size-[18px]" />
+                    )}
+                    Exportar full
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>

@@ -61,6 +61,35 @@ export interface FlotaProspectosListResponse {
   limit: number;
 }
 
+export interface FlotaMasivoRow {
+  id: string;
+  nombreCompleto: string;
+  celular: string | null;
+  movil: string | null;
+  estado: string;
+  operador: string | null;
+  redSocial: string | null;
+  fechaRegistro: string | null;
+  ciudad?: string | null;
+  createdAt: string;
+}
+
+/** GET /flota-prospectos/masivo-list — Lista ligera de prospectos para envío masivo. */
+export async function flotaProspectosMasivoList(params?: {
+  search?: string;
+  estado?: string;
+  signal?: AbortSignal;
+}): Promise<FlotaMasivoRow[]> {
+  const qs = new URLSearchParams();
+  if (params?.search) qs.set('search', params.search);
+  if (params?.estado) qs.set('estado', params.estado);
+  const qsStr = qs.toString();
+  return api<FlotaMasivoRow[]>(
+    `/flota-prospectos/masivo-list${qsStr ? `?${qsStr}` : ''}`,
+    params?.signal ? { signal: params.signal } : undefined,
+  );
+}
+
 export interface FlotaProspectosCounts {
   total: number;
   duplicados: number;

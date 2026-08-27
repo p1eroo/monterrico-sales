@@ -14,7 +14,7 @@ import { ChatwootContactNameSyncService } from '../chatwoot/chatwoot-contact-nam
 import { WhatsappProspectoNameSyncService } from '../whatsapp/whatsapp-prospecto-name-sync.service';
 import { FlotaProspectosGateway } from './flota-prospectos.gateway';
 import { FlotaConductorMatchService } from './flota-conductor-match.service';
-import { limaDate, normalizeEstado } from './flota-prospectos.utils';
+import { limaDate, normalizeEstado, splitCsvQueryParam } from './flota-prospectos.utils';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import type { ImportJobProgressInput } from '../import-export/import-export-jobs.service';
 import type {
@@ -222,6 +222,7 @@ export class FlotaProspectosService {
         movil: true,
         estado: true,
         operador: true,
+        ciudad: true,
         createdAt: true,
       },
       orderBy: { createdAt: 'desc' },
@@ -385,7 +386,16 @@ export class FlotaProspectosService {
     }
 
     if (params.estado) {
-      where.estado = normalizeEstado(params.estado);
+      if (params.estado === '__none__') {
+        where.id = { in: [] };
+      } else {
+        const estados = splitCsvQueryParam(params.estado).map(normalizeEstado);
+        if (estados.length > 1) {
+          where.estado = { in: estados };
+        } else if (estados.length === 1) {
+          where.estado = estados[0];
+        }
+      }
     }
 
     if (params.redSocial) {
@@ -402,10 +412,21 @@ export class FlotaProspectosService {
       where.llamadas = { none: {} };
     }
 
-    if (params.contactado === 'true') {
-      where.whatsappMessages = { some: { direction: 'outbound' } };
-    } else if (params.contactado === 'false') {
-      where.whatsappMessages = { none: { direction: 'outbound' } };
+    if (params.contactado) {
+      if (params.contactado === '__none__') {
+        where.id = { in: [] };
+      } else {
+        const contactadoValues = splitCsvQueryParam(params.contactado);
+        const wantsContactado = contactadoValues.includes('true');
+        const wantsSinContactar = contactadoValues.includes('false');
+        if (wantsContactado && wantsSinContactar) {
+          // Ambos seleccionados = sin filtro
+        } else if (wantsContactado) {
+          where.whatsappMessages = { some: { direction: 'outbound' } };
+        } else if (wantsSinContactar) {
+          where.whatsappMessages = { none: { direction: 'outbound' } };
+        }
+      }
     }
 
     if (params.mes) {
@@ -472,9 +493,24 @@ export class FlotaProspectosService {
       try {
         const parsed = JSON.parse(params.filters) as Record<string, string>;
         for (const [key, value] of Object.entries(parsed)) {
-          if (value && key !== 'filters') {
-            (where as any)[key] = { contains: value, mode: 'insensitive' };
+          if (!value || key === 'filters') continue;
+          if (key === 'ciudad') {
+            if (value === '__none__') {
+              where.id = { in: [] };
+              continue;
+            }
+            const ciudades = splitCsvQueryParam(value);
+            if (ciudades.length > 1) {
+              where.ciudad = { in: ciudades };
+            } else if (ciudades.length === 1) {
+              where.ciudad = {
+                equals: ciudades[0],
+                mode: 'insensitive',
+              };
+            }
+            continue;
           }
+          (where as any)[key] = { contains: value, mode: 'insensitive' };
         }
       } catch {
         /* ignore invalid JSON */

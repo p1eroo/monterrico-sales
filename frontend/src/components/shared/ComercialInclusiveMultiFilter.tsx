@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, WheelEvent } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -26,6 +26,7 @@ import {
   toggleInclusiveMultiFilter,
 } from '@/lib/comercialFilterSurface';
 import { cn } from '@/lib/utils';
+import { DISMISS_BLOCKER_ATTR } from '@/components/ui/form-dialog';
 
 export type ComercialMultiFilterOption = {
   value: string;
@@ -37,6 +38,8 @@ type ComercialInclusiveMultiFilterPanelProps = {
   onChange: (next: string[]) => void;
   options: ComercialMultiFilterOption[];
   allKeys: readonly string[];
+  /** Evita que el scroll del listado mueva el modal padre. */
+  stopWheelPropagation?: boolean;
 };
 
 export function ComercialInclusiveMultiFilterPanel({
@@ -44,10 +47,18 @@ export function ComercialInclusiveMultiFilterPanel({
   onChange,
   options,
   allKeys,
+  stopWheelPropagation = false,
 }: ComercialInclusiveMultiFilterPanelProps) {
+  const stopWheel = stopWheelPropagation
+    ? (event: WheelEvent) => event.stopPropagation()
+    : undefined;
+
   return (
     <Command shouldFilter={false} className={comercialProCommandClass}>
-      <CommandList className="max-h-[260px] overflow-y-auto">
+      <CommandList
+        className="max-h-[260px] overflow-y-auto"
+        onWheel={stopWheel}
+      >
         <CommandGroup>
           {options.map((option) => {
             const selected = isInclusiveMultiFilterSelected(value, option.value);
@@ -67,12 +78,14 @@ export function ComercialInclusiveMultiFilterPanel({
           })}
         </CommandGroup>
       </CommandList>
-      <MultiCheckboxFilterActions
-        allSelected={isInclusiveMultiFilterAll(value)}
-        noneSelected={isInclusiveMultiFilterNone(value)}
-        onSelectAll={() => onChange([])}
-        onClear={() => onChange([INCLUSIVE_MULTI_NONE])}
-      />
+      <div onWheel={stopWheel}>
+        <MultiCheckboxFilterActions
+          allSelected={isInclusiveMultiFilterAll(value)}
+          noneSelected={isInclusiveMultiFilterNone(value)}
+          onSelectAll={() => onChange([])}
+          onClear={() => onChange([INCLUSIVE_MULTI_NONE])}
+        />
+      </div>
     </Command>
   );
 }
@@ -87,6 +100,8 @@ type ComercialInclusiveMultiFilterProps = {
   className?: string;
   popoverClassName?: string;
   onInteraction?: () => void;
+  /** Popover dentro de FormDialogShell: z-index, scroll y sin cerrar el modal. */
+  embedInFormDialog?: boolean;
 };
 
 export function ComercialInclusiveMultiFilter({
@@ -99,6 +114,7 @@ export function ComercialInclusiveMultiFilter({
   className,
   popoverClassName,
   onInteraction,
+  embedInFormDialog = false,
 }: ComercialInclusiveMultiFilterProps) {
   const allKeys = options.map((o) => o.value);
   const isActive = value.length > 0;
@@ -129,13 +145,22 @@ export function ComercialInclusiveMultiFilter({
       <PopoverContent
         align="start"
         sideOffset={8}
-        className={cn(comercialProPopoverClass, 'w-[220px] p-1.5', popoverClassName)}
+        collisionPadding={embedInFormDialog ? 16 : undefined}
+        onOpenAutoFocus={embedInFormDialog ? (event) => event.preventDefault() : undefined}
+        className={cn(
+          comercialProPopoverClass,
+          'w-[220px] p-1.5',
+          embedInFormDialog && 'z-[210]',
+          popoverClassName,
+        )}
+        {...(embedInFormDialog ? { [DISMISS_BLOCKER_ATTR]: '' } : {})}
       >
         <ComercialInclusiveMultiFilterPanel
           value={value}
           onChange={handleChange}
           options={options}
           allKeys={allKeys}
+          stopWheelPropagation={embedInFormDialog}
         />
       </PopoverContent>
     </Popover>

@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
 import {
-  Download,
   FileSpreadsheet,
   Loader2,
   MessageCircle,
@@ -10,6 +9,9 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { XlsSvgIcon } from '@/components/icons/XlsSvgIcon';
+import { FlotaAreaSvgIcon } from '@/components/icons/FlotaAreaSvgIcon';
+import { ComercialAreaSvgIcon } from '@/components/icons/ComercialAreaSvgIcon';
 import { AvatarImage } from '@/lib/avatar';
 import { toast } from '@/lib/notify';
 import { cn } from '@/lib/utils';
@@ -19,6 +21,18 @@ import {
   formatWhatsAppPhoneDisplay,
   parseWhatsAppAudienceFromFile,
 } from './whatsappAudienceExcel';
+import {
+  CrmAudienceImportDialog,
+  type CrmAudienceSource,
+} from './CrmAudienceImportDialog';
+
+const audienceActionBtnClass = cn(
+  'inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border px-4 text-[13px] font-semibold shadow-none transition-colors',
+  'border-[#e1e7ee] bg-white/70 text-[#1f2933] hover:border-primary hover:bg-white',
+  'dark:border-gray-700 dark:bg-gray-800/70 dark:text-gray-100 dark:hover:border-primary dark:hover:bg-gray-800',
+);
+
+const audienceActionIconClass = 'size-[18px] shrink-0 text-[#72808f] dark:text-gray-400';
 
 export function AudienceTab({
   contacts,
@@ -36,6 +50,7 @@ export function AudienceTab({
   const fileRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [crmSource, setCrmSource] = useState<CrmAudienceSource | null>(null);
 
   const processFile = useCallback(
     async (file: File) => {
@@ -138,16 +153,43 @@ export function AudienceTab({
             ) : null}
           </button>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={downloadWhatsAppAudienceTemplate}
-          >
-            <Download className="size-4" />
-            Descargar plantilla Excel
-          </Button>
+          <div className="flex w-full max-w-lg flex-col gap-3">
+            <button
+              type="button"
+              className={audienceActionBtnClass}
+              onClick={downloadWhatsAppAudienceTemplate}
+            >
+              <XlsSvgIcon className="size-[18px] shrink-0" />
+              Descargar plantilla Excel
+            </button>
+
+            <div className="flex items-center gap-3 py-0.5">
+              <div className="h-px flex-1 bg-border/60" />
+              <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                o importa desde el CRM
+              </span>
+              <div className="h-px flex-1 bg-border/60" />
+            </div>
+
+            <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                className={audienceActionBtnClass}
+                onClick={() => setCrmSource('flota')}
+              >
+                <FlotaAreaSvgIcon className={cn(audienceActionIconClass, 'text-primary/80')} />
+                Importar de Flota
+              </button>
+              <button
+                type="button"
+                className={audienceActionBtnClass}
+                onClick={() => setCrmSource('comercial')}
+              >
+                <ComercialAreaSvgIcon className={cn(audienceActionIconClass, 'text-primary/80')} />
+                Importar de Comercial
+              </button>
+            </div>
+          </div>
 
           <p className="max-w-md text-center text-[11px] leading-relaxed text-muted-foreground">
             Teléfonos Perú: 9 dígitos (987654321) o con código país (51987654321). Se omiten filas sin
@@ -202,6 +244,9 @@ export function AudienceTab({
                   {c.company ? (
                     <p className="truncate text-[11px] text-muted-foreground/80">{c.company}</p>
                   ) : null}
+                  {c.city ? (
+                    <p className="truncate text-[11px] text-muted-foreground/80">{c.city}</p>
+                  ) : null}
                 </div>
                 <Button
                   variant="ghost"
@@ -216,6 +261,17 @@ export function AudienceTab({
           </div>
         )}
       </div>
+
+      {crmSource ? (
+        <CrmAudienceImportDialog
+          key={crmSource}
+          source={crmSource}
+          onOpenChange={(open) => {
+            if (!open) setCrmSource(null);
+          }}
+          onImport={onImport}
+        />
+      ) : null}
     </div>
   );
 }

@@ -25,8 +25,9 @@ function headerToField(h: string): 'name' | 'phone' | 'company' | null {
 }
 
 /** Normaliza a dígitos locales Perú (9 dígitos) o cadena internacional para el backend. */
-export function normalizeWhatsAppPhone(raw: string): string | null {
-  const digits = raw.replace(/\D/g, '');
+export function normalizeWhatsAppPhone(raw: string | null | undefined): string | null {
+  if (raw == null || !String(raw).trim()) return null;
+  const digits = String(raw).replace(/\D/g, '');
   if (!digits) return null;
   if (digits.length === 11 && digits.startsWith('51')) return digits.slice(2);
   if (digits.length === 9 && digits.startsWith('9')) return digits;
@@ -35,8 +36,10 @@ export function normalizeWhatsAppPhone(raw: string): string | null {
   return null;
 }
 
-export function formatWhatsAppPhoneDisplay(phone: string): string {
-  const digits = phone.replace(/\D/g, '');
+export function formatWhatsAppPhoneDisplay(phone: string | null | undefined): string {
+  if (phone == null || !String(phone).trim()) return '—';
+  const digits = String(phone).replace(/\D/g, '');
+  if (!digits) return '—';
   if (digits.length === 9) {
     return `+51 ${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
   }
