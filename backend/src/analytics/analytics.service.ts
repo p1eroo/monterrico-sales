@@ -782,6 +782,11 @@ function weekNameForDate(d: Date, weeks: WeekClip[]): string | null {
 /** Seguimiento operativo: solo filas de tarea (modelo Activity con type=tarea + taskKind). */
 const TASK_ACTIVITY_FILTER = { type: 'tarea' } as const;
 
+/** Resultado semanal de leads/contactados del panel Marketing (flota + comercial). */
+export type MarketingLeadsByWeek = {
+  weeks: { date: string; leads: number; contactados: number }[];
+};
+
 @Injectable()
 export class AnalyticsService {
   constructor(
@@ -5550,6 +5555,139 @@ export class AnalyticsService {
         opportunities: pctChange(rolling7.opportunities7d, rolling7.opportunitiesPrev7d),
         sales: pctChange(rolling7.sales7d, rolling7.salesPrev7d),
       },
+    };
+  }
+
+  // ─── Marketing: leads y contactados semanales (flota + comercial) ───
+
+  private limaYmd(d: Date): string {
+    const p = instantToLimaParts(d);
+    return `${p.year}-${String(p.month + 1).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
+  }
+
+  /** Primera fecha (YYYY-MM-DD) en que el historial del contacto llegó a etapa con probabilidad >= 10. */
+  private firstContactadoDate(
+    rawHistory: unknown,
+    probFor: (slug: string) => number,
+  ): string | null {
+    const entries = Array.isArray(rawHistory)
+      ? (rawHistory as { etapa?: string; fecha?: string }[])
+      : [];
+    let best: string | null = null;
+    for (const e of entries) {
+      if (!e?.etapa || !e?.fecha) continue;
+      if (probFor(e.etapa) >= 10) {
+        if (best === null || e.fecha < best) best = e.fecha;
+      }
+    }
+    return best;
+  }
+
+  /**
+   * Leads y contactados por semana (últimas N semanas, hora Lima).
+   * - Leads flota: registrados en la ventana con redSocial de marketing.
+   * - Contactados flota: primer mensaje WhatsApp saliente del prospecto.
+   * - Leads comercial: contactos creados en la ventana con fuente Marketing.
+   * - Contactados comercial: primera entrada del historial de etapas con probabilidad >= 10%.
+   */
+  async getMarketingLeadsByWeek(weeks = 8): Promise<MarketingLeadsByWeek> {
+    const n = Math.min(52, Math.max(1, Math.floor(weeks || 8)));
+    const WEEK_MS = 7 * 86400000;
+    const toMon = startOfWeekMondayLima(new Date());
+    const fromMon = new Date(toMon.getTime() - (n - 1) * WEEK_MS);
+    const toEnd = endOfWeekSundayLima(new Date());
+
+    const buckets = new Map<string, { leads: number; contactados: number }>();
+    const bucketOrder: string[] = [];
+    for (
+      let cur = new Date(fromMon.getTime());
+      cur.getTime() <= toMon.getTime();
+      cur = new Date(cur.getTime() + WEEK_MS)
+    ) {
+      const key = this.limaYmd(cur);
+      buckets.set(key, { leads: 0, contactados: 0 });
+      bucketOrder.push(key);
+    }
+
+    const stages = await this.prisma.crmStage.findMany({
+      select: { slug: true, probability: true },
+    });
+    const probBySlug = new Map<string, number>(
+      stages.map((s) => [s.slug, s.probability]),
+    );
+    const probFor = (slug: string): number =>
+      probBySlug.get(slug) ?? STAGE_PROBABILITY_FALLBACK[slug] ?? 0;
+
+    const KEYWORDS = [
+      'marketing',
+      'facebook',
+      'fb',
+      'form',
+      'live',
+      'tik tok',
+      'instagram',
+      'tiktok',
+    ];
+
+    const flotaLeads = await this.prisma.flotaProspecto.findMany({
+      where: {
+        eliminadoAt: null,
+        fechaRegistro: { gte: fromMon, lte: toEnd },
+        OR: KEYWORDS.map((k) => ({
+          redSocial: { contains: k, mode: 'insensitive' },
+        })),
+      },
+      select: { id: true, fechaRegistro: true },
+    });
+    for (const p of flotaLeads) {
+      if (!p.fechaRegistro) continue;
+      const key = this.limaYmd(p.fechaRegistro);
+      if (buckets.has(key)) buckets.get(key)!.leads += 1;
+    }
+
+    if (flotaLeads.length > 0) {
+      const msgs = await this.prisma.crmWhatsappMessage.findMany({
+        where: {
+          direction: 'outbound',
+          flotaProspectoId: { in: flotaLeads.map((p) => p.id) },
+        },
+        orderBy: { createdAt: 'asc' },
+        select: { flotaProspectoId: true, createdAt: true },
+        distinct: ['flotaProspectoId'],
+      });
+      for (const m of msgs) {
+        const key = this.limaYmd(m.createdAt);
+        if (buckets.has(key)) buckets.get(key)!.contactados += 1;
+      }
+    }
+
+    const comercial = await this.prisma.contact.findMany({
+      where: {
+        fuente: { equals: 'marketing', mode: 'insensitive' },
+        OR: [
+          { createdAt: { gte: fromMon, lte: toEnd } },
+          { updatedAt: { gte: fromMon, lte: toEnd } },
+        ],
+      },
+      select: { id: true, createdAt: true, etapa: true, etapaHistory: true },
+    });
+
+    for (const c of comercial) {
+      const key = this.limaYmd(c.createdAt);
+      if (buckets.has(key)) buckets.get(key)!.leads += 1;
+    }
+
+    for (const c of comercial) {
+      const fecha = this.firstContactadoDate(c.etapaHistory, probFor);
+      if (fecha && buckets.has(fecha)) buckets.get(fecha)!.contactados += 1;
+    }
+
+    return {
+      weeks: bucketOrder.map((date) => ({
+        date,
+        leads: buckets.get(date)!.leads,
+        contactados: buckets.get(date)!.contactados,
+      })),
     };
   }
 }

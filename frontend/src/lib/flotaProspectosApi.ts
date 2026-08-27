@@ -14,6 +14,9 @@ export const CIUDAD_OPTIONS: { label: string; value: string }[] = [
   { label: 'Arequipa', value: 'Arequipa' },
 ];
 
+/** Token para filtrar prospectos sin ciudad asignada (null o vacío). */
+export const CIUDAD_FILTER_EMPTY = '__empty__';
+
 export const CIUDAD_VALUES = CIUDAD_OPTIONS.map((o) => o.value);
 
 export interface FlotaProspectoRow {

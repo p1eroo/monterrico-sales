@@ -924,6 +924,16 @@ export class ContactsService {
       }
       await this.crmConfig.assertEtapaAssignable(etapa);
       data.etapa = etapa;
+      if (etapa !== snapshot.etapa) {
+        const today = new Date().toISOString().slice(0, 10);
+        const prev = Array.isArray(snapshot.etapaHistory)
+          ? [...(snapshot.etapaHistory as { etapa?: string; fecha?: string }[])]
+          : [];
+        data.etapaHistory = [
+          ...prev,
+          { etapa, fecha: today },
+        ] as Prisma.InputJsonValue;
+      }
     }
     if (dto.assignedTo !== undefined) {
       const assignedTo = dto.assignedTo?.trim() || null;

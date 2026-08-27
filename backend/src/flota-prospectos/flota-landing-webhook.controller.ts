@@ -156,7 +156,7 @@ export class FlotaLandingWebhookController {
       data: {
         nombreCompleto: name || `Pendiente (${last9})`,
         celular,
-        redSocial: 'Web',
+        redSocial: 'Marketing',
         estado: 'Nuevo',
         fechaRegistro: new Date(),
       },

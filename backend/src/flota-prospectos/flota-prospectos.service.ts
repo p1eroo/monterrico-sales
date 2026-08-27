@@ -14,7 +14,12 @@ import { ChatwootContactNameSyncService } from '../chatwoot/chatwoot-contact-nam
 import { WhatsappProspectoNameSyncService } from '../whatsapp/whatsapp-prospecto-name-sync.service';
 import { FlotaProspectosGateway } from './flota-prospectos.gateway';
 import { FlotaConductorMatchService } from './flota-conductor-match.service';
-import { limaDate, normalizeEstado, splitCsvQueryParam } from './flota-prospectos.utils';
+import {
+  buildCiudadWhereClause,
+  limaDate,
+  normalizeEstado,
+  splitCsvQueryParam,
+} from './flota-prospectos.utils';
 import type { CrmDataScope } from '../auth/crm-data-scope.service';
 import type { ImportJobProgressInput } from '../import-export/import-export-jobs.service';
 import type {
@@ -499,14 +504,10 @@ export class FlotaProspectosService {
               where.id = { in: [] };
               continue;
             }
-            const ciudades = splitCsvQueryParam(value);
-            if (ciudades.length > 1) {
-              where.ciudad = { in: ciudades };
-            } else if (ciudades.length === 1) {
-              where.ciudad = {
-                equals: ciudades[0],
-                mode: 'insensitive',
-              };
+            const ciudadWhere = buildCiudadWhereClause(splitCsvQueryParam(value));
+            if (ciudadWhere) {
+              const and = (where.AND as Record<string, unknown>[] | undefined) ?? [];
+              where.AND = [...and, ciudadWhere];
             }
             continue;
           }

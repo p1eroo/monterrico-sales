@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { etapaLabels } from '@/data/mock';
 import { contactListPaginated, type ApiContactListRow } from '@/lib/contactApi';
 import {
+  CIUDAD_FILTER_EMPTY,
   CIUDAD_OPTIONS,
   flotaProspectosCounts,
   flotaProspectosList,
@@ -378,7 +379,10 @@ export function CrmAudienceImportDialog({
   );
 
   const ciudadFilterOptions = useMemo(
-    () => CIUDAD_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
+    () => [
+      ...CIUDAD_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
+      { value: CIUDAD_FILTER_EMPTY, label: 'Sin ciudad' },
+    ],
     [],
   );
 

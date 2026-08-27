@@ -27,7 +27,9 @@
     "scripts:backfill-operador-from-chatwoot": "node -r ts-node/register -r tsconfig-paths/register scripts/backfill-operador-from-chatwoot.ts",
     "scripts:repair-lila-etapa-sync": "node -r ts-node/register -r tsconfig-paths/register scripts/repair-lila-etapa-sync.ts",
     "scripts:backfill-activity-completed-at": "node -r ts-node/register -r tsconfig-paths/register scripts/backfill-activity-completed-at.ts",
-    "scripts:backfill-flota-afiliados": "node -r ts-node/register -r tsconfig-paths/register scripts/backfill-flota-afiliados.ts"
+    "scripts:backfill-flota-afiliados": "node -r ts-node/register -r tsconfig-paths/register scripts/backfill-flota-afiliados.ts",
+    "scripts:backfill-flota-red-social-web": "node -r ts-node/register -r tsconfig-paths/register scripts/backfill-flota-red-social-web.ts",
+    "scripts:backfill-contact-etapa-history": "node -r ts-node/register -r tsconfig-paths/register scripts/backfill-contact-etapa-history.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",

@@ -103,9 +103,16 @@ export class AnalyticsController {
     );
   }
 
+  /** Marketing: leads y contactados por semana (flota + comercial). */
+  @Get('marketing/leads-by-week')
+  @RequireAnyPermission('marketing.ver', 'dashboard.ver', 'reportes.ver')
+  async getMarketingLeadsByWeek(@Query('weeks') weeks?: string) {
+    const n = weeks ? Number(weeks) : 8;
+    return this.analytics.getMarketingLeadsByWeek(Number.isFinite(n) ? n : 8);
+  }
+
   /** Empresas de un bucket del movimiento por asesor (paginado). */
   @Get('advisor-funnel-movement/companies')
-  @RequireAnyPermission('dashboard.ver', 'reportes.ver')
   async getAdvisorFunnelMovementCompanies(
     @Req() req: AuthedReq,
     @Query('to') to?: string,

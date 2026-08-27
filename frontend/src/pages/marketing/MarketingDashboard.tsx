@@ -4,13 +4,14 @@ import Chart from 'react-apexcharts';
 import type { ApexOptions } from 'apexcharts';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { fetchFacebookStats, type FacebookStats } from '@/lib/marketingApi';
+import { fetchFacebookStats, fetchMarketingLeadsByWeek, type FacebookStats, type MarketingLeadsByWeekRow } from '@/lib/marketingApi';
 import {
   MarketingConversionRateSvgIcon,
   MarketingFormsSvgIcon,
   MarketingLeadsTodaySvgIcon,
   MarketingTotalLeadsSvgIcon,
 } from '@/pages/marketing/MarketingDashboardKpiSvgIcons';
+import { LeadsWeeklyStackedChart } from '@/pages/marketing/LeadsWeeklyStackedChart';
 import { useChartTheme } from '@/hooks/useChartTheme';
 import { cn } from '@/lib/utils';
 
@@ -25,16 +26,6 @@ const PLATFORM_COLORS: Record<string, string> = {
   msg: '#0084FF',
   unknown: '#94a3b8',
 };
-
-const dailyData = [
-  { name: 'Lun', leads: 12, contactados: 8 },
-  { name: 'Mar', leads: 18, contactados: 11 },
-  { name: 'Mié', leads: 8, contactados: 5 },
-  { name: 'Jue', leads: 22, contactados: 15 },
-  { name: 'Vie', leads: 16, contactados: 12 },
-  { name: 'Sáb', leads: 5, contactados: 3 },
-  { name: 'Dom', leads: 3, contactados: 1 },
-];
 
 const campaignData = [
   { name: 'Activación Bono', leads: 45, conversion: 28 },
@@ -72,67 +63,6 @@ const legendBase = {
   itemMargin: { horizontal: 12, vertical: 4 },
   onItemHover: { highlightDataSeries: false },
 };
-
-function DailyLeadsBarChart({ data }: { data: typeof dailyData }) {
-  const chartTheme = useChartTheme();
-
-  const categories = useMemo(() => data.map((d) => d.name), [data]);
-
-  const series = useMemo(
-    () => [
-      { name: 'Nuevos Leads', data: data.map((d) => d.leads) },
-      { name: 'Contactados', data: data.map((d) => d.contactados) },
-    ],
-    [data],
-  );
-
-  const options = useMemo<ApexOptions>(
-    () => ({
-      chart: { ...chartBase, type: 'bar' },
-      colors: [GREEN, BLUE],
-      plotOptions: {
-        bar: {
-          horizontal: false,
-          columnWidth: '42%',
-          borderRadius: 4,
-          borderRadiusApplication: 'end',
-        },
-      },
-      stroke: { width: 0, colors: ['transparent'] },
-      dataLabels: { enabled: false },
-      grid: {
-        borderColor: chartTheme.gridStroke,
-        strokeDashArray: 4,
-        xaxis: { lines: { show: false } },
-        yaxis: { lines: { show: true } },
-        padding: { top: 0, right: 8, bottom: 0, left: 8 },
-      },
-      xaxis: {
-        categories,
-        axisBorder: { show: false },
-        axisTicks: { show: false },
-        labels: { style: { colors: chartTheme.axisColor, fontSize: '11px', fontWeight: 500 } },
-      },
-      yaxis: {
-        labels: { style: { colors: chartTheme.axisColor, fontSize: '11px' } },
-      },
-      legend: { ...legendBase, labels: { colors: chartTheme.axisColor } },
-      tooltip: {
-        theme: chartTheme.isDark ? 'dark' : 'light',
-        shared: false,
-        y: { formatter: (val) => (val == null ? '' : String(Math.round(Number(val)))) },
-      },
-      fill: { opacity: 1 },
-    }),
-    [categories, chartTheme.axisColor, chartTheme.gridStroke, chartTheme.isDark],
-  );
-
-  return (
-    <div className={chartWrapperClass}>
-      <Chart options={options} series={series} type="bar" height={288} />
-    </div>
-  );
-}
 
 function CampaignBarChart({ data }: { data: typeof campaignData }) {
   const chartTheme = useChartTheme();
@@ -328,9 +258,18 @@ function SourceDonutChart({ data }: { data: { key: string; name: string; value: 
 
 export default function MarketingDashboard() {
   const [stats, setStats] = useState<FacebookStats | null>(null);
+  const [weeklyLeads, setWeeklyLeads] = useState<MarketingLeadsByWeekRow[]>([]);
+  const [weeklyLoading, setWeeklyLoading] = useState(true);
 
   useEffect(() => {
     fetchFacebookStats().then(setStats).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetchMarketingLeadsByWeek(8)
+      .then((res) => setWeeklyLeads(res.weeks))
+      .catch(() => {})
+      .finally(() => setWeeklyLoading(false));
   }, []);
 
   const sourceData = useMemo(
@@ -402,11 +341,17 @@ export default function MarketingDashboard() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Leads por día</CardTitle>
-            <CardDescription>Últimos 7 días</CardDescription>
+            <CardTitle className="text-base">Leads y contactados por semana</CardTitle>
+            <CardDescription>Flota y Comercial · últimas 8 semanas</CardDescription>
           </CardHeader>
           <CardContent>
-            <DailyLeadsBarChart data={dailyData} />
+            {weeklyLoading ? (
+              <div className="flex h-72 items-center justify-center text-sm text-muted-foreground">
+                Cargando…
+              </div>
+            ) : (
+              <LeadsWeeklyStackedChart data={weeklyLeads} />
+            )}
           </CardContent>
         </Card>
 

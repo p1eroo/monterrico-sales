@@ -587,6 +587,21 @@ export async function fetchWhatsAppBulkCampaign(campaignId: string): Promise<Wha
   return api<WhatsAppBulkCampaign>(`/whatsapp-cloud/campaigns/${encodeURIComponent(campaignId)}`);
 }
 
+export type MarketingLeadsByWeekRow = {
+  date: string;
+  leads: number;
+  contactados: number;
+};
+
+/** Marketing: leads y contactados por semana (flota + comercial). */
+export async function fetchMarketingLeadsByWeek(
+  weeks = 8,
+): Promise<{ weeks: MarketingLeadsByWeekRow[] }> {
+  return api<{ weeks: MarketingLeadsByWeekRow[] }>(
+    `/analytics/marketing/leads-by-week?weeks=${weeks}`,
+  );
+}
+
 export function formatRelativeSync(iso: string | null): string {
   if (!iso) return 'Nunca';
   const diff = Date.now() - new Date(iso).getTime();

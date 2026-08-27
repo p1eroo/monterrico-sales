@@ -33,3 +33,35 @@ export function splitCsvQueryParam(value: string): string[] {
     .map((s) => s.trim())
     .filter(Boolean);
 }
+
+/** Token para filtrar prospectos sin ciudad asignada (null o vacío). */
+export const CIUDAD_FILTER_EMPTY = '__empty__';
+
+const CIUDAD_EMPTY_WHERE = {
+  OR: [{ ciudad: null }, { ciudad: '' }],
+} as const;
+
+/** Filtro de ciudad en listados (soporta CSV y «sin ciudad»). */
+export function buildCiudadWhereClause(
+  ciudades: string[],
+): Record<string, unknown> | null {
+  const hasEmpty = ciudades.includes(CIUDAD_FILTER_EMPTY);
+  const named = ciudades.filter((c) => c !== CIUDAD_FILTER_EMPTY);
+  if (!hasEmpty && named.length === 0) return null;
+  if (hasEmpty && named.length === 0) {
+    return { ...CIUDAD_EMPTY_WHERE };
+  }
+  if (hasEmpty) {
+    return {
+      OR: [
+        { ciudad: { in: named } },
+        { ciudad: null },
+        { ciudad: '' },
+      ],
+    };
+  }
+  if (named.length > 1) {
+    return { ciudad: { in: named } };
+  }
+  return { ciudad: { equals: named[0], mode: 'insensitive' } };
+}
