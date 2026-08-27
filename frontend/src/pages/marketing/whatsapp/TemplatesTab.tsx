@@ -97,7 +97,7 @@ function TemplatePreviewModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="wa-template-preview-title"
-        className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-border/60 bg-background shadow-xl"
+        className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-border/60 bg-background shadow-xl"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-8 pt-8 scrollbar-thin">
@@ -135,7 +135,7 @@ function TemplatePreviewModal({
             </Button>
           </div>
 
-          <div className="mt-6 grid min-w-0 items-start gap-6 pb-2 lg:grid-cols-[minmax(0,1fr)_260px]">
+          <div className="mt-6 grid min-w-0 items-start gap-8 pb-2 lg:grid-cols-[minmax(0,1fr)_360px]">
             <div className="min-w-0 space-y-3">
               <div className="rounded-lg bg-muted/40 p-3">
                 <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">

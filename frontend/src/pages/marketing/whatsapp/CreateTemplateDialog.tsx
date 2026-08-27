@@ -346,7 +346,7 @@ export function CreateTemplateDialog({
         </div>
       }
     >
-      <div className="grid min-w-0 items-stretch gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="grid min-w-0 items-stretch gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0 space-y-10">
           <FormDialogGrid className="gap-y-6 sm:grid-cols-2 sm:gap-x-5">
             <FormDialogField label="Nombre de la plantilla" required className="sm:col-span-2">
