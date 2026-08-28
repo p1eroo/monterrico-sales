@@ -79,12 +79,18 @@ export class FlotaProspectosController {
     @Query('filters') filters?: string,
     @Query('conLlamadas') conLlamadas?: string,
     @Query('contactado') contactado?: string,
+    @Query('lean') lean?: string,
   ) {
     const scope = await this.buildFlotaScope(req.user.userId, req.user.roleId);
+    const isLean = lean === '1' || lean === 'true';
     return this.service.findAll(
       {
         page: page ? parseInt(page, 10) : 1,
-        limit: limit ? parseInt(limit, 10) : 25,
+        limit: limit
+          ? parseInt(limit, 10)
+          : isLean
+            ? 20000
+            : 25,
         search: search || undefined,
         estado: estado || undefined,
         duplicados: duplicados === 'true',
@@ -99,6 +105,7 @@ export class FlotaProspectosController {
         filters: filters || undefined,
         conLlamadas: conLlamadas || undefined,
         contactado: contactado || undefined,
+        lean: isLean,
       },
       scope,
     );

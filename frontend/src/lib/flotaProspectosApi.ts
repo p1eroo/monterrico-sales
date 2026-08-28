@@ -130,6 +130,8 @@ export async function flotaProspectosList(params: {
   filters?: Record<string, string>;
   conLlamadas?: string;
   contactado?: string;
+  /** Export liviano (sin conteos) — ideal para audiencia WhatsApp. */
+  lean?: boolean;
   signal?: AbortSignal;
 }): Promise<FlotaProspectosListResponse> {
   const qs = new URLSearchParams();
@@ -149,6 +151,7 @@ export async function flotaProspectosList(params: {
   if (params.filters) qs.set('filters', JSON.stringify(params.filters));
   if (params.conLlamadas) qs.set('conLlamadas', params.conLlamadas);
   if (params.contactado) qs.set('contactado', params.contactado);
+  if (params.lean) qs.set('lean', '1');
   return api<FlotaProspectosListResponse>(
     `/flota-prospectos?${qs.toString()}`,
     params.signal ? { signal: params.signal } : undefined,

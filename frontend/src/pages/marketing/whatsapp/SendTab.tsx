@@ -33,6 +33,12 @@ import {
   type WhatsAppContact,
   type WhatsAppTemplate,
 } from './mockData';
+import {
+  audienceCount,
+  audiencePreviewContacts,
+  resolveWhatsAppAudienceContacts,
+  type WhatsAppAudience,
+} from './whatsappAudienceModel';
 
 type VariableSource = 'name' | 'company' | 'phone' | 'form';
 
@@ -84,7 +90,7 @@ function renderPlaceholders(
 
 export function SendTab({
   templates,
-  selectedContacts,
+  audience,
   initialTemplateId,
   activeAccount,
   onSent,
@@ -92,7 +98,7 @@ export function SendTab({
   onGoToAudience,
 }: {
   templates: WhatsAppTemplate[];
-  selectedContacts: WhatsAppContact[];
+  audience: WhatsAppAudience;
   initialTemplateId: string | null;
   activeAccount?: WhatsAppCloudAccount | null;
   onSent: (campaignId: string) => void;
@@ -108,6 +114,7 @@ export function SendTab({
   const [scheduleAt, setScheduleAt] = useState('');
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [resolvingLabel, setResolvingLabel] = useState<string | null>(null);
 
   const template = approved.find((t) => t.id === templateId) ?? null;
   const placeholders = useMemo(
@@ -123,24 +130,53 @@ export function SendTab({
     return next;
   }, [placeholders, variableMap]);
 
-  const sampleContact = selectedContacts.find((c) => c.hasWhatsApp) ?? selectedContacts[0];
-  const withoutWhatsApp = selectedContacts.filter((c) => !c.hasWhatsApp).length;
+  const totalAudience = audienceCount(audience);
+  const previewContacts = useMemo(() => audiencePreviewContacts(audience, 1), [audience]);
+  const sampleContact = previewContacts[0];
+  const deferredCrm = audience.mode === 'crmSelectAll';
+  // En audiencia explícita podemos contar sin WhatsApp; en selectAll del CRM asumimos todos válidos hasta resolver.
+  const withoutWhatsApp =
+    audience.mode === 'explicit'
+      ? audience.contacts.filter((c) => !c.hasWhatsApp).length
+      : 0;
 
   const simulateSend = () => {
-    if (!template || !activeAccount || selectedContacts.length === 0) return;
+    if (!template || !activeAccount || totalAudience === 0) return;
     if (!scheduleNow) {
       toast.error('La programación de envíos estará disponible próximamente');
       return;
     }
 
     setSending(true);
-    setProgress(5);
-
-    const skipped = selectedContacts.filter((c) => !c.hasWhatsApp);
-    const eligible = selectedContacts.filter((c) => c.hasWhatsApp);
+    setProgress(3);
 
     void (async () => {
       try {
+        if (deferredCrm) {
+          setResolvingLabel('Cargando audiencia del CRM…');
+        }
+        const selectedContacts = await resolveWhatsAppAudienceContacts(audience);
+        setResolvingLabel(null);
+
+        if (selectedContacts.length === 0) {
+          toast.error('No hay destinatarios válidos con nombre y celular.');
+          return;
+        }
+
+        const eligible = selectedContacts.filter((c) => c.hasWhatsApp);
+        if (eligible.length === 0) {
+          toast.error('Ningún contacto seleccionado tiene WhatsApp activo.');
+          return;
+        }
+
+        const skipped = selectedContacts.length - eligible.length;
+        if (skipped > 0) {
+          toast.message('Algunos contactos no tienen WhatsApp', {
+            description: `${skipped} contacto(s) se marcarán como fallidos.`,
+          });
+        }
+
+        setProgress(8);
         const campaign = await createWhatsAppBulkCampaign({
           accountId: activeAccount.id,
           templateId: template.id,
@@ -168,6 +204,7 @@ export function SendTab({
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Error al enviar');
       } finally {
+        setResolvingLabel(null);
         setSending(false);
         setProgress(0);
       }
@@ -183,19 +220,21 @@ export function SendTab({
       toast.error('No hay canal WhatsApp activo.');
       return;
     }
-    if (selectedContacts.length === 0) {
+    if (totalAudience === 0) {
       toast.error('Agrega contactos a la audiencia antes de enviar.');
       return;
     }
-    const eligible = selectedContacts.filter((c) => c.hasWhatsApp);
-    if (eligible.length === 0) {
-      toast.error('Ningún contacto seleccionado tiene WhatsApp activo.');
-      return;
-    }
-    if (withoutWhatsApp > 0) {
-      toast.message('Algunos contactos no tienen WhatsApp', {
-        description: `${withoutWhatsApp} contacto(s) se marcarán como fallidos.`,
-      });
+    if (audience.mode === 'explicit') {
+      const eligible = audience.contacts.filter((c) => c.hasWhatsApp);
+      if (eligible.length === 0) {
+        toast.error('Ningún contacto seleccionado tiene WhatsApp activo.');
+        return;
+      }
+      if (withoutWhatsApp > 0) {
+        toast.message('Algunos contactos no tienen WhatsApp', {
+          description: `${withoutWhatsApp} contacto(s) se marcarán como fallidos.`,
+        });
+      }
     }
     simulateSend();
   };
@@ -217,7 +256,7 @@ export function SendTab({
     );
   }
 
-  if (selectedContacts.length === 0) {
+  if (totalAudience === 0) {
     return (
       <GlassCard>
         <div className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center">
@@ -351,7 +390,7 @@ export function SendTab({
               <p className="text-sm font-semibold">
                 Resumen del envío
                 <Badge variant="secondary" className="ml-2 align-middle">
-                  {selectedContacts.length}
+                  {totalAudience}
                 </Badge>
               </p>
             </div>
@@ -362,14 +401,34 @@ export function SendTab({
                   <span className="max-w-[180px] truncate text-right font-medium">{activeAccount.displayName}</span>
                 </div>
               ) : null}
+              {deferredCrm ? (
+                <div className="flex justify-between gap-3">
+                  <span className="text-muted-foreground">Origen</span>
+                  <span className="max-w-[180px] truncate text-right font-medium">
+                    Filtro CRM ({audience.source === 'flota' ? 'Flota' : 'Comercial'})
+                  </span>
+                </div>
+              ) : null}
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Con WhatsApp</span>
-                <span className="font-medium">{selectedContacts.length - withoutWhatsApp}</span>
+                <span className="text-muted-foreground">Destinatarios</span>
+                <span className="font-medium">{totalAudience}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Sin WhatsApp (se omitirán)</span>
-                <span className="font-medium text-amber-600 dark:text-amber-400">{withoutWhatsApp}</span>
-              </div>
+              {!deferredCrm ? (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Con WhatsApp</span>
+                    <span className="font-medium">{totalAudience - withoutWhatsApp}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Sin WhatsApp (se omitirán)</span>
+                    <span className="font-medium text-amber-600 dark:text-amber-400">{withoutWhatsApp}</span>
+                  </div>
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Los contactos se cargan del CRM al confirmar el envío (una sola petición).
+                </p>
+              )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Plantilla</span>
                 <span className="max-w-[180px] truncate font-medium">{template?.name ?? '—'}</span>
@@ -399,7 +458,11 @@ export function SendTab({
               onClick={handleSend}
             >
               {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-              {sending ? 'Enviando…' : scheduleNow ? 'Enviar ahora' : 'Programar envío'}
+              {sending
+                ? resolvingLabel ?? 'Enviando…'
+                : scheduleNow
+                  ? 'Enviar ahora'
+                  : 'Programar envío'}
             </Button>
 
             {sending && (
@@ -411,7 +474,7 @@ export function SendTab({
                   />
                 </div>
                 <p className="text-center text-xs text-muted-foreground">
-                  Enviando vía Meta… {Math.round(progress)}%
+                  {resolvingLabel ?? `Enviando vía Meta… ${Math.round(progress)}%`}
                 </p>
               </div>
             )}

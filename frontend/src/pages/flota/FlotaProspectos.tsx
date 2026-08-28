@@ -36,6 +36,16 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  FormDialogActions,
+  FormDialogField,
+  FormDialogGrid,
+  FormDialogShell,
+  formDialogInputClass,
+  formDialogSelectTriggerClass,
+  formDialogTextareaClass,
+} from "@/components/ui/form-dialog";
 import {
   Table,
   TableBody,
@@ -120,6 +130,7 @@ import { Pagination } from "@/components/shared/Pagination";
 import ChatwootInboxPanel from "@/components/flota/ChatwootInboxPanel";
 import { ProspectoArchivosModal } from "@/components/flota/ProspectoArchivosModal";
 import { ProspectoInfoModal } from "@/components/flota/ProspectoInfoModal";
+import { ProspectoEditDialog } from "@/components/flota/chatpool/ProspectoEditDialog";
 
 const AIRE_ACONDICIONADO_OPTIONS = [
   { label: "SI", value: "SI" },
@@ -206,46 +217,12 @@ export default function FlotaProspectos() {
   const [infoModalProspecto, setInfoModalProspecto] = useState<FlotaProspectoRow | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editProspectoId, setEditProspectoId] = useState<string | null>(null);
-  const [editSaving, setEditSaving] = useState(false);
-  const [editData, setEditData] = useState({
-    nombreCompleto: "",
-    celular: "",
-    redSocial: "",
-    distrito: "",
-    ciudad: "",
-    operador: "",
-    edad: "",
-    modalidad: "",
-    anioVehiculo: "",
-    placa: "",
-    observaciones: "",
-  });
 
-  useEffect(() => {
-    if (!editProspectoId) return;
-    api<Record<string, unknown>>(`/flota-prospectos/${editProspectoId}`)
-      .then((data) => {
-        const fullObs = String(data.observaciones || "");
-        const latest = fullObs.split(/\n?---\n?/)[0].replace(/^(?:\[.+?\]\s*)+/, "").trim();
-        setEditData({
-          nombreCompleto: String(data.nombreCompleto || ""),
-          celular: String(data.celular || ""),
-          redSocial: String(data.redSocial || ""),
-          distrito: String(data.distrito || ""),
-          ciudad: String(data.ciudad || ""),
-          operador: String(data.operador || ""),
-          edad: data.edad != null ? String(data.edad) : "",
-          modalidad: String(data.modalidad || ""),
-          anioVehiculo: data.anioVehiculo != null ? String(data.anioVehiculo) : "",
-          placa: String(data.placa || ""),
-          observaciones: latest,
-        });
-      })
-      .catch(() => toast.error("No se pudo cargar el prospecto"));
-  }, [editProspectoId]);
   const [newProspecto, setNewProspecto] = useState({
     nombreCompleto: "",
     celular: "",
+    dni: "",
+    movil: "",
     redSocial: "",
     distrito: "",
     ciudad: "",
@@ -254,6 +231,12 @@ export default function FlotaProspectos() {
     modalidad: "",
     anioVehiculo: "",
     placa: "",
+    aireAcondicionado: "",
+    categoriaVehiculo: "",
+    marca: "",
+    modelo: "",
+    color: "",
+    combustible: "",
     observaciones: "",
   });
 
@@ -1285,6 +1268,8 @@ export default function FlotaProspectos() {
       await flotaProspectoCreate({
         nombreCompleto: newProspecto.nombreCompleto.trim(),
         celular: newProspecto.celular.trim(),
+        dni: newProspecto.dni.trim() || null,
+        movil: newProspecto.movil.trim() || null,
         redSocial: newProspecto.redSocial.trim() || null,
         operador: newProspecto.operador.trim() || null,
         modalidad: newProspecto.modalidad.trim() || null,
@@ -1295,6 +1280,12 @@ export default function FlotaProspectos() {
           ? parseInt(newProspecto.anioVehiculo, 10)
           : null,
         placa: newProspecto.placa.trim() || null,
+        aireAcondicionado: newProspecto.aireAcondicionado.trim() || null,
+        categoriaVehiculo: newProspecto.categoriaVehiculo.trim() || null,
+        marca: newProspecto.marca.trim() || null,
+        modelo: newProspecto.modelo.trim() || null,
+        color: newProspecto.color.trim() || null,
+        combustible: newProspecto.combustible.trim() || null,
         observaciones: newProspecto.observaciones.trim() || null,
         estado: "Nuevo",
       });
@@ -1303,6 +1294,8 @@ export default function FlotaProspectos() {
       setNewProspecto({
         nombreCompleto: "",
         celular: "",
+        dni: "",
+        movil: "",
         redSocial: "",
         distrito: "",
         ciudad: "",
@@ -1311,6 +1304,12 @@ export default function FlotaProspectos() {
         modalidad: "",
         anioVehiculo: "",
         placa: "",
+        aireAcondicionado: "",
+        categoriaVehiculo: "",
+        marca: "",
+        modelo: "",
+        color: "",
+        combustible: "",
         observaciones: "",
       });
       await Promise.all([loadProspectos(page), loadCounts()]);
@@ -1430,46 +1429,6 @@ export default function FlotaProspectos() {
       );
     } finally {
       setExportBusy(false);
-    }
-  }
-
-  async function handleEditSave() {
-    if (!editProspectoId || !editData.nombreCompleto.trim()) {
-      toast.error("El nombre es obligatorio");
-      return;
-    }
-    setEditSaving(true);
-    try {
-      const body: Record<string, unknown> = {};
-      if (editData.nombreCompleto.trim()) body.nombreCompleto = editData.nombreCompleto.trim();
-      if (editData.celular.trim()) body.celular = editData.celular.trim();
-      if (editData.redSocial.trim()) body.redSocial = editData.redSocial.trim();
-      if (editData.distrito.trim()) body.distrito = editData.distrito.trim();
-      if (editData.ciudad.trim()) body.ciudad = editData.ciudad.trim();
-      if (editData.operador.trim()) body.operador = editData.operador.trim();
-      if (editData.modalidad.trim()) body.modalidad = editData.modalidad.trim();
-      if (editData.placa.trim()) body.placa = editData.placa.trim();
-      const edad = parseInt(editData.edad, 10);
-      if (!isNaN(edad)) body.edad = edad;
-      const anio = parseInt(editData.anioVehiculo, 10);
-      if (!isNaN(anio)) body.anioVehiculo = anio;
-      if (editData.observaciones.trim()) {
-        const dateStr = new Date().toLocaleString("es-PE", { timeZone: "America/Lima" });
-        body.observaciones = `[${dateStr}] ${editData.observaciones.trim()}`;
-      }
-      await api(`/flota-prospectos/${editProspectoId}`, {
-        method: "PATCH",
-        body: JSON.stringify(body),
-      });
-      toast.success("Prospecto actualizado");
-      setEditProspectoId(null);
-      notifyFlotaProspectosRefresh();
-      void loadProspectos(page);
-      void loadCounts();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error al actualizar");
-    } finally {
-      setEditSaving(false);
     }
   }
 
@@ -1989,35 +1948,42 @@ export default function FlotaProspectos() {
         </DialogContent>
       </Dialog>
 
-      <Dialog
+      <FormDialogShell
         open={createModalOpen}
-        onOpenChange={(open) => !open && setCreateModalOpen(open)}
+        onOpenChange={setCreateModalOpen}
+        title="Nuevo Prospecto"
+        description="Agrega un nuevo prospecto a la base de datos. El celular se verifica automáticamente para evitar duplicados."
+        maxWidthClassName="sm:max-w-2xl"
+        bodyClassName="pb-2"
+        footer={
+          <FormDialogActions
+            onCancel={() => setCreateModalOpen(false)}
+            onSubmit={() => void handleCreateProspecto()}
+            submitLabel={creating ? "Creando..." : "Crear Prospecto"}
+            submitting={creating}
+            submitDisabled={!!duplicateAlert || !newProspecto.nombreCompleto.trim() || !newProspecto.celular.trim()}
+          />
+        }
       >
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Nuevo Prospecto</DialogTitle>
-            <DialogDescription>
-              Agregar un nuevo prospecto a la base de datos.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <label className="text-sm font-medium">Nombre completo *</label>
-              <Input
-                value={newProspecto.nombreCompleto}
-                onChange={(e) =>
-                  setNewProspecto({
-                    ...newProspecto,
-                    nombreCompleto: e.target.value,
-                  })
-                }
-                placeholder="Nombres y Apellidos"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <label className="text-sm font-muted-forer">Celular *</label>
+        <div className="flex flex-col gap-4 sm:gap-5">
+          <section>
+            <h3 className="mb-4 text-[13px] font-semibold text-foreground">
+              Datos personales
+            </h3>
+            <FormDialogGrid className="gap-x-4 gap-y-4 sm:grid-cols-2 sm:gap-x-5 sm:gap-y-5">
+              <FormDialogField label="Nombre completo" required className="sm:col-span-2">
                 <Input
+                  className={formDialogInputClass}
+                  value={newProspecto.nombreCompleto}
+                  onChange={(e) =>
+                    setNewProspecto({ ...newProspecto, nombreCompleto: e.target.value })
+                  }
+                  placeholder="Nombres y apellidos"
+                />
+              </FormDialogField>
+              <FormDialogField label="Celular" required>
+                <Input
+                  className={formDialogInputClass}
                   value={newProspecto.celular}
                   onChange={(e) => {
                     const raw = e.target.value.replace(/\D/g, "").slice(0, 9);
@@ -2035,23 +2001,51 @@ export default function FlotaProspectos() {
                       ` · Asignado a ${duplicateAlert.operador}`}
                   </p>
                 )}
-              </div>
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Edad</label>
+              </FormDialogField>
+              <FormDialogField label="Móvil">
+                <Input
+                  className={formDialogInputClass}
+                  value={newProspecto.movil}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/\D/g, "").slice(0, 9);
+                    setNewProspecto({ ...newProspecto, movil: raw });
+                  }}
+                  placeholder="Móvil"
+                />
+              </FormDialogField>
+              <FormDialogField label="DNI">
+                <Input
+                  className={formDialogInputClass}
+                  value={newProspecto.dni}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/\D/g, "").slice(0, 8);
+                    setNewProspecto({ ...newProspecto, dni: raw });
+                  }}
+                  placeholder="DNI"
+                />
+              </FormDialogField>
+              <FormDialogField label="Edad">
                 <Input
                   type="number"
+                  className={formDialogInputClass}
                   value={newProspecto.edad}
                   onChange={(e) =>
                     setNewProspecto({ ...newProspecto, edad: e.target.value })
                   }
                   placeholder="18"
                 />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Placa</label>
+              </FormDialogField>
+            </FormDialogGrid>
+          </section>
+
+          <section>
+            <h3 className="mb-4 text-[13px] font-semibold text-foreground">
+              Vehículo
+            </h3>
+            <FormDialogGrid className="gap-x-4 gap-y-4 sm:grid-cols-2 sm:gap-x-5 sm:gap-y-5">
+              <FormDialogField label="Placa">
                 <Input
+                  className={formDialogInputClass}
                   value={newProspecto.placa}
                   onChange={(e) => {
                     const raw = e.target.value
@@ -2067,64 +2061,19 @@ export default function FlotaProspectos() {
                   placeholder="ABC-123"
                   maxLength={7}
                 />
-              </div>
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Año Vehículo</label>
+              </FormDialogField>
+              <FormDialogField label="Año vehículo">
                 <Input
                   type="number"
+                  className={formDialogInputClass}
                   value={newProspecto.anioVehiculo}
                   onChange={(e) =>
-                    setNewProspecto({
-                      ...newProspecto,
-                      anioVehiculo: e.target.value,
-                    })
+                    setNewProspecto({ ...newProspecto, anioVehiculo: e.target.value })
                   }
                   placeholder="2024"
                 />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Red Social</label>
-                <Input
-                  value={newProspecto.redSocial}
-                  onChange={(e) =>
-                    setNewProspecto({
-                      ...newProspecto,
-                      redSocial: e.target.value,
-                    })
-                  }
-                  placeholder="Facebook, Instagram..."
-                />
-              </div>
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Operador</label>
-                <Select
-                  value={newProspecto.operador || "__none__"}
-                  onValueChange={(v) =>
-                    setNewProspecto({
-                      ...newProspecto,
-                      operador: v === "__none__" ? "" : v,
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sin operador" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Sin operador</SelectItem>
-                    {operadores.map((op) => (
-                      <SelectItem key={op.id} value={op.name}>
-                        {op.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Modalidad</label>
+              </FormDialogField>
+              <FormDialogField label="Modalidad">
                 <Select
                   value={newProspecto.modalidad || "__none__"}
                   onValueChange={(v) =>
@@ -2134,7 +2083,7 @@ export default function FlotaProspectos() {
                     })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={formDialogSelectTriggerClass}>
                     <SelectValue placeholder="Sin modalidad" />
                   </SelectTrigger>
                   <SelectContent>
@@ -2146,9 +2095,99 @@ export default function FlotaProspectos() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Ciudad</label>
+              </FormDialogField>
+              <FormDialogField label="Aire acondicionado">
+                <Select
+                  value={newProspecto.aireAcondicionado || "__none__"}
+                  onValueChange={(v) =>
+                    setNewProspecto({
+                      ...newProspecto,
+                      aireAcondicionado: v === "__none__" ? "" : v,
+                    })
+                  }
+                >
+                  <SelectTrigger className={formDialogSelectTriggerClass}>
+                    <SelectValue placeholder="Sin dato" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sin dato</SelectItem>
+                    {AIRE_ACONDICIONADO_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormDialogField>
+              <FormDialogField label="Categoría">
+                <Input
+                  className={formDialogInputClass}
+                  value={newProspecto.categoriaVehiculo}
+                  onChange={(e) =>
+                    setNewProspecto({ ...newProspecto, categoriaVehiculo: e.target.value })
+                  }
+                  placeholder="Ej. M1"
+                />
+              </FormDialogField>
+              <FormDialogField label="Marca">
+                <Input
+                  className={formDialogInputClass}
+                  value={newProspecto.marca}
+                  onChange={(e) =>
+                    setNewProspecto({ ...newProspecto, marca: e.target.value })
+                  }
+                  placeholder="Marca"
+                />
+              </FormDialogField>
+              <FormDialogField label="Modelo">
+                <Input
+                  className={formDialogInputClass}
+                  value={newProspecto.modelo}
+                  onChange={(e) =>
+                    setNewProspecto({ ...newProspecto, modelo: e.target.value })
+                  }
+                  placeholder="Modelo"
+                />
+              </FormDialogField>
+              <FormDialogField label="Color">
+                <Input
+                  className={formDialogInputClass}
+                  value={newProspecto.color}
+                  onChange={(e) =>
+                    setNewProspecto({ ...newProspecto, color: e.target.value })
+                  }
+                  placeholder="Color"
+                />
+              </FormDialogField>
+              <FormDialogField label="Combustible">
+                <Input
+                  className={formDialogInputClass}
+                  value={newProspecto.combustible}
+                  onChange={(e) =>
+                    setNewProspecto({ ...newProspecto, combustible: e.target.value })
+                  }
+                  placeholder="Gasolina, GNV…"
+                />
+              </FormDialogField>
+            </FormDialogGrid>
+          </section>
+
+          <section>
+            <h3 className="mb-4 text-[13px] font-semibold text-foreground">
+              Ubicación y seguimiento
+            </h3>
+            <FormDialogGrid className="gap-x-4 gap-y-4 sm:grid-cols-2 sm:gap-x-5 sm:gap-y-5">
+              <FormDialogField label="Distrito">
+                <Input
+                  className={formDialogInputClass}
+                  value={newProspecto.distrito}
+                  onChange={(e) =>
+                    setNewProspecto({ ...newProspecto, distrito: e.target.value })
+                  }
+                  placeholder="Distrito"
+                />
+              </FormDialogField>
+              <FormDialogField label="Ciudad">
                 <Select
                   value={newProspecto.ciudad || "__none__"}
                   onValueChange={(v) =>
@@ -2158,7 +2197,7 @@ export default function FlotaProspectos() {
                     })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={formDialogSelectTriggerClass}>
                     <SelectValue placeholder="Sin ciudad" />
                   </SelectTrigger>
                   <SelectContent>
@@ -2170,57 +2209,58 @@ export default function FlotaProspectos() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-            </div>
-              <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Distrito</label>
-                <Input
-                  value={newProspecto.distrito}
-                  onChange={(e) =>
+              </FormDialogField>
+              <FormDialogField label="Operador">
+                <Select
+                  value={newProspecto.operador || "__none__"}
+                  onValueChange={(v) =>
                     setNewProspecto({
                       ...newProspecto,
-                      distrito: e.target.value,
+                      operador: v === "__none__" ? "" : v,
                     })
                   }
-                  placeholder="Lima, Callao..."
+                >
+                  <SelectTrigger className={formDialogSelectTriggerClass}>
+                    <SelectValue placeholder="Sin operador" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sin operador</SelectItem>
+                    {operadores.map((op) => (
+                      <SelectItem key={op.id} value={op.name}>
+                        {op.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormDialogField>
+              <FormDialogField label="Red social">
+                <Input
+                  className={formDialogInputClass}
+                  value={newProspecto.redSocial}
+                  onChange={(e) =>
+                    setNewProspecto({ ...newProspecto, redSocial: e.target.value })
+                  }
+                  placeholder="Facebook, TikTok…"
                 />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <label className="text-sm font-medium">Observaciones</label>
-              <Input
-                value={newProspecto.observaciones}
-                onChange={(e) =>
-                  setNewProspecto({
-                    ...newProspecto,
-                    observaciones: e.target.value,
-                  })
-                }
-                placeholder="Notas adicionales..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setCreateModalOpen(false)}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={() => handleCreateProspecto()}
-              disabled={creating || !!duplicateAlert}
-            >
-              {creating ? (
-                <>
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                  Creando...
-                </>
-              ) : (
-                "Crear Prospecto"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              </FormDialogField>
+            </FormDialogGrid>
+          </section>
+
+          <section>
+            <h3 className="mb-4 text-[13px] font-semibold text-foreground">
+              Observaciones
+            </h3>
+            <Textarea
+              className={formDialogTextareaClass}
+              value={newProspecto.observaciones}
+              onChange={(e) =>
+                setNewProspecto({ ...newProspecto, observaciones: e.target.value })
+              }
+              placeholder="Notas adicionales..."
+            />
+          </section>
+        </div>
+      </FormDialogShell>
 
       <Dialog open={citadoDialogOpen} onOpenChange={setCitadoDialogOpen}>
         <DialogContent className="sm:max-w-sm">
@@ -2367,127 +2407,18 @@ export default function FlotaProspectos() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!editProspectoId} onOpenChange={(open) => { if (!open) setEditProspectoId(null); }}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Editar Prospecto</DialogTitle>
-            <DialogDescription>Modifica los datos del prospecto</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <label className="text-sm font-medium">Nombre completo *</label>
-              <Input value={editData.nombreCompleto} onChange={(e) => setEditData((p) => ({ ...p, nombreCompleto: e.target.value }))} placeholder="Nombres y Apellidos" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Celular</label>
-                <Input value={editData.celular} onChange={(e) => setEditData((p) => ({ ...p, celular: e.target.value }))} placeholder="999999999" />
-              </div>
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Edad</label>
-                <Input type="number" value={editData.edad} onChange={(e) => setEditData((p) => ({ ...p, edad: e.target.value }))} placeholder="18" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Red Social</label>
-                <Input value={editData.redSocial} onChange={(e) => setEditData((p) => ({ ...p, redSocial: e.target.value }))} placeholder="Facebook, Instagram..." />
-              </div>
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Ciudad</label>
-                <Select
-                  value={editData.ciudad || "__none__"}
-                  onValueChange={(v) =>
-                    setEditData((p) => ({
-                      ...p,
-                      ciudad: v === "__none__" ? "" : v,
-                    }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sin ciudad" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Sin ciudad</SelectItem>
-                    {CIUDAD_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                    {editData.ciudad &&
-                      !CIUDAD_OPTIONS.some((o) => o.value === editData.ciudad) && (
-                        <SelectItem value={editData.ciudad}>
-                          {editData.ciudad}
-                        </SelectItem>
-                      )}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Distrito</label>
-                <Input value={editData.distrito} onChange={(e) => setEditData((p) => ({ ...p, distrito: e.target.value }))} placeholder="Lima" />
-              </div>
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Modalidad</label>
-                <Select
-                  value={editData.modalidad || "__none__"}
-                  onValueChange={(v) =>
-                    setEditData((p) => ({
-                      ...p,
-                      modalidad: v === "__none__" ? "" : v,
-                    }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sin modalidad" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Sin modalidad</SelectItem>
-                    {MODALIDAD_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                    {editData.modalidad &&
-                      !MODALIDAD_OPTIONS.some((o) => o.value === editData.modalidad) && (
-                        <SelectItem value={editData.modalidad}>
-                          {editData.modalidad}
-                        </SelectItem>
-                      )}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Placa</label>
-                <Input value={editData.placa} onChange={(e) => setEditData((p) => ({ ...p, placa: e.target.value }))} placeholder="ABC-123" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Año Vehículo</label>
-                <Input type="number" value={editData.anioVehiculo} onChange={(e) => setEditData((p) => ({ ...p, anioVehiculo: e.target.value }))} placeholder="2024" />
-              </div>
-              <div className="grid gap-2">
-                <label className="text-sm font-medium">Operador</label>
-                <Input value={editData.operador} onChange={(e) => setEditData((p) => ({ ...p, operador: e.target.value }))} placeholder="Nombre del operador" />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <label className="text-sm font-medium">Observaciones</label>
-              <textarea className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" value={editData.observaciones} onChange={(e) => setEditData((p) => ({ ...p, observaciones: e.target.value }))} placeholder="Notas adicionales..." />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setEditProspectoId(null)} disabled={editSaving}>Cancelar</Button>
-            <Button onClick={() => void handleEditSave()} disabled={editSaving || !editData.nombreCompleto.trim()}>
-              {editSaving && <Loader2 className="mr-2 size-4 animate-spin" />}
-              Guardar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ProspectoEditDialog
+        prospectoId={editProspectoId}
+        open={!!editProspectoId}
+        onOpenChange={(open) => {
+          if (!open) setEditProspectoId(null);
+        }}
+        onSaved={() => {
+          notifyFlotaProspectosRefresh();
+          void loadProspectos(page);
+          void loadCounts();
+        }}
+      />
 
       {blockedProspects.length > 0 && (
         <style>{blockedProspects.map((bp) => `
@@ -2578,6 +2509,12 @@ tr[data-row-id="${bp.id}"] {
         open={!!infoModalProspecto}
         onOpenChange={(open) => {
           if (!open) setInfoModalProspecto(null);
+        }}
+        onEdit={() => {
+          if (!infoModalProspecto) return;
+          const id = infoModalProspecto.id;
+          setInfoModalProspecto(null);
+          setEditProspectoId(id);
         }}
         onFilesLoad={(prospectoId, fileCount) => {
           setProspectsWithFiles((prev) => {

@@ -68,10 +68,12 @@ function FormSection({
 }) {
   return (
     <section className={className}>
-      <h3 className="mb-2.5 border-b border-border/60 pb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <h3 className="mb-4 text-[13px] font-semibold text-foreground">
         {title}
       </h3>
-      <FormDialogGrid className="gap-y-3">{children}</FormDialogGrid>
+      <FormDialogGrid className="gap-x-4 gap-y-4 sm:grid-cols-2 sm:gap-x-5 sm:gap-y-5">
+        {children}
+      </FormDialogGrid>
     </section>
   );
 }
@@ -173,6 +175,11 @@ export function ProspectoEditDialog({
       'modalidad',
       'placa',
       'aireAcondicionado',
+      'categoriaVehiculo',
+      'marca',
+      'modelo',
+      'color',
+      'combustible',
       'redSocial',
       'anioVehiculo',
       'observaciones',
@@ -239,7 +246,7 @@ export function ProspectoEditDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="Editar prospecto"
-      description="Datos del CRM. Al guardar el nombre también se sincroniza con WhatsApp."
+      description="Modifica los datos del prospecto. El nombre se sincroniza con WhatsApp al guardar."
       maxWidthClassName="sm:max-w-2xl"
       bodyClassName="pb-2"
       footer={
@@ -257,7 +264,7 @@ export function ProspectoEditDialog({
           <p className="text-sm">Cargando datos…</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-4 sm:gap-5">
           <FormSection title="Datos personales">
             <FormDialogField label="Nombre completo" required className="sm:col-span-2">
               <Input
@@ -372,6 +379,48 @@ export function ProspectoEditDialog({
                     )}
                 </SelectContent>
               </Select>
+            </FormDialogField>
+            <FormDialogField label="Categoría">
+              <Input
+                className={formDialogInputClass}
+                value={editData.categoriaVehiculo ?? ''}
+                onChange={(e) =>
+                  setEditData((prev) => ({ ...prev, categoriaVehiculo: e.target.value }))
+                }
+                placeholder="Ej. M1"
+              />
+            </FormDialogField>
+            <FormDialogField label="Marca">
+              <Input
+                className={formDialogInputClass}
+                value={editData.marca ?? ''}
+                onChange={(e) => setEditData((prev) => ({ ...prev, marca: e.target.value }))}
+                placeholder="Marca"
+              />
+            </FormDialogField>
+            <FormDialogField label="Modelo">
+              <Input
+                className={formDialogInputClass}
+                value={editData.modelo ?? ''}
+                onChange={(e) => setEditData((prev) => ({ ...prev, modelo: e.target.value }))}
+                placeholder="Modelo"
+              />
+            </FormDialogField>
+            <FormDialogField label="Color">
+              <Input
+                className={formDialogInputClass}
+                value={editData.color ?? ''}
+                onChange={(e) => setEditData((prev) => ({ ...prev, color: e.target.value }))}
+                placeholder="Color"
+              />
+            </FormDialogField>
+            <FormDialogField label="Combustible">
+              <Input
+                className={formDialogInputClass}
+                value={editData.combustible ?? ''}
+                onChange={(e) => setEditData((prev) => ({ ...prev, combustible: e.target.value }))}
+                placeholder="Gasolina, GNV…"
+              />
             </FormDialogField>
           </FormSection>
 
@@ -504,7 +553,7 @@ export function ProspectoEditDialog({
           ) : null}
 
           <section>
-            <h3 className="mb-2.5 border-b border-border/60 pb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <h3 className="mb-4 text-[13px] font-semibold text-foreground">
               Observaciones
             </h3>
             <Textarea

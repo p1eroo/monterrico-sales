@@ -345,11 +345,17 @@ export class FlotaProspectosService {
       filters?: string;
       conLlamadas?: string;
       contactado?: string;
+      /** Solo id/nombre/celular/ciudad — para exportar audiencia WhatsApp sin conteos. */
+      lean?: boolean;
     },
     scope?: CrmDataScope,
   ) {
     const page = params.page ?? 1;
-    const limit = params.limit ?? 25;
+    const lean = Boolean(params.lean);
+    const rawLimit = params.limit ?? (lean ? 20000 : 25);
+    const limit = lean
+      ? Math.min(20000, Math.max(1, rawLimit))
+      : Math.max(1, rawLimit);
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {
@@ -516,6 +522,26 @@ export class FlotaProspectosService {
       } catch {
         /* ignore invalid JSON */
       }
+    }
+
+    if (lean) {
+      const [data, total] = await Promise.all([
+        this.prisma.flotaProspecto.findMany({
+          where: where as any,
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit,
+          select: {
+            id: true,
+            nombreCompleto: true,
+            celular: true,
+            movil: true,
+            ciudad: true,
+          },
+        }),
+        this.prisma.flotaProspecto.count({ where: where as any }),
+      ]);
+      return { data, total, page, limit };
     }
 
     const [data, total] = await Promise.all([

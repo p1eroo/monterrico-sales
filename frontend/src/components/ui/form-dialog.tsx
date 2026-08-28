@@ -157,7 +157,7 @@ export function FormDialogField({
   labelClassName?: string;
 }) {
   return (
-    <div className={cn('space-y-1.5', className)}>
+    <div className={cn('space-y-2', className)}>
       <Label className={cn('text-xs font-medium leading-none text-muted-foreground', labelClassName)}>
         {label}
         {required ? <span className="text-destructive"> *</span> : null}
@@ -180,7 +180,7 @@ export function FormDialogGrid({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn('grid grid-cols-1 items-start gap-y-3.5', className)}>
+    <div className={cn('grid grid-cols-1 items-start gap-x-4 gap-y-4', className)}>
       {children}
     </div>
   );
@@ -298,6 +298,7 @@ export function FormDialogShell({
   appendContent,
   overlayClassName = 'z-[200]',
   showHeaderCloseButton = true,
+  headerActions,
   suspendOutsideDismiss = false,
   modal = true,
 }: {
@@ -315,6 +316,8 @@ export function FormDialogShell({
   appendContent?: React.ReactNode;
   overlayClassName?: string;
   showHeaderCloseButton?: boolean;
+  /** Acciones a la izquierda del botón cerrar (p. ej. Editar). */
+  headerActions?: React.ReactNode;
   /** Bloquea cierre por clic/foco fuera (p. ej. lightbox abierto encima). */
   suspendOutsideDismiss?: boolean;
   /** false permite interacción con capas portaled encima (p. ej. vista previa fullscreen). */
@@ -359,18 +362,23 @@ export function FormDialogShell({
                 </DialogDescription>
               ) : null}
             </DialogHeader>
-            {showHeaderCloseButton ? (
-              <DialogClose asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-9 shrink-0 rounded-full bg-muted/70 text-muted-foreground shadow-none hover:bg-muted"
-                >
-                  <X className="size-4" />
-                  <span className="sr-only">Cerrar</span>
-                </Button>
-              </DialogClose>
+            {(headerActions || showHeaderCloseButton) ? (
+              <div className="flex shrink-0 items-center gap-1.5">
+                {headerActions}
+                {showHeaderCloseButton ? (
+                  <DialogClose asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-9 shrink-0 rounded-full bg-muted/70 text-muted-foreground shadow-none hover:bg-muted"
+                    >
+                      <X className="size-4" />
+                      <span className="sr-only">Cerrar</span>
+                    </Button>
+                  </DialogClose>
+                ) : null}
+              </div>
             ) : null}
           </div>
           <div className={cn('mt-6 pb-2', bodyClassName)}>{children}</div>

@@ -6,10 +6,12 @@ import {
   History,
   Info,
   MapPin,
+  Pencil,
   User,
   type LucideIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { FormDialogShell } from "@/components/ui/form-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TimelinePanel } from "@/components/shared/TimelinePanel";
@@ -43,6 +45,8 @@ interface ProspectoInfoModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onFilesLoad?: (prospectoId: string, fileCount: number) => void;
+  /** Si se pasa, muestra botón Editar junto al cerrar. */
+  onEdit?: () => void;
 }
 
 function InfoField({
@@ -205,6 +209,7 @@ export function ProspectoInfoModal({
   open,
   onOpenChange,
   onFilesLoad,
+  onEdit,
 }: ProspectoInfoModalProps) {
   const [prospecto, setProspecto] = useState<FlotaProspectoRow | null>(prospectoProp);
   const [activeTab, setActiveTab] = useState("info");
@@ -288,6 +293,21 @@ export function ProspectoInfoModal({
       bodyClassName="pb-2"
       footer={null}
       suspendOutsideDismiss={activeTab === "archivos" && archivosDismissBlocked}
+      headerActions={
+        onEdit ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-9 shrink-0 rounded-full bg-muted/70 text-muted-foreground shadow-none hover:bg-muted hover:text-foreground"
+            title="Editar prospecto"
+            onClick={onEdit}
+          >
+            <Pencil className="size-4" />
+            <span className="sr-only">Editar</span>
+          </Button>
+        ) : null
+      }
     >
       <Tabs value={activeTab} onValueChange={setActiveTab} className="gap-5">
         <TabsList

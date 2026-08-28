@@ -42,13 +42,17 @@ import {
   crmTableFooterClass,
   crmTableHeaderRowClass,
 } from '@/lib/crmTableSurface';
-import {
-  formatWhatsAppPhoneDisplay,
-  normalizeWhatsAppPhone,
-} from './whatsappAudienceExcel';
+import { formatWhatsAppPhoneDisplay, normalizeWhatsAppPhone } from './whatsappAudienceExcel';
 import type { WhatsAppContact } from './mockData';
+import {
+  comercialRowToWhatsAppContact,
+  flotaRowToWhatsAppContact,
+  type CrmAudienceListFilters,
+  type CrmAudienceSource,
+  type WhatsAppAudience,
+} from './whatsappAudienceModel';
 
-export type CrmAudienceSource = 'flota' | 'comercial';
+export type { CrmAudienceSource };
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100];
 
@@ -79,33 +83,6 @@ function buildFlotaCiudadFilters(ciudadFilter: string[]): Record<string, string>
   return { ciudad: ciudadFilter.join(',') };
 }
 
-function flotaRowToContact(row: FlotaProspectoRow): WhatsAppContact | null {
-  const name = (row.nombreCompleto ?? '').trim();
-  const phone = normalizeWhatsAppPhone(row.celular ?? row.movil ?? '');
-  if (!name || !phone) return null;
-  return {
-    id: row.id,
-    name,
-    phone,
-    city: row.ciudad?.trim() || undefined,
-    source: 'crm',
-    hasWhatsApp: true,
-  };
-}
-
-function comercialRowToContact(row: ApiContactListRow): WhatsAppContact | null {
-  const name = (row.name ?? '').trim();
-  const phone = normalizeWhatsAppPhone(row.telefono ?? '');
-  if (!name || !phone) return null;
-  return {
-    id: row.id,
-    name,
-    phone,
-    source: 'crm',
-    hasWhatsApp: true,
-  };
-}
-
 function ContactoBadge({ contactado }: { contactado?: boolean }) {
   return contactado ? (
     <Badge
@@ -131,7 +108,7 @@ export function CrmAudienceImportDialog({
 }: {
   source: CrmAudienceSource | null;
   onOpenChange: (open: boolean) => void;
-  onImport: (contacts: WhatsAppContact[], fileName: string) => void;
+  onImport: (audience: WhatsAppAudience) => void;
 }) {
   const isFlota = source === 'flota';
   const label = isFlota ? 'prospecto' : 'contacto';
@@ -153,9 +130,8 @@ export function CrmAudienceImportDialog({
   const [comercialRows, setComercialRows] = useState<ApiContactListRow[]>([]);
   const [selectedById, setSelectedById] = useState<Map<string, WhatsAppContact>>(new Map());
   const [selectAllMode, setSelectAllMode] = useState(false);
-  const [importingAll, setImportingAll] = useState(false);
 
-  const listQueryParams = useMemo(() => {
+  const listQueryParams = useMemo((): CrmAudienceListFilters => {
     if (isFlota) {
       return {
         search: debouncedSearch || undefined,
@@ -256,49 +232,15 @@ export function CrmAudienceImportDialog({
 
   const pageContacts = useMemo(() => {
     if (isFlota) {
-      return flotaRows.map((row) => ({ row, contact: flotaRowToContact(row) }));
+      return flotaRows.map((row) => ({ row, contact: flotaRowToWhatsAppContact(row) }));
     }
-    return comercialRows.map((row) => ({ row, contact: comercialRowToContact(row) }));
+    return comercialRows.map((row) => ({
+      row,
+      contact: comercialRowToWhatsAppContact(row),
+    }));
   }, [isFlota, flotaRows, comercialRows]);
 
-
   const selectedCount = selectAllMode ? total : selectedById.size;
-
-  const fetchAllMatchingContacts = useCallback(async (): Promise<WhatsAppContact[]> => {
-    const limit = 100;
-    const contacts: WhatsAppContact[] = [];
-    let pageNum = 1;
-    let totalPages = 1;
-
-    while (pageNum <= totalPages) {
-      if (isFlota) {
-        const res = await flotaProspectosList({
-          ...listQueryParams,
-          page: pageNum,
-          limit,
-        });
-        totalPages = Math.max(1, Math.ceil(res.total / limit));
-        for (const row of res.data) {
-          const contact = flotaRowToContact(row);
-          if (contact) contacts.push(contact);
-        }
-      } else {
-        const res = await contactListPaginated({
-          ...listQueryParams,
-          page: pageNum,
-          limit,
-        });
-        totalPages = Math.max(1, Math.ceil(res.total / limit));
-        for (const row of res.data) {
-          const contact = comercialRowToContact(row);
-          if (contact) contacts.push(contact);
-        }
-      }
-      pageNum += 1;
-    }
-
-    return contacts;
-  }, [isFlota, listQueryParams]);
 
   const toggleRow = useCallback((contact: WhatsAppContact | null) => {
     if (selectAllMode) return;
@@ -331,39 +273,37 @@ export function CrmAudienceImportDialog({
 
   const close = () => onOpenChange(false);
 
-  const handleAdd = async () => {
-    if (selectedCount === 0) {
+  const handleAdd = () => {
+    if (!source || selectedCount === 0) {
       toast.error('Selecciona al menos un registro para añadir.');
       return;
     }
 
     if (selectAllMode) {
-      setImportingAll(true);
-      const toastId = toast.loading(`Cargando ${label}s del filtro…`);
-      try {
-        const selected = await fetchAllMatchingContacts();
-        if (selected.length === 0) {
-          toast.error('No hay registros válidos con nombre y celular.', { id: toastId });
-          return;
-        }
-        onImport(selected, fileName);
-        toast.success(`${selected.length} ${label}${selected.length === 1 ? '' : 's'} añadido(s)`, {
-          id: toastId,
-        });
-        close();
-      } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : `No se pudieron cargar los ${label}s`,
-          { id: toastId },
-        );
-      } finally {
-        setImportingAll(false);
-      }
+      const preview = pageContacts
+        .map(({ contact }) => contact)
+        .filter((c): c is WhatsAppContact => Boolean(c));
+      onImport({
+        mode: 'crmSelectAll',
+        source,
+        filters: listQueryParams,
+        total,
+        preview,
+        fileName,
+      });
+      toast.success(
+        `${total} ${label}${total === 1 ? '' : 's'} añadido(s) (se cargarán al enviar)`,
+      );
+      close();
       return;
     }
 
     const selected = Array.from(selectedById.values());
-    onImport(selected, fileName);
+    onImport({
+      mode: 'explicit',
+      contacts: selected,
+      fileName,
+    });
     toast.success(`${selected.length} ${label}${selected.length === 1 ? '' : 's'} añadido(s)`);
     close();
   };
@@ -420,6 +360,7 @@ export function CrmAudienceImportDialog({
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-muted-foreground">
             La selección se mantiene al cambiar de página. Al confirmar, reemplaza la audiencia actual.
+            Si eliges todos del filtro, se cargan al enviar (sin re-descargar ahora).
           </p>
           <div className="flex flex-wrap items-center justify-end gap-2">
             {selectedCount > 0 ? (
@@ -429,31 +370,21 @@ export function CrmAudienceImportDialog({
                 size="sm"
                 className="h-10"
                 onClick={clearSelection}
-                disabled={importingAll}
               >
                 Limpiar selección
               </Button>
             ) : null}
-            <Button type="button" variant="outline" className={formDialogBtnOutlineClass} onClick={close} disabled={importingAll}>
+            <Button type="button" variant="outline" className={formDialogBtnOutlineClass} onClick={close}>
               Cancelar
             </Button>
             <Button
               type="button"
               className={formDialogBtnPrimaryClass}
-              disabled={loading || importingAll || selectedCount === 0}
-              onClick={() => void handleAdd()}
+              disabled={loading || selectedCount === 0}
+              onClick={handleAdd}
             >
-              {importingAll ? (
-                <>
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                  Cargando…
-                </>
-              ) : (
-                <>
-                  Añadir {selectedCount} {label}
-                  {selectedCount === 1 ? '' : 's'}
-                </>
-              )}
+              Añadir {selectedCount} {label}
+              {selectedCount === 1 ? '' : 's'}
             </Button>
           </div>
         </div>
@@ -559,7 +490,7 @@ export function CrmAudienceImportDialog({
                         <Checkbox
                           checked={selectAllMode}
                           onCheckedChange={toggleSelectAll}
-                          disabled={total === 0 || importingAll}
+                          disabled={total === 0}
                           className="h-4 w-4 rounded border border-gray-400 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
                         />
                       </div>
@@ -637,7 +568,7 @@ export function CrmAudienceImportDialog({
                               <div className={comercialTableCheckboxWrapClass}>
                                 <Checkbox
                                   checked={checked}
-                                  disabled={invalid || selectAllMode || importingAll}
+                                  disabled={invalid || selectAllMode}
                                   onCheckedChange={() => toggleRow(contact)}
                                   className="h-4 w-4 rounded border border-gray-400 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
                                 />
@@ -701,7 +632,7 @@ export function CrmAudienceImportDialog({
                             <div className={comercialTableCheckboxWrapClass}>
                               <Checkbox
                                 checked={checked}
-                                disabled={invalid || selectAllMode || importingAll}
+                                disabled={invalid || selectAllMode}
                                 onCheckedChange={() => toggleRow(contact)}
                                 className="h-4 w-4 rounded border border-gray-400 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
                               />

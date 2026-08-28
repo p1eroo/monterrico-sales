@@ -15,7 +15,6 @@ import { ComercialAreaSvgIcon } from '@/components/icons/ComercialAreaSvgIcon';
 import { AvatarImage } from '@/lib/avatar';
 import { toast } from '@/lib/notify';
 import { cn } from '@/lib/utils';
-import type { WhatsAppContact } from './mockData';
 import {
   downloadWhatsAppAudienceTemplate,
   formatWhatsAppPhoneDisplay,
@@ -25,6 +24,14 @@ import {
   CrmAudienceImportDialog,
   type CrmAudienceSource,
 } from './CrmAudienceImportDialog';
+import {
+  audienceCount,
+  audienceFileName,
+  audiencePreviewContacts,
+  type WhatsAppAudience,
+} from './whatsappAudienceModel';
+
+const AUDIENCE_PREVIEW_LIMIT = 40;
 
 const audienceActionBtnClass = cn(
   'inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border px-4 text-[13px] font-semibold shadow-none transition-colors',
@@ -35,15 +42,13 @@ const audienceActionBtnClass = cn(
 const audienceActionIconClass = 'size-[18px] shrink-0 text-[#72808f] dark:text-gray-400';
 
 export function AudienceTab({
-  contacts,
-  fileName,
+  audience,
   onImport,
   onRemoveIds,
   onClear,
 }: {
-  contacts: WhatsAppContact[];
-  fileName: string | null;
-  onImport: (contacts: WhatsAppContact[], fileName: string) => void;
+  audience: WhatsAppAudience;
+  onImport: (audience: WhatsAppAudience) => void;
   onRemoveIds: (ids: string[]) => void;
   onClear: () => void;
 }) {
@@ -51,6 +56,13 @@ export function AudienceTab({
   const [importing, setImporting] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [crmSource, setCrmSource] = useState<CrmAudienceSource | null>(null);
+
+  const total = audienceCount(audience);
+  const fileName = audienceFileName(audience);
+  const preview = audiencePreviewContacts(audience, AUDIENCE_PREVIEW_LIMIT);
+  const deferred = audience.mode === 'crmSelectAll';
+  const hiddenCount = Math.max(0, total - preview.length);
+  const canRemoveRows = audience.mode === 'explicit';
 
   const processFile = useCallback(
     async (file: File) => {
@@ -61,7 +73,11 @@ export function AudienceTab({
           toast.error(result.errors[0]);
           return;
         }
-        onImport(result.contacts, file.name);
+        onImport({
+          mode: 'explicit',
+          contacts: result.contacts,
+          fileName: file.name,
+        });
         const skippedMsg =
           result.skipped > 0 ? ` · ${result.skipped} fila(s) omitida(s)` : '';
         toast.success(`${result.contacts.length} contacto(s) importados${skippedMsg}`);
@@ -137,7 +153,7 @@ export function AudienceTab({
               <p className="text-sm font-medium">
                 {importing
                   ? 'Leyendo archivo…'
-                  : contacts.length > 0
+                  : total > 0
                     ? 'Arrastra otro Excel o haz clic para reemplazar'
                     : 'Arrastra tu archivo Excel aquí'}
               </p>
@@ -145,7 +161,7 @@ export function AudienceTab({
                 o haz clic para seleccionar · .xlsx, .xls
               </p>
             </div>
-            {fileName && contacts.length > 0 ? (
+            {fileName && total > 0 ? (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
                 <FileSpreadsheet className="size-3.5" />
                 {fileName}
@@ -204,16 +220,18 @@ export function AudienceTab({
             <p className="text-sm font-semibold">
               En este envío
               <Badge variant="secondary" className="ml-2 align-middle">
-                {contacts.length}
+                {total}
               </Badge>
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {contacts.length > 0
-                ? `${contacts.length} contacto(s) listos para enviar`
+              {total > 0
+                ? deferred
+                  ? `${total} del filtro CRM · se cargan al enviar`
+                  : `${total} contacto(s) listos para enviar`
                 : 'Importa un Excel para armar la audiencia'}
             </p>
           </div>
-          {contacts.length > 0 ? (
+          {total > 0 ? (
             <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={onClear}>
               <Trash2 className="size-3.5" />
               Limpiar
@@ -221,7 +239,7 @@ export function AudienceTab({
           ) : null}
         </div>
 
-        {contacts.length === 0 ? (
+        {total === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
             <MessageCircle className="size-8 text-muted-foreground/40" />
             <p className="text-sm font-medium">Sin contactos</p>
@@ -231,7 +249,7 @@ export function AudienceTab({
           </div>
         ) : (
           <div className="min-h-0 flex-1 divide-y overflow-y-auto">
-            {contacts.map((c) => (
+            {preview.map((c) => (
               <div key={c.id} className="group flex items-center gap-3 px-4 py-2.5">
                 <span className="flex size-8 shrink-0 overflow-hidden rounded-full">
                   <AvatarImage name={c.name} size={32} />
@@ -248,16 +266,24 @@ export function AudienceTab({
                     <p className="truncate text-[11px] text-muted-foreground/80">{c.city}</p>
                   ) : null}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-7 shrink-0 text-muted-foreground opacity-0 hover:text-destructive group-hover:opacity-100"
-                  onClick={() => onRemoveIds([c.id])}
-                >
-                  <X className="size-4" />
-                </Button>
+                {canRemoveRows ? (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-7 shrink-0 text-muted-foreground opacity-0 hover:text-destructive group-hover:opacity-100"
+                    onClick={() => onRemoveIds([c.id])}
+                  >
+                    <X className="size-4" />
+                  </Button>
+                ) : null}
               </div>
             ))}
+            {hiddenCount > 0 ? (
+              <div className="px-4 py-3 text-center text-xs text-muted-foreground">
+                y {hiddenCount.toLocaleString('es-PE')} más
+                {deferred ? ' (filtro CRM completo al enviar)' : ''}
+              </div>
+            ) : null}
           </div>
         )}
       </div>

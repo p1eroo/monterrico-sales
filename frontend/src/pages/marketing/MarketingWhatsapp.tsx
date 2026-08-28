@@ -19,10 +19,14 @@ import { AudienceTab } from './whatsapp/AudienceTab';
 import { SendTab } from './whatsapp/SendTab';
 import { ResultsTab } from './whatsapp/ResultsTab';
 import {
-  type WhatsAppContact,
   type WhatsAppTemplate,
 } from './whatsapp/mockData';
 import { campaignRecipientsToSendResults } from './whatsapp/whatsappCampaignUtils';
+import {
+  audienceCount,
+  emptyWhatsAppAudience,
+  type WhatsAppAudience,
+} from './whatsapp/whatsappAudienceModel';
 
 type WhatsappTab = 'plantillas' | 'audiencia' | 'envio' | 'resultados';
 
@@ -51,8 +55,7 @@ export default function MarketingWhatsapp() {
   const [loadingAccounts, setLoadingAccounts] = useState(true);
   const [activeAccountId, setActiveAccountIdState] = useState<string | null>(null);
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
-  const [contacts, setContacts] = useState<WhatsAppContact[]>([]);
-  const [audienceFileName, setAudienceFileName] = useState<string | null>(null);
+  const [audience, setAudience] = useState<WhatsAppAudience>(emptyWhatsAppAudience);
   const [templateForSend, setTemplateForSend] = useState<string | null>(null);
   const [campaignSummaries, setCampaignSummaries] = useState<WhatsAppBulkCampaignSummary[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
@@ -108,7 +111,7 @@ export default function MarketingWhatsapp() {
     void reloadAccounts();
   }, [reloadAccounts]);
 
-  const selectedContacts = contacts;
+  const audienceSize = audienceCount(audience);
 
   const loadCampaignDetail = useCallback(async (campaignId: string) => {
     setResultsLoading(true);
@@ -206,18 +209,22 @@ export default function MarketingWhatsapp() {
       });
   }, [activeAccount, syncing, reloadAccounts]);
 
-  const handleImportAudience = useCallback((imported: WhatsAppContact[], fileName: string) => {
-    setContacts(imported);
-    setAudienceFileName(fileName);
+  const handleImportAudience = useCallback((next: WhatsAppAudience) => {
+    setAudience(next);
   }, []);
 
   const handleRemoveIds = useCallback((ids: string[]) => {
-    setContacts((prev) => prev.filter((c) => !ids.includes(c.id)));
+    setAudience((prev) => {
+      if (prev.mode !== 'explicit') return prev;
+      return {
+        ...prev,
+        contacts: prev.contacts.filter((c) => !ids.includes(c.id)),
+      };
+    });
   }, []);
 
   const handleClearAudience = useCallback(() => {
-    setContacts([]);
-    setAudienceFileName(null);
+    setAudience(emptyWhatsAppAudience());
   }, []);
 
   const handleUseTemplate = useCallback(
@@ -301,14 +308,14 @@ export default function MarketingWhatsapp() {
               )}
             >
               {item.label}
-              {item.id === 'audiencia' && contacts.length > 0 && (
+              {item.id === 'audiencia' && audienceSize > 0 && (
                 <span
                   className={cn(
                     'rounded-full px-1.5 text-[11px] font-semibold',
                     tab === item.id ? 'bg-white/20 text-white' : 'bg-black/10',
                   )}
                 >
-                  {contacts.length}
+                  {audienceSize}
                 </span>
               )}
             </button>
@@ -352,8 +359,7 @@ export default function MarketingWhatsapp() {
       )}
       {tab === 'audiencia' && (
         <AudienceTab
-          contacts={contacts}
-          fileName={audienceFileName}
+          audience={audience}
           onImport={handleImportAudience}
           onRemoveIds={handleRemoveIds}
           onClear={handleClearAudience}
@@ -362,7 +368,7 @@ export default function MarketingWhatsapp() {
       {tab === 'envio' && (
         <SendTab
           templates={templates}
-          selectedContacts={selectedContacts}
+          audience={audience}
           initialTemplateId={templateForSend}
           activeAccount={activeAccount}
           onSent={handleSent}
