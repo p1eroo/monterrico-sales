@@ -79,6 +79,8 @@ export type WhatsAppContact = {
   platform?: 'fb' | 'ig' | 'msg' | 'an';
   source: WhatsAppContactSource;
   hasWhatsApp: boolean;
+  /** Si viene de Flota, el envío masivo marca al prospecto como contactado al enviar OK. */
+  flotaProspectoId?: string;
 };
 
 export type WhatsAppSendStatus = 'enviado' | 'entregado' | 'leido' | 'fallido';

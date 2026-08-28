@@ -69,6 +69,7 @@ export function flotaRowToWhatsAppContact(row: FlotaProspectoRow): WhatsAppConta
     city: row.ciudad?.trim() || undefined,
     source: 'crm',
     hasWhatsApp: true,
+    flotaProspectoId: row.id,
   };
 }
 

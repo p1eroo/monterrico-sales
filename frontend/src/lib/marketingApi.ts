@@ -498,7 +498,14 @@ export interface CreateWhatsAppCampaignDto {
   accountId: string;
   templateId: string;
   variableMapping: Record<string, string>;
-  recipients: Array<{ phone: string; name?: string; company?: string; source?: string }>;
+  recipients: Array<{
+    phone: string;
+    name?: string;
+    company?: string;
+    source?: string;
+    /** Prospecto Flota: al enviar OK se marca como contactado. */
+    flotaProspectoId?: string;
+  }>;
   name?: string;
 }
 

@@ -1063,19 +1063,22 @@ model WhatsAppBulkCampaign {
 }
 
 model WhatsAppBulkRecipient {
-  id            String   @id @default(cuid())
-  campaignId    String
-  campaign      WhatsAppBulkCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  phone         String
-  name          String?
-  company       String?
-  source        String?
-  status        String   @default("pending")
-  metaMessageId String?
-  error         String?
-  sentAt        DateTime?
+  id               String   @id @default(cuid())
+  campaignId       String
+  campaign         WhatsAppBulkCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  phone            String
+  name             String?
+  company          String?
+  source           String?
+  /** Prospecto Flota: al enviar OK se crea CrmWhatsappMessage outbound → Contactado. */
+  flotaProspectoId String?
+  status           String   @default("pending")
+  metaMessageId    String?
+  error            String?
+  sentAt           DateTime?
 
   @@index([campaignId, status])
+  @@index([flotaProspectoId])
 }
 
 // ─── Flota: Prospectos importados desde Google Sheets ───

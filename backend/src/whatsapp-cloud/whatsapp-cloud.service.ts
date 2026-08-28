@@ -551,6 +551,7 @@ export class WhatsappCloudService {
           name: r.name?.trim() || null,
           company: r.company?.trim() || null,
           source: r.source?.trim() || 'excel',
+          flotaProspectoId: r.flotaProspectoId?.trim() || null,
         };
       })
       .filter((r): r is NonNullable<typeof r> => r !== null);
@@ -630,6 +631,10 @@ export class WhatsappCloudService {
       orderBy: { id: 'asc' },
     });
 
+    const flotaByPhone = await this.resolveFlotaProspectIdsByPhone(
+      pending.filter((r) => !r.flotaProspectoId).map((r) => r.phone),
+    );
+
     let sent = campaign.sent;
     let failed = campaign.failed;
 
@@ -668,6 +673,19 @@ export class WhatsappCloudService {
           },
         });
         sent += 1;
+
+        const flotaProspectoId =
+          recipient.flotaProspectoId ??
+          flotaByPhone.get(recipient.phone.slice(-9)) ??
+          null;
+        if (flotaProspectoId) {
+          await this.markFlotaProspectoContacted({
+            flotaProspectoId,
+            campaign,
+            recipientPhone: recipient.phone,
+            wamid,
+          });
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Error al enviar';
         await this.prisma.whatsAppBulkRecipient.update({
@@ -698,6 +716,102 @@ export class WhatsappCloudService {
         completedAt: new Date(),
       },
     });
+  }
+
+  /**
+   * "Contactado" en Flota = hay al menos un CrmWhatsappMessage outbound.
+   * El envío masivo Meta no pasaba por Evolution; registramos el saliente aquí.
+   */
+  private async markFlotaProspectoContacted(params: {
+    flotaProspectoId: string;
+    campaign: {
+      id: string;
+      createdById: string;
+      account: {
+        phoneNumberId: string;
+        displayName: string;
+        displayPhoneNumber: string | null;
+      };
+      template: { name: string };
+    };
+    recipientPhone: string;
+    wamid: string | null;
+  }) {
+    const { flotaProspectoId, campaign, recipientPhone, wamid } = params;
+    try {
+      const exists = await this.prisma.flotaProspecto.findFirst({
+        where: { id: flotaProspectoId, eliminadoAt: null },
+        select: { id: true },
+      });
+      if (!exists) return;
+
+      await this.prisma.crmWhatsappMessage.create({
+        data: {
+          direction: 'outbound',
+          evoInstanceId: `meta-cloud:${campaign.account.phoneNumberId}`,
+          evoInstanceName: campaign.account.displayName,
+          waMessageId: wamid,
+          fromWaId: (
+            campaign.account.displayPhoneNumber?.replace(/\D/g, '') ||
+            campaign.account.phoneNumberId
+          ).slice(0, 32),
+          toWaId: recipientPhone,
+          body: `[Plantilla Meta] ${campaign.template.name}`,
+          flotaProspectoId,
+          createdByUserId: campaign.createdById,
+          waOutboundStatus: 'sent',
+          payloadJson: {
+            channel: 'meta-cloud',
+            campaignId: campaign.id,
+            templateName: campaign.template.name,
+          },
+        },
+      });
+    } catch (err) {
+      this.logger.warn(
+        `No se pudo marcar contactado flota=${flotaProspectoId} campaign=${campaign.id}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+
+  /** Mapa last-9-dígitos → id de FlotaProspecto (para Excel u omitidos sin id). */
+  private async resolveFlotaProspectIdsByPhone(phones: string[]): Promise<Map<string, string>> {
+    const map = new Map<string, string>();
+    const last9List = [
+      ...new Set(
+        phones
+          .map((p) => p.replace(/\D/g, '').slice(-9))
+          .filter((d) => d.length === 9),
+      ),
+    ];
+    if (last9List.length === 0) return map;
+
+    // Chunk para no saturar el ANY() con listas enormes
+    const chunkSize = 2000;
+    for (let i = 0; i < last9List.length; i += chunkSize) {
+      const chunk = last9List.slice(i, i + chunkSize);
+      const rows = await this.prisma.$queryRaw<
+        { id: string; celular: string | null; movil: string | null }[]
+      >`
+        SELECT id, celular, movil
+        FROM "FlotaProspecto"
+        WHERE "eliminadoAt" IS NULL
+          AND (
+            (celular IS NOT NULL AND right(regexp_replace(celular, '\\D', '', 'g'), 9) = ANY(${chunk}::text[]))
+            OR (movil IS NOT NULL AND right(regexp_replace(movil, '\\D', '', 'g'), 9) = ANY(${chunk}::text[]))
+          )
+      `;
+      for (const row of rows) {
+        for (const raw of [row.celular, row.movil]) {
+          if (!raw) continue;
+          const key = raw.replace(/\D/g, '').slice(-9);
+          if (key.length === 9 && !map.has(key)) map.set(key, row.id);
+        }
+      }
+    }
+    return map;
   }
 
   async getCampaign(campaignId: string, userId: string) {

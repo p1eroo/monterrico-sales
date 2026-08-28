@@ -16,6 +16,11 @@ export class CampaignRecipientDto {
   @IsString()
   @IsOptional()
   source?: string;
+
+  /** Prospecto Flota vinculado: al enviar OK se marca como contactado. */
+  @IsString()
+  @IsOptional()
+  flotaProspectoId?: string;
 }
 
 export class CreateWhatsAppCampaignDto {

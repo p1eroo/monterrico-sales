@@ -240,6 +240,19 @@ export function CrmAudienceImportDialog({
     }));
   }, [isFlota, flotaRows, comercialRows]);
 
+  const pageValidContacts = useMemo(
+    () =>
+      pageContacts
+        .map(({ contact }) => contact)
+        .filter((c): c is WhatsAppContact => Boolean(c)),
+    [pageContacts],
+  );
+
+  const allPageSelected =
+    pageValidContacts.length > 0 &&
+    (selectAllMode || pageValidContacts.every((c) => selectedById.has(c.id)));
+  const somePageSelected =
+    !selectAllMode && pageValidContacts.some((c) => selectedById.has(c.id));
   const selectedCount = selectAllMode ? total : selectedById.size;
 
   const toggleRow = useCallback((contact: WhatsAppContact | null) => {
@@ -256,15 +269,28 @@ export function CrmAudienceImportDialog({
     });
   }, [selectAllMode]);
 
-  const toggleSelectAll = useCallback(() => {
+  /** Checkbox del header: selecciona / deselecciona solo la página actual. */
+  const toggleSelectPage = useCallback(() => {
     if (selectAllMode) {
       setSelectAllMode(false);
       setSelectedById(new Map());
       return;
     }
+    setSelectedById((prev) => {
+      const next = new Map(prev);
+      if (allPageSelected) {
+        for (const c of pageValidContacts) next.delete(c.id);
+      } else {
+        for (const c of pageValidContacts) next.set(c.id, c);
+      }
+      return next;
+    });
+  }, [selectAllMode, allPageSelected, pageValidContacts]);
+
+  const handleSelectAllFiltered = useCallback(() => {
     setSelectAllMode(true);
     setSelectedById(new Map());
-  }, [selectAllMode]);
+  }, []);
 
   const clearSelection = useCallback(() => {
     setSelectAllMode(false);
@@ -345,12 +371,13 @@ export function CrmAudienceImportDialog({
       title={`Importar ${label}s · ${fileName}`}
       description={
         <>
-          Selecciona filas de la tabla. Los filtros aplican sobre el listado del CRM (paginado).
+          El checkbox de la cabecera selecciona esta página. Si quieres el listado completo del filtro,
+          usa «Seleccionar todos».
           {selectedCount > 0 ? (
             <span className="mt-1 block font-medium text-foreground">
               {selectAllMode
-                ? `Todos los ${total} ${label}${total === 1 ? '' : 's'} del filtro seleccionados`
-                : `${selectedCount} seleccionado${selectedCount === 1 ? '' : 's'}`}
+                ? `Todos los ${total.toLocaleString('es-PE')} ${label}${total === 1 ? '' : 's'} del filtro seleccionados`
+                : `${selectedCount.toLocaleString('es-PE')} seleccionado${selectedCount === 1 ? '' : 's'}`}
             </span>
           ) : null}
         </>
@@ -359,8 +386,8 @@ export function CrmAudienceImportDialog({
       footer={(
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-muted-foreground">
-            La selección se mantiene al cambiar de página. Al confirmar, reemplaza la audiencia actual.
-            Si eliges todos del filtro, se cargan al enviar (sin re-descargar ahora).
+            La selección por página se mantiene al navegar. Al confirmar, reemplaza la audiencia actual.
+            Si eliges todos del filtro, se cargan al enviar.
           </p>
           <div className="flex flex-wrap items-center justify-end gap-2">
             {selectedCount > 0 ? (
@@ -383,7 +410,7 @@ export function CrmAudienceImportDialog({
               disabled={loading || selectedCount === 0}
               onClick={handleAdd}
             >
-              Añadir {selectedCount} {label}
+              Añadir {selectedCount.toLocaleString('es-PE')} {label}
               {selectedCount === 1 ? '' : 's'}
             </Button>
           </div>
@@ -453,9 +480,52 @@ export function CrmAudienceImportDialog({
                 />
               )}
               <span className="text-xs text-muted-foreground lg:ml-auto">
-                {loading ? 'Actualizando…' : `${total} ${label}${total === 1 ? '' : 's'} en total`}
+                {loading ? 'Actualizando…' : `${total.toLocaleString('es-PE')} ${label}${total === 1 ? '' : 's'} en total`}
               </span>
             </div>
+
+            {selectedCount > 0 ? (
+              <div className="flex flex-wrap items-center gap-2 border-t border-border/40 bg-muted/40 px-5 py-2">
+                {selectAllMode ? (
+                  <>
+                    <span className="text-sm font-medium">
+                      Todos los {total.toLocaleString('es-PE')} {label}
+                      {total === 1 ? '' : 's'} del filtro están seleccionados
+                    </span>
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      className="h-auto px-1 text-xs"
+                      onClick={clearSelection}
+                    >
+                      Deseleccionar todo
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-sm font-medium">
+                      {selectedCount.toLocaleString('es-PE')} seleccionado
+                      {selectedCount === 1 ? '' : 's'}
+                      {allPageSelected && selectedCount === pageValidContacts.length
+                        ? ' en esta página'
+                        : ''}
+                    </span>
+                    {allPageSelected && total > pageValidContacts.length ? (
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="h-auto px-1 text-xs"
+                        onClick={handleSelectAllFiltered}
+                      >
+                        Seleccionar todos los {total.toLocaleString('es-PE')} del filtro
+                      </Button>
+                    ) : null}
+                  </>
+                )}
+              </div>
+            ) : null}
 
             <div className="min-h-0 flex-1 overflow-auto border-t border-border/40 scrollbar-thin max-h-[min(52vh,480px)]">
               <table
@@ -488,10 +558,21 @@ export function CrmAudienceImportDialog({
                     <th className={comercialTableLeadingCellClass('select')}>
                       <div className={comercialTableCheckboxWrapClass}>
                         <Checkbox
-                          checked={selectAllMode}
-                          onCheckedChange={toggleSelectAll}
-                          disabled={total === 0}
+                          checked={
+                            selectAllMode || allPageSelected
+                              ? true
+                              : somePageSelected
+                                ? 'indeterminate'
+                                : false
+                          }
+                          onCheckedChange={toggleSelectPage}
+                          disabled={pageValidContacts.length === 0 && !selectAllMode}
                           className="h-4 w-4 rounded border border-gray-400 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
+                          aria-label={
+                            allPageSelected || selectAllMode
+                              ? 'Deseleccionar página'
+                              : 'Seleccionar página'
+                          }
                         />
                       </div>
                     </th>

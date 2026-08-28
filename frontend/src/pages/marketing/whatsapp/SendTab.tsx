@@ -186,6 +186,7 @@ export function SendTab({
             name: c.name,
             company: c.company,
             source: c.source,
+            ...(c.flotaProspectoId ? { flotaProspectoId: c.flotaProspectoId } : {}),
           })),
         });
 
