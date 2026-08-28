@@ -542,10 +542,20 @@ export async function updateWhatsAppCloudToken(id: string, accessToken: string):
   });
 }
 
+/** Canal usado en WhatsApp Masivo (preferencia local; el predeterminado del servidor gana al cargar). */
+export const WHATSAPP_ACTIVE_CHANNEL_KEY = 'marketing_whatsapp_active_channel_v1';
+
+export function setWhatsAppActiveChannelId(accountId: string) {
+  localStorage.setItem(WHATSAPP_ACTIVE_CHANNEL_KEY, accountId);
+}
+
 export async function setDefaultWhatsAppCloudAccount(id: string): Promise<WhatsAppCloudAccount[]> {
-  return api<WhatsAppCloudAccount[]>(`/whatsapp-cloud/accounts/${encodeURIComponent(id)}/default`, {
-    method: 'POST',
-  });
+  const accounts = await api<WhatsAppCloudAccount[]>(
+    `/whatsapp-cloud/accounts/${encodeURIComponent(id)}/default`,
+    { method: 'POST' },
+  );
+  setWhatsAppActiveChannelId(id);
+  return accounts;
 }
 
 export async function syncWhatsAppCloudTemplates(accountId: string): Promise<import('@/pages/marketing/whatsapp/mockData').WhatsAppTemplate[]> {

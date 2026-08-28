@@ -132,12 +132,15 @@ export function getActiveChannelAccountId(): string | null {
   const accounts = loadWhatsAppCloudAccounts().filter((a) => a.active);
   if (accounts.length === 0) return null;
 
+  const defaultId = getDefaultWhatsAppAccount()?.id;
+  if (defaultId) return defaultId;
+
   const stored = localStorage.getItem(ACTIVE_CHANNEL_KEY);
   if (stored && accounts.some((a) => a.id === stored)) {
     return stored;
   }
 
-  return getDefaultWhatsAppAccount()?.id ?? accounts[0]?.id ?? null;
+  return accounts[0]?.id ?? null;
 }
 
 export function setActiveChannelAccountId(accountId: string) {

@@ -9,7 +9,9 @@ import {
   fetchWhatsAppCloudTemplates,
   fetchWhatsAppBulkCampaign,
   fetchWhatsAppBulkCampaigns,
+  setWhatsAppActiveChannelId,
   syncWhatsAppCloudTemplates,
+  WHATSAPP_ACTIVE_CHANNEL_KEY,
   type WhatsAppBulkCampaignSummary,
   type WhatsAppCloudAccount,
   type WhatsAppEstimatedCost,
@@ -37,16 +39,17 @@ const TABS: { id: WhatsappTab; label: string }[] = [
   { id: 'resultados', label: 'Resultados' },
 ];
 
-const ACTIVE_CHANNEL_KEY = 'marketing_whatsapp_active_channel_v1';
-
+/** Prioriza el canal marcado "Por defecto" en Integraciones; localStorage solo si no hay default. */
 function resolveActiveAccount(accounts: WhatsAppCloudAccount[]): WhatsAppCloudAccount | null {
   if (accounts.length === 0) return null;
-  const stored = localStorage.getItem(ACTIVE_CHANNEL_KEY);
+  const defaultAccount = accounts.find((a) => a.isDefault);
+  if (defaultAccount) return defaultAccount;
+  const stored = localStorage.getItem(WHATSAPP_ACTIVE_CHANNEL_KEY);
   if (stored) {
     const match = accounts.find((a) => a.id === stored);
     if (match) return match;
   }
-  return accounts.find((a) => a.isDefault) ?? accounts[0] ?? null;
+  return accounts[0] ?? null;
 }
 
 export default function MarketingWhatsapp() {
@@ -92,7 +95,7 @@ export default function MarketingWhatsapp() {
       const resolved = resolveActiveAccount(next);
       if (resolved) {
         setActiveAccountIdState(resolved.id);
-        localStorage.setItem(ACTIVE_CHANNEL_KEY, resolved.id);
+        setWhatsAppActiveChannelId(resolved.id);
         await loadTemplates(resolved.id);
       } else {
         setActiveAccountIdState(null);

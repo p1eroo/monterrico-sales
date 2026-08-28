@@ -42,6 +42,7 @@ import {
   fetchWhatsAppCloudAccounts,
   formatRelativeSync,
   setDefaultWhatsAppCloudAccount,
+  setWhatsAppActiveChannelId,
   syncWhatsAppCloudTemplates,
   testWhatsAppCloudAccount,
   updateWhatsAppCloudToken,
@@ -221,6 +222,9 @@ function WhatsappConnectDialog({
         graphApiVersion: graphApiVersion.trim() || 'v22.0',
         setAsDefault,
       });
+      if (result.isDefault) {
+        setWhatsAppActiveChannelId(result.id);
+      }
       toast.success(`Conexión OK · ${result.templateCount} plantilla(s) encontrada(s)`);
       onOpenChange(false);
       onConnected();
