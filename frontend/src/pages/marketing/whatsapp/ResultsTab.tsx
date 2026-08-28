@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import {
   AlertTriangle,
   CheckCheck,
-  CircleDollarSign,
   Loader2,
   MessageCircle,
   RotateCcw,
@@ -21,7 +20,7 @@ import {
 } from '@/components/ui/select';
 import { GlassCard } from '@/components/shared/GlassCard';
 import { cn } from '@/lib/utils';
-import type { WhatsAppBulkCampaignSummary, WhatsAppEstimatedCost } from '@/lib/marketingApi';
+import type { WhatsAppBulkCampaignSummary } from '@/lib/marketingApi';
 import {
   crmTableBodyRowClass,
   crmTableFooterClass,
@@ -64,7 +63,6 @@ export function ResultsTab({
   selectedCampaignId,
   templateName,
   campaignStatus,
-  estimatedCost,
   loading,
   onSelectCampaign,
   onNewSend,
@@ -74,7 +72,6 @@ export function ResultsTab({
   selectedCampaignId: string | null;
   templateName?: string;
   campaignStatus?: string;
-  estimatedCost?: WhatsAppEstimatedCost | null;
   loading?: boolean;
   onSelectCampaign: (id: string) => void;
   onNewSend: () => void;
@@ -231,18 +228,6 @@ export function ResultsTab({
               ))}
             </div>
             <div className="flex flex-wrap items-center gap-4 rounded-lg bg-muted/40 px-3 py-2 text-sm">
-              <span
-                className="inline-flex items-center gap-1.5 text-muted-foreground"
-                title="Solo mensajes enviados exitosamente. Tarifas publicadas por Meta para Perú."
-              >
-                <CircleDollarSign className="size-4" />
-                Costo estimado (tarifas Meta): S/ {(estimatedCost?.amountPen ?? 0).toFixed(2)}
-                {estimatedCost && estimatedCost.billableCount > 0 ? (
-                  <span className="text-xs opacity-80">
-                    · {estimatedCost.billableCount} enviado{estimatedCost.billableCount === 1 ? '' : 's'}
-                  </span>
-                ) : null}
-              </span>
               <span className="inline-flex items-center gap-1.5 text-muted-foreground">
                 <Loader2 className="size-4" />
                 Proveedor: Meta WhatsApp Cloud API

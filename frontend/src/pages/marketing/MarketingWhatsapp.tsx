@@ -14,7 +14,6 @@ import {
   WHATSAPP_ACTIVE_CHANNEL_KEY,
   type WhatsAppBulkCampaignSummary,
   type WhatsAppCloudAccount,
-  type WhatsAppEstimatedCost,
 } from '@/lib/marketingApi';
 import { TemplatesTab } from './whatsapp/TemplatesTab';
 import { AudienceTab } from './whatsapp/AudienceTab';
@@ -67,7 +66,6 @@ export default function MarketingWhatsapp() {
   const [activeCampaignMeta, setActiveCampaignMeta] = useState<{
     templateName: string;
     status: string;
-    estimatedCost: WhatsAppEstimatedCost;
   } | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [createTemplateOpen, setCreateTemplateOpen] = useState(false);
@@ -124,7 +122,6 @@ export default function MarketingWhatsapp() {
       setActiveCampaignMeta({
         templateName: campaign.templateName,
         status: campaign.status,
-        estimatedCost: campaign.estimatedCost,
       });
       setResults(campaignRecipientsToSendResults(campaign));
     } catch (err) {
@@ -156,10 +153,9 @@ export default function MarketingWhatsapp() {
         const campaign = await fetchWhatsAppBulkCampaign(id);
         setSelectedCampaignId(id);
         setActiveCampaignMeta({
-        templateName: campaign.templateName,
-        status: campaign.status,
-        estimatedCost: campaign.estimatedCost,
-      });
+          templateName: campaign.templateName,
+          status: campaign.status,
+        });
         setResults(campaignRecipientsToSendResults(campaign));
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Error al cargar historial');
@@ -389,7 +385,6 @@ export default function MarketingWhatsapp() {
           selectedCampaignId={selectedCampaignId}
           templateName={activeCampaignMeta?.templateName}
           campaignStatus={activeCampaignMeta?.status}
-          estimatedCost={activeCampaignMeta?.estimatedCost}
           loading={resultsLoading && campaignSummaries.length === 0}
           onSelectCampaign={handleSelectCampaign}
           onNewSend={handleNewSend}
