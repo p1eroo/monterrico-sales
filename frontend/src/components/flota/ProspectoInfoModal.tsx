@@ -337,14 +337,14 @@ export function ProspectoInfoModal({
       setProspecto((prev) => {
         if (!prev) return prev;
         const next: FlotaProspectoRow = { ...prev };
+        const patch = next as unknown as Record<string, unknown>;
         if (fieldKey === "edad" || fieldKey === "anioVehiculo") {
           const n = newValue != null && newValue !== "" ? Number(newValue) : null;
-          (next as Record<string, unknown>)[fieldKey] = Number.isFinite(n as number) ? n : null;
+          patch[fieldKey] = Number.isFinite(n as number) ? n : null;
         } else if (fieldKey === "fechaCita" && newValue) {
-          const iso = new Date(newValue).toISOString();
-          next.fechaCita = iso;
+          next.fechaCita = new Date(newValue).toISOString();
         } else {
-          (next as Record<string, unknown>)[fieldKey] = newValue;
+          patch[fieldKey] = newValue;
         }
         onUpdated?.(next);
         return next;
