@@ -16,6 +16,7 @@ import {
 import type { ConnectWhatsAppCloudDto } from './dto/connect-account.dto';
 import type { CreateWhatsAppCampaignDto } from './dto/create-campaign.dto';
 import { estimateWhatsAppCampaignCost } from './whatsapp-pricing';
+import { instantToLimaParts, limaDayStart } from '../common/crm-timezone.util';
 
 const PLACEHOLDER_RE = /\{\{([a-z][a-z0-9_]*|\d+)\}\}/gi;
 
@@ -283,7 +284,10 @@ export class WhatsappCloudService {
     };
   }
 
-  private toPublicTemplate(template: Prisma.WhatsAppCloudTemplateGetPayload<object>) {
+  private toPublicTemplate(
+    template: Prisma.WhatsAppCloudTemplateGetPayload<object>,
+    sentToday = 0,
+  ) {
     return {
       id: template.id,
       name: template.name,
@@ -302,7 +306,74 @@ export class WhatsappCloudService {
       buttons: Array.isArray(template.buttons) ? template.buttons : [],
       createdAt: template.createdAt.toISOString().slice(0, 10),
       rejectionReason: template.rejectionReason ?? undefined,
+      dailySendLimit: template.dailySendLimit ?? null,
+      sentToday,
     };
+  }
+
+  /** Inicio y fin del día calendario en America/Lima. */
+  private limaTodayRange(): { start: Date; end: Date } {
+    const { year, month, day } = instantToLimaParts(new Date());
+    const start = limaDayStart(year, month, day);
+    const end = limaDayStart(year, month, day + 1);
+    return { start, end };
+  }
+
+  private async countTemplateSentToday(templateId: string): Promise<number> {
+    const { start, end } = this.limaTodayRange();
+    return this.prisma.whatsAppBulkRecipient.count({
+      where: {
+        status: 'sent',
+        sentAt: { gte: start, lt: end },
+        campaign: { templateId },
+      },
+    });
+  }
+
+  private async countTemplatesSentToday(
+    templateIds: string[],
+  ): Promise<Map<string, number>> {
+    const map = new Map<string, number>();
+    if (templateIds.length === 0) return map;
+    const { start, end } = this.limaTodayRange();
+    const rows = await this.prisma.whatsAppBulkRecipient.groupBy({
+      by: ['campaignId'],
+      where: {
+        status: 'sent',
+        sentAt: { gte: start, lt: end },
+        campaign: { templateId: { in: templateIds } },
+      },
+      _count: { _all: true },
+    });
+    if (rows.length === 0) return map;
+
+    const campaigns = await this.prisma.whatsAppBulkCampaign.findMany({
+      where: { id: { in: rows.map((r) => r.campaignId) } },
+      select: { id: true, templateId: true },
+    });
+    const campaignTemplate = new Map(campaigns.map((c) => [c.id, c.templateId]));
+    for (const row of rows) {
+      const templateId = campaignTemplate.get(row.campaignId);
+      if (!templateId) continue;
+      map.set(templateId, (map.get(templateId) ?? 0) + row._count._all);
+    }
+    return map;
+  }
+
+  private async assertDailySendCapacity(
+    template: { id: string; name: string; dailySendLimit: number | null },
+    additionalRecipients: number,
+  ) {
+    if (template.dailySendLimit == null) return;
+    const sentToday = await this.countTemplateSentToday(template.id);
+    const remaining = template.dailySendLimit - sentToday;
+    if (additionalRecipients > remaining) {
+      throw new BadRequestException(
+        remaining <= 0
+          ? `Se alcanzó el límite diario de ${template.dailySendLimit} envíos para la plantilla «${template.name}» (${sentToday} hoy).`
+          : `La plantilla «${template.name}» solo admite ${remaining} envío(s) más hoy (límite ${template.dailySendLimit}, ya van ${sentToday}). Reduce la audiencia o sube el límite.`,
+      );
+    }
   }
 
   async connectAccount(userId: string, dto: ConnectWhatsAppCloudDto) {
@@ -525,7 +596,33 @@ export class WhatsappCloudService {
       where: { accountId },
       orderBy: [{ status: 'asc' }, { name: 'asc' }],
     });
-    return templates.map((t) => this.toPublicTemplate(t));
+    const sentMap = await this.countTemplatesSentToday(templates.map((t) => t.id));
+    return templates.map((t) => this.toPublicTemplate(t, sentMap.get(t.id) ?? 0));
+  }
+
+  async updateTemplateDailyLimit(
+    templateId: string,
+    dailySendLimit: number | null | undefined,
+  ) {
+    const template = await this.prisma.whatsAppCloudTemplate.findUnique({
+      where: { id: templateId },
+    });
+    if (!template) throw new NotFoundException('Plantilla no encontrada');
+
+    const nextLimit =
+      dailySendLimit === null || dailySendLimit === undefined
+        ? null
+        : Math.floor(dailySendLimit);
+    if (nextLimit != null && nextLimit < 1) {
+      throw new BadRequestException('El límite diario debe ser al menos 1');
+    }
+
+    const updated = await this.prisma.whatsAppCloudTemplate.update({
+      where: { id: templateId },
+      data: { dailySendLimit: nextLimit },
+    });
+    const sentToday = await this.countTemplateSentToday(updated.id);
+    return this.toPublicTemplate(updated, sentToday);
   }
 
   async createCampaign(userId: string, userName: string, dto: CreateWhatsAppCampaignDto) {
@@ -559,6 +656,8 @@ export class WhatsappCloudService {
     if (recipients.length === 0) {
       throw new BadRequestException('No hay destinatarios con teléfono válido');
     }
+
+    await this.assertDailySendCapacity(template, recipients.length);
 
     const campaign = await this.prisma.whatsAppBulkCampaign.create({
       data: {
@@ -602,6 +701,11 @@ export class WhatsappCloudService {
         }),
       );
     }
+
+    const pendingCount = await this.prisma.whatsAppBulkRecipient.count({
+      where: { campaignId, status: 'pending' },
+    });
+    await this.assertDailySendCapacity(campaign.template, pendingCount);
 
     await this.prisma.whatsAppBulkCampaign.update({
       where: { id: campaignId },

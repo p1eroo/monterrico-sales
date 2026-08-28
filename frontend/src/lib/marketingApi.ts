@@ -580,6 +580,19 @@ export async function fetchWhatsAppCloudTemplates(
   );
 }
 
+export async function updateWhatsAppTemplateDailyLimit(
+  templateId: string,
+  dailySendLimit: number | null,
+): Promise<import('@/pages/marketing/whatsapp/mockData').WhatsAppTemplate> {
+  return api<import('@/pages/marketing/whatsapp/mockData').WhatsAppTemplate>(
+    `/whatsapp-cloud/templates/${encodeURIComponent(templateId)}/daily-limit`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ dailySendLimit }),
+    },
+  );
+}
+
 export async function fetchWhatsAppBulkCampaigns(
   accountId?: string,
 ): Promise<WhatsAppBulkCampaignSummary[]> {

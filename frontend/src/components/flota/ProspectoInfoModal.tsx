@@ -1,42 +1,78 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Car,
-  ClipboardList,
   FileArchive,
   History,
   Info,
-  MapPin,
-  Pencil,
-  User,
   type LucideIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { FormDialogShell } from "@/components/ui/form-dialog";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  FormDialogActions,
+  FormDialogField,
+  FormDialogGrid,
+  FormDialogShell,
+  formDialogInputClass,
+  formDialogNestedContentClass,
+  formDialogNestedOverlayClass,
+} from "@/components/ui/form-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TimelinePanel } from "@/components/shared/TimelinePanel";
+import { InlineEditCell } from "@/components/shared/InlineEditCell";
 import { ProspectoArchivosPanel } from "@/components/flota/ProspectoArchivosPanel";
 import { ProspectoLlamadasPanel } from "@/components/flota/ProspectoLlamadasPanel";
 import { LlamadaSvgIcon } from "@/components/icons/LlamadaSvgIcon";
 import { formatDateDMY } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/notify";
 import {
+  CIUDAD_OPTIONS,
   flotaProspectoDetail,
+  flotaProspectoUpdate,
   getOperatorDisplayName,
+  MODALIDAD_OPTIONS,
   type FlotaProspectoRow,
   type OperadorUser,
 } from "@/lib/flotaProspectosApi";
-import { useFlotaProspectosRealtime } from "@/lib/flotaProspectosRealtime";
+import { notifyFlotaProspectosRefresh, useFlotaProspectosRealtime } from "@/lib/flotaProspectosRealtime";
 import { buildProspectoHistorialEvents } from "@/components/flota/ProspectoHistorialModal";
+import { useAppStore } from "@/store";
 
-const estadoColors: Record<string, string> = {
-  Nuevo: "text-gray-700 dark:text-gray-300",
-  Afiliado: "text-purple-700 dark:text-purple-300",
-  Citado: "text-blue-700 dark:text-blue-300",
-  Seguimiento: "text-green-700 dark:text-green-300",
-  Informacion: "text-cyan-700 dark:text-cyan-300",
-  "Sin Requisitos": "text-red-700 dark:text-red-300",
-  "No Responde": "text-yellow-700 dark:text-yellow-300",
+const ESTADO_OPTIONS = [
+  { label: "Nuevo", value: "Nuevo" },
+  { label: "Afiliado", value: "Afiliado" },
+  { label: "Citado", value: "Citado" },
+  { label: "Seguimiento", value: "Seguimiento" },
+  { label: "Información", value: "Informacion" },
+  { label: "Sin Requisitos", value: "Sin Requisitos" },
+  { label: "No Responde", value: "No Responde" },
+];
+
+const AIRE_OPTIONS = [
+  { label: "SI", value: "SI" },
+  { label: "No", value: "No" },
+];
+
+const ASISTENCIA_OPTIONS = [
+  { label: "Asistió", value: "Asistió" },
+  { label: "No Asistió", value: "No Asistió" },
+];
+
+const estadoHeaderBadgeClass: Record<string, string> = {
+  Nuevo: "border-gray-200 bg-gray-100 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200",
+  Afiliado: "border-purple-200 bg-purple-100 text-purple-800 dark:border-purple-800 dark:bg-purple-950/60 dark:text-purple-200",
+  Citado: "border-blue-200 bg-blue-100 text-blue-800 dark:border-blue-800 dark:bg-blue-950/60 dark:text-blue-200",
+  Seguimiento: "border-green-200 bg-green-100 text-green-800 dark:border-green-800 dark:bg-green-950/60 dark:text-green-200",
+  Informacion: "border-cyan-200 bg-cyan-100 text-cyan-800 dark:border-cyan-800 dark:bg-cyan-950/60 dark:text-cyan-200",
+  "Sin Requisitos": "border-red-200 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950/60 dark:text-red-200",
+  "No Responde": "border-yellow-200 bg-yellow-100 text-yellow-800 dark:border-yellow-800 dark:bg-yellow-950/60 dark:text-yellow-200",
 };
 
 interface ProspectoInfoModalProps {
@@ -45,50 +81,27 @@ interface ProspectoInfoModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onFilesLoad?: (prospectoId: string, fileCount: number) => void;
-  /** Si se pasa, muestra botón Editar junto al cerrar. */
-  onEdit?: () => void;
+  /** Notifica al padre tras un guardado inline (p. ej. refrescar fila de la tabla). */
+  onUpdated?: (row: FlotaProspectoRow) => void;
 }
 
-function InfoField({
-  label,
-  value,
-  className,
-  fullWidth,
-}: {
-  label: string;
-  value: string;
-  className?: string;
-  fullWidth?: boolean;
-}) {
-  return (
-    <div className={`min-w-0 ${fullWidth ? "sm:col-span-2" : ""}`}>
-      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-      <dd className={`mt-1 text-sm text-foreground break-words ${className ?? ""}`}>
-        {value || "—"}
-      </dd>
-    </div>
-  );
+function toDatetimeLocalValue(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const date = d.toLocaleDateString("en-CA", { timeZone: "America/Lima" });
+  const time = d.toLocaleTimeString("en-GB", {
+    timeZone: "America/Lima",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  return `${date}T${time}`;
 }
 
-function SectionIcon({
-  icon: Icon,
-  wrapClass,
-  iconClass,
-}: {
-  icon: LucideIcon;
-  wrapClass: string;
-  iconClass: string;
-}) {
-  return (
-    <span
-      className={cn(
-        "flex size-7 shrink-0 items-center justify-center rounded-full ring-1 ring-inset",
-        wrapClass,
-      )}
-    >
-      <Icon className={cn("size-3.5", iconClass)} />
-    </span>
-  );
+function latestObservacion(raw: string | null | undefined): string {
+  if (!raw?.trim()) return "";
+  return raw.split("\n---\n")[0]?.replace(/^(?:\[.+?\]\s*)+/, "").trim() ?? "";
 }
 
 function ProspectoModalTabIcon({
@@ -179,27 +192,64 @@ function ProspectoModalTabTrigger({
 
 function InfoSection({
   title,
-  icon,
-  iconWrapClass,
-  iconClass,
   children,
 }: {
   title: string;
-  icon: LucideIcon;
-  iconWrapClass: string;
-  iconClass: string;
   children: React.ReactNode;
 }) {
   return (
     <section>
-      <div className="mb-2.5 flex items-center gap-2 border-b border-border/60 pb-1.5">
-        <SectionIcon icon={icon} wrapClass={iconWrapClass} iconClass={iconClass} />
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {title}
-        </h3>
-      </div>
-      <dl className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">{children}</dl>
+      <h3 className="mb-2.5 text-[13px] font-semibold text-foreground">{title}</h3>
+      <dl className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">{children}</dl>
     </section>
+  );
+}
+
+function EditableField({
+  label,
+  value,
+  fieldId,
+  fieldKey,
+  type = "text",
+  options,
+  className,
+  fullWidth,
+  readonly,
+  display,
+  onSaved,
+  onSaveOverride,
+}: {
+  label: string;
+  value: string | number | null | undefined;
+  fieldId: string;
+  fieldKey: string;
+  type?: "text" | "number" | "select" | "date" | "datetime-local" | "readonly";
+  options?: { label: string; value: string }[];
+  className?: string;
+  fullWidth?: boolean;
+  readonly?: boolean;
+  display?: React.ReactNode;
+  onSaved?: (fieldKey: string, newValue: string | null) => void;
+  onSaveOverride?: (rawValue: string) => Promise<void>;
+}) {
+  return (
+    <div className={cn("min-w-0 space-y-2", fullWidth && "sm:col-span-2")}>
+      <dt className="text-xs font-medium leading-none text-muted-foreground">{label}</dt>
+      <dd>
+        <InlineEditCell
+          value={value}
+          fieldId={fieldId}
+          fieldKey={fieldKey}
+          type={readonly ? "readonly" : type}
+          options={options}
+          className={className}
+          onSaved={onSaved}
+          onSaveOverride={onSaveOverride}
+        >
+          {display}
+        </InlineEditCell>
+      </dd>
+    </div>
   );
 }
 
@@ -209,13 +259,18 @@ export function ProspectoInfoModal({
   open,
   onOpenChange,
   onFilesLoad,
-  onEdit,
+  onUpdated,
 }: ProspectoInfoModalProps) {
+  const currentUser = useAppStore((s) => s.currentUser);
   const [prospecto, setProspecto] = useState<FlotaProspectoRow | null>(prospectoProp);
   const [activeTab, setActiveTab] = useState("info");
   const [archivosDismissBlocked, setArchivosDismissBlocked] = useState(false);
   const [archivosCount, setArchivosCount] = useState(0);
   const [llamadasCount, setLlamadasCount] = useState(0);
+  const [citadoDialogOpen, setCitadoDialogOpen] = useState(false);
+  const [citadoDate, setCitadoDate] = useState("");
+  const [citadoTime, setCitadoTime] = useState("09:00");
+  const [savingCitado, setSavingCitado] = useState(false);
 
   useEffect(() => {
     setProspecto(prospectoProp);
@@ -227,6 +282,9 @@ export function ProspectoInfoModal({
     if (!open) {
       setActiveTab("info");
       setArchivosDismissBlocked(false);
+      setCitadoDialogOpen(false);
+      setCitadoDate("");
+      setCitadoTime("09:00");
     }
   }, [open]);
 
@@ -266,47 +324,177 @@ export function ProspectoInfoModal({
     [prospecto, operadores],
   );
 
+  const operadorOptions = useMemo(
+    () => operadores.map((op) => ({ label: op.name, value: op.name })),
+    [operadores],
+  );
+
+  const canAssignOperador =
+    currentUser.role !== "operador" || !prospecto?.operador;
+
+  const handleFieldSaved = useCallback(
+    (fieldKey: string, newValue: string | null) => {
+      setProspecto((prev) => {
+        if (!prev) return prev;
+        const next: FlotaProspectoRow = { ...prev };
+        if (fieldKey === "edad" || fieldKey === "anioVehiculo") {
+          const n = newValue != null && newValue !== "" ? Number(newValue) : null;
+          (next as Record<string, unknown>)[fieldKey] = Number.isFinite(n as number) ? n : null;
+        } else if (fieldKey === "fechaCita" && newValue) {
+          const iso = new Date(newValue).toISOString();
+          next.fechaCita = iso;
+        } else {
+          (next as Record<string, unknown>)[fieldKey] = newValue;
+        }
+        onUpdated?.(next);
+        return next;
+      });
+      notifyFlotaProspectosRefresh(prospectoProp?.id);
+    },
+    [onUpdated, prospectoProp?.id],
+  );
+
+  const saveObservaciones = useCallback(
+    async (rawValue: string) => {
+      if (!prospecto) return;
+      const original = prospecto.observaciones ?? "";
+      const currentLatest = latestObservacion(original);
+      const trimmed = rawValue.trim();
+      let bodyValue: string | null;
+      if (trimmed && trimmed !== currentLatest) {
+        const dateStr = new Date().toLocaleString("es-PE", { timeZone: "America/Lima" });
+        bodyValue = `[${dateStr}] ${trimmed}\n---\n${original}`;
+      } else {
+        bodyValue = original || trimmed || null;
+      }
+      const updated = await flotaProspectoUpdate(prospecto.id, {
+        observaciones: bodyValue,
+      } as Partial<FlotaProspectoRow>);
+      setProspecto(updated);
+      onUpdated?.(updated);
+      notifyFlotaProspectosRefresh(prospecto.id);
+    },
+    [prospecto, onUpdated],
+  );
+
+  const saveFechaCita = useCallback(
+    async (rawValue: string) => {
+      if (!prospecto) return;
+      const trimmed = rawValue.trim();
+      const iso = trimmed ? new Date(trimmed).toISOString() : null;
+      const updated = await flotaProspectoUpdate(prospecto.id, {
+        fechaCita: iso,
+      } as Partial<FlotaProspectoRow>);
+      setProspecto(updated);
+      onUpdated?.(updated);
+      notifyFlotaProspectosRefresh(prospecto.id);
+    },
+    [prospecto, onUpdated],
+  );
+
   if (!prospecto) return null;
 
-  const operador =
+  const operadorDisplay =
     getOperatorDisplayName(prospecto.operador, operadores) ||
     prospecto.operador ||
-    "—";
-  const estadoClass = estadoColors[prospecto.estado] || "";
-  const fechaCitaLabel = prospecto.fechaCita
-    ? `${formatDateDMY(prospecto.fechaCita)} ${new Date(prospecto.fechaCita).toLocaleTimeString("es-PE", {
-        hour: "2-digit",
-        minute: "2-digit",
-        timeZone: "America/Lima",
-      })}`
-    : "—";
-  const observaciones =
-    (prospecto.observaciones || "").replace(/\n---\n/g, "\n").trim() || "—";
+    "";
+  const obsLatest = latestObservacion(prospecto.observaciones);
+  const fechaCitaLocal = toDatetimeLocalValue(prospecto.fechaCita);
+  const isCitado = prospecto.estado === "Citado";
+  const showFechaAfiliacion = prospecto.estado === "Afiliado" || !!prospecto.fechaAfiliacion;
+  const estadoHeaderClass =
+    estadoHeaderBadgeClass[prospecto.estado] ||
+    "border-border bg-muted text-foreground";
+
+  const applyUpdated = (updated: FlotaProspectoRow) => {
+    setProspecto(updated);
+    onUpdated?.(updated);
+    notifyFlotaProspectosRefresh(prospecto.id);
+  };
+
+  const saveEstado = async (next: string) => {
+    if (!next || next === prospecto.estado) return;
+    if (next === "Citado") {
+      setCitadoDate("");
+      setCitadoTime("09:00");
+      setCitadoDialogOpen(true);
+      return;
+    }
+    try {
+      const updated = await flotaProspectoUpdate(prospecto.id, {
+        estado: next,
+      } as Partial<FlotaProspectoRow>);
+      applyUpdated(updated);
+      toast.success("Estado actualizado");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al actualizar estado");
+    }
+  };
+
+  const handleSaveCitado = async () => {
+    if (!citadoDate.trim()) return;
+    setSavingCitado(true);
+    try {
+      const time = citadoTime.trim() || "00:00";
+      const iso = new Date(`${citadoDate}T${time}:00`).toISOString();
+      const updated = await flotaProspectoUpdate(prospecto.id, {
+        estado: "Citado",
+        fechaCita: iso,
+      } as Partial<FlotaProspectoRow>);
+      applyUpdated(updated);
+      setCitadoDialogOpen(false);
+      toast.success("Cita programada");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al programar la cita");
+    } finally {
+      setSavingCitado(false);
+    }
+  };
 
   return (
+    <>
     <FormDialogShell
       open={open}
       onOpenChange={onOpenChange}
       title="Información del prospecto"
-      description={prospecto.nombreCompleto}
+      description={
+        <>
+          {prospecto.nombreCompleto}
+          <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+            Haz clic en un valor para editarlo
+          </span>
+        </>
+      }
       maxWidthClassName={activeTab === "archivos" ? "sm:max-w-3xl" : "sm:max-w-2xl"}
       bodyClassName="pb-2"
       footer={null}
-      suspendOutsideDismiss={activeTab === "archivos" && archivosDismissBlocked}
+      suspendOutsideDismiss={
+        (activeTab === "archivos" && archivosDismissBlocked) || citadoDialogOpen
+      }
       headerActions={
-        onEdit ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-9 shrink-0 rounded-full bg-muted/70 text-muted-foreground shadow-none hover:bg-muted hover:text-foreground"
-            title="Editar prospecto"
-            onClick={onEdit}
+        <Select value={prospecto.estado || undefined} onValueChange={(v) => void saveEstado(v)}>
+          <SelectTrigger
+            aria-label="Estado del prospecto"
+            className={cn(
+              "h-9 w-auto min-w-[7.5rem] max-w-[11rem] gap-1.5 rounded-full border px-3 text-xs font-semibold shadow-none",
+              "focus-visible:ring-1 focus-visible:ring-ring/25 data-[size=default]:h-9",
+              estadoHeaderClass,
+            )}
           >
-            <Pencil className="size-4" />
-            <span className="sr-only">Editar</span>
-          </Button>
-        ) : null
+            <SelectValue placeholder="Estado" />
+          </SelectTrigger>
+          <SelectContent align="end">
+            {ESTADO_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+            {prospecto.estado &&
+            !ESTADO_OPTIONS.some((o) => o.value === prospecto.estado) ? (
+              <SelectItem value={prospecto.estado}>{prospecto.estado}</SelectItem>
+            ) : null}
+          </SelectContent>
+        </Select>
       }
     >
       <Tabs value={activeTab} onValueChange={setActiveTab} className="gap-5">
@@ -352,90 +540,235 @@ export function ProspectoInfoModal({
 
         <TabsContent value="info" className="mt-1">
           <div className="flex flex-col gap-5">
-            <InfoSection
-              title="Datos personales"
-              icon={User}
-              iconWrapClass="bg-info/18 ring-info/35"
-              iconClass="text-info"
-            >
-              <InfoField
+            <InfoSection title="Datos personales">
+              <EditableField
                 label="Nombres y apellidos"
                 value={prospecto.nombreCompleto}
+                fieldId={prospecto.id}
+                fieldKey="nombreCompleto"
                 className="font-medium"
                 fullWidth
+                onSaved={handleFieldSaved}
               />
-              <InfoField label="DNI" value={prospecto.dni || "—"} />
-              <InfoField
+              <EditableField
+                label="DNI"
+                value={prospecto.dni}
+                fieldId={prospecto.id}
+                fieldKey="dni"
+                onSaved={handleFieldSaved}
+              />
+              <EditableField
                 label="Edad"
-                value={prospecto.edad != null ? String(prospecto.edad) : "—"}
+                value={prospecto.edad}
+                fieldId={prospecto.id}
+                fieldKey="edad"
+                type="number"
+                onSaved={handleFieldSaved}
               />
-              <InfoField label="Celular" value={prospecto.celular || "—"} />
-              <InfoField label="Móvil" value={prospecto.movil || "—"} />
+              <EditableField
+                label="Celular"
+                value={prospecto.celular}
+                fieldId={prospecto.id}
+                fieldKey="celular"
+                onSaved={handleFieldSaved}
+              />
+              <EditableField
+                label="Móvil"
+                value={prospecto.movil}
+                fieldId={prospecto.id}
+                fieldKey="movil"
+                onSaved={handleFieldSaved}
+              />
             </InfoSection>
 
-            <InfoSection
-              title="Vehículo"
-              icon={Car}
-              iconWrapClass="bg-chart-3/18 ring-chart-3/40"
-              iconClass="text-chart-3"
-            >
-              <InfoField label="Placa" value={prospecto.placa || "—"} />
-              <InfoField
+            <InfoSection title="Vehículo">
+              <EditableField
+                label="Placa"
+                value={prospecto.placa}
+                fieldId={prospecto.id}
+                fieldKey="placa"
+                onSaved={handleFieldSaved}
+              />
+              <EditableField
                 label="Año vehículo"
-                value={prospecto.anioVehiculo != null ? String(prospecto.anioVehiculo) : "—"}
+                value={prospecto.anioVehiculo}
+                fieldId={prospecto.id}
+                fieldKey="anioVehiculo"
+                type="number"
+                onSaved={handleFieldSaved}
               />
-              <InfoField label="Modalidad" value={prospecto.modalidad || "—"} />
-              <InfoField label="Aire acondicionado" value={prospecto.aireAcondicionado || "—"} />
-              <InfoField label="Categoría" value={prospecto.categoriaVehiculo || "—"} />
-              <InfoField label="Marca" value={prospecto.marca || "—"} />
-              <InfoField label="Modelo" value={prospecto.modelo || "—"} />
-              <InfoField label="Color" value={prospecto.color || "—"} />
-              <InfoField label="Combustible" value={prospecto.combustible || "—"} />
+              <EditableField
+                label="Modalidad"
+                value={prospecto.modalidad}
+                fieldId={prospecto.id}
+                fieldKey="modalidad"
+                type="select"
+                options={MODALIDAD_OPTIONS}
+                onSaved={handleFieldSaved}
+              />
+              <EditableField
+                label="Aire acondicionado"
+                value={prospecto.aireAcondicionado}
+                fieldId={prospecto.id}
+                fieldKey="aireAcondicionado"
+                type="select"
+                options={AIRE_OPTIONS}
+                onSaved={handleFieldSaved}
+              />
+              <EditableField
+                label="Categoría"
+                value={prospecto.categoriaVehiculo}
+                fieldId={prospecto.id}
+                fieldKey="categoriaVehiculo"
+                onSaved={handleFieldSaved}
+              />
+              <EditableField
+                label="Marca"
+                value={prospecto.marca}
+                fieldId={prospecto.id}
+                fieldKey="marca"
+                onSaved={handleFieldSaved}
+              />
+              <EditableField
+                label="Modelo"
+                value={prospecto.modelo}
+                fieldId={prospecto.id}
+                fieldKey="modelo"
+                onSaved={handleFieldSaved}
+              />
+              <EditableField
+                label="Color"
+                value={prospecto.color}
+                fieldId={prospecto.id}
+                fieldKey="color"
+                onSaved={handleFieldSaved}
+              />
+              <EditableField
+                label="Combustible"
+                value={prospecto.combustible}
+                fieldId={prospecto.id}
+                fieldKey="combustible"
+                onSaved={handleFieldSaved}
+              />
             </InfoSection>
 
-            <InfoSection
-              title="Ubicación y seguimiento"
-              icon={MapPin}
-              iconWrapClass="bg-success/18 ring-success/35"
-              iconClass="text-success"
-            >
-              <InfoField
-                label="Estado"
-                value={prospecto.estado}
-                className={`font-medium ${estadoClass}`}
+            <InfoSection title="Ubicación y seguimiento">
+              <EditableField
+                label="Operador"
+                value={operadorDisplay}
+                fieldId={prospecto.id}
+                fieldKey="operador"
+                type="select"
+                options={operadorOptions}
+                readonly={!canAssignOperador}
+                onSaved={handleFieldSaved}
               />
-              <InfoField label="Operador" value={operador} />
-              <InfoField label="Distrito" value={prospecto.distrito || "—"} />
-              <InfoField label="Ciudad" value={prospecto.ciudad || "—"} />
-              <InfoField label="Red social / fuente" value={prospecto.redSocial || "—"} />
-              <InfoField
+              <EditableField
+                label="Distrito"
+                value={prospecto.distrito}
+                fieldId={prospecto.id}
+                fieldKey="distrito"
+                onSaved={handleFieldSaved}
+              />
+              <EditableField
+                label="Ciudad"
+                value={prospecto.ciudad}
+                fieldId={prospecto.id}
+                fieldKey="ciudad"
+                type="select"
+                options={CIUDAD_OPTIONS}
+                onSaved={handleFieldSaved}
+              />
+              <EditableField
+                label="Red social / fuente"
+                value={prospecto.redSocial}
+                fieldId={prospecto.id}
+                fieldKey="redSocial"
+                onSaved={handleFieldSaved}
+              />
+              <EditableField
                 label="F. registro"
                 value={prospecto.fechaRegistro ? formatDateDMY(prospecto.fechaRegistro) : "—"}
+                fieldId={prospecto.id}
+                fieldKey="fechaRegistro"
+                readonly
               />
-              <InfoField label="F. cita" value={fechaCitaLabel} />
-              <InfoField label="Asistencia" value={prospecto.asistencia || "—"} />
-              <InfoField
-                label="F. afiliación"
-                value={
-                  prospecto.fechaAfiliacion ? formatDateDMY(prospecto.fechaAfiliacion) : "—"
-                }
-              />
-              <InfoField
+              <EditableField
                 label="Llamadas registradas"
                 value={String(prospecto._count?.llamadas ?? 0)}
+                fieldId={prospecto.id}
+                fieldKey="llamadas"
+                readonly
               />
             </InfoSection>
 
-            <InfoSection
-              title="Información adicional"
-              icon={ClipboardList}
-              iconWrapClass="bg-activity-note/20 ring-activity-note/35"
-              iconClass="text-activity-note"
-            >
+            {isCitado ? (
+              <InfoSection title="Cita">
+                <EditableField
+                  label="F. cita"
+                  value={fechaCitaLocal}
+                  fieldId={prospecto.id}
+                  fieldKey="fechaCita"
+                  type="datetime-local"
+                  onSaveOverride={saveFechaCita}
+                  display={
+                    fechaCitaLocal
+                      ? `${formatDateDMY(prospecto.fechaCita!)} ${new Date(
+                          prospecto.fechaCita!,
+                        ).toLocaleTimeString("es-PE", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          timeZone: "America/Lima",
+                        })}`
+                      : undefined
+                  }
+                />
+                <EditableField
+                  label="Asistencia"
+                  value={prospecto.asistencia}
+                  fieldId={prospecto.id}
+                  fieldKey="asistencia"
+                  type="select"
+                  options={ASISTENCIA_OPTIONS}
+                  onSaved={handleFieldSaved}
+                />
+              </InfoSection>
+            ) : null}
+
+            {showFechaAfiliacion ? (
+              <InfoSection title="Afiliación">
+                <EditableField
+                  label="F. afiliación"
+                  value={
+                    prospecto.fechaAfiliacion ? formatDateDMY(prospecto.fechaAfiliacion) : "—"
+                  }
+                  fieldId={prospecto.id}
+                  fieldKey="fechaAfiliacion"
+                  readonly
+                  fullWidth
+                />
+              </InfoSection>
+            ) : null}
+
+            <InfoSection title="Información adicional">
               {prospecto.esDuplicado ? (
-                <InfoField label="Duplicado" value="Sí marcado como duplicado" className="text-destructive" />
+                <EditableField
+                  label="Duplicado"
+                  value="Sí marcado como duplicado"
+                  fieldId={prospecto.id}
+                  fieldKey="esDuplicado"
+                  className="text-destructive"
+                  readonly
+                />
               ) : null}
-              <InfoField label="Observaciones" value={observaciones} fullWidth />
+              <EditableField
+                label="Observaciones"
+                value={obsLatest}
+                fieldId={prospecto.id}
+                fieldKey="observaciones"
+                fullWidth
+                onSaveOverride={saveObservaciones}
+              />
             </InfoSection>
           </div>
         </TabsContent>
@@ -471,5 +804,46 @@ export function ProspectoInfoModal({
         </TabsContent>
       </Tabs>
     </FormDialogShell>
+
+    <FormDialogShell
+      open={citadoDialogOpen}
+      onOpenChange={setCitadoDialogOpen}
+      title="Programar cita"
+      description="Indica fecha y hora para agendar al prospecto. Aparecerá en el calendario de Flota."
+      maxWidthClassName="sm:max-w-md"
+      bodyClassName="pb-2"
+      overlayClassName={formDialogNestedOverlayClass}
+      contentClassName={formDialogNestedContentClass}
+      footer={
+        <FormDialogActions
+          showCancel
+          onCancel={() => setCitadoDialogOpen(false)}
+          onSubmit={() => void handleSaveCitado()}
+          submitLabel="Guardar cita"
+          submitting={savingCitado}
+          submitDisabled={!citadoDate.trim()}
+        />
+      }
+    >
+      <FormDialogGrid className="gap-y-4">
+        <FormDialogField label="Fecha" required>
+          <Input
+            type="date"
+            className={formDialogInputClass}
+            value={citadoDate}
+            onChange={(e) => setCitadoDate(e.target.value)}
+          />
+        </FormDialogField>
+        <FormDialogField label="Hora">
+          <Input
+            type="time"
+            className={formDialogInputClass}
+            value={citadoTime}
+            onChange={(e) => setCitadoTime(e.target.value)}
+          />
+        </FormDialogField>
+      </FormDialogGrid>
+    </FormDialogShell>
+    </>
   );
 }

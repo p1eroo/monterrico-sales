@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -8,10 +7,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { toast } from '@/lib/notify';
+import {
+  formDialogInputClass,
+  formDialogSelectTriggerClass,
+} from '@/components/ui/form-dialog';
 
 interface SelectOption {
   label: string;
@@ -34,6 +36,22 @@ interface InlineEditCellProps {
   onSaveOverride?: (rawValue: string) => Promise<void>;
 }
 
+function toEditString(
+  value: string | number | null | undefined,
+  type: InlineEditCellProps['type'],
+): string {
+  let raw = value != null ? String(value) : '';
+  if (type === 'date' && raw.includes('T')) {
+    raw = raw.split('T')[0];
+  }
+  return raw;
+}
+
+function displayText(value: string | number | null | undefined): string {
+  if (value == null || String(value) === '') return '—';
+  return String(value);
+}
+
 export function InlineEditCell({
   value,
   fieldId,
@@ -47,10 +65,9 @@ export function InlineEditCell({
   children,
   onSaveOverride,
 }: InlineEditCellProps) {
-  const [editing, setEditing] = useState(false);
-  const [editValue, setEditValue] = useState('');
+  const [draft, setDraft] = useState(() => toEditString(value, type));
   const [saving, setSaving] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const focusedRef = useRef(false);
   const processingRef = useRef(false);
   const onSavedRef = useRef(onSaved);
   onSavedRef.current = onSaved;
@@ -58,34 +75,9 @@ export function InlineEditCell({
   onSaveOverrideRef.current = onSaveOverride;
 
   useEffect(() => {
-    if (editing && inputRef.current && type !== 'select') {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [editing, type]);
-
-  const startEdit = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      processingRef.current = false;
-      let raw = value != null ? String(value) : '';
-      if (type === 'date' && raw.includes('T')) {
-        raw = raw.split('T')[0];
-      }
-      setEditValue(!raw && type === 'select' ? '__none__' : raw);
-      setEditing(true);
-    },
-    [value, type],
-  );
-
-  const cancel = useCallback(
-    (e?: React.SyntheticEvent) => {
-      e?.stopPropagation();
-      processingRef.current = true;
-      setEditing(false);
-    },
-    [],
-  );
+    if (focusedRef.current || processingRef.current) return;
+    setDraft(toEditString(value, type));
+  }, [value, type]);
 
   const saveUrl = useMemo(() => {
     if (fieldKey === 'operador') {
@@ -94,20 +86,18 @@ export function InlineEditCell({
     return `/flota-prospectos/${fieldId}`;
   }, [fieldKey, fieldId]);
 
-  const save = useCallback(
-    async (e?: React.SyntheticEvent) => {
-      e?.stopPropagation();
-      const trimmed = editValue.trim();
-      if (trimmed === String(value ?? '')) {
-        setEditing(false);
-        return;
-      }
+  const persist = useCallback(
+    async (raw: string) => {
+      const trimmed = raw.trim();
+      const current = String(value ?? '');
+      if (trimmed === current) return;
+
       setSaving(true);
+      processingRef.current = true;
       try {
         if (onSaveOverrideRef.current) {
           await onSaveOverrideRef.current(trimmed);
           toast.success('Actualizado');
-          setEditing(false);
           onSavedRef.current?.(fieldKey, trimmed || null);
         } else {
           const body: Record<string, unknown> = {};
@@ -124,143 +114,175 @@ export function InlineEditCell({
             body: JSON.stringify(body),
           });
           toast.success('Actualizado');
-          setEditing(false);
-          const savedValue = type === 'number'
-            ? (isNaN(numericValue!) ? null : String(numericValue))
-            : trimmed || null;
+          const savedValue =
+            type === 'number'
+              ? isNaN(numericValue!)
+                ? null
+                : String(numericValue)
+              : trimmed || null;
           onSavedRef.current?.(fieldKey, savedValue);
         }
       } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : 'Error al actualizar',
-        );
+        toast.error(err instanceof Error ? err.message : 'Error al actualizar');
+        setDraft(toEditString(value, type));
       } finally {
         setSaving(false);
+        processingRef.current = false;
       }
     },
-    [editValue, value, fieldKey, fieldId, type, onSaved, saveUrl],
+    [value, fieldKey, type, saveUrl],
+  );
+
+  const persistSelect = useCallback(
+    async (next: string) => {
+      const finalValue = next === '__none__' ? null : next;
+      if ((finalValue ?? '') === (value ?? '')) return;
+
+      setSaving(true);
+      processingRef.current = true;
+      setDraft(finalValue ?? '');
+      try {
+        if (onSaveOverrideRef.current) {
+          await onSaveOverrideRef.current(finalValue ?? '');
+          toast.success('Actualizado');
+          onSavedRef.current?.(fieldKey, finalValue);
+        } else {
+          await api(saveUrl, {
+            method: 'PATCH',
+            body: JSON.stringify({ [fieldKey]: finalValue }),
+          });
+          toast.success('Actualizado');
+          onSavedRef.current?.(fieldKey, finalValue);
+        }
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Error al actualizar');
+        setDraft(toEditString(value, type));
+      } finally {
+        setSaving(false);
+        processingRef.current = false;
+      }
+    },
+    [value, fieldKey, type, saveUrl],
   );
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Enter') void save();
-      if (e.key === 'Escape') cancel();
+      if (e.key === 'Enter') {
+        e.currentTarget.blur();
+      }
+      if (e.key === 'Escape') {
+        setDraft(toEditString(value, type));
+        focusedRef.current = false;
+        e.currentTarget.blur();
+      }
     },
-    [save, cancel],
+    [value, type],
   );
 
-  if (type === 'readonly') {
+  if (type === 'readonly' || linkToDetail) {
+    if (children) {
+      return (
+        <div
+          role={linkToDetail ? 'button' : undefined}
+          tabIndex={linkToDetail ? 0 : undefined}
+          className={cn(
+            formDialogInputClass,
+            'flex items-center bg-muted/40',
+            linkToDetail ? 'cursor-pointer' : 'cursor-default',
+            className,
+          )}
+          onClick={
+            linkToDetail
+              ? (e) => {
+                  e.stopPropagation();
+                  onNavigate?.();
+                }
+              : undefined
+          }
+        >
+          {children}
+        </div>
+      );
+    }
+
     return (
-      <div className={cn('py-1', className)}>
-        {children ?? (value != null ? String(value) : '—')}
-      </div>
+      <Input
+        readOnly
+        value={displayText(value)}
+        className={cn(
+          formDialogInputClass,
+          'bg-muted/40',
+          linkToDetail ? 'cursor-pointer' : 'cursor-default',
+          className,
+        )}
+        onClick={
+          linkToDetail
+            ? (e) => {
+                e.stopPropagation();
+                onNavigate?.();
+              }
+            : undefined
+        }
+      />
     );
   }
 
-  if (linkToDetail) {
+  if (type === 'select') {
+    const selectValue = draft || '__none__';
     return (
-      <div
-        className={cn('cursor-pointer py-1', className)}
-        onClick={(e) => {
-          e.stopPropagation();
-          onNavigate?.();
+      <Select
+        value={selectValue}
+        disabled={saving}
+        onValueChange={(v) => {
+          void persistSelect(v);
         }}
-        role="button"
-        tabIndex={0}
       >
-        {children ?? (value != null ? String(value) : '—')}
-      </div>
+        <SelectTrigger
+          className={cn(formDialogSelectTriggerClass, className)}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <SelectValue placeholder="—" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__none__">—</SelectItem>
+          {options.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </SelectItem>
+          ))}
+          {draft && !options.some((o) => o.value === draft) ? (
+            <SelectItem value={draft}>{draft}</SelectItem>
+          ) : null}
+        </SelectContent>
+      </Select>
     );
   }
 
   return (
-    <div className="relative min-h-[26px]">
-      {!editing ? (
-        <button
-          type="button"
-          className={cn(
-            'w-full text-left text-sm py-1 px-1 rounded transition-colors hover:bg-muted/20',
-            className,
-          )}
-          onClick={startEdit}
-        >
-          {children ?? (value != null ? String(value) : <span className="text-muted-foreground italic">—</span>)}
-        </button>
-      ) : type === 'select' ? (
-        <div className="relative z-20 flex items-center gap-1 bg-background rounded-md border shadow-md p-1" onClick={(e) => e.stopPropagation()}>
-          <Select
-            value={editValue}
-            onValueChange={(v) => {
-              processingRef.current = true;
-              setEditValue(v);
-              setEditing(false);
-              const finalValue = v === '__none__' ? null : v;
-              if ((finalValue ?? '') === (value ?? '')) {
-                processingRef.current = false;
-                return;
-              }
-              setSaving(true);
-              const body: Record<string, unknown> = {
-                [fieldKey]: finalValue,
-              };
-              api(saveUrl, {
-                method: 'PATCH',
-                body: JSON.stringify(body),
-              })
-                .then(() => {
-                  toast.success('Actualizado');
-                  onSavedRef.current?.(fieldKey, finalValue);
-                })
-                .catch((err) =>
-                  toast.error(
-                    err instanceof Error ? err.message : 'Error al actualizar',
-                  ),
-                )
-                .finally(() => {
-                  setSaving(false);
-                  processingRef.current = false;
-                });
-            }}
-            onOpenChange={(open) => {
-              if (!open) cancel();
-            }}
-          >
-            <SelectTrigger className="h-8 text-xs min-w-[120px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">—</SelectItem>
-              {options.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-6 shrink-0"
-            onClick={cancel}
-          >
-            <X className="size-3" />
-          </Button>
-        </div>
-      ) : (
-        <div className="absolute left-0 top-0 z-20 flex items-center rounded-md border bg-background shadow-md" onClick={(e) => e.stopPropagation()}>
-          <Input
-            ref={inputRef}
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onBlur={() => { if (!processingRef.current) void save(); }}
-            type={type === 'number' ? 'number' : type === 'date' ? 'date' : type === 'datetime-local' ? 'datetime-local' : 'text'}
-            className="h-8 text-sm w-full"
-            style={{ minWidth: `${Math.max(editValue?.length || 1, 15)}ch` }}
-            disabled={saving}
-          />
-        </div>
-      )}
-    </div>
+    <Input
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onFocus={() => {
+        focusedRef.current = true;
+      }}
+      onBlur={() => {
+        focusedRef.current = false;
+        if (!processingRef.current) void persist(draft);
+      }}
+      onKeyDown={handleKeyDown}
+      onClick={(e) => e.stopPropagation()}
+      type={
+        type === 'number'
+          ? 'number'
+          : type === 'date'
+            ? 'date'
+            : type === 'datetime-local'
+              ? 'datetime-local'
+              : 'text'
+      }
+      disabled={saving}
+      placeholder="—"
+      className={cn(formDialogInputClass, className)}
+    />
   );
 }

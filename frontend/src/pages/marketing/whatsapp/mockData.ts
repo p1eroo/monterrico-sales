@@ -37,6 +37,10 @@ export type WhatsAppTemplate = {
   buttons: WhatsAppTemplateButton[];
   createdAt: string;
   rejectionReason?: string;
+  /** Tope de envíos exitosos por día (Lima). null/undefined = sin límite. */
+  dailySendLimit?: number | null;
+  /** Envíos exitosos de esta plantilla hoy (Lima). */
+  sentToday?: number;
 };
 
 const PLACEHOLDER_RE = /\{\{([a-z][a-z0-9_]*|\d+)\}\}/gi;

@@ -59,9 +59,9 @@ export function audiencePreviewContacts(
 }
 
 export function flotaRowToWhatsAppContact(row: FlotaProspectoRow): WhatsAppContact | null {
-  const name = (row.nombreCompleto ?? '').trim();
   const phone = normalizeWhatsAppPhone(row.celular ?? row.movil ?? '');
-  if (!name || !phone) return null;
+  if (!phone) return null;
+  const name = (row.nombreCompleto ?? '').trim() || 'Sin nombre';
   return {
     id: row.id,
     name,
@@ -74,9 +74,9 @@ export function flotaRowToWhatsAppContact(row: FlotaProspectoRow): WhatsAppConta
 }
 
 export function comercialRowToWhatsAppContact(row: ApiContactListRow): WhatsAppContact | null {
-  const name = (row.name ?? '').trim();
   const phone = normalizeWhatsAppPhone(row.telefono ?? '');
-  if (!name || !phone) return null;
+  if (!phone) return null;
+  const name = (row.name ?? '').trim() || 'Sin nombre';
   return {
     id: row.id,
     name,

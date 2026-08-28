@@ -18,6 +18,7 @@ import { WhatsappCloudService } from './whatsapp-cloud.service';
 import { ConnectWhatsAppCloudDto } from './dto/connect-account.dto';
 import { UpdateWhatsAppTokenDto } from './dto/update-token.dto';
 import { CreateWhatsAppCampaignDto } from './dto/create-campaign.dto';
+import { UpdateTemplateDailyLimitDto } from './dto/update-template-limit.dto';
 
 type AuthedRequest = { user: { userId: string; name: string } };
 
@@ -84,6 +85,15 @@ export class WhatsappCloudController {
   @RequirePermissions('marketing.ver')
   async getTemplates(@Query('accountId') accountId: string) {
     return this.whatsappCloud.getTemplates(accountId);
+  }
+
+  @Patch('templates/:id/daily-limit')
+  @RequirePermissions('marketing.ver')
+  async updateTemplateDailyLimit(
+    @Param('id') id: string,
+    @Body() dto: UpdateTemplateDailyLimitDto,
+  ) {
+    return this.whatsappCloud.updateTemplateDailyLimit(id, dto.dailySendLimit ?? null);
   }
 
   @Get('campaigns')

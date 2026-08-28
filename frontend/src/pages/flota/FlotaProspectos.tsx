@@ -2510,11 +2510,9 @@ tr[data-row-id="${bp.id}"] {
         onOpenChange={(open) => {
           if (!open) setInfoModalProspecto(null);
         }}
-        onEdit={() => {
-          if (!infoModalProspecto) return;
-          const id = infoModalProspecto.id;
-          setInfoModalProspecto(null);
-          setEditProspectoId(id);
+        onUpdated={(row) => {
+          setInfoModalProspecto(row);
+          setProspectos((prev) => prev.map((p) => (p.id === row.id ? { ...p, ...row } : p)));
         }}
         onFilesLoad={(prospectoId, fileCount) => {
           setProspectsWithFiles((prev) => {

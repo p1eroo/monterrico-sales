@@ -1027,6 +1027,8 @@ model WhatsAppCloudTemplate {
   rejectionReason String?
   buttons         Json?
   components      Json?
+  /** Tope de envíos exitosos por día (Lima). null = sin límite. */
+  dailySendLimit  Int?
   accountId       String
   account         WhatsAppCloudAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
   lastSyncedAt    DateTime?

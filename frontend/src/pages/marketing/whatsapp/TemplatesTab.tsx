@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Activity,
+  Gauge,
   LayoutGrid,
   Search,
   Send,
@@ -16,7 +17,15 @@ import { Pagination } from '@/components/shared/Pagination';
 import { ComercialInclusiveMultiFilter } from '@/components/shared/ComercialInclusiveMultiFilter';
 import { EyeSvgIcon } from '@/components/icons/EyeSvgIcon';
 import { TrashSvgIcon } from '@/components/icons/TrashSvgIcon';
+import {
+  FormDialogActions,
+  FormDialogField,
+  FormDialogShell,
+  formDialogInputClass,
+} from '@/components/ui/form-dialog';
 import { cn } from '@/lib/utils';
+import { toast } from '@/lib/notify';
+import { updateWhatsAppTemplateDailyLimit } from '@/lib/marketingApi';
 import {
   comercialFilterIconClass,
   matchesInclusiveMultiFilterValue,
@@ -214,6 +223,7 @@ export function TemplatesTab({
   onCreate,
   onDelete,
   onUseTemplate,
+  onTemplateUpdated,
 }: {
   templates: WhatsAppTemplate[];
   activeAccount: WhatsAppCloudAccount | null;
@@ -222,6 +232,7 @@ export function TemplatesTab({
   onCreate: (t: WhatsAppTemplate) => void;
   onDelete: (id: string) => void;
   onUseTemplate: (id: string) => void;
+  onTemplateUpdated?: (t: WhatsAppTemplate) => void;
 }) {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
@@ -229,8 +240,56 @@ export function TemplatesTab({
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [preview, setPreview] = useState<WhatsAppTemplate | null>(null);
+  const [limitTemplate, setLimitTemplate] = useState<WhatsAppTemplate | null>(null);
+  const [limitValue, setLimitValue] = useState('');
+  const [savingLimit, setSavingLimit] = useState(false);
 
   const closePreview = useCallback(() => setPreview(null), []);
+
+  const openLimitDialog = useCallback((template: WhatsAppTemplate) => {
+    setLimitTemplate(template);
+    setLimitValue(
+      template.dailySendLimit != null && template.dailySendLimit > 0
+        ? String(template.dailySendLimit)
+        : '',
+    );
+  }, []);
+
+  const closeLimitDialog = useCallback(() => {
+    if (savingLimit) return;
+    setLimitTemplate(null);
+    setLimitValue('');
+  }, [savingLimit]);
+
+  const handleSaveLimit = useCallback(async () => {
+    if (!limitTemplate) return;
+    const trimmed = limitValue.trim();
+    let next: number | null = null;
+    if (trimmed) {
+      const n = Number.parseInt(trimmed, 10);
+      if (!Number.isFinite(n) || n < 1) {
+        toast.error('El límite debe ser un número entero de al menos 1');
+        return;
+      }
+      next = n;
+    }
+    setSavingLimit(true);
+    try {
+      const updated = await updateWhatsAppTemplateDailyLimit(limitTemplate.id, next);
+      onTemplateUpdated?.(updated);
+      toast.success(
+        next == null
+          ? 'Límite diario eliminado'
+          : `Límite diario: ${next.toLocaleString('es-PE')} envíos`,
+      );
+      setLimitTemplate(null);
+      setLimitValue('');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudo guardar el límite');
+    } finally {
+      setSavingLimit(false);
+    }
+  }, [limitTemplate, limitValue, onTemplateUpdated]);
 
   const hasActiveFilters =
     Boolean(search.trim()) || categoryFilter.length > 0 || statusFilter.length > 0;
@@ -433,6 +492,24 @@ export function TemplatesTab({
                             type="button"
                             variant="ghost"
                             size="icon"
+                            className={cn(
+                              'size-8 text-muted-foreground hover:text-foreground',
+                              t.dailySendLimit != null &&
+                                'text-amber-700 hover:text-amber-800 dark:text-amber-400',
+                            )}
+                            title={
+                              t.dailySendLimit != null
+                                ? `Límite diario: ${(t.sentToday ?? 0).toLocaleString('es-PE')}/${t.dailySendLimit.toLocaleString('es-PE')}`
+                                : 'Límite de envío diario'
+                            }
+                            onClick={() => openLimitDialog(t)}
+                          >
+                            <Gauge className="size-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
                             className="size-8 text-muted-foreground hover:text-foreground"
                             title="Usar en envío"
                             disabled={t.status !== 'approved'}
@@ -491,6 +568,53 @@ export function TemplatesTab({
           }}
         />
       ) : null}
+
+      <FormDialogShell
+        open={Boolean(limitTemplate)}
+        onOpenChange={(open) => {
+          if (!open) closeLimitDialog();
+        }}
+        title="Límite de envío diario"
+        description={
+          limitTemplate ? (
+            <>
+              Plantilla <span className="font-medium text-foreground">{limitTemplate.name}</span>.
+              Evita agotar el cupo de mensajes salientes de Meta. Vacío = sin límite.
+              {limitTemplate.dailySendLimit != null ? (
+                <span className="mt-1 block text-xs">
+                  Hoy: {(limitTemplate.sentToday ?? 0).toLocaleString('es-PE')} de{' '}
+                  {limitTemplate.dailySendLimit.toLocaleString('es-PE')}
+                </span>
+              ) : null}
+            </>
+          ) : undefined
+        }
+        maxWidthClassName="sm:max-w-md"
+        bodyClassName="pb-2"
+        footer={
+          <FormDialogActions
+            showCancel
+            onCancel={closeLimitDialog}
+            onSubmit={() => void handleSaveLimit()}
+            submitLabel="Guardar"
+            submitting={savingLimit}
+          />
+        }
+      >
+        <FormDialogField label="Máximo de envíos por día" hint="Cuenta envíos exitosos (zona Lima).">
+          <Input
+            type="number"
+            min={1}
+            step={1}
+            inputMode="numeric"
+            placeholder="Ej. 500"
+            className={formDialogInputClass}
+            value={limitValue}
+            onChange={(e) => setLimitValue(e.target.value)}
+            disabled={savingLimit}
+          />
+        </FormDialogField>
+      </FormDialogShell>
     </div>
   );
 }

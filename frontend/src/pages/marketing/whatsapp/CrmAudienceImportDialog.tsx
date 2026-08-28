@@ -258,7 +258,7 @@ export function CrmAudienceImportDialog({
   const toggleRow = useCallback((contact: WhatsAppContact | null) => {
     if (selectAllMode) return;
     if (!contact) {
-      toast.error('Este registro no tiene nombre o celular válido.');
+      toast.error('Este registro no tiene celular válido.');
       return;
     }
     setSelectedById((prev) => {

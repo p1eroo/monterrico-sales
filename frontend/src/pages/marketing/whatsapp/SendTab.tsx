@@ -159,7 +159,7 @@ export function SendTab({
         setResolvingLabel(null);
 
         if (selectedContacts.length === 0) {
-          toast.error('No hay destinatarios válidos con nombre y celular.');
+          toast.error('No hay destinatarios con celular válido.');
           return;
         }
 

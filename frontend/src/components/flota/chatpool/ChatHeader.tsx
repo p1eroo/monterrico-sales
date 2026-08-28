@@ -21,7 +21,6 @@ import { ChatpoolAvatar } from './ui/Avatar';
 import { useChatpoolStore } from './store';
 import { formatCitaHeaderLabel, isWaConversationId } from './utils';
 import type { Conversation } from './types';
-import { ProspectoEditDialog } from './ProspectoEditDialog';
 
 const ASISTENCIA_OPTIONS = [
   { label: 'Asistió', value: 'Asistió' },
@@ -67,7 +66,6 @@ export function ChatHeader({ conversation }: ChatHeaderProps) {
   const setContactSidebarOpen = useChatpoolStore((s) => s.setContactSidebarOpen);
   const [savingAsistencia, setSavingAsistencia] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
   const [operadores, setOperadores] = useState<OperadorUser[]>([]);
 
   const prospectoActivo = conversation.prospectoActivo !== false;
@@ -244,28 +242,14 @@ export function ChatHeader({ conversation }: ChatHeaderProps) {
         operadores={operadores}
         open={infoOpen && !!infoProspecto}
         onOpenChange={setInfoOpen}
-        onEdit={
-          canOpenInfo
-            ? () => {
-                setInfoOpen(false);
-                setEditOpen(true);
-              }
-            : undefined
-        }
-      />
-
-      <ProspectoEditDialog
-        prospectoId={canOpenInfo ? conversation.id : null}
-        open={editOpen && canOpenInfo}
-        onOpenChange={setEditOpen}
-        onSaved={(data) => {
+        onUpdated={(row) => {
           applyProspectoPatch(conversation.id, {
-            name: data.nombreCompleto,
-            phone: data.celular,
-            operador: data.operador,
-            estado: data.estado ?? undefined,
-            fechaCita: data.fechaCita,
-            asistencia: data.asistencia,
+            name: row.nombreCompleto,
+            phone: row.celular,
+            operador: row.operador,
+            estado: row.estado,
+            fechaCita: row.fechaCita,
+            asistencia: row.asistencia,
           });
         }}
       />

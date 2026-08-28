@@ -358,6 +358,9 @@ export default function MarketingWhatsapp() {
           onCreate={handleCreateTemplate}
           onDelete={handleDeleteTemplate}
           onUseTemplate={handleUseTemplate}
+          onTemplateUpdated={(updated) => {
+            setTemplates((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+          }}
         />
       )}
       {tab === 'audiencia' && (
