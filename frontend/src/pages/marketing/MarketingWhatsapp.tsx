@@ -235,10 +235,27 @@ export default function MarketingWhatsapp() {
   );
 
   const handleSent = useCallback(
-    (campaignId: string) => {
+    (campaignId: string, meta?: { scheduled?: boolean; scheduledAt?: string | null }) => {
       setSelectedCampaignId(campaignId);
       goTo('resultados');
       void loadCampaignHistory(campaignId);
+      if (meta?.scheduled) {
+        const when = meta.scheduledAt
+          ? new Date(meta.scheduledAt).toLocaleString('es-PE', {
+              timeZone: 'America/Lima',
+              day: '2-digit',
+              month: 'short',
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : null;
+        toast.success('Envío programado', {
+          description: when
+            ? `Se enviará automáticamente el ${when} (hora Perú).`
+            : 'Quedó en el historial y se enviará a la hora indicada.',
+        });
+        return;
+      }
       toast.success('Envío completado vía Meta', {
         description: 'Los resultados quedaron guardados en el historial.',
       });

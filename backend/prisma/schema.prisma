@@ -1054,6 +1054,8 @@ model WhatsAppBulkCampaign {
   failed          Int      @default(0)
   createdById     String
   createdByName   String
+  /** Si está en status scheduled: instante UTC en que debe iniciarse el envío. */
+  scheduledAt     DateTime?
   startedAt       DateTime?
   completedAt     DateTime?
   createdAt       DateTime @default(now())
@@ -1062,6 +1064,7 @@ model WhatsAppBulkCampaign {
 
   @@index([accountId, createdAt])
   @@index([status])
+  @@index([status, scheduledAt])
 }
 
 model WhatsAppBulkRecipient {

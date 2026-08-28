@@ -1,4 +1,4 @@
-import { IsArray, IsObject, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsISO8601, IsObject, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CampaignRecipientDto {
@@ -41,4 +41,9 @@ export class CreateWhatsAppCampaignDto {
   @IsString()
   @IsOptional()
   name?: string;
+
+  /** ISO UTC. Si es futuro, la campaña queda en status `scheduled` (hora Perú en el cliente). */
+  @IsOptional()
+  @IsISO8601()
+  scheduledAt?: string;
 }

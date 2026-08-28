@@ -41,20 +41,25 @@ import {
 } from './WhatsappResultsKpiSvgIcons';
 
 function formatCampaignLabel(c: WhatsAppBulkCampaignSummary): string {
-  const date = new Date(c.completedAt ?? c.createdAt).toLocaleString('es-PE', {
+  const anchor = c.scheduledAt ?? c.completedAt ?? c.createdAt;
+  const date = new Date(anchor).toLocaleString('es-PE', {
+    timeZone: 'America/Lima',
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
     minute: '2-digit',
   });
   const title = c.name?.trim() || c.templateName;
-  return `${title} · ${date}`;
+  const prefix = c.status === 'scheduled' ? 'Programado · ' : '';
+  return `${prefix}${title} · ${date}`;
 }
 
 const CAMPAIGN_STATUS_LABEL: Record<string, string> = {
   sent: 'Completado',
   sending: 'Enviando…',
   failed: 'Fallido',
+  scheduled: 'Programado',
+  draft: 'Borrador',
 };
 
 export function ResultsTab({

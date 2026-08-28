@@ -659,13 +659,35 @@ export class WhatsappCloudService {
 
     await this.assertDailySendCapacity(template, recipients.length);
 
+    let scheduledAt: Date | null = null;
+    let status = 'draft';
+    if (dto.scheduledAt?.trim()) {
+      const when = new Date(dto.scheduledAt.trim());
+      if (Number.isNaN(when.getTime())) {
+        throw new BadRequestException('Fecha de programación inválida');
+      }
+      // Margen de 30s por latencia de red / reloj del cliente
+      if (when.getTime() < Date.now() - 30_000) {
+        throw new BadRequestException('La fecha de programación debe ser futura (hora Perú)');
+      }
+      if (when.getTime() <= Date.now() + 15_000) {
+        // Casi inmediato: tratar como envío ahora (draft → send desde el cliente)
+        scheduledAt = null;
+        status = 'draft';
+      } else {
+        scheduledAt = when;
+        status = 'scheduled';
+      }
+    }
+
     const campaign = await this.prisma.whatsAppBulkCampaign.create({
       data: {
-        name: dto.name?.trim() || `Envío ${new Date().toLocaleString('es-PE')}`,
+        name: dto.name?.trim() || `Envío ${new Date().toLocaleString('es-PE', { timeZone: 'America/Lima' })}`,
         accountId: account.id,
         templateId: template.id,
         variableMapping: dto.variableMapping,
-        status: 'draft',
+        status,
+        scheduledAt,
         total: recipients.length,
         createdById: userId,
         createdByName: userName,
@@ -685,6 +707,11 @@ export class WhatsappCloudService {
       include: { account: true, template: true },
     });
     if (!campaign) throw new NotFoundException('Campaña no encontrada');
+    if (campaign.status === 'scheduled') {
+      throw new BadRequestException(
+        'Esta campaña está programada; se enviará automáticamente a la hora indicada',
+      );
+    }
     if (campaign.status === 'sending') {
       return this.toPublicCampaign(
         await this.prisma.whatsAppBulkCampaign.findUniqueOrThrow({
@@ -720,6 +747,81 @@ export class WhatsappCloudService {
     }
 
     return this.getCampaign(campaignId, userId);
+  }
+
+  /** Cron: lanza campañas `scheduled` cuya hora ya llegó. */
+  async dispatchDueScheduledCampaigns(): Promise<number> {
+    const due = await this.prisma.whatsAppBulkCampaign.findMany({
+      where: {
+        status: 'scheduled',
+        scheduledAt: { lte: new Date() },
+      },
+      select: { id: true },
+      orderBy: { scheduledAt: 'asc' },
+      take: 25,
+    });
+    let started = 0;
+    for (const row of due) {
+      const ok = await this.beginScheduledSend(row.id);
+      if (ok) started += 1;
+    }
+    return started;
+  }
+
+  /** Marca scheduled → sending de forma atómica y procesa. */
+  private async beginScheduledSend(campaignId: string): Promise<boolean> {
+    if (this.sendingCampaigns.has(campaignId)) return false;
+
+    const claimed = await this.prisma.whatsAppBulkCampaign.updateMany({
+      where: { id: campaignId, status: 'scheduled' },
+      data: { status: 'sending', startedAt: new Date(), sent: 0, failed: 0 },
+    });
+    if (claimed.count === 0) return false;
+
+    const campaign = await this.prisma.whatsAppBulkCampaign.findUnique({
+      where: { id: campaignId },
+      include: { template: true },
+    });
+    if (!campaign) return false;
+
+    try {
+      const pendingCount = await this.prisma.whatsAppBulkRecipient.count({
+        where: { campaignId, status: 'pending' },
+      });
+      await this.assertDailySendCapacity(campaign.template, pendingCount);
+    } catch (err) {
+      let message = 'No se pudo iniciar el envío programado';
+      if (err instanceof BadRequestException) {
+        const res = err.getResponse();
+        if (typeof res === 'string') message = res;
+        else if (res && typeof res === 'object' && 'message' in res) {
+          const m = (res as { message?: string | string[] }).message;
+          message = Array.isArray(m) ? m.join(' ') : String(m ?? message);
+        }
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
+      await this.prisma.whatsAppBulkCampaign.update({
+        where: { id: campaignId },
+        data: {
+          status: 'failed',
+          completedAt: new Date(),
+          failed: campaign.total,
+        },
+      });
+      await this.prisma.whatsAppBulkRecipient.updateMany({
+        where: { campaignId, status: 'pending' },
+        data: { status: 'failed', error: message },
+      });
+      this.logger.warn(`Campaña programada ${campaignId} falló al iniciar: ${message}`);
+      return false;
+    }
+
+    this.sendingCampaigns.add(campaignId);
+    void this.processCampaign(campaignId).finally(() => {
+      this.sendingCampaigns.delete(campaignId);
+    });
+    return true;
   }
 
   private async processCampaign(campaignId: string) {
@@ -948,6 +1050,7 @@ export class WhatsappCloudService {
       createdAt: c.createdAt.toISOString(),
       completedAt: c.completedAt?.toISOString() ?? null,
       startedAt: c.startedAt?.toISOString() ?? null,
+      scheduledAt: c.scheduledAt?.toISOString() ?? null,
       templateName: c.template.name,
       templateCategory: c.template.category,
       accountId: c.accountId,
@@ -971,6 +1074,7 @@ export class WhatsappCloudService {
       failed: campaign.failed,
       startedAt: campaign.startedAt?.toISOString() ?? null,
       completedAt: campaign.completedAt?.toISOString() ?? null,
+      scheduledAt: campaign.scheduledAt?.toISOString() ?? null,
       createdAt: campaign.createdAt.toISOString(),
       accountId: campaign.accountId,
       templateId: campaign.templateId,

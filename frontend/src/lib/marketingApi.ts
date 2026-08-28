@@ -469,6 +469,7 @@ export interface WhatsAppBulkCampaignSummary {
   createdAt: string;
   completedAt: string | null;
   startedAt: string | null;
+  scheduledAt?: string | null;
   templateName: string;
   templateCategory: string;
   accountId: string;
@@ -484,6 +485,7 @@ export interface WhatsAppBulkCampaign {
   failed: number;
   startedAt: string | null;
   completedAt: string | null;
+  scheduledAt?: string | null;
   createdAt: string;
   accountId: string;
   templateId: string;
@@ -507,6 +509,8 @@ export interface CreateWhatsAppCampaignDto {
     flotaProspectoId?: string;
   }>;
   name?: string;
+  /** ISO UTC; si es futuro la campaña queda programada (hora Perú en el cliente). */
+  scheduledAt?: string;
 }
 
 export async function connectWhatsAppCloud(dto: ConnectWhatsAppCloudDto): Promise<WhatsAppCloudAccount> {

@@ -65,6 +65,40 @@ const NAMED_DEFAULT: Record<string, VariableSource> = {
   fecha: 'company',
 };
 
+/** `YYYY-MM-DDTHH:mm` como hora de pared en Perú (UTC−5) → ISO UTC. */
+function limaLocalInputToIso(value: string): string {
+  const m = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!m) throw new Error('Fecha u hora inválida');
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  const h = Number(m[4]);
+  const mi = Number(m[5]);
+  return new Date(Date.UTC(y, mo - 1, d, h + 5, mi, 0, 0)).toISOString();
+}
+
+function formatLimaLocalInput(value: string): string {
+  const m = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!m) return value;
+  return `${m[3]}/${m[2]}/${m[1]}, ${m[4]}:${m[5]} (Perú)`;
+}
+
+/** Mínimo sugerido para datetime-local: ahora en Lima. */
+function limaNowLocalInput(): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Lima',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '00';
+  const hour = get('hour') === '24' ? '00' : get('hour');
+  return `${get('year')}-${get('month')}-${get('day')}T${hour}:${get('minute')}`;
+}
+
 function valueForField(c: WhatsAppContact, field: VariableSource): string {
   if (field === 'name') return c.name;
   if (field === 'phone') return formatWhatsAppPhoneDisplay(c.phone);
@@ -101,7 +135,7 @@ export function SendTab({
   audience: WhatsAppAudience;
   initialTemplateId: string | null;
   activeAccount?: WhatsAppCloudAccount | null;
-  onSent: (campaignId: string) => void;
+  onSent: (campaignId: string, meta?: { scheduled?: boolean; scheduledAt?: string | null }) => void;
   onGoToTemplates: () => void;
   onGoToAudience: () => void;
 }) {
@@ -134,16 +168,41 @@ export function SendTab({
   const previewContacts = useMemo(() => audiencePreviewContacts(audience, 1), [audience]);
   const sampleContact = previewContacts[0];
   const deferredCrm = audience.mode === 'crmSelectAll';
-  // En audiencia explícita podemos contar sin WhatsApp; en selectAll del CRM asumimos todos válidos hasta resolver.
   const withoutWhatsApp =
     audience.mode === 'explicit'
       ? audience.contacts.filter((c) => !c.hasWhatsApp).length
       : 0;
 
-  const simulateSend = () => {
+  const limitReached =
+    template?.dailySendLimit != null &&
+    (template.sentToday ?? 0) >= template.dailySendLimit;
+
+  const runSend = () => {
     if (!template || !activeAccount || totalAudience === 0) return;
+
+    let scheduledAtIso: string | undefined;
     if (!scheduleNow) {
-      toast.error('La programación de envíos estará disponible próximamente');
+      if (!scheduleAt.trim()) {
+        toast.error('Elige fecha y hora de envío (hora Perú).');
+        return;
+      }
+      try {
+        scheduledAtIso = limaLocalInputToIso(scheduleAt);
+      } catch {
+        toast.error('Fecha u hora inválida.');
+        return;
+      }
+      const when = new Date(scheduledAtIso).getTime();
+      if (when <= Date.now() + 15_000) {
+        toast.error('La programación debe ser al menos unos minutos en el futuro (hora Perú).');
+        return;
+      }
+    }
+
+    if (limitReached) {
+      toast.error(
+        `Se alcanzó el límite diario de ${template.dailySendLimit} envíos para «${template.name}».`,
+      );
       return;
     }
 
@@ -176,7 +235,21 @@ export function SendTab({
           });
         }
 
+        if (
+          template.dailySendLimit != null &&
+          (template.sentToday ?? 0) + eligible.length > template.dailySendLimit
+        ) {
+          const remaining = Math.max(0, template.dailySendLimit - (template.sentToday ?? 0));
+          toast.error(
+            remaining === 0
+              ? `Límite diario alcanzado para «${template.name}».`
+              : `Solo quedan ${remaining} envío(s) hoy para «${template.name}». Reduce la audiencia o sube el límite.`,
+          );
+          return;
+        }
+
         setProgress(8);
+        setResolvingLabel(scheduledAtIso ? 'Programando envío…' : 'Creando campaña…');
         const campaign = await createWhatsAppBulkCampaign({
           accountId: activeAccount.id,
           templateId: template.id,
@@ -188,8 +261,16 @@ export function SendTab({
             source: c.source,
             ...(c.flotaProspectoId ? { flotaProspectoId: c.flotaProspectoId } : {}),
           })),
+          ...(scheduledAtIso ? { scheduledAt: scheduledAtIso } : {}),
         });
 
+        if (campaign.status === 'scheduled') {
+          setProgress(100);
+          onSent(campaign.id, { scheduled: true, scheduledAt: campaign.scheduledAt });
+          return;
+        }
+
+        setResolvingLabel('Enviando vía Meta…');
         await sendWhatsAppBulkCampaign(campaign.id);
 
         let current = campaign;
@@ -201,7 +282,7 @@ export function SendTab({
         }
 
         setProgress(100);
-        onSent(campaign.id);
+        onSent(campaign.id, { scheduled: false });
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Error al enviar');
       } finally {
@@ -237,7 +318,7 @@ export function SendTab({
         });
       }
     }
-    simulateSend();
+    runSend();
   };
 
   if (approved.length === 0) {
@@ -264,7 +345,7 @@ export function SendTab({
           <MessageCircle className="size-10 text-muted-foreground/40" />
           <p className="font-medium">Aún no hay contactos</p>
           <p className="max-w-sm text-sm text-muted-foreground">
-            Importa un Excel en la pestaña Audiencia con nombre y teléfono de cada destinatario.
+            Importa un Excel o selecciona prospectos del CRM en la pestaña Audiencia.
           </p>
           <Button
             className="bg-[#13944C] hover:bg-[#0f7a3d]"
@@ -301,6 +382,9 @@ export function SendTab({
                 {approved.map((t) => (
                   <SelectItem key={t.id} value={t.id}>
                     {t.name} — {WHATSAPP_CATEGORY_META[t.category]}
+                    {t.dailySendLimit != null
+                      ? ` · ${t.sentToday ?? 0}/${t.dailySendLimit} hoy`
+                      : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -312,6 +396,12 @@ export function SendTab({
                   Contenido de la plantilla
                 </p>
                 <p className="whitespace-pre-wrap text-sm leading-relaxed">{template.body}</p>
+                {template.dailySendLimit != null ? (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Límite diario: {(template.sentToday ?? 0).toLocaleString('es-PE')} /{' '}
+                    {template.dailySendLimit.toLocaleString('es-PE')}
+                  </p>
+                ) : null}
               </div>
             )}
           </div>
@@ -370,14 +460,20 @@ export function SendTab({
               Enviar ahora
             </label>
             {!scheduleNow && (
-              <div className="flex items-center gap-2 pl-7">
-                <CalendarClock className="size-4 text-muted-foreground" />
-                <Input
-                  type="datetime-local"
-                  value={scheduleAt}
-                  onChange={(e) => setScheduleAt(e.target.value)}
-                  className="h-9"
-                />
+              <div className="space-y-2 pl-7">
+                <div className="flex items-center gap-2">
+                  <CalendarClock className="size-4 shrink-0 text-muted-foreground" />
+                  <Input
+                    type="datetime-local"
+                    value={scheduleAt}
+                    min={limaNowLocalInput()}
+                    onChange={(e) => setScheduleAt(e.target.value)}
+                    className="h-9"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Hora de Perú (UTC−5). El envío se dispara automáticamente a esa hora.
+                </p>
               </div>
             )}
           </div>
@@ -436,11 +532,11 @@ export function SendTab({
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Programación</span>
-                <span className="font-medium">
+                <span className="max-w-[180px] text-right font-medium">
                   {scheduleNow
                     ? 'Inmediata'
                     : scheduleAt
-                      ? new Date(scheduleAt).toLocaleString('es-PE')
+                      ? formatLimaLocalInput(scheduleAt)
                       : 'Selecciona fecha'}
                 </span>
               </div>
@@ -453,9 +549,16 @@ export function SendTab({
               </p>
             )}
 
+            {limitReached ? (
+              <p className="flex items-start gap-1.5 rounded-lg border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
+                <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+                Límite diario de esta plantilla alcanzado. Ajusta el límite o espera a mañana.
+              </p>
+            ) : null}
+
             <Button
               className="w-full bg-[#13944C] shadow-md hover:bg-[#0f7a3d]"
-              disabled={sending}
+              disabled={sending || limitReached}
               onClick={handleSend}
             >
               {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
