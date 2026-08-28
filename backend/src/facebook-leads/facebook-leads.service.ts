@@ -259,9 +259,9 @@ export class FacebookLeadsService {
     });
   }
 
-  async getAccounts(userId: string) {
+  async getAccounts(_userId?: string) {
     return this.prisma.facebookAccount.findMany({
-      where: { connectedById: userId, active: true },
+      where: { active: true },
       include: {
         forms: {
           where: { status: 'active' },
@@ -272,9 +272,9 @@ export class FacebookLeadsService {
     });
   }
 
-  async disconnectAccount(accountId: string, userId: string) {
+  async disconnectAccount(accountId: string, _userId: string) {
     const account = await this.prisma.facebookAccount.findFirst({
-      where: { id: accountId, connectedById: userId },
+      where: { id: accountId, active: true },
     });
     if (!account) throw new NotFoundException('Cuenta no encontrada');
     await this.prisma.facebookAccount.update({
@@ -960,8 +960,8 @@ ${this.leadAnswersText(lead)}`;
       include: { form: { include: { account: true } } },
     });
     if (!lead) throw new NotFoundException('Lead no encontrado');
-    if (lead.form.account.connectedById !== userId) {
-      throw new ForbiddenException('No tienes permiso para eliminar este lead');
+    if (!lead.form.account.active) {
+      throw new ForbiddenException('La cuenta de Facebook de este lead está desconectada');
     }
 
     await this.prisma.facebookLead.delete({ where: { id: leadId } });
@@ -992,7 +992,7 @@ ${this.leadAnswersText(lead)}`;
     const { ids, selectAll, formId, search, dateFrom, dateTo } = params;
 
     const forms = await this.prisma.facebookForm.findMany({
-      where: { account: { connectedById: userId, active: true }, status: 'active' },
+      where: { account: { active: true }, status: 'active' },
       select: { id: true },
     });
     const ownFormIds = forms.map((f) => f.id);
@@ -1238,7 +1238,7 @@ ${this.leadAnswersText(lead)}`;
 
     const where: Record<string, unknown> = {};
     const forms = await this.prisma.facebookForm.findMany({
-      where: { account: { connectedById: userId, active: true }, status: 'active' },
+      where: { account: { active: true }, status: 'active' },
       select: { id: true },
     });
     const formIds = forms.map((f) => f.id);
@@ -1286,7 +1286,7 @@ ${this.leadAnswersText(lead)}`;
 
   async getStats(userId: string) {
     const userForms = await this.prisma.facebookForm.findMany({
-      where: { account: { connectedById: userId, active: true }, status: 'active' },
+      where: { account: { active: true }, status: 'active' },
       select: { id: true, name: true, leadsCount: true },
     });
     const formIds = userForms.map((f) => f.id);
@@ -1311,7 +1311,7 @@ ${this.leadAnswersText(lead)}`;
         where: { formId: { in: formIds }, createdTime: { gte: todayStart } },
       }),
       this.prisma.facebookAccount.findFirst({
-        where: { connectedById: userId, active: true },
+        where: { active: true },
         orderBy: { lastSyncedAt: 'desc' },
         select: { lastSyncedAt: true },
       }),
@@ -1343,9 +1343,9 @@ ${this.leadAnswersText(lead)}`;
     };
   }
 
-  async getFormsList(userId: string) {
+  async getFormsList(_userId?: string) {
     return this.prisma.facebookForm.findMany({
-      where: { account: { connectedById: userId, active: true } },
+      where: { account: { active: true } },
       include: { account: { select: { id: true, pageName: true, lastSyncedAt: true } } },
       orderBy: { name: 'asc' },
     });

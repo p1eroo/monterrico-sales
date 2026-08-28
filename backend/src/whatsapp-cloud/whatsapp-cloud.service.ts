@@ -325,7 +325,7 @@ export class WhatsappCloudService {
 
     if (dto.setAsDefault) {
       await this.prisma.whatsAppCloudAccount.updateMany({
-        where: { connectedById: userId, active: true },
+        where: { active: true },
         data: { isDefault: false },
       });
     }
@@ -351,7 +351,7 @@ export class WhatsappCloudService {
       });
     } else {
       const count = await this.prisma.whatsAppCloudAccount.count({
-        where: { connectedById: userId, active: true },
+        where: { active: true },
       });
       account = await this.prisma.whatsAppCloudAccount.create({
         data: {
@@ -371,18 +371,18 @@ export class WhatsappCloudService {
     return this.toPublicAccount(refreshed);
   }
 
-  async getAccounts(userId: string) {
+  async getAccounts(_userId?: string) {
     const accounts = await this.prisma.whatsAppCloudAccount.findMany({
-      where: { connectedById: userId, active: true },
+      where: { active: true },
       include: { templates: true },
       orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
     });
     return accounts.map((a) => this.toPublicAccount(a));
   }
 
-  async disconnectAccount(id: string, userId: string) {
+  async disconnectAccount(id: string, _userId: string) {
     const account = await this.prisma.whatsAppCloudAccount.findFirst({
-      where: { id, connectedById: userId, active: true },
+      where: { id, active: true },
     });
     if (!account) throw new NotFoundException('Cuenta no encontrada');
     await this.prisma.whatsAppCloudAccount.update({
@@ -391,7 +391,7 @@ export class WhatsappCloudService {
     });
     if (account.isDefault) {
       const next = await this.prisma.whatsAppCloudAccount.findFirst({
-        where: { connectedById: userId, active: true },
+        where: { active: true },
         orderBy: { createdAt: 'asc' },
       });
       if (next) {
@@ -408,7 +408,7 @@ export class WhatsappCloudService {
     const token = accessToken.trim();
     if (!token) throw new BadRequestException('Ingresa el token');
     const account = await this.prisma.whatsAppCloudAccount.findFirst({
-      where: { id, connectedById: userId, active: true },
+      where: { id, active: true },
     });
     if (!account) throw new NotFoundException('Cuenta no encontrada');
     await this.validateWhatsAppCredentials({
@@ -426,11 +426,11 @@ export class WhatsappCloudService {
 
   async setDefaultAccount(id: string, userId: string) {
     const account = await this.prisma.whatsAppCloudAccount.findFirst({
-      where: { id, connectedById: userId, active: true },
+      where: { id, active: true },
     });
     if (!account) throw new NotFoundException('Cuenta no encontrada');
     await this.prisma.whatsAppCloudAccount.updateMany({
-      where: { connectedById: userId, active: true },
+      where: { active: true },
       data: { isDefault: false },
     });
     await this.prisma.whatsAppCloudAccount.update({
@@ -459,9 +459,9 @@ export class WhatsappCloudService {
     }
   }
 
-  async testAccountConnection(id: string, userId: string) {
+  async testAccountConnection(id: string, _userId: string) {
     const account = await this.prisma.whatsAppCloudAccount.findFirst({
-      where: { id, connectedById: userId, active: true },
+      where: { id, active: true },
     });
     if (!account) throw new NotFoundException('Cuenta no encontrada');
     const templates = await this.meta.getMessageTemplates(
@@ -530,7 +530,7 @@ export class WhatsappCloudService {
 
   async createCampaign(userId: string, userName: string, dto: CreateWhatsAppCampaignDto) {
     const account = await this.prisma.whatsAppCloudAccount.findFirst({
-      where: { id: dto.accountId, connectedById: userId, active: true },
+      where: { id: dto.accountId, active: true },
     });
     if (!account) throw new NotFoundException('Cuenta no encontrada');
 
