@@ -27,6 +27,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { activityPayloadFromForm } from '@/lib/activityPayloadFromForm';
+import { activityCompletedAtIso } from '@/lib/formatters';
 import { ActivityFormDialog, type ActivityFormSaveResult } from './ActivityFormDialog';
 import { TaskFormDialog } from './TaskFormDialog';
 import type { TaskFormResult } from './TaskFormDialog';
@@ -57,6 +58,7 @@ export interface QuickActivityDraft {
   dueDate: string;
   startDate?: string;
   startTime?: string;
+  completedAt?: string;
 }
 
 type QuickMenuType = 'nota' | 'llamada' | 'reunion' | 'correo' | 'archivo' | 'tarea';
@@ -238,6 +240,11 @@ export function QuickActionsWithDialogs({
       dueDate: payload.dueDate,
       startDate: payload.startDate,
       startTime: payload.startTime,
+      completedAt: activityCompletedAtIso(
+        activityDialogType,
+        payload.dueDate,
+        payload.startTime,
+      ),
     }));
     setNoteContent('');
     setActivityDialogType(null);

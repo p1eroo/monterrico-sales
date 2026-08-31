@@ -2,7 +2,7 @@ import type { ActivityFormData } from '@/components/shared/ActivityFormDialog';
 import type { Activity, TaskKind } from '@/types';
 import type { CreateActivityPayload, UpdateActivityPayload } from '@/lib/activityApi';
 import { linkIdsFromActivity } from '@/lib/activityEntityLinks';
-import { formatTodayPeruYmd } from '@/lib/formatters';
+import { formatTodayPeruYmd, activityCompletedAtIso } from '@/lib/formatters';
 
 export type ActivityEntityContext = {
   contactId?: string;
@@ -147,18 +147,23 @@ export async function completeTaskWithActivityForm(params: {
       ...(params.extraContactIds ?? []),
     ]),
   ];
+  const activityFromForm = activityPayloadFromForm(
+    params.kind,
+    params.form,
+    entityContextFromActivity(params.task),
+    assignedTo,
+  );
   const activityPayload: CreateActivityPayload = {
-    ...activityPayloadFromForm(
-      params.kind,
-      params.form,
-      entityContextFromActivity(params.task),
-      assignedTo,
-    ),
+    ...activityFromForm,
     ...entityLinks,
     ...(contactIds.length > 0 ? { contactIds } : {}),
     sourceTaskId: params.task.id,
     status: 'completada',
-    completedAt,
+    completedAt: activityCompletedAtIso(
+      params.kind,
+      activityFromForm.dueDate,
+      activityFromForm.startTime,
+    ),
   };
 
   const taskUpdate: UpdateActivityPayload = {

@@ -33,7 +33,7 @@ import { TasksTab, type TasksTabHandle } from '@/components/shared/TasksTab';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { formatDate, completedAtNowIso } from '@/lib/formatters';
+import { formatDate, activityCompletedAtIso } from '@/lib/formatters';
 import { toast } from '@/lib/notify';
 import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLogsApi';
 import { useActivitiesStore } from '@/store/activitiesStore';
@@ -219,7 +219,7 @@ export default function ClienteEmpresaDetailPage() {
         dueDate: draft.dueDate,
         startDate: draft.startDate,
         startTime: draft.startTime,
-        completedAt: completedAtNowIso(),
+        completedAt: activityCompletedAtIso(draft.type, draft.dueDate, draft.startTime),
         createdAt: new Date().toISOString().slice(0, 10),
         clienteEmpresaId: empresa.id,
         clienteEmpresaName: empresa.empresa,
@@ -237,7 +237,7 @@ export default function ClienteEmpresaDetailPage() {
         dueDate: draft.dueDate,
         startDate: draft.startDate,
         startTime: draft.startTime,
-        completedAt: completedAtNowIso(),
+        completedAt: activityCompletedAtIso(draft.type, draft.dueDate, draft.startTime),
         clienteEmpresaId: empresa.id,
       });
       setCompanyActivities((prev) => [

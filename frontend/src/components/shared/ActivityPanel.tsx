@@ -143,7 +143,7 @@ export function ActivityPanel({
                   <TableHead className="text-text-tertiary">Título</TableHead>
                   <TableHead className="text-text-tertiary">Descripción</TableHead>
                   <TableHead className="text-text-tertiary">Asignado</TableHead>
-                  <TableHead className="text-text-tertiary">Vence</TableHead>
+                  <TableHead className="text-text-tertiary">Fecha</TableHead>
                   <TableHead className="text-right text-text-tertiary">Estado</TableHead>
                 </TableRow>
               </TableHeader>

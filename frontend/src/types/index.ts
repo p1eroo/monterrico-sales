@@ -237,7 +237,7 @@ export interface Activity {
   dueDate: string;
   /** Fecha de inicio (YYYY-MM-DD) */
   startDate?: string;
-  /** Hora estimada (formato HH:mm) para mostrar en la columna Vence */
+  /** Hora estimada (formato HH:mm) para fecha de la actividad o vencimiento */
   startTime?: string;
   completedAt?: string;
   createdAt: string;

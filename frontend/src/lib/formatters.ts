@@ -116,6 +116,38 @@ export function completedAtNowIso(): string {
   return new Date().toISOString();
 }
 
+const YMD_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+const HHMM = /^(\d{1,2}):(\d{2})/;
+
+/**
+ * Instant ISO en zona Perú a partir de fecha (YYYY-MM-DD) y hora (HH:mm).
+ * Para llamadas/reuniones registradas: cuándo ocurrió, no cuándo se guardó.
+ */
+export function completedAtIsoFromPeruDateTime(
+  dateYmd: string,
+  timeHHmm?: string,
+): string {
+  const date = dateYmd.trim();
+  if (!YMD_ONLY.test(date)) return completedAtNowIso();
+  const match = (timeHHmm ?? '').trim().match(HHMM);
+  const hh = match ? String(Math.min(23, Number(match[1]))).padStart(2, '0') : '09';
+  const mm = match ? match[2] : '00';
+  return new Date(`${date}T${hh}:${mm}:00-05:00`).toISOString();
+}
+
+/** Completada = fecha/hora del formulario en llamada y reunión; si no, ahora. */
+export function activityCompletedAtIso(
+  type: string,
+  dateYmd?: string,
+  timeHHmm?: string,
+): string {
+  const t = type.trim().toLowerCase();
+  if ((t === 'llamada' || t === 'reunion') && dateYmd?.trim()) {
+    return completedAtIsoFromPeruDateTime(dateYmd, timeHHmm);
+  }
+  return completedAtNowIso();
+}
+
 /** Suma días al calendario Lima y devuelve `YYYY-MM-DD`. */
 export function addCalendarDaysLocalIso(days: number): string {
   const base = formatTodayPeruYmd();

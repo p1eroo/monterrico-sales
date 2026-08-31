@@ -37,6 +37,30 @@ export function parseDayStartLima(isoDate: string): Date {
   return limaDayStart(y, m - 1, d);
 }
 
+const HHMM_RE = /^(\d{1,2}):(\d{2})/;
+
+/** Instant Lima a partir de YYYY-MM-DD y hora opcional HH:mm (si falta, 00:00). */
+export function parseLimaDateTime(
+  isoDate: string,
+  timeHHmm?: string | null,
+): Date {
+  const start = parseDayStartLima(isoDate);
+  const match = (timeHHmm ?? '').trim().match(HHMM_RE);
+  if (!match) return start;
+  const hours = Math.min(23, Number(match[1]));
+  const minutes = Math.min(59, Number(match[2]));
+  return new Date(start.getTime() + hours * 3600000 + minutes * 60000);
+}
+
+/** Instant Lima del día calendario de `day` (p. ej. dueDate) a la hora HH:mm. */
+export function instantFromLimaDayAndTime(
+  day: Date,
+  timeHHmm?: string | null,
+): Date {
+  const { year, month, day: d } = instantToLimaParts(day);
+  return parseLimaDateTime(limaYmdFromParts(year, month, d), timeHHmm);
+}
+
 export function parseDayEndLima(isoDate: string): Date {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
     throw new Error('from/to debe ser YYYY-MM-DD');

@@ -32,7 +32,7 @@ import { WhatsappContactDrawer } from '@/components/shared/WhatsappContactDrawer
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { formatDate, completedAtNowIso } from '@/lib/formatters';
+import { formatDate, activityCompletedAtIso } from '@/lib/formatters';
 import { toast } from '@/lib/notify';
 import { fetchActivityLogs, activityLogToTimelineEvent } from '@/lib/activityLogsApi';
 import { useActivitiesStore } from '@/store/activitiesStore';
@@ -292,7 +292,7 @@ export default function ClienteContactoDetailPage() {
         dueDate: draft.dueDate,
         startDate: draft.startDate,
         startTime: draft.startTime,
-        completedAt: completedAtNowIso(),
+        completedAt: activityCompletedAtIso(draft.type, draft.dueDate, draft.startTime),
         createdAt: new Date().toISOString().slice(0, 10),
         clienteEmpresaId: primaryEmpresa.id,
         clienteEmpresaName: primaryEmpresa.empresa,
@@ -312,7 +312,7 @@ export default function ClienteContactoDetailPage() {
         dueDate: draft.dueDate,
         startDate: draft.startDate,
         startTime: draft.startTime,
-        completedAt: completedAtNowIso(),
+        completedAt: activityCompletedAtIso(draft.type, draft.dueDate, draft.startTime),
         clienteEmpresaId: primaryEmpresa.id,
         contactoClienteId: contact.id,
         clienteEmpresaIds: [primaryEmpresa.id],

@@ -79,6 +79,17 @@ function toDateOnly(iso: string | null): string {
   return iso.slice(0, 10);
 }
 
+function toLimaDateOnly(iso: string | null): string {
+  if (!iso) return '';
+  const t = iso.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+  const d = new Date(t);
+  if (!Number.isNaN(d.getTime())) {
+    return d.toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+  }
+  return t.slice(0, 10);
+}
+
 export function mapApiActivityToActivity(row: ApiActivity): Activity {
   const linkedContacts =
     row.contacts?.map((c) => c.contact).filter((c): c is NonNullable<typeof c> => Boolean(c)) ?? [];
@@ -141,7 +152,7 @@ export function mapApiActivityToActivity(row: ApiActivity): Activity {
     dueDate: toDateOnly(row.dueDate),
     startDate: toDateOnly(row.startDate ?? '') || undefined,
     startTime: row.startTime ?? undefined,
-    completedAt: row.completedAt ? toDateOnly(row.completedAt) : undefined,
+    completedAt: row.completedAt ? toLimaDateOnly(row.completedAt) : undefined,
     createdAt: toDateOnly(row.createdAt),
     callGoal: row.callGoal,
   };

@@ -13,6 +13,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { ActivityActor } from '../activity-logs/activity-logs.types';
 import {
+  instantFromLimaDayAndTime,
   parseDateFilterEndLima,
   parseDateFilterStartLima,
   parseDayStartLima,
@@ -129,10 +130,27 @@ export class ActivitiesService {
     return s === 'completada' || s === 'completado';
   }
 
+  /** Llamada/reunión registradas: la fecha del formulario es cuándo ocurrió. */
+  private isLoggedOccurredType(type: string | null | undefined): boolean {
+    const t = (type ?? '').trim().toLowerCase();
+    return t === 'llamada' || t === 'reunion';
+  }
+
+  private occurredAtFromSchedule(
+    dueDate: Date,
+    startDate: Date | null | undefined,
+    startTime?: string | null,
+  ): Date {
+    return instantFromLimaDayAndTime(startDate ?? dueDate, startTime);
+  }
+
   /**
    * Reportes agrupan por `completedAt` (semanas Lima). Si el cliente manda solo
    * YYYY-MM-DD al completar, usamos el instante actual — alineado con historial
    * (ActivityLog.createdAt) y sin leer tablas extra.
+   *
+   * En llamada/reunión completada se ignora ese “ahora”: se usa fecha + hora
+   * de la actividad (cuándo se hizo la llamada).
    */
   private resolveCompletedAt(
     raw: string | null | undefined,
@@ -730,7 +748,10 @@ export class ActivitiesService {
     }
     const startDate = this.parseDate(dto.startDate);
     const status = dto.status?.trim() || 'pendiente';
-    const completedAt = this.resolveCompletedAt(dto.completedAt, status);
+    const completedAt =
+      this.isLoggedOccurredType(type) && this.isCompletedStatus(status)
+        ? this.occurredAtFromSchedule(dueDate, startDate, dto.startTime)
+        : this.resolveCompletedAt(dto.completedAt, status);
     const priority = this.normalizePriority(dto.priority);
 
     const linkRaw = {
@@ -1058,6 +1079,23 @@ export class ActivitiesService {
       !existingRow.completedAt
     ) {
       data.completedAt = new Date();
+    }
+
+    const effectiveType = String(data.type ?? existingRow.type);
+    if (
+      this.isLoggedOccurredType(effectiveType) &&
+      this.isCompletedStatus(nextStatus)
+    ) {
+      const due = (data.dueDate as Date | undefined) ?? existingRow.dueDate;
+      const start =
+        data.startDate !== undefined
+          ? (data.startDate as Date | null)
+          : existingRow.startDate;
+      const time =
+        data.startTime !== undefined
+          ? (data.startTime as string | null)
+          : existingRow.startTime;
+      data.completedAt = this.occurredAtFromSchedule(due, start, time);
     }
 
     const linkUpdate = this.hasLinkFields(dto);

@@ -41,6 +41,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { activityDateFieldLabel, usesOccurredDate } from '@/lib/activityDateLabel';
 import { toast } from '@/lib/notify';
 import type { UpdateActivityPayload } from '@/lib/activityApi';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -107,12 +108,13 @@ function toFormFieldsType(type: string): ActivityFormFieldsType {
 }
 
 function formatFullDateLocal(dateStr: string): string {
-  const d = new Date(dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`);
+  const d = new Date(dateStr.includes('T') ? dateStr : `${dateStr}T12:00:00-05:00`);
   return d.toLocaleDateString('es-PE', {
     weekday: 'long',
     day: '2-digit',
     month: 'long',
     year: 'numeric',
+    timeZone: 'America/Lima',
   });
 }
 
@@ -222,6 +224,16 @@ export function ActivityDetailDialog({
   const typeColor = activityTypeColorMap[editType] ?? 'text-muted-foreground';
   const viewSummary = parseActivityDescriptionSummary(currentActivity.description);
   const fieldForm = editFormToFields(editForm);
+  const occurredDate = currentActivity.startDate || currentActivity.dueDate;
+  const occurredYmd = occurredDate.slice(0, 10);
+  const completedYmd = currentActivity.completedAt?.slice(0, 10);
+  const showCompletedAt = Boolean(
+    currentActivity.completedAt &&
+      !(usesOccurredDate(stType) && completedYmd === occurredYmd),
+  );
+  const occurredDateText = currentActivity.startTime
+    ? `${formatFullDateLocal(occurredDate)}, ${currentActivity.startTime}`
+    : formatFullDateLocal(occurredDate);
 
   if (editing) {
     return (
@@ -325,9 +337,9 @@ export function ActivityDetailDialog({
             <div className="flex items-center gap-2.5 rounded-lg border border-border bg-muted/25 p-3">
               <Calendar className="size-4 shrink-0 text-text-tertiary" />
               <div className="min-w-0">
-                <p className="text-xs text-text-secondary">Fecha de vencimiento</p>
+                <p className="text-xs text-text-secondary">{activityDateFieldLabel(stType)}</p>
                 <p className="truncate text-sm font-medium capitalize text-text-primary">
-                  {formatFullDateLocal(currentActivity.dueDate)}
+                  {occurredDateText}
                 </p>
               </div>
             </div>
@@ -340,13 +352,13 @@ export function ActivityDetailDialog({
                 </p>
               </div>
             </div>
-            {currentActivity.completedAt && (
+            {showCompletedAt && (
               <div className="flex items-center gap-2.5 rounded-lg border border-border bg-muted/25 p-3">
                 <Calendar className="size-4 shrink-0 text-stage-client" />
                 <div className="min-w-0">
                   <p className="text-xs text-text-secondary">Completada el</p>
                   <p className="truncate text-sm font-medium capitalize text-text-primary">
-                    {formatFullDateLocal(currentActivity.completedAt)}
+                    {formatFullDateLocal(currentActivity.completedAt!)}
                   </p>
                 </div>
               </div>

@@ -56,7 +56,7 @@ import { toast } from '@/lib/notify';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { formatCurrency, formatDate, completedAtNowIso } from '@/lib/formatters';
+import { formatCurrency, formatDate, activityCompletedAtIso } from '@/lib/formatters';
 import { mergeCompaniesForTaskPicker, taskAssociationsFromActivity } from '@/lib/taskAssociationsFromActivity';
 import { ENTITY_DETAIL_SECTION_TAB_OPTIONS } from '@/lib/entityDetailSectionTabs';
 import { api } from '@/lib/api';
@@ -572,7 +572,7 @@ export default function EmpresaDetailPage() {
         dueDate: draft.dueDate,
         startDate: draft.startDate,
         startTime: draft.startTime,
-        completedAt: completedAtNowIso(),
+        completedAt: activityCompletedAtIso(draft.type, draft.dueDate, draft.startTime),
         createdAt: new Date().toISOString().slice(0, 10),
         contactId: persistedContactId ?? firstContact?.id,
         companyId: persistedCompanyId,
@@ -590,7 +590,7 @@ export default function EmpresaDetailPage() {
         dueDate: draft.dueDate,
         startDate: draft.startDate,
         startTime: draft.startTime,
-        completedAt: completedAtNowIso(),
+        completedAt: activityCompletedAtIso(draft.type, draft.dueDate, draft.startTime),
         contactId: persistedContactId,
         companyId: persistedCompanyId,
       });
