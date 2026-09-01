@@ -577,10 +577,7 @@ export function ProspectoInfoModal({
               <EditableField
                 label="Contacto"
                 value={
-                  prospecto.contactado === true ||
-                  prospecto.contactado === 'true'
-                    ? 'true'
-                    : 'false'
+                  prospecto.contactado === true ? 'true' : 'false'
                 }
                 fieldId={prospecto.id}
                 fieldKey="contactado"
