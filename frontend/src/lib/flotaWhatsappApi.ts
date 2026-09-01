@@ -106,7 +106,6 @@ export type FlotaMasivoProspecto = {
   redSocial?: string | null;
   fechaRegistro?: string | null;
   celular: string | null;
-  movil: string | null;
   estado: string | null;
   operador: string | null;
   createdAt?: string | null;

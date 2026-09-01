@@ -1296,7 +1296,7 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
         if (!isDeleted) {
           setProspectoData({
             name: String(data.nombreCompleto || ''),
-            phone: String(data.celular || data.movil || ''),
+            phone: String(data.celular || ''),
           });
         } else {
           setProspectoData(null);
@@ -1729,12 +1729,14 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
     }
     setSaving(true);
     const body: Record<string, unknown> = {};
-    const allowedFields = ['nombreCompleto', 'celular', 'movil', 'edad', 'distrito', 'modalidad', 'redSocial', 'anioVehiculo', 'observaciones', 'estado'];
+    const allowedFields = ['nombreCompleto', 'celular', 'contactado', 'edad', 'distrito', 'modalidad', 'redSocial', 'anioVehiculo', 'observaciones', 'estado'];
     for (const k of allowedFields) {
       const v = editData[k];
       if (k === 'edad' || k === 'anioVehiculo') {
         const num = parseInt(v, 10);
         if (!isNaN(num)) body[k] = num;
+      } else if (k === 'contactado') {
+        body[k] = v === 'true';
       } else if (k === 'esDuplicado') {
         body[k] = v === 'true' ? true : v === 'false' ? false : undefined;
       } else if (k === 'observaciones') {
@@ -2291,12 +2293,17 @@ function ChatPanel({ contactId, conversations, onContactUpdated, onMarkRead, mes
               />
             </div>
             <div className="space-y-1">
-              <Label>Móvil</Label>
-              <Input
-                value={editData.movil ?? ''}
-                onChange={(e) => setEditData((prev) => ({ ...prev, movil: e.target.value }))}
-                placeholder="Móvil"
-              />
+              <Label>Contacto</Label>
+              <Select
+                value={editData.contactado === 'true' ? 'true' : 'false'}
+                onValueChange={(v) => setEditData((prev) => ({ ...prev, contactado: v }))}
+              >
+                <SelectTrigger><SelectValue placeholder="Sin contactar" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="false">Sin contactar</SelectItem>
+                  <SelectItem value="true">Contactado</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label>Edad</Label>
@@ -2678,7 +2685,7 @@ function MasivoView({ isConnected, masivoConnected = false, onConnectClick }: { 
       const mapped: FlotaConversation[] = data.map((p) => ({
         id: p.id,
         name: p.nombreCompleto,
-        phone: p.celular ?? p.movil ?? '',
+        phone: p.celular ?? '',
         preview: '',
         time: new Date().toISOString(),
         direction: 'outbound',
@@ -3865,7 +3872,7 @@ function FlotaPipelineView({ onSelect }: { onSelect: (contactId: string) => void
         .map((p) => ({
           id: p.id,
           name: p.nombreCompleto || 'Sin nombre',
-          phone: p.celular || p.movil || '',
+          phone: p.celular || '',
           preview: '',
           time: p.createdAt,
           direction: 'inbound' as const,

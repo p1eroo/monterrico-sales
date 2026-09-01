@@ -227,7 +227,7 @@ export default function ChatPanelStandalone({ prospectoId, onClose }: ChatPanelS
       .then((data) => {
         setProspecto({
           nombreCompleto: String(data.nombreCompleto || ''),
-          celular: String(data.celular || data.movil || ''),
+          celular: String(data.celular || ''),
           estado: String(data.estado || ''),
           operador: String(data.operador || ''),
         });

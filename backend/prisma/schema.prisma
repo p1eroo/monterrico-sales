@@ -1116,10 +1116,11 @@ model FlotaProspecto {
    fechaCita       DateTime?
   asistencia      String?
   fechaAfiliacion DateTime? @db.Date
-  movil           String?
   observaciones   String?   @db.Text
   /** true cuando el celular ya existía en la BD al momento de importar */
   esDuplicado     Boolean   @default(false)
+  /** marca manual: si el prospecto fue contactado o no */
+  contactado      Boolean   @default(false)
   lastReadAt      DateTime?
   origen          String    @default("MANUAL")
   createdAt       DateTime  @default(now())

@@ -59,7 +59,7 @@ export function audiencePreviewContacts(
 }
 
 export function flotaRowToWhatsAppContact(row: FlotaProspectoRow): WhatsAppContact | null {
-  const phone = normalizeWhatsAppPhone(row.celular ?? row.movil ?? '');
+  const phone = normalizeWhatsAppPhone(row.celular ?? '');
   if (!phone) return null;
   const name = (row.nombreCompleto ?? '').trim() || 'Sin nombre';
   return {

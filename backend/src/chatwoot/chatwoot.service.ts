@@ -291,7 +291,6 @@ export class ChatwootService {
             eliminadoAt: null,
             OR: [
               { celular: { endsWith: suffix } },
-              { movil: { endsWith: suffix } },
             ],
           },
           select: { chatwootConversationId: true, chatwootContactId: true },
@@ -446,7 +445,6 @@ export class ChatwootService {
             eliminadoAt: null,
             OR: [
               { celular: { endsWith: suffix } },
-              { movil: { endsWith: suffix } },
             ],
           },
           select: { chatwootConversationId: true, chatwootContactId: true },
@@ -547,13 +545,11 @@ export class ChatwootService {
     if (digits.length >= 3) {
       matchConditions.push(
         { celular: { contains: digits } },
-        { movil: { contains: digits } },
       );
     }
     if (phoneSuffix.length >= 3 && phoneSuffix !== digits) {
       matchConditions.push(
         { celular: { endsWith: phoneSuffix } },
-        { movil: { endsWith: phoneSuffix } },
       );
     }
 
@@ -754,7 +750,6 @@ export class ChatwootService {
         where: {
           OR: [
             { celular: { endsWith: suffix } },
-            { movil: { endsWith: suffix } },
           ],
           chatwootContactId: { not: null },
         },
@@ -949,7 +944,6 @@ export class ChatwootService {
           where: {
             OR: [
               { celular: { endsWith: cleanPhone.slice(-9) } },
-              { movil: { endsWith: cleanPhone.slice(-9) } },
             ],
           },
         });

@@ -343,6 +343,8 @@ export function ProspectoInfoModal({
           patch[fieldKey] = Number.isFinite(n as number) ? n : null;
         } else if (fieldKey === "fechaCita" && newValue) {
           next.fechaCita = new Date(newValue).toISOString();
+        } else if (fieldKey === "contactado") {
+          patch[fieldKey] = newValue === "true";
         } else {
           patch[fieldKey] = newValue;
         }
@@ -573,10 +575,20 @@ export function ProspectoInfoModal({
                 onSaved={handleFieldSaved}
               />
               <EditableField
-                label="Móvil"
-                value={prospecto.movil}
+                label="Contacto"
+                value={
+                  prospecto.contactado === true ||
+                  prospecto.contactado === 'true'
+                    ? 'true'
+                    : 'false'
+                }
                 fieldId={prospecto.id}
-                fieldKey="movil"
+                fieldKey="contactado"
+                type="select"
+                options={[
+                  { label: 'Contactado', value: 'true' },
+                  { label: 'Sin contactar', value: 'false' },
+                ]}
                 onSaved={handleFieldSaved}
               />
             </InfoSection>

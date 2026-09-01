@@ -64,7 +64,6 @@ async function main() {
       where: {
         OR: [
           { celular: { contains: last9 } },
-          { movil: { contains: last9 } },
         ],
       },
       select: { id: true, nombreCompleto: true },

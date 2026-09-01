@@ -672,9 +672,8 @@ export function CrmAudienceImportDialog({
                             >
                               <span className="block truncate text-[13px] text-[#475569] dark:text-gray-400">
                                 {formatWhatsAppPhoneDisplay(
-                                  normalizeWhatsAppPhone(p.celular ?? p.movil) ??
-                                    p.celular ??
-                                    p.movil,
+                                  normalizeWhatsAppPhone(p.celular) ??
+                                    p.celular,
                                 )}
                               </span>
                             </td>

@@ -999,18 +999,17 @@ export class WhatsappCloudService {
     for (let i = 0; i < last9List.length; i += chunkSize) {
       const chunk = last9List.slice(i, i + chunkSize);
       const rows = await this.prisma.$queryRaw<
-        { id: string; celular: string | null; movil: string | null }[]
+        { id: string; celular: string | null }[]
       >`
-        SELECT id, celular, movil
+        SELECT id, celular
         FROM "FlotaProspecto"
         WHERE "eliminadoAt" IS NULL
           AND (
             (celular IS NOT NULL AND right(regexp_replace(celular, '\\D', '', 'g'), 9) = ANY(${chunk}::text[]))
-            OR (movil IS NOT NULL AND right(regexp_replace(movil, '\\D', '', 'g'), 9) = ANY(${chunk}::text[]))
           )
       `;
       for (const row of rows) {
-        for (const raw of [row.celular, row.movil]) {
+        for (const raw of [row.celular]) {
           if (!raw) continue;
           const key = raw.replace(/\D/g, '').slice(-9);
           if (key.length === 9 && !map.has(key)) map.set(key, row.id);

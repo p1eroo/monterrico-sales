@@ -37,7 +37,7 @@ const estadoColors: Record<string, string> = {
 };
 
 function prospectPhone(prospecto: FlotaMasivoProspecto): string {
-  return (prospecto.celular || prospecto.movil || '').trim();
+  return (prospecto.celular || '').trim();
 }
 
 export function ProspectosTableModal({

@@ -168,7 +168,7 @@ export function ProspectoEditDialog({
       'nombreCompleto',
       'dni',
       'celular',
-      'movil',
+      'contactado',
       'edad',
       'distrito',
       'ciudad',
@@ -190,6 +190,8 @@ export function ProspectoEditDialog({
       if (k === 'edad' || k === 'anioVehiculo') {
         const num = parseInt(v ?? '', 10);
         if (!Number.isNaN(num)) body[k] = num;
+      } else if (k === 'contactado') {
+        body[k] = v === 'true';
       } else if (k === 'observaciones') {
         const currentLatest = originalObsRef.current.split('\n---\n')[0]?.replace(/^(?:\[.+?\]\s*)+/, '') ?? '';
         if (v?.trim() && v.trim() !== currentLatest) {
@@ -299,13 +301,19 @@ export function ProspectoEditDialog({
                 placeholder="Celular"
               />
             </FormDialogField>
-            <FormDialogField label="Móvil">
-              <Input
-                className={formDialogInputClass}
-                value={editData.movil ?? ''}
-                onChange={(e) => setEditData((prev) => ({ ...prev, movil: e.target.value }))}
-                placeholder="Móvil"
-              />
+            <FormDialogField label="Contacto">
+              <Select
+                value={editData.contactado === 'true' ? 'true' : 'false'}
+                onValueChange={(v) => setEditData((prev) => ({ ...prev, contactado: v }))}
+              >
+                <SelectTrigger className={formDialogSelectTriggerClass}>
+                  <SelectValue placeholder="Sin contactar" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="false">Sin contactar</SelectItem>
+                  <SelectItem value="true">Contactado</SelectItem>
+                </SelectContent>
+              </Select>
             </FormDialogField>
           </FormSection>
 

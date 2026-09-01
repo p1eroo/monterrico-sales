@@ -41,7 +41,7 @@ function getInitials(s: string): string {
 }
 
 /** Mapeo de columnas del Google Sheet (basado en la captura del usuario). */
-// Columnas: N° | F. REGISTRO | RED SOCIAL | CELULAR | APELLIDOS Y NOMBRES | EDAD | OPERADOR | ESTADO | MODALIDAD | AÑO VEH. | DISTRITO | F. CITA | ASISTENCIA | F AFILIACION | MOVIL | OBSERVACIONES
+// Columnas: N° | F. REGISTRO | RED SOCIAL | CELULAR | APELLIDOS Y NOMBRES | EDAD | OPERADOR | ESTADO | MODALIDAD | AÑO VEH. | DISTRITO | F. CITA | ASISTENCIA | F AFILIACION | OBSERVACIONES
 const COL = {
   NUMERO: 0,
   FECHA_REGISTRO: 1,
@@ -58,8 +58,7 @@ const COL = {
   FECHA_CITA: 12,
   ASISTENCIA: 13,
   FECHA_AFILIACION: 14,
-  MOVIL: 15,
-  OBSERVACIONES: 17,
+  OBSERVACIONES: 16,
 };
 
 function cell(row: string[], idx: number): string {
@@ -155,19 +154,26 @@ export class FlotaProspectosService {
     anioVehiculo?: number | null;
     distrito?: string | null;
     fechaCita?: Date | null;
-    movil?: string | null;
     observaciones?: string | null;
     asistencia?: string | null;
     llamadaCount?: number;
+    contactado?: boolean;
     eliminadoAt?: Date | null;
   } | null> {
     const norm = this.normalizeCelular(phone);
     if (!norm) return null;
     const prospecto = await this.prisma.flotaProspecto.findFirst({
       where: {
-        OR: [{ celular: { endsWith: norm } }, { movil: { endsWith: norm } }],
+        OR: [{ celular: { endsWith: norm } }],
       },
-      include: { _count: { select: { llamadas: true } } },
+      include: {
+        _count: {
+          select: {
+            llamadas: true,
+            whatsappMessages: { where: { direction: 'outbound' } },
+          },
+        },
+      },
     });
     if (!prospecto) return null;
     return {
@@ -182,10 +188,12 @@ export class FlotaProspectosService {
       anioVehiculo: prospecto.anioVehiculo,
       distrito: prospecto.distrito,
       fechaCita: prospecto.fechaCita,
-      movil: prospecto.movil,
       observaciones: prospecto.observaciones,
       asistencia: prospecto.asistencia,
       llamadaCount: prospecto._count?.llamadas ?? 0,
+      contactado:
+        prospecto.contactado === true ||
+        prospecto._count?.whatsappMessages > 0,
       eliminadoAt: prospecto.eliminadoAt,
     };
   }
@@ -224,7 +232,6 @@ export class FlotaProspectosService {
         redSocial: true,
         fechaRegistro: true,
         celular: true,
-        movil: true,
         estado: true,
         operador: true,
         ciudad: true,
@@ -433,9 +440,21 @@ export class FlotaProspectosService {
         if (wantsContactado && wantsSinContactar) {
           // Ambos seleccionados = sin filtro
         } else if (wantsContactado) {
-          where.whatsappMessages = { some: { direction: 'outbound' } };
+          where.AND = [
+            ...(Array.isArray(where.AND) ? (where.AND as any[]) : []),
+            {
+              OR: [
+                { contactado: true },
+                { whatsappMessages: { some: { direction: 'outbound' } } },
+              ],
+            },
+          ];
         } else if (wantsSinContactar) {
-          where.whatsappMessages = { none: { direction: 'outbound' } };
+          where.AND = [
+            ...(Array.isArray(where.AND) ? (where.AND as any[]) : []),
+            { contactado: false },
+            { whatsappMessages: { none: { direction: 'outbound' } } },
+          ];
         }
       }
     }
@@ -535,7 +554,6 @@ export class FlotaProspectosService {
             id: true,
             nombreCompleto: true,
             celular: true,
-            movil: true,
             ciudad: true,
           },
         }),
@@ -593,7 +611,9 @@ export class FlotaProspectosService {
         ...(p as any)._count,
         archivos: fileCountMap.get(p.id) ?? 0,
       },
-      contactado: ((p as any)._count?.whatsappMessages ?? 0) > 0,
+      contactado:
+        (p as any).contactado === true ||
+        ((p as any)._count?.whatsappMessages ?? 0) > 0,
     }));
 
     return { data: dataWithFiles, total, page, limit };
@@ -603,7 +623,14 @@ export class FlotaProspectosService {
   async findOne(id: string) {
     const prospecto = await this.prisma.flotaProspecto.findUnique({
       where: { id },
-      include: { _count: { select: { llamadas: true } } },
+      include: {
+        _count: {
+          select: {
+            llamadas: true,
+            whatsappMessages: { where: { direction: 'outbound' } },
+          },
+        },
+      },
     });
     if (!prospecto) return null;
     const archivos = await this.prisma.crmFile.count({
@@ -624,6 +651,9 @@ export class FlotaProspectosService {
         llamadas: prospecto._count.llamadas,
         archivos,
       },
+      contactado:
+        prospecto.contactado === true ||
+        prospecto._count.whatsappMessages > 0,
     };
   }
 
@@ -657,6 +687,14 @@ export class FlotaProspectosService {
     // Normalize estado before comparing or saving
     if (safeData.estado && typeof safeData.estado === 'string') {
       safeData.estado = normalizeEstado(safeData.estado);
+    }
+
+    // Normalize contactado to boolean (admite "true"/"false" desde editores inline)
+    if (safeData.contactado !== undefined) {
+      safeData.contactado =
+        safeData.contactado === true ||
+        safeData.contactado === 'true' ||
+        safeData.contactado === 1;
     }
 
     // Auto-set fechaAfiliacion cuando el estado cambia a Afiliado
@@ -788,7 +826,13 @@ export class FlotaProspectosService {
             ? `+${digits}`
             : String(data.celular);
     }
-    const rawPhone = String(data.celular || data.movil || '');
+    const rawPhone = String(data.celular || '');
+    if (data.contactado !== undefined) {
+      data.contactado =
+        data.contactado === true ||
+        data.contactado === 'true' ||
+        data.contactado === 1;
+    }
     const existingByPhone = await this.findByPhone(rawPhone);
     if (existingByPhone) {
       const prospecto = await this.prisma.flotaProspecto.findUnique({
@@ -993,9 +1037,6 @@ export class FlotaProspectosService {
       FECHA_CITA: rawHeaders.findIndex((h) => h.includes('CITA')),
       ASISTENCIA: rawHeaders.findIndex((h) => h.includes('ASISTENCIA')),
       FECHA_AFILIACION: rawHeaders.findIndex((h) => h.includes('AFILIACION')),
-      MOVIL: rawHeaders.findIndex(
-        (h) => h.includes('MOVIL') && h !== 'CELULAR',
-      ),
       OBSERVACIONES: rawHeaders.findIndex((h) => h.includes('OBSERV')),
     };
 
@@ -1048,7 +1089,7 @@ export class FlotaProspectosService {
     const sheetPhones = new Set<string>();
     for (const row of dataRows) {
       const cel =
-        col.CELULAR !== -1 ? cell(row, col.CELULAR) : cell(row, col.MOVIL);
+        col.CELULAR !== -1 ? cell(row, col.CELULAR) : '';
       const norm = this.normalizeCelular(cel);
       if (norm) sheetPhones.add(norm);
     }
@@ -1083,7 +1124,7 @@ export class FlotaProspectosService {
       const nombre =
         col.NOMBRE_COMPLETO !== -1 ? cell(row, col.NOMBRE_COMPLETO) : '';
       const celular =
-        col.CELULAR !== -1 ? cell(row, col.CELULAR) : cell(row, col.MOVIL);
+        col.CELULAR !== -1 ? cell(row, col.CELULAR) : '';
       const celularNorm = this.normalizeCelular(celular) || '';
 
       // Skip if both celular and nombre are empty
@@ -1160,10 +1201,6 @@ export class FlotaProspectosService {
           if (col.FECHA_AFILIACION !== -1) {
             const val = parseDate(cell(row, col.FECHA_AFILIACION));
             if (val) updateData.fechaAfiliacion = val;
-          }
-          if (col.MOVIL !== -1) {
-            const val = cell(row, col.MOVIL);
-            if (val) updateData.movil = val;
           }
           if (col.OBSERVACIONES !== -1) {
             const val = cell(row, col.OBSERVACIONES);
@@ -1246,10 +1283,6 @@ export class FlotaProspectosService {
               const val = parseDate(cell(row, col.FECHA_AFILIACION));
               if (val) rec.fechaAfiliacion = val;
             }
-            if (col.MOVIL !== -1) {
-              const val = cell(row, col.MOVIL);
-              if (val) rec.movil = val;
-            }
             if (col.OBSERVACIONES !== -1) {
               const val = cell(row, col.OBSERVACIONES);
               if (val) rec.observaciones = val;
@@ -1303,7 +1336,6 @@ export class FlotaProspectosService {
           col.FECHA_AFILIACION !== -1
             ? parseDate(cell(row, col.FECHA_AFILIACION))
             : null,
-        movil: col.MOVIL !== -1 ? cell(row, col.MOVIL) || null : null,
         observaciones:
           col.OBSERVACIONES !== -1
             ? cell(row, col.OBSERVACIONES) || null
@@ -1381,7 +1413,7 @@ export class FlotaProspectosService {
     const sheetPhones = new Set<string>();
     for (const row of dataRows) {
       const cel =
-        col.CELULAR !== -1 ? cell(row, col.CELULAR) : cell(row, col.MOVIL);
+        col.CELULAR !== -1 ? cell(row, col.CELULAR) : '';
       const norm = this.normalizeCelular(cel);
       if (norm) sheetPhones.add(norm);
     }
@@ -1417,7 +1449,7 @@ export class FlotaProspectosService {
       const nombre =
         col.NOMBRE_COMPLETO !== -1 ? cell(row, col.NOMBRE_COMPLETO) : '';
       const celular =
-        col.CELULAR !== -1 ? cell(row, col.CELULAR) : cell(row, col.MOVIL);
+        col.CELULAR !== -1 ? cell(row, col.CELULAR) : '';
       const celularNorm = this.normalizeCelular(celular) || '';
       if (nombre && sampleNames.length < 5) sampleNames.push(nombre);
 
@@ -1494,10 +1526,6 @@ export class FlotaProspectosService {
           if (col.FECHA_AFILIACION !== -1) {
             const val = parseDate(cell(row, col.FECHA_AFILIACION));
             if (val) updateData.fechaAfiliacion = val;
-          }
-          if (col.MOVIL !== -1) {
-            const val = cell(row, col.MOVIL);
-            if (val) updateData.movil = val;
           }
           if (col.OBSERVACIONES !== -1) {
             const val = cell(row, col.OBSERVACIONES);
@@ -1580,7 +1608,6 @@ export class FlotaProspectosService {
           col.FECHA_AFILIACION !== -1
             ? parseDate(cell(row, col.FECHA_AFILIACION))
             : null,
-        movil: col.MOVIL !== -1 ? cell(row, col.MOVIL) || null : null,
         observaciones:
           col.OBSERVACIONES !== -1
             ? cell(row, col.OBSERVACIONES) || null
@@ -1700,7 +1727,7 @@ export class FlotaProspectosService {
     const sheetPhones = new Set<string>();
     for (const row of dataRows) {
       const cel =
-        col.CELULAR !== -1 ? cell(row, col.CELULAR) : cell(row, col.MOVIL);
+        col.CELULAR !== -1 ? cell(row, col.CELULAR) : '';
       const norm = this.normalizeCelular(cel);
       if (norm) sheetPhones.add(norm);
     }
@@ -1736,7 +1763,7 @@ export class FlotaProspectosService {
       const nombre =
         col.NOMBRE_COMPLETO !== -1 ? cell(row, col.NOMBRE_COMPLETO) : '';
       const celular =
-        col.CELULAR !== -1 ? cell(row, col.CELULAR) : cell(row, col.MOVIL);
+        col.CELULAR !== -1 ? cell(row, col.CELULAR) : '';
       const celularNorm = this.normalizeCelular(celular) || '';
       if (nombre && sampleNames.length < 5) sampleNames.push(nombre);
 
@@ -1813,10 +1840,6 @@ export class FlotaProspectosService {
           if (col.FECHA_AFILIACION !== -1) {
             const val = parseDate(cell(row, col.FECHA_AFILIACION));
             if (val) updateData.fechaAfiliacion = val;
-          }
-          if (col.MOVIL !== -1) {
-            const val = cell(row, col.MOVIL);
-            if (val) updateData.movil = val;
           }
           if (col.OBSERVACIONES !== -1) {
             const val = cell(row, col.OBSERVACIONES);
@@ -1899,7 +1922,6 @@ export class FlotaProspectosService {
           col.FECHA_AFILIACION !== -1
             ? parseDate(cell(row, col.FECHA_AFILIACION))
             : null,
-        movil: col.MOVIL !== -1 ? cell(row, col.MOVIL) || null : null,
         observaciones:
           col.OBSERVACIONES !== -1
             ? cell(row, col.OBSERVACIONES) || null

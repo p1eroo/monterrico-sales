@@ -1473,7 +1473,7 @@ function audioFileFromBlob(blob: Blob): File {
 }
 
 const PROSPECTO_EDIT_FIELDS = [
-  'nombreCompleto', 'celular', 'movil', 'edad', 'distrito',
+  'nombreCompleto', 'celular', 'contactado', 'edad', 'distrito',
   'modalidad', 'placa', 'anioVehiculo', 'redSocial', 'observaciones',
 ] as const;
 
@@ -1497,6 +1497,8 @@ function buildProspectoPatchBody(editData: Record<string, string>): Record<strin
     if (k === 'edad' || k === 'anioVehiculo') {
       const num = parseInt(v ?? '', 10);
       if (!isNaN(num)) body[k] = num;
+    } else if (k === 'contactado') {
+      body[k] = v === 'true';
     } else if (v?.trim()) {
       body[k] = v.trim();
     }
@@ -2772,7 +2774,6 @@ export function ChatwootChatPanel({
                   {prospecto.placa && <Row label="Placa" value={prospecto.placa} />}
                   {prospecto.anioVehiculo != null && <Row label="Año Veh." value={String(prospecto.anioVehiculo)} />}
                   {prospecto.distrito && <Row label="Distrito" value={prospecto.distrito} />}
-                  {prospecto.movil && <Row label="Movil" value={prospecto.movil} />}
                   {prospecto.fechaCita && (
                     <>
                       <Row label="F. Cita" value={formatDateLocal(prospecto.fechaCita)} />
@@ -2989,8 +2990,17 @@ export function ChatwootChatPanel({
               <Input value={editData.celular ?? ''} onChange={(e) => setEditData((d) => ({ ...d, celular: e.target.value }))} />
             </div>
             <div className="space-y-1">
-              <Label>Móvil</Label>
-              <Input value={editData.movil ?? ''} onChange={(e) => setEditData((d) => ({ ...d, movil: e.target.value }))} />
+              <Label>Contacto</Label>
+              <Select
+                value={editData.contactado === 'true' ? 'true' : 'false'}
+                onValueChange={(v) => setEditData((d) => ({ ...d, contactado: v }))}
+              >
+                <SelectTrigger><SelectValue placeholder="Sin contactar" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="false">Sin contactar</SelectItem>
+                  <SelectItem value="true">Contactado</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label>Edad</Label>

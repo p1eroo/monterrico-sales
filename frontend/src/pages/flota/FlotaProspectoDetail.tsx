@@ -7,7 +7,6 @@ import {
   FileArchive,
   MoreVertical,
   Edit,
-  ClipboardList,
   MessageSquare,
   AlertTriangle,
   Loader2,
@@ -115,7 +114,6 @@ function ProspectoInformacionAside({ prospecto, operadores }: { prospecto: Flota
         },
         { icon: WheelSvgIcon, value: `Año Veh.: ${prospecto.anioVehiculo || '—'}` },
         { icon: ChatRoundLineSvgIcon, value: `Modalidad: ${prospecto.modalidad || '—'}` },
-        { icon: ClipboardList, value: `Móvil: ${prospecto.movil || '—'}` },
         ...(prospecto.fechaAfiliacion
           ? [{ icon: CalendarSvgIcon, value: `Afiliación: ${formatDate(prospecto.fechaAfiliacion)}` }]
           : []),
@@ -750,6 +748,21 @@ export default function FlotaProspectoDetail() {
                 value={editData.celular || ''}
                 onChange={(e) => setEditData({ ...editData, celular: e.target.value })}
               />
+            </div>
+            <div className="grid gap-2">
+              <Label>Contacto</Label>
+              <Select
+                value={editData.contactado ? 'true' : 'false'}
+                onValueChange={(v) => setEditData({ ...editData, contactado: v === 'true' })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sin contactar" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="false">Sin contactar</SelectItem>
+                  <SelectItem value="true">Contactado</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">

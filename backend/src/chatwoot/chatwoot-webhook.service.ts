@@ -324,7 +324,6 @@ export class ChatwootWebhookService {
       where: {
         OR: [
           { celular: { contains: cleaned } },
-          { movil: { contains: cleaned } },
         ],
       },
     });

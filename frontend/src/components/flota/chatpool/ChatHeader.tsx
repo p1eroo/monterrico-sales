@@ -46,7 +46,6 @@ function conversationToProspectoStub(conversation: Conversation): FlotaProspecto
     distrito: null,
     ciudad: null,
     fechaAfiliacion: null,
-    movil: null,
     observaciones: null,
     esDuplicado: false,
     origen: '',

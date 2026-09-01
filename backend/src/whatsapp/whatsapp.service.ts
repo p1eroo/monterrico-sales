@@ -1197,7 +1197,6 @@ export class WhatsappService {
         where: {
           OR: [
             { celular: { contains: digits } },
-            { movil: { contains: digits } },
           ],
         },
         select: { id: true },
@@ -1316,9 +1315,9 @@ export class WhatsappService {
 
     const prospecto = await this.prisma.flotaProspecto.findUnique({
       where: { id: prospectoId },
-      select: { celular: true, movil: true },
+      select: { celular: true },
     });
-    const phoneDigits = (prospecto?.celular ?? prospecto?.movil ?? '').replace(/\D/g, '').slice(-9);
+    const phoneDigits = (prospecto?.celular ?? '').replace(/\D/g, '').slice(-9);
     if (phoneDigits.length >= 8) {
       await this.prospectoNameSync.linkMessagesToProspecto(
         prospectoId,
@@ -1738,23 +1737,21 @@ export class WhatsappService {
     const candidates = this.waNumberCandidates(peerDigits);
     if (candidates.length === 0) return null;
     const rows = opts?.includeDeleted
-      ? await this.prisma.$queryRaw<{ id: string; nombreCompleto: string; celular: string | null; movil: string | null }[]>`
-          SELECT id, "nombreCompleto", celular, movil
+      ? await this.prisma.$queryRaw<{ id: string; nombreCompleto: string; celular: string | null }[]>`
+          SELECT id, "nombreCompleto", celular
           FROM "FlotaProspecto"
           WHERE (
               (celular IS NOT NULL AND regexp_replace(celular, '\\D', '', 'g') = ANY(${candidates}::text[]))
-              OR (movil IS NOT NULL AND regexp_replace(movil, '\\D', '', 'g') = ANY(${candidates}::text[]))
             )
           ORDER BY "eliminadoAt" NULLS FIRST, "fechaRegistro" DESC
           LIMIT 1
         `
-      : await this.prisma.$queryRaw<{ id: string; nombreCompleto: string; celular: string | null; movil: string | null }[]>`
-          SELECT id, "nombreCompleto", celular, movil
+      : await this.prisma.$queryRaw<{ id: string; nombreCompleto: string; celular: string | null }[]>`
+          SELECT id, "nombreCompleto", celular
           FROM "FlotaProspecto"
           WHERE "eliminadoAt" IS NULL
             AND (
               (celular IS NOT NULL AND regexp_replace(celular, '\\D', '', 'g') = ANY(${candidates}::text[]))
-              OR (movil IS NOT NULL AND regexp_replace(movil, '\\D', '', 'g') = ANY(${candidates}::text[]))
             )
           LIMIT 1
         `;
@@ -2802,11 +2799,11 @@ export class WhatsappService {
       prospectoId = trimmedId;
       const prospecto = await this.prisma.flotaProspecto.findUnique({
         where: { id: prospectoId },
-        select: { celular: true, movil: true, origen: true, eliminadoAt: true },
+        select: { celular: true, origen: true, eliminadoAt: true },
       });
       if (!prospecto) throw new NotFoundException('Conversación no encontrada');
       prospectoMeta = { origen: prospecto.origen, eliminadoAt: prospecto.eliminadoAt };
-      phoneDigits = (prospecto.celular ?? prospecto.movil ?? '').replace(/\D/g, '').slice(-9);
+      phoneDigits = (prospecto.celular ?? '').replace(/\D/g, '').slice(-9);
     }
 
     const candidates =
@@ -3001,7 +2998,7 @@ export class WhatsappService {
     let resolvedProspectoId: string | null = isWaChat ? null : prospectoId;
     let phoneRaw: string | null = null;
     let flotaProspecto:
-      | { id: string; nombreCompleto: string; celular: string | null; movil: string | null; eliminadoAt: Date | null }
+      | { id: string; nombreCompleto: string; celular: string | null; eliminadoAt: Date | null }
       | null = null;
 
     if (isWaChat) {
@@ -3010,7 +3007,7 @@ export class WhatsappService {
       if (found) {
         flotaProspecto = await this.prisma.flotaProspecto.findUnique({
           where: { id: found.id },
-          select: { id: true, nombreCompleto: true, celular: true, movil: true, eliminadoAt: true },
+          select: { id: true, nombreCompleto: true, celular: true, eliminadoAt: true },
         });
         if (flotaProspecto && !flotaProspecto.eliminadoAt) {
           resolvedProspectoId = flotaProspecto.id;
@@ -3027,12 +3024,12 @@ export class WhatsappService {
     } else {
       flotaProspecto = await this.prisma.flotaProspecto.findUnique({
         where: { id: prospectoId },
-        select: { id: true, nombreCompleto: true, celular: true, movil: true, eliminadoAt: true },
+        select: { id: true, nombreCompleto: true, celular: true, eliminadoAt: true },
       });
       if (!flotaProspecto) {
         throw new BadRequestException('Prospecto no encontrado');
       }
-      phoneRaw = flotaProspecto.celular ?? flotaProspecto.movil;
+      phoneRaw = flotaProspecto.celular;
       if (flotaProspecto.eliminadoAt) {
         resolvedProspectoId = null;
       }
@@ -3533,7 +3530,7 @@ export class WhatsappService {
         try {
           const prospecto = await this.prisma.flotaProspecto.findUnique({
             where: { id: prospectoId },
-            select: { id: true, nombreCompleto: true, celular: true, movil: true },
+            select: { id: true, nombreCompleto: true, celular: true },
           });
 
           if (!prospecto) {
@@ -3543,7 +3540,7 @@ export class WhatsappService {
             continue;
           }
 
-          const rawPhone = prospecto.celular ?? prospecto.movil;
+          const rawPhone = prospecto.celular;
           if (!rawPhone) {
             job.failed++;
             job.results.push({ contactId: prospectoId, status: 'fallido', error: 'Sin teléfono' });

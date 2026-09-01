@@ -114,7 +114,7 @@ export class FlotaLandingWebhookController {
 
     const existing = await this.prisma.flotaProspecto.findFirst({
       where: {
-        OR: [{ celular: { endsWith: last9 } }, { movil: { endsWith: last9 } }],
+        OR: [{ celular: { endsWith: last9 } }],
       },
       select: {
         id: true,

@@ -133,10 +133,7 @@ export class FlowRegistroController {
 
     let prospecto = await this.prisma.flotaProspecto.findFirst({
       where: {
-        OR: [
-          { celular: { contains: cleaned } },
-          { movil: { contains: cleaned } },
-        ],
+        OR: [{ celular: { contains: cleaned } }],
       },
     });
 

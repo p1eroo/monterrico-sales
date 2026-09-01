@@ -434,7 +434,7 @@ export const useChatpoolStore = create<ChatpoolState>((set, get) => ({
   setSidebarView: (view) => set({ sidebarView: view }),
 
   openProspectoConversation: async (prospecto) => {
-    const phone = (prospecto.celular || prospecto.movil || '').trim();
+    const phone = (prospecto.celular || '').trim();
     const digits = phoneKey(phone);
     if (digits.length < 8) {
       toast.error('Este prospecto no tiene celular válido para WhatsApp');

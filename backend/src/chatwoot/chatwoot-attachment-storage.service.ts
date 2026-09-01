@@ -179,7 +179,6 @@ export class ChatwootAttachmentStorageService {
         where: {
           OR: [
             { celular: { contains: cleaned } },
-            { movil: { contains: cleaned } },
           ],
         },
         select: { id: true, nombreCompleto: true },

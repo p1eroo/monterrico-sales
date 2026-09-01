@@ -44,7 +44,6 @@ export interface FlotaProspectoRow {
   fechaCita: string | null;
   asistencia: string | null;
   fechaAfiliacion: string | null;
-  movil: string | null;
   observaciones: string | null;
   esDuplicado: boolean;
   origen: string;
@@ -68,7 +67,6 @@ export interface FlotaMasivoRow {
   id: string;
   nombreCompleto: string;
   celular: string | null;
-  movil: string | null;
   estado: string;
   operador: string | null;
   redSocial: string | null;
@@ -343,8 +341,9 @@ export async function flotaProspectoSetOperador(id: string, operador: string | n
 export interface FlotaProspectoDetalle {
   id: string; nombreCompleto: string; celular: string | null; operador: string | null; estado: string;
   edad?: number | null; modalidad?: string | null; placa?: string | null; aireAcondicionado?: string | null; anioVehiculo?: number | null;
-  distrito?: string | null; ciudad?: string | null; fechaCita?: string | null; movil?: string | null; observaciones?: string | null;
+  distrito?: string | null; ciudad?: string | null; fechaCita?: string | null; observaciones?: string | null;
   asistencia?: string | null; llamadaCount?: number;
+  contactado?: boolean;
   eliminadoAt?: string | null;
 }
 

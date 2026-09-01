@@ -130,7 +130,7 @@ export function mapWhatsappMessage(item: WhatsappMessageItem, conversationId: st
 }
 
 export function mapProspectoToConversation(prospecto: FlotaMasivoProspecto): Conversation {
-  const phone = prospecto.celular || prospecto.movil || '';
+  const phone = prospecto.celular || '';
   const now = new Date();
 
   return {

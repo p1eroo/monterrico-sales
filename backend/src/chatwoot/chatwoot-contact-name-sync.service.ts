@@ -59,7 +59,6 @@ export class ChatwootContactNameSyncService {
           id: true,
           chatwootContactId: true,
           celular: true,
-          movil: true,
           nombreCompleto: true,
         },
       });
@@ -95,13 +94,12 @@ export class ChatwootContactNameSyncService {
   private async resolveContactId(prospecto: {
     chatwootContactId: number | null;
     celular: string | null;
-    movil: string | null;
   }): Promise<number | null> {
     if (prospecto.chatwootContactId && prospecto.chatwootContactId > 0) {
       return prospecto.chatwootContactId;
     }
 
-    const phone = prospecto.celular || prospecto.movil;
+    const phone = prospecto.celular;
     if (!phone) return null;
 
     const suffix = phone.replace(/\D/g, '').slice(-9);

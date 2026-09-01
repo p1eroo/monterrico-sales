@@ -75,7 +75,6 @@ export const FLOTA_PROSPECTO_FIELD_LABELS: Record<string, string> = {
   fechaCita: 'Fecha de cita',
   asistencia: 'Asistencia',
   fechaAfiliacion: 'Fecha de afiliación',
-  movil: 'Móvil',
   observaciones: 'Observaciones',
   origen: 'Origen',
 };

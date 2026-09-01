@@ -106,7 +106,6 @@ export class WhatsappProspectoNameSyncService {
         nombreCompleto: true,
         dni: true,
         celular: true,
-        movil: true,
         whatsappPushName: true,
         whatsappNamePushed: true,
         whatsappNamePushedAt: true,
@@ -145,7 +144,7 @@ export class WhatsappProspectoNameSyncService {
       this.canRetryPush(prospecto, crmName);
 
     if (shouldPushToDevice && instanceApiKey) {
-      const phone = prospecto.celular || prospecto.movil || peerDigits;
+      const phone = prospecto.celular || peerDigits;
       const pushed = await this.evogo.saveContact({
         instanceApiKey,
         number: phone,
@@ -186,7 +185,6 @@ export class WhatsappProspectoNameSyncService {
       select: {
         id: true,
         celular: true,
-        movil: true,
         whatsappNamePushed: true,
         whatsappNamePushedAt: true,
         eliminadoAt: true,
@@ -207,7 +205,7 @@ export class WhatsappProspectoNameSyncService {
       return;
     }
 
-    const phone = prospecto.celular || prospecto.movil;
+    const phone = prospecto.celular;
     if (!phone) return;
 
     const pushed = await this.evogo.saveContact({
@@ -273,7 +271,7 @@ export class WhatsappProspectoNameSyncService {
     const existing = await this.prisma.flotaProspecto.findFirst({
       where: {
         eliminadoAt: null,
-        OR: [{ celular: { endsWith: mobile9 } }, { movil: { endsWith: mobile9 } }],
+        OR: [{ celular: { endsWith: mobile9 } }],
       },
       select: { id: true, nombreCompleto: true, celular: true },
     });
@@ -285,7 +283,7 @@ export class WhatsappProspectoNameSyncService {
     const archived = await this.prisma.flotaProspecto.findFirst({
       where: {
         eliminadoAt: { not: null },
-        OR: [{ celular: { endsWith: mobile9 } }, { movil: { endsWith: mobile9 } }],
+        OR: [{ celular: { endsWith: mobile9 } }],
       },
       select: { id: true },
     });

@@ -222,7 +222,7 @@ export default function FlotaProspectos() {
     nombreCompleto: "",
     celular: "",
     dni: "",
-    movil: "",
+    contactado: "",
     redSocial: "",
     distrito: "",
     ciudad: "",
@@ -692,20 +692,6 @@ export default function FlotaProspectos() {
           getValue() ? formatDateDMY(String(getValue())) : "—",
       },
       {
-        accessorKey: "movil",
-        id: "movil",
-        header: "Movil",
-        size: 100,
-        cell: ({ getValue }) => (
-          <span
-            className="truncate block max-w-[90px]"
-            title={String(getValue() ?? "")}
-          >
-            {String(getValue() ?? "") || "—"}
-          </span>
-        ),
-      },
-      {
         accessorKey: "observaciones",
         id: "observaciones",
         header: "Observaciones",
@@ -869,7 +855,7 @@ export default function FlotaProspectos() {
                 operador: p.operador, estado: p.estado || '',
                 modalidad: null, anioVehiculo: null, placa: null, aireAcondicionado: null, distrito: null,
                 ciudad: null,
-                fechaCita: null, asistencia: null, fechaAfiliacion: null, movil: null,
+                fechaCita: null, asistencia: null, fechaAfiliacion: null,
                 observaciones: null, esDuplicado: false, origen: '', createdAt: '', updatedAt: '',
                 _count: { llamadas: 0 },
               }];
@@ -1126,7 +1112,6 @@ export default function FlotaProspectos() {
       "FECHA_CITA",
       "ASISTENCIA",
       "FECHA_AFILIACION",
-      "MOVIL",
       "OBSERVACIONES",
     ];
     const ws = XLSX.utils.aoa_to_sheet([headers]);
@@ -1269,7 +1254,7 @@ export default function FlotaProspectos() {
         nombreCompleto: newProspecto.nombreCompleto.trim(),
         celular: newProspecto.celular.trim(),
         dni: newProspecto.dni.trim() || null,
-        movil: newProspecto.movil.trim() || null,
+        contactado: newProspecto.contactado === "true",
         redSocial: newProspecto.redSocial.trim() || null,
         operador: newProspecto.operador.trim() || null,
         modalidad: newProspecto.modalidad.trim() || null,
@@ -1295,7 +1280,7 @@ export default function FlotaProspectos() {
         nombreCompleto: "",
         celular: "",
         dni: "",
-        movil: "",
+        contactado: "",
         redSocial: "",
         distrito: "",
         ciudad: "",
@@ -1410,7 +1395,6 @@ export default function FlotaProspectos() {
         "F. Afiliación": p.fechaAfiliacion
           ? new Date(p.fechaAfiliacion).toLocaleDateString("es-PE")
           : "",
-        Móvil: p.movil ?? "",
         Observaciones: p.observaciones ?? "",
         Contacto: p.contactado ? "Contactado" : "Sin contactar",
       }));
@@ -1457,7 +1441,6 @@ export default function FlotaProspectos() {
             { label: "F. Cita", width: 130 },
             { label: "Asistencia", width: 80 },
             { label: "F. Afiliacion", width: 110 },
-            { label: "Movil", width: 100 },
             { label: "Observaciones", width: 170 },
             { label: "Contacto", width: 100 },
           ]}
@@ -2002,17 +1985,6 @@ export default function FlotaProspectos() {
                   </p>
                 )}
               </FormDialogField>
-              <FormDialogField label="Móvil">
-                <Input
-                  className={formDialogInputClass}
-                  value={newProspecto.movil}
-                  onChange={(e) => {
-                    const raw = e.target.value.replace(/\D/g, "").slice(0, 9);
-                    setNewProspecto({ ...newProspecto, movil: raw });
-                  }}
-                  placeholder="Móvil"
-                />
-              </FormDialogField>
               <FormDialogField label="DNI">
                 <Input
                   className={formDialogInputClass}
@@ -2023,6 +1995,22 @@ export default function FlotaProspectos() {
                   }}
                   placeholder="DNI"
                 />
+              </FormDialogField>
+              <FormDialogField label="Contacto">
+                <Select
+                  value={newProspecto.contactado}
+                  onValueChange={(val) =>
+                    setNewProspecto({ ...newProspecto, contactado: val })
+                  }
+                >
+                  <SelectTrigger className={formDialogSelectTriggerClass}>
+                    <SelectValue placeholder="Sin contactar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="false">Sin contactar</SelectItem>
+                    <SelectItem value="true">Contactado</SelectItem>
+                  </SelectContent>
+                </Select>
               </FormDialogField>
               <FormDialogField label="Edad">
                 <Input

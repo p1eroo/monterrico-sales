@@ -262,9 +262,7 @@ export class ChatwootOperadorSyncService {
             eliminadoAt: null,
             OR: [
               { celular: { endsWith: cleaned } },
-              { movil: { endsWith: cleaned } },
               { celular: { contains: cleaned } },
-              { movil: { contains: cleaned } },
             ],
           },
         });
