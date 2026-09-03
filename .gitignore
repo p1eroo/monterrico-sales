@@ -31,3 +31,39 @@ deploy.sh
 
 # Prisma generated client
 backend/src/generated/prisma/
+generated/prisma/
+
+# ============ Secretos / infraestructura (refuerzo) ============
+# Service accounts y credenciales de Google/nube
+**/credentials/
+**/service-account*.json
+**/service_account*.json
+**/*firebase*.json
+# Claves privadas y certificados
+*.pem
+*.key
+*.p12
+*.pfx
+*.ppk
+*.p8
+*.jks
+id_rsa
+id_ed25519
+# Archivos con secretos embebidos
+secrets.*
+*.secret
+*.credentials.json
+# Backups / dumps de base de datos
+*.sql.gz
+*.dump
+*.sql.bak
+*_backup.sql
+# Configs de servidor / proxy que revelan infraestructura
+.nginx/
+*.nginx.conf
+pm2-*.log
+# Artefactos empaquetados (evitan subir bundles/credenciales)
+*.tgz
+# Certificados/dominios y utilidades de despliegue local
+deploy-local.sh
+*.sh.enc
