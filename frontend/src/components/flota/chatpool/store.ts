@@ -108,6 +108,7 @@ function mergeMessageUpdate(prev: Message, next: Message): Message {
     mimeType: next.mimeType ?? prev.mimeType,
     fileName: next.fileName ?? prev.fileName,
     fileSize: next.fileSize ?? prev.fileSize,
+    durationSeconds: next.durationSeconds ?? prev.durationSeconds,
     contentType: next.contentType !== 'text' ? next.contentType : prev.contentType,
   };
 }
@@ -190,6 +191,7 @@ interface ChatpoolState {
       type: 'image' | 'audio' | 'document';
       file: File;
       caption?: string;
+      durationSeconds?: number;
     },
   ) => Promise<void>;
   applySocketPayload: (payload: WhatsappSocketPayload) => void;
@@ -836,6 +838,7 @@ export const useChatpoolStore = create<ChatpoolState>((set, get) => ({
       fileUrl: previewUrl,
       attachmentUrl: previewUrl,
       mimeType: params.file.type,
+      durationSeconds: params.durationSeconds ?? null,
       createdAt: new Date(),
       status: 'pending',
     };

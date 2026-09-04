@@ -793,45 +793,201 @@ export class EvogoClient {
     message: Record<string, unknown>;
   }): Promise<Buffer | null> {
     const preferredApiKey = params.instanceApiKey.trim() || null;
-    const body = JSON.stringify({ message: params.message });
-    const url = `${this.baseUrl()}/message/downloadimage/${params.instanceApiKey}`;
+    const proto = this.buildDownloadMediaMessage(params.message);
+    if (!proto) {
+      this.logger.warn('Evogo downloadMedia: no se encontró audio/imagen/video/documento en el proto');
+      return null;
+    }
+    return this.downloadMediaOnce(
+      '/message/downloadmedia',
+      JSON.stringify({ message: proto }),
+      preferredApiKey,
+    );
+  }
 
-    let response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: preferredApiKey || '' },
-      body,
-    });
+  private async downloadMediaOnce(
+    path: string,
+    body: string,
+    apiKey: string | null,
+  ): Promise<Buffer | null> {
+    const url = `${this.baseUrl()}${path}`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      apikey: apiKey || this.managerApiKey(),
+    };
 
+    let response = await fetch(url, { method: 'POST', headers, body });
     if (response.status === 401) {
       const managerApiKey = this.managerApiKeyOrNull();
-      if (managerApiKey && managerApiKey !== preferredApiKey) {
-        this.logger.warn('Evogo downloadMedia: reintentando con token manager');
+      if (managerApiKey && managerApiKey !== headers.apikey) {
         response = await fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', apikey: managerApiKey || '' },
+          headers: { ...headers, apikey: managerApiKey },
           body,
         });
       }
     }
-
     if (!response.ok) {
-      this.logger.warn(`Evogo downloadMedia HTTP ${response.status}`);
+      const text = await response.text().catch(() => '');
+      this.logger.warn(`Evogo downloadMedia ${path} HTTP ${response.status}: ${text.slice(0, 240)}`);
       return null;
     }
 
-    const contentType = response.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
+    if (contentType.includes('application/json') || contentType.includes('text/')) {
+      const text = await response.text();
       try {
-        const json = await response.json() as Record<string, unknown>;
-        const b64 = json['data'] ?? json['base64'] ?? json['media'];
-        if (typeof b64 === 'string' && b64.length > 0) {
-          return Buffer.from(b64, 'base64');
-        }
-      } catch { /* seguir con binario */ }
+        const json = JSON.parse(text) as unknown;
+        const fromJson = this.extractAnyBase64(json);
+        if (fromJson?.length) return fromJson;
+      } catch {
+        const fromText = this.bufferFromDataUrl(text);
+        if (fromText?.length) return fromText;
+      }
+      this.logger.warn(`Evogo downloadMedia ${path}: respuesta 200 sin audio decodificable`);
+      return null;
     }
 
     const arrayBuffer = await response.arrayBuffer();
-    if (arrayBuffer.byteLength > 0) return Buffer.from(arrayBuffer);
+    return arrayBuffer.byteLength > 0 ? Buffer.from(arrayBuffer) : null;
+  }
+
+  private extractAnyBase64(value: unknown, depth = 0): Buffer | null {
+    if (depth > 6 || value == null) return null;
+    if (typeof value === 'string') return this.bufferFromDataUrl(value);
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const found = this.extractAnyBase64(item, depth + 1);
+        if (found?.length) return found;
+      }
+      return null;
+    }
+    if (typeof value === 'object') {
+      for (const item of Object.values(value as Record<string, unknown>)) {
+        const found = this.extractAnyBase64(item, depth + 1);
+        if (found?.length) return found;
+      }
+    }
+    return null;
+  }
+
+  private bufferFromDataUrl(raw: string): Buffer | null {
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    const payload = trimmed.includes(',')
+      ? trimmed.slice(trimmed.indexOf(',') + 1)
+      : trimmed.replace(/^data:[^;]+;base64,/i, '');
+    try {
+      const buffer = Buffer.from(payload, 'base64');
+      return buffer.length > 32 ? buffer : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private buildDownloadMediaMessage(
+    node: Record<string, unknown>,
+  ): Record<string, unknown> | null {
+    const nestedMessage =
+      this.asRecord(node['Message']) ??
+      this.asRecord(node['message']) ??
+      node;
+    const kinds = [
+      'audioMessage',
+      'imageMessage',
+      'videoMessage',
+      'documentMessage',
+      'stickerMessage',
+    ] as const;
+    for (const kind of kinds) {
+      const pascal = `${kind[0]!.toUpperCase()}${kind.slice(1)}`;
+      const raw =
+        this.asRecord(nestedMessage[kind]) ??
+        this.asRecord(nestedMessage[pascal]) ??
+        this.asRecord(node[kind]) ??
+        this.asRecord(node[pascal]);
+      if (!raw) continue;
+      const cleaned = this.cleanWhatsmeowMediaNode(raw);
+      if (cleaned) return { [kind]: cleaned };
+    }
+    return null;
+  }
+
+  private cleanWhatsmeowMediaNode(
+    raw: Record<string, unknown>,
+  ): Record<string, unknown> | null {
+    const fieldMap: Record<string, string> = {
+      URL: 'url',
+      url: 'url',
+      Url: 'url',
+      DirectPath: 'directPath',
+      directPath: 'directPath',
+      Mimetype: 'mimetype',
+      mimetype: 'mimetype',
+      MimeType: 'mimetype',
+      FileSHA256: 'fileSHA256',
+      fileSHA256: 'fileSHA256',
+      FileLength: 'fileLength',
+      fileLength: 'fileLength',
+      Seconds: 'seconds',
+      seconds: 'seconds',
+      PTT: 'ptt',
+      ptt: 'ptt',
+      MediaKey: 'mediaKey',
+      mediaKey: 'mediaKey',
+      FileEncSHA256: 'fileEncSHA256',
+      fileEncSHA256: 'fileEncSHA256',
+      MediaKeyTimestamp: 'mediaKeyTimestamp',
+      mediaKeyTimestamp: 'mediaKeyTimestamp',
+      FileName: 'fileName',
+      fileName: 'fileName',
+      Caption: 'caption',
+      caption: 'caption',
+      Height: 'height',
+      height: 'height',
+      Width: 'width',
+      width: 'width',
+      JPEGThumbnail: 'JPEGThumbnail',
+      jpegThumbnail: 'JPEGThumbnail',
+    };
+    const byteFields = new Set([
+      'mediaKey',
+      'fileSHA256',
+      'fileEncSHA256',
+      'JPEGThumbnail',
+    ]);
+    const out: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(raw)) {
+      const mapped = fieldMap[key];
+      if (!mapped || this.isStrippedValue(value)) continue;
+      if (byteFields.has(mapped)) {
+        const b64 = this.toProtoBase64(value);
+        if (b64) out[mapped] = b64;
+        continue;
+      }
+      out[mapped] = value;
+    }
+    if (typeof out.url === 'string') out.URL = out.url;
+    if (typeof out.ptt === 'boolean') out.PTT = out.ptt;
+    if (!out.url && !out.directPath) return null;
+    if (!out.mediaKey) return null;
+    return out;
+  }
+
+  private isStrippedValue(value: unknown): boolean {
+    return value === '[stripped]' || value === '[depth]';
+  }
+
+  private toProtoBase64(value: unknown): string | null {
+    if (this.isStrippedValue(value) || value == null) return null;
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed || trimmed.startsWith('[')) return null;
+      return trimmed;
+    }
+    if (Array.isArray(value) && value.every((item) => typeof item === 'number')) {
+      return Buffer.from(value as number[]).toString('base64');
+    }
     return null;
   }
 

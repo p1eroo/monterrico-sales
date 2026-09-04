@@ -51,6 +51,7 @@ export interface Message {
   attachmentUrl?: string;
   attachmentId?: string;
   mimeType?: string;
+  durationSeconds?: number | null;
   createdAt: Date;
   status?: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
 }

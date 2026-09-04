@@ -29,7 +29,13 @@ export function MessageAttachmentView({
   }, [src, message.id]);
 
   if (message.contentType === 'audio') {
-    return <AudioMessageContent src={src} isAgent={isAgent} />;
+    return (
+      <AudioMessageContent
+        src={src}
+        isAgent={isAgent}
+        durationSeconds={message.durationSeconds}
+      />
+    );
   }
 
   if (message.contentType === 'image' && src && !imgError) {

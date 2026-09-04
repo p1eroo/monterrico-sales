@@ -234,7 +234,10 @@ function MessageAttachment({
 }) {
   const [downloading, setDownloading] = useState(false);
   const [imgError, setImgError] = useState(false);
-  const src = (attachment.url ?? attachment.downloadUrl ?? attachment.proxyUrl ?? '').trim();
+  const rawSrc = (attachment.proxyUrl || attachment.url || attachment.downloadUrl || '').trim();
+  const src = rawSrc.startsWith('http') || rawSrc.startsWith('blob:') || !rawSrc
+    ? rawSrc
+    : `${API_BASE}${rawSrc.startsWith('/') ? rawSrc : `/${rawSrc}`}`;
 
   if (!src) {
     return (

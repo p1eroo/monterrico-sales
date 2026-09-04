@@ -124,6 +124,7 @@ export function mapWhatsappMessage(item: WhatsappMessageItem, conversationId: st
     attachmentUrl: resolvedUrl,
     attachmentId: attachment?.id,
     mimeType: attachment?.mimeType,
+    durationSeconds: attachment?.durationSeconds ?? null,
     createdAt: new Date(item.createdAt),
     status: item.direction === 'outbound' ? mapWaStatus(item.waOutboundStatus) : 'read',
   };

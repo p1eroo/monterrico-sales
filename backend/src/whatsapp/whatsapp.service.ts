@@ -47,7 +47,12 @@ type WhatsappMessageAttachmentDto = {
   url: string | null;
   downloadUrl: string | null;
   proxyUrl: string | null;
+  durationSeconds?: number | null;
 };
+
+function stripMimeCodecs(mime: string | null | undefined): string {
+  return (mime || '').split(';')[0].trim().toLowerCase();
+}
 type WhatsappListItemRow = {
   id: string;
   direction: string;
@@ -891,6 +896,12 @@ export class WhatsappService {
             `No se pudo resolver URL de descarga de adjunto WhatsApp ${file.id}: ${String(e)}`,
           );
         }
+        const payloadMedia = asRecord(
+          rows.find((row) => row.id === file.relatedEntityId)?.payloadJson as JsonRecord | null,
+        );
+        const payloadDuration = payloadMedia
+          ? parseMessageMedia(payloadMedia)?.durationSeconds
+          : null;
         const attachment: WhatsappMessageAttachmentDto = {
           id: file.id,
           name: file.originalName,
@@ -900,6 +911,7 @@ export class WhatsappService {
           url,
           downloadUrl,
           proxyUrl: null,
+          durationSeconds: payloadDuration,
         };
         const list = attachmentsByMessage.get(file.relatedEntityId || '') ?? [];
         list.push(attachment);
@@ -920,10 +932,6 @@ export class WhatsappService {
       }
       const payload = asRecord(row.payloadJson);
       const fallbackMedia = payload ? parseMessageMedia(payload) : null;
-      const fallbackUrl = resolveEvolutionMediaUrl(
-        fallbackMedia?.url,
-        this.evolutionBaseUrl(),
-      );
       const proxyUrl = `/api/whatsapp/media/proxy/${row.id}`;
       const mediaType = fallbackMedia?.mediaType;
       const useProxy = mediaType === 'image' || mediaType === 'video' || mediaType === 'audio' || mediaType === 'document';
@@ -940,12 +948,13 @@ export class WhatsappService {
                     row.id,
                   ),
                 mimeType:
-                  fallbackMedia.mimeType || 'application/octet-stream',
+                  stripMimeCodecs(fallbackMedia.mimeType) || 'application/octet-stream',
                 size: fallbackMedia.size ?? 0,
                 mediaType: fallbackMedia.mediaType,
-                url: fallbackUrl || (useProxy ? proxyUrl : null),
-                downloadUrl: fallbackUrl || (useProxy ? proxyUrl : null),
+                url: useProxy ? proxyUrl : null,
+                downloadUrl: useProxy ? proxyUrl : null,
                 proxyUrl: useProxy ? proxyUrl : null,
+                durationSeconds: fallbackMedia.durationSeconds,
               },
             ]
           : [];
@@ -989,8 +998,9 @@ export class WhatsappService {
     flotaProspecto?: FlotaProspectoMediaRef | null;
     instance: WhatsappInstanceRow | null;
     media: NonNullable<ReturnType<typeof parseMessageMedia>>;
+    messageProto?: Record<string, unknown> | null;
   }): Promise<void> {
-    const { messageId, contact, flotaProspecto, instance, media } = args;
+    const { messageId, contact, flotaProspecto, instance, media, messageProto } = args;
     const entityType = flotaProspecto?.id ? 'flota-prospecto' : 'contact';
     const entityId = flotaProspecto?.id || contact?.id;
     const entityName = flotaProspecto?.nombreCompleto || contact?.name || null;
@@ -1017,9 +1027,38 @@ export class WhatsappService {
         media.url,
         this.evolutionBaseUrl(),
       );
-      let bytes = this.decodeWhatsappMediaBase64(media.base64);
-      this.logger.log(`Adjunto WhatsApp ${messageId}: base64=${!!bytes} (len=${media.base64?.length || 0}), url=${!!resolvedUrl}, mediaType=${media.mediaType}`);
-      if (!bytes && resolvedUrl) {
+      let bytes: Buffer | null = null;
+      const protoBase64 =
+        (typeof messageProto?.['base64'] === 'string' ? messageProto['base64'] : null) ||
+        (typeof messageProto?.['Base64'] === 'string' ? messageProto['Base64'] : null);
+      const decodedB64 =
+        this.decodeWhatsappMediaBase64(media.base64) ||
+        this.decodeWhatsappMediaBase64(protoBase64);
+      const decodedLooksValid =
+        !!decodedB64 &&
+        (media.mediaType !== 'audio' && media.mediaType !== 'video'
+          ? true
+          : this.audioConversion.looksLikeAudio(decodedB64));
+      if (decodedLooksValid) bytes = decodedB64;
+      this.logger.log(
+        `Adjunto WhatsApp ${messageId}: base64Util=${!!bytes} (media=${media.base64?.length || 0}, proto=${protoBase64?.length || 0}), url=${!!resolvedUrl}, mediaType=${media.mediaType}`,
+      );
+      if (!bytes && instance?.instanceApiKey && messageProto) {
+        try {
+          bytes = await this.evogo.downloadMedia({
+            instanceApiKey: instance.instanceApiKey,
+            message: messageProto,
+          });
+          if (bytes?.length) {
+            this.logger.log(`Adjunto WhatsApp ${messageId}: descargado por Evolution, size=${bytes.length}`);
+          }
+        } catch (evoError) {
+          this.logger.warn(
+            `Adjunto WhatsApp ${messageId}: fallo download Evolution: ${String(evoError)}`,
+          );
+        }
+      }
+      if (!bytes && resolvedUrl && media.mediaType !== 'audio') {
         try {
           bytes = await this.downloadWhatsappMedia(resolvedUrl);
           this.logger.log(`Adjunto WhatsApp ${messageId}: descargado por URL, size=${bytes?.length || 0}`);
@@ -1068,27 +1107,32 @@ export class WhatsappService {
         media.fileName?.trim() ||
         `whatsapp-${media.mediaType}-${messageId.slice(0, 8)}.${realExtension}`;
 
-      // Expediente del prospecto: solo documentos/imágenes (no audios ni video).
-      const isFlotaProspecto = entityType === 'flota-prospecto';
-      const skipFlotaExpediente =
-        isFlotaProspecto &&
-        (media.mediaType === 'audio' ||
-          media.mediaType === 'video' ||
-          realMimeType.startsWith('audio/') ||
-          realMimeType.startsWith('video/'));
-      if (skipFlotaExpediente) {
-        this.logger.log(
-          `Adjunto WhatsApp ${messageId}: omitido del expediente (${media.mediaType}/${realMimeType})`,
-        );
-        return;
+      const isChatMediaOnly =
+        media.mediaType === 'audio' ||
+        media.mediaType === 'video' ||
+        realMimeType.startsWith('audio/') ||
+        realMimeType.startsWith('video/');
+
+      if (isChatMediaOnly && (realMimeType.startsWith('audio/') || media.mediaType === 'audio')) {
+        const prepared = await this.audioConversion.prepareForBrowserPlayback(bytes, realMimeType);
+        if (this.audioConversion.looksLikeAudio(prepared.buffer)) {
+          bytes = prepared.buffer;
+          realMimeType = prepared.mimeType;
+          realExtension = prepared.mimeType === 'audio/mpeg' ? 'mp3' : realExtension;
+        } else {
+          this.logger.warn(`Adjunto WhatsApp ${messageId}: audio no es reproducible, se omite`);
+          return;
+        }
       }
 
       await this.files.create(uploadedById, {
         buffer: bytes,
-        originalName,
+        originalName: isChatMediaOnly && realMimeType === 'audio/mpeg'
+          ? originalName.replace(/\.[^.]+$/, '.mp3')
+          : originalName,
         mimeType: realMimeType,
-        entityType,
-        entityId,
+        entityType: isChatMediaOnly ? 'whatsapp-message' : entityType,
+        entityId: isChatMediaOnly ? messageId : entityId,
         entityName: entityName ?? undefined,
         relatedEntityType: 'whatsapp-message',
         relatedEntityId: messageId,
@@ -1362,22 +1406,45 @@ export class WhatsappService {
     if (!instance?.instanceApiKey) return null;
 
     const rawPayload = payload as Record<string, unknown>;
-    const msgProto: Record<string, unknown> | undefined =
-      (rawPayload?.['Message'] as Record<string, unknown>) ??
-      (rawPayload?.['message'] as Record<string, unknown>) ??
-      ((rawPayload?.['data'] as Record<string, unknown>)?.['Message'] as Record<string, unknown>) ??
-      ((rawPayload?.['data'] as Record<string, unknown>)?.['message'] as Record<string, unknown>) ??
-      undefined;
-    if (!msgProto) return null;
-
-    const buffer = await this.evogo.downloadMedia({
+    let buffer = await this.evogo.downloadMedia({
       instanceApiKey: instance.instanceApiKey,
-      message: msgProto,
+      message: rawPayload,
     });
+    const media = parseMessageMedia(payload);
+    const isAudio = media?.mediaType === 'audio' || (media?.mimeType || '').startsWith('audio/');
+    if (!buffer?.length && !isAudio) {
+      const fallbackUrl = resolveEvolutionMediaUrl(media?.url, this.evolutionBaseUrl());
+      if (fallbackUrl) {
+        try {
+          buffer = await this.downloadWhatsappMedia(fallbackUrl);
+        } catch (e) {
+          this.logger.warn(
+            `Proxy media ${messageId}: Evolution vacío y URL falló: ${e instanceof Error ? e.message : e}`,
+          );
+        }
+      }
+    }
     if (!buffer?.length) return null;
 
-    const media = parseMessageMedia(payload);
-    const mimeType = media?.mimeType || 'image/jpeg';
+    let mimeType =
+      stripMimeCodecs(media?.mimeType)
+      || (media?.mediaType === 'audio'
+        ? 'audio/ogg'
+        : media?.mediaType === 'video'
+          ? 'video/mp4'
+          : media?.mediaType === 'image'
+            ? 'image/jpeg'
+            : 'application/octet-stream');
+
+    if (isAudio) {
+      if (!this.audioConversion.looksLikeAudio(buffer)) {
+        this.logger.warn(`Proxy media ${messageId}: buffer no es audio reproducible (${buffer.length} bytes)`);
+        return null;
+      }
+      const prepared = await this.audioConversion.prepareForBrowserPlayback(buffer, mimeType);
+      buffer = prepared.buffer;
+      mimeType = prepared.mimeType;
+    }
 
     return { buffer, mimeType };
   }
@@ -1704,28 +1771,30 @@ export class WhatsappService {
       },
     });
 
+    if (media) {
+      try {
+        await this.persistInboundMediaAttachment({
+          messageId: created.id,
+          contact: null,
+          flotaProspecto: linkProspectoId
+            ? ({ id: linkProspectoId, nombreCompleto: flotaProspecto?.nombreCompleto ?? '' } as FlotaProspectoMediaRef)
+            : undefined,
+          instance: instanceToUse,
+          media,
+          messageProto: parsed.data as Record<string, unknown>,
+        });
+      } catch (backgroundErr) {
+        this.logger.warn(
+          `Error persistInboundMediaAttachment msg=${created.id}: ${String(backgroundErr)}`,
+        );
+      }
+    }
+
     const socketContactId = this.flotaSocketContactId({
       flotaProspectoId: linkProspectoId,
       peerDigits,
     });
     await this.emitListItemById(socketContactId, created.id);
-
-    if (media) {
-      const msgId = created.id;
-      this.persistInboundMediaAttachment({
-        messageId: created.id,
-        contact: null,
-        flotaProspecto: linkProspectoId
-          ? ({ id: linkProspectoId, nombreCompleto: flotaProspecto?.nombreCompleto ?? '' } as FlotaProspectoMediaRef)
-          : undefined,
-        instance: instanceToUse,
-        media,
-      }).then(async () => {
-        await this.emitListItemById(socketContactId, msgId);
-      }).catch((backgroundErr) => {
-        this.logger.warn(`Error background persistInboundMediaAttachment msg=${msgId}: ${String(backgroundErr)}`);
-      });
-    }
 
     return { ok: true };
   }

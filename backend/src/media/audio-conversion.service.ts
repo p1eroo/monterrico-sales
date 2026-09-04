@@ -25,9 +25,51 @@ export class AudioConversionService {
     return (
       mime === 'audio/webm'
       || mime === 'audio/ogg'
-      || mime === 'audio/wav'
+      || mime === 'application/ogg'
+      || mime === 'audio/opus'
+      ||       mime === 'audio/wav'
       || mime === 'audio/x-wav'
     );
+  }
+
+  looksLikeAudio(buffer: Buffer): boolean {
+    if (!buffer || buffer.length < 12) return false;
+    if (buffer[0] === 0x4f && buffer[1] === 0x67 && buffer[2] === 0x67 && buffer[3] === 0x53) {
+      return true;
+    }
+    if (buffer[0] === 0x49 && buffer[1] === 0x44 && buffer[2] === 0x33) return true;
+    if (buffer[0] === 0xff && (buffer[1]! & 0xe0) === 0xe0) return true;
+    if (buffer.subarray(4, 8).toString('ascii') === 'ftyp') return true;
+    if (buffer[0] === 0x1a && buffer[1] === 0x45 && buffer[2] === 0xdf && buffer[3] === 0xa3) {
+      return true;
+    }
+    return buffer.subarray(0, 4).toString('ascii') === 'RIFF';
+  }
+
+  /**
+   * Convierte notas de voz (OGG/Opus de WhatsApp) a MP3 para el navegador.
+   * Si ffmpeg falla, devuelve el buffer original.
+   */
+  async prepareForBrowserPlayback(
+    buffer: Buffer,
+    mimeType: string,
+  ): Promise<{ buffer: Buffer; mimeType: string }> {
+    const normalized = this.normalizeMime(mimeType);
+    if (!buffer?.length || !this.shouldConvert(normalized) || !this.looksLikeAudio(buffer)) {
+      return { buffer, mimeType: normalized || mimeType || 'application/octet-stream' };
+    }
+    try {
+      const mp3 = await this.convertToMp3(buffer);
+      this.logger.log(
+        `Audio para navegador ${normalized} → audio/mpeg (${buffer.length} → ${mp3.length} bytes)`,
+      );
+      return { buffer: mp3, mimeType: 'audio/mpeg' };
+    } catch (e) {
+      this.logger.warn(
+        `No se pudo convertir audio para el navegador (${normalized}): ${e instanceof Error ? e.message : e}`,
+      );
+      return { buffer, mimeType: normalized || mimeType };
+    }
   }
 
   /** Convierte grabaciones del navegador a MP3 para WhatsApp / Chatwoot. */

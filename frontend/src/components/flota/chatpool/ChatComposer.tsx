@@ -267,7 +267,11 @@ export function ChatComposer() {
       const file = new File([result.blob], 'audio.webm', {
         type: result.blob.type || 'audio/webm',
       });
-      await sendMediaMessage(conversationId, { type: 'audio', file });
+      await sendMediaMessage(conversationId, {
+        type: 'audio',
+        file,
+        durationSeconds: result.durationSeconds,
+      });
     } catch {
       /* toast handled in store */
     } finally {

@@ -1,49 +1,86 @@
 import { useEffect, useRef, useState } from 'react';
 import { Mic, Pause, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from '@/lib/notify';
 import { formatVoiceTime, WAVEFORM_BAR_COUNT } from './VoiceRecorderBar';
 
 interface AudioMessageContentProps {
   src?: string | null;
   isAgent: boolean;
+  durationSeconds?: number | null;
 }
 
-export function AudioMessageContent({ src, isAgent }: AudioMessageContentProps) {
+function finiteDuration(value: number | undefined): number {
+  if (!Number.isFinite(value) || !value || value <= 0) return 0;
+  return value;
+}
+
+export function AudioMessageContent({ src, isAgent, durationSeconds }: AudioMessageContentProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const unlockingRef = useRef(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackTime, setPlaybackTime] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const [duration, setDuration] = useState(() =>
+    durationSeconds && durationSeconds > 0 ? Math.round(durationSeconds) : 0,
+  );
 
   useEffect(() => {
-    if (!src) return;
-    const audio = new Audio(src);
-    audioRef.current = audio;
-    audio.onloadedmetadata = () => {
-      if (Number.isFinite(audio.duration)) {
-        setDuration(Math.max(1, Math.round(audio.duration)));
-      }
-    };
-    audio.onended = () => {
-      setIsPlaying(false);
-      setPlaybackTime(0);
-    };
-    audio.ontimeupdate = () => setPlaybackTime(audio.currentTime);
-    return () => {
-      audio.pause();
-      audio.src = '';
-      audioRef.current = null;
-    };
-  }, [src]);
+    const known = durationSeconds && durationSeconds > 0 ? Math.round(durationSeconds) : 0;
+    setDuration(known);
+    setPlaybackTime(0);
+    setIsPlaying(false);
+  }, [src, durationSeconds]);
 
-  function togglePlayback() {
+  function applyDuration(audio: HTMLAudioElement) {
+    const loaded = finiteDuration(audio.duration);
+    if (loaded > 0) {
+      setDuration((prev) => (prev > 0 ? prev : Math.max(1, Math.round(loaded))));
+    }
+  }
+
+  function handleLoadedMetadata() {
     const audio = audioRef.current;
     if (!audio) return;
+    applyDuration(audio);
+    if ((durationSeconds ?? 0) > 0) return;
+    // Chrome/Chromium no lee la duración de OGG/Opus de WhatsApp hasta hacer seek.
+    if (!Number.isFinite(audio.duration) || audio.duration === Infinity) {
+      unlockingRef.current = true;
+      try {
+        audio.currentTime = 1e101;
+      } catch {
+        unlockingRef.current = false;
+      }
+    }
+  }
+
+  function handleTimeUpdate() {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (unlockingRef.current) {
+      applyDuration(audio);
+      unlockingRef.current = false;
+      audio.currentTime = 0;
+      return;
+    }
+    setPlaybackTime(audio.currentTime);
+  }
+
+  async function togglePlayback() {
+    const audio = audioRef.current;
+    if (!audio || !src) return;
     if (isPlaying) {
       audio.pause();
       setIsPlaying(false);
       return;
     }
-    void audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+    try {
+      await audio.play();
+      setIsPlaying(true);
+    } catch {
+      setIsPlaying(false);
+      toast.error('No se pudo reproducir el audio');
+    }
   }
 
   const progress = duration > 0 ? playbackTime / duration : 0;
@@ -54,9 +91,31 @@ export function AudioMessageContent({ src, isAgent }: AudioMessageContentProps) 
 
   return (
     <div className="flex min-w-[200px] items-center gap-2.5">
+      {src ? (
+        <audio
+          ref={audioRef}
+          src={src}
+          preload="metadata"
+          className="sr-only"
+          onLoadedMetadata={handleLoadedMetadata}
+          onDurationChange={() => {
+            if (audioRef.current) applyDuration(audioRef.current);
+          }}
+          onTimeUpdate={handleTimeUpdate}
+          onEnded={() => {
+            setIsPlaying(false);
+            setPlaybackTime(0);
+          }}
+          onError={() => setIsPlaying(false)}
+        />
+      ) : null}
+
       <button
         type="button"
-        onClick={togglePlayback}
+        onClick={(e) => {
+          e.stopPropagation();
+          void togglePlayback();
+        }}
         disabled={!src}
         className={cn(
           'flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors',

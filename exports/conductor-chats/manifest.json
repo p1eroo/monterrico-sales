@@ -1,0 +1,75 @@
+{
+  "generado": "2026-09-03T16:45:19.204Z",
+  "alcance": {
+    "fuentes": [
+      "chatwoot",
+      "crm-flota"
+    ],
+    "ventana_dias": "todo",
+    "mensajes_leidos": 11128,
+    "ecos_automaticos_removidos": 1484,
+    "conversaciones": 1211,
+    "conversaciones_con_prospecto": 1209,
+    "conversaciones_conductor_registrado": 0,
+    "conversaciones_con_es_conductor": 134,
+    "conversaciones_sin_registro": 2,
+    "llamadas_odatos": 108,
+    "odatos_con_distrito": 37,
+    "cobertura_distrito": 189,
+    "cobertura_vehiculo_completo": 142,
+    "cobertura_vehiculo_parcial": 631
+  },
+  "audio": {
+    "mensajes_audio": 44,
+    "mensajes_total": 9644,
+    "porcentaje_global": 0.46,
+    "chats_con_audio": 21,
+    "chats_con_audio_sobre_15pct": 3,
+    "requiere_voz_desde_dia_uno": false,
+    "nota": "No hay motor ASR en el stack; los audios se marcan [audio] sin transcribir. El umbral de 15% se evalúa sobre el porcentaje global de mensajes de audio."
+  },
+  "cobertura_metadata": {
+    "distrito": "189 de 1211 conversaciones",
+    "vehiculo_marca_modelo_anio": "142 de 1211 conversaciones",
+    "vehiculo_parcial": "631 de 1211 conversaciones"
+  },
+  "anonimizacion": {
+    "eliminado": [
+      "nombre",
+      "correo",
+      "DNI",
+      "placa",
+      "teléfono",
+      "agente"
+    ],
+    "conservado": [
+      "distrito",
+      "marca",
+      "modelo",
+      "año del vehículo",
+      "estado",
+      "fechas"
+    ],
+    "scrub_texto": [
+      "[telefono]",
+      "[correo]",
+      "[placa]"
+    ]
+  },
+  "formato": "jsonl / una conversación por línea",
+  "archivos": [
+    "conductor-chats/lote-001.jsonl",
+    "conductor-chats/lote-002.jsonl",
+    "conductor-chats/lote-003.jsonl",
+    "conductor-chats/lote-004.jsonl",
+    "conductor-chats/lote-005.jsonl",
+    "conductor-chats/lote-006.jsonl",
+    "conductor-chats/lote-007.jsonl",
+    "conductor-chats/lote-008.jsonl",
+    "conductor-chats/lote-009.jsonl",
+    "conductor-chats/lote-010.jsonl",
+    "conductor-chats/lote-011.jsonl",
+    "conductor-chats/lote-012.jsonl",
+    "conductor-chats/lote-013.jsonl"
+  ]
+}

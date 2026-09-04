@@ -46,6 +46,7 @@ export type WhatsappMessageItem = {
     url: string | null;
     downloadUrl?: string | null;
     proxyUrl?: string | null;
+    durationSeconds?: number | null;
   }[];
 };
 

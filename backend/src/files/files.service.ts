@@ -25,6 +25,7 @@ const ENTITY_TYPES = new Set([
   'email',
   'task',
   'flota-prospecto',
+  'whatsapp-message',
 ]);
 
 const COMERCIAL_ENTITY_TYPES = [
@@ -85,10 +86,18 @@ export class FilesService {
   /** Archivos de prospectos Flota o adjuntos WhatsApp/Chatwoot vinculados a Flota. */
   private async isFlotaFile(row: {
     entityType: string;
+    entityId?: string | null;
     relatedEntityType?: string | null;
     relatedEntityId?: string | null;
   }): Promise<boolean> {
     if (row.entityType === 'flota-prospecto') return true;
+    if (row.entityType === 'whatsapp-message' && row.entityId?.trim()) {
+      const msg = await this.prisma.crmWhatsappMessage.findUnique({
+        where: { id: row.entityId.trim() },
+        select: { flotaProspectoId: true },
+      });
+      return !!msg?.flotaProspectoId;
+    }
     if (row.relatedEntityType === 'chatwoot-message') return true;
     if (
       row.relatedEntityType === 'whatsapp-message' &&

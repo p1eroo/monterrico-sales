@@ -391,8 +391,9 @@ export class WhatsappController {
       throw new NotFoundException('Imagen no encontrada o expirada');
     }
     res.set({
-      'Content-Type': result.mimeType,
-      'Content-Length': result.buffer.length,
+      'Content-Type': result.mimeType.split(';')[0].trim() || 'application/octet-stream',
+      'Content-Length': String(result.buffer.length),
+      'Accept-Ranges': 'bytes',
       'Cache-Control': 'public, max-age=86400',
     });
     res.send(result.buffer);

@@ -7,6 +7,7 @@ export type WhatsappParsedMedia = {
   fileName: string | null;
   size: number | null;
   caption: string | null;
+  durationSeconds: number | null;
 };
 
 function asRecord(v: unknown): JsonRecord | null {
@@ -48,6 +49,24 @@ function readStringField(
     const value = node[key];
     if (typeof value === 'string' && value.trim()) {
       return value.trim();
+    }
+  }
+  return null;
+}
+
+function readNumericField(
+  node: JsonRecord | null,
+  keys: string[],
+): number | null {
+  if (!node) return null;
+  for (const key of keys) {
+    const value = node[key];
+    if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
+      return value;
+    }
+    if (typeof value === 'string' && /^\d+(\.\d+)?$/.test(value.trim())) {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed) && parsed >= 0) return parsed;
     }
   }
   return null;
@@ -436,6 +455,12 @@ export function parseMessageMedia(data: JsonRecord): WhatsappParsedMedia | null 
             ? Number.parseInt(sizeRaw, 10)
             : null,
       caption,
+      durationSeconds: readNumericField(node, [
+        'seconds',
+        'Seconds',
+        'duration',
+        'Duration',
+      ]),
     };
   }
   return null;
@@ -454,9 +479,7 @@ export function stripHeavyPayload(node: unknown, depth = 0): unknown {
     const keyLow = k.toLowerCase();
     if (
       keyLow === 'base64' ||
-      keyLow === 'jpegthumbnail' ||
-      keyLow === 'fileencsha256' ||
-      keyLow === 'mediakeytimestamp'
+      keyLow === 'jpegthumbnail'
     ) {
       out[k] = '[stripped]';
       continue;
